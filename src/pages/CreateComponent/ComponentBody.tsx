@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import { useCreateComponentStore } from './store';
+import DropArea from '../../components/DropArea';
 
 const ComponentBody: React.FC = () => {
   const screenSize = useCreateComponentStore((state) => state.screenSize);
@@ -20,7 +21,7 @@ const ComponentBody: React.FC = () => {
   return (
     <div className="component-body">
       <div className="simulator-container" style={simulatorStyle}>
-        111
+        <DropArea/>
       </div>
     </div>
   );
