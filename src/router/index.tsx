@@ -1,48 +1,54 @@
+import React, { lazy, Suspense } from 'react';
 import { createBrowserRouter } from 'react-router-dom';
-import AppLayout from '../components/Layout';
-import Home from '../pages/Home';
-import BuildComponent from '../pages/BuildComponent';
-import BuildPage from '../pages/BuildPage';
-import DataApi from '../pages/DataApi';
-import DataConstance from '../pages/DataConstance';
-import CreateComponent from '../pages/CreateComponent';
-import CreatePage from '../pages/CreatePage';
+
+const AppLayout = lazy(() => import('../components/Layout'));
+const Home = lazy(() => import('../pages/Home'));
+const BuildComponent = lazy(() => import('../pages/BuildComponent'));
+const BuildPage = lazy(() => import('../pages/BuildPage'));
+const DataApi = lazy(() => import('../pages/DataApi'));
+const DataConstance = lazy(() => import('../pages/DataConstance'));
+const CreateComponent = lazy(() => import('../pages/CreateComponent'));
+const CreatePage = lazy(() => import('../pages/CreatePage'));
+
+const load = (el: React.ReactElement) => (
+  <Suspense fallback={<div>加载中...</div>}>{el}</Suspense>
+);
 
 export const router = createBrowserRouter([
   {
     path: '/',
-    element: <AppLayout />,
+    element: load(<AppLayout />),
     children: [
       {
         index: true,
-        element: <Home />,
+        element: load(<Home />),
       },
       {
         path: 'build-component',
-        element: <BuildComponent />,
+        element: load(<BuildComponent />),
       },
       {
         path: 'build-page',
-        element: <BuildPage />,
+        element: load(<BuildPage />),
       },
       {
         path: 'data-api',
-        element: <DataApi />,
+        element: load(<DataApi />),
       },
       {
         path: 'data-constance',
-        element: <DataConstance />,
+        element: load(<DataConstance />),
       },
     ],
   },
   // standalone pages (no layout)
   {
     path: '/create-component',
-    element: <CreateComponent />,
+    element: load(<CreateComponent />),
   },
   {
     path: '/create-page',
-    element: <CreatePage />,
+    element: load(<CreatePage />),
   },
 ]);
 
