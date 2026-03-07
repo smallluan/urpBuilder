@@ -8,7 +8,8 @@ interface DropAreaProps {
   className?: string;
   disabled?: boolean;
   emptyText?: string;
-  onDropData?: (dropData: unknown, event: DragEvent<HTMLDivElement>) => void;
+  data?: any;
+  onDropData?: (dropData: unknown, parent: any) => void;
 }
 
 const DROP_DATA_KEY = 'drag-component-data';
@@ -19,6 +20,7 @@ export default function DropArea({
   className = '',
   disabled = false,
   emptyText = '拖拽组件到此处',
+  data, 
   onDropData,
 }: DropAreaProps) {
   const [isDragOver, setIsDragOver] = useState(false);
@@ -63,11 +65,9 @@ export default function DropArea({
 
     try {
       const parsedData = JSON.parse(rawData);
-      console.log(parsedData)
-      onDropData?.(parsedData, event);
+      onDropData?.(parsedData, data);
     } catch {
       console.error(rawData)
-      onDropData?.(rawData, event);
     }
   };
 

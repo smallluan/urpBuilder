@@ -5,6 +5,19 @@ import DropArea from '../../components/DropArea';
 const ComponentBody: React.FC = () => {
   const screenSize = useCreateComponentStore((state) => state.screenSize);
   const autoWidth = useCreateComponentStore((state) => state.autoWidth);
+  const uiPageData = useCreateComponentStore((state) => state.uiPageData);
+  const insertToUiPageData = useCreateComponentStore((state) => state.insertToUiPageData);
+
+  // 组件拖拽后接收结构化数据，并插入到对应父节点下
+  const handleDropData = (data: any, parent: any) => {
+    if (!parent?.key || !data || typeof data !== 'object') {
+      return;
+    }
+    insertToUiPageData(parent.key, data as Record<string, unknown>);
+    setTimeout(() => {
+      console.log(useCreateComponentStore.getState().uiPageData);
+    }, 0);
+  };
 
   const simulatorStyle: React.CSSProperties = useMemo(() => {
     const width = screenSize === 'auto' ? `${autoWidth}px` : `${screenSize}px`;
@@ -21,7 +34,7 @@ const ComponentBody: React.FC = () => {
   return (
     <div className="component-body">
       <div className="simulator-container" style={simulatorStyle}>
-        <DropArea/>
+        <DropArea data={uiPageData} onDropData={handleDropData} />
       </div>
     </div>
   );
