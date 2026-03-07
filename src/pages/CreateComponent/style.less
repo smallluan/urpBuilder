@@ -52,6 +52,8 @@
     flex: 1; /* 占满 header 之外的全部高度 */
     display: flex;
     min-height: 0; /* 允许子元素正确溢出滚动 */
+    gap: 16px; /* main 与两侧 aside 之间的间距 */
+    background: #f3f3f3; /* 间隙背景色 */
   }
 
   .aside-left {
@@ -125,7 +127,9 @@
 
   .main-body {
     flex: 1;
-    padding: 16px;
+    // padding: 16px;
+    height: calc(100vh - 16px - 60px);
+    margin-top: 8px;
     overflow: auto;
     background: #fff;
 
