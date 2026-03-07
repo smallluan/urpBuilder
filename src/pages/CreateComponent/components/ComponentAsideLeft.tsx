@@ -15,7 +15,7 @@ const ComponentAsideLeft: React.FC = () => {
           </div>
 
           <div className="structure-tree" role="tree">
-            <Tree line expandAll data={[uiTreeData]} />
+            <Tree activable line expandAll data={[uiTreeData]} />
           </div>
         </div>
       </div>

@@ -161,7 +161,60 @@
     background: #fafafa;
     border-left: 1px solid #eee;
     padding: 12px;
-    overflow: auto;
+    overflow: hidden;
     box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+
+    .right-panel-header {
+      margin-bottom: 12px;
+    }
+
+    .right-panel-body {
+      flex: 1 1 auto;
+      min-height: 0;
+      background: #fff;
+      border: 1px solid #f0f0f0;
+      border-radius: 4px;
+      padding: 8px;
+      overflow: auto;
+    }
+
+    .right-panel-empty {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .library-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .library-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px;
+      border: 1px solid #f0f0f0;
+      border-radius: 4px;
+      cursor: pointer;
+      user-select: none;
+      background: #fff;
+    }
+
+    .library-item.is-active {
+      border-color: #0052d9;
+      background: #f2f3ff;
+    }
+
+    .config-form {
+      .config-title {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: 600;
+      }
+    }
   }
 }

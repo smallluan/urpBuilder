@@ -1,12 +1,24 @@
-import React from 'react';
+import React, { useState } from 'react';
+import ComponentConfigPanel from './ComponentConfigPanel';
+import ComponentLibraryPanel from './ComponentLibraryPanel';
+import RightPanelHeader, { type RightPanelMode } from './RightPanelHeader';
 
 const ComponentAsideRight: React.FC = () => {
+  const [mode, setMode] = useState<RightPanelMode>('library');
+  const [selectedComponentName, setSelectedComponentName] = useState<string | null>(null);
+
+  const handleSelectComponent = (name: string) => {
+    setSelectedComponentName(name);
+  };
+
   return (
     <aside className="aside-right">
-      <div style={{ padding: 8 }}>
-        <h4>预览</h4>
-        <p>这里放组件预览或属性面板。</p>
-      </div>
+      <RightPanelHeader mode={mode} onChange={setMode} />
+      {mode === 'library' ? (
+        <ComponentLibraryPanel selectedName={selectedComponentName} onSelect={handleSelectComponent} />
+      ) : (
+        <ComponentConfigPanel selectedName={selectedComponentName} />
+      )}
     </aside>
   );
 };
