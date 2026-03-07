@@ -23,18 +23,19 @@ const ComponentBody: React.FC = () => {
     const width = screenSize === 'auto' ? `${autoWidth}px` : `${screenSize}px`;
     return {
       width,
-      minHeight: '100%',
+      height: '100%',
       backgroundColor: '#fff',
       margin: '0 auto',
       transition: 'width 0.3s ease',
       boxSizing: 'content-box', // Ensure border doesn't eat into width if strict specific
+      display: 'flex',
     };
   }, [screenSize, autoWidth]);
 
   return (
     <div className="component-body">
       <div className="simulator-container" style={simulatorStyle}>
-        <DropArea data={uiPageData} onDropData={handleDropData} />
+        <DropArea style={{ flex: 1, height: '100%' }} data={uiPageData} onDropData={handleDropData} />
       </div>
     </div>
   );

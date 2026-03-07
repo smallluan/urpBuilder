@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import type { DragEvent } from 'react';
+import { AddCircleIcon } from 'tdesign-icons-react';
 import './index.less';
 
 interface DropAreaProps {
@@ -84,7 +85,12 @@ export default function DropArea({
       className={dropAreaClassName}
       style={style}
     >
-      {children ?? <div className="drop-area-empty">{emptyText}</div>}
+      {children ?? (
+        <div className="drop-area-empty">
+          <AddCircleIcon className="drop-area-empty-icon" />
+          <span>{emptyText}</span>
+        </div>
+      )}
     </div>
   );
 }
