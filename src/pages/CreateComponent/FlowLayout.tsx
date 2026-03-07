@@ -1,5 +1,5 @@
 import React from 'react';
-import { Input, Empty } from 'tdesign-react';
+import { Input, Empty, Tree } from 'tdesign-react';
 import { SearchIcon } from 'tdesign-icons-react';
 import FlowBody from './FlowBody';
 import './style.less';
@@ -19,12 +19,7 @@ const FlowLayout: React.FC = () => {
           </div>
 
           <div className="structure-tree" role="tree">
-            <ul>
-              <li>流程容器</li>
-              <li>  ├─ 开始节点</li>
-              <li>  ├─ 任务节点</li>
-              <li>  └─ 结束节点</li>
-            </ul>
+            <Tree/>
           </div>
         </div>
 
