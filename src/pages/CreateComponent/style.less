@@ -73,10 +73,18 @@
       flex: 1 1 50%;
       display: flex;
       flex-direction: column;
-      gap: 8px;
+      min-height: 0;
 
-      .structure-header {
-        padding-bottom: 8px;
+      .structure-panel {
+        flex: 1 1 auto;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        background: #fff;
+        border: 1px solid #f0f0f0;
+        border-radius: 4px;
+        padding: 8px;
+        min-height: 0;
       }
 
       .search-row {
@@ -104,10 +112,8 @@
       .structure-tree {
         flex: 1 1 auto;
         overflow: auto;
-        background: #fff;
-        border: 1px solid #f0f0f0;
-        border-radius: 4px;
-        padding: 8px;
+        min-height: 0;
+        padding: 4px;
         font-size: 13px;
         color: #333;
       }
