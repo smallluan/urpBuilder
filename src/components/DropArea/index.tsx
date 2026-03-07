@@ -2,6 +2,9 @@ import React, { useMemo, useState } from 'react';
 import type { DragEvent } from 'react';
 import { AddCircleIcon } from 'tdesign-icons-react';
 import './index.less';
+import CommonComponent from '../../pages/CreateComponent/components/CommonComponent';
+import type { UiTreeNode } from '../../pages/CreateComponent/store/type';
+import { useCreateComponentStore } from '../../pages/CreateComponent/store';
 
 interface DropAreaProps {
   children?: React.ReactNode;
@@ -9,11 +12,35 @@ interface DropAreaProps {
   className?: string;
   disabled?: boolean;
   emptyText?: string;
-  data?: any;
-  onDropData?: (dropData: unknown, parent: any) => void;
+  data?: UiTreeNode;
+  onDropData?: (dropData: unknown, parent: UiTreeNode | undefined) => void;
+  isTreeNode?: boolean;
 }
 
 const DROP_DATA_KEY = 'drag-component-data';
+
+const RenderNode: React.FC<{
+  data?: UiTreeNode;
+  emptyText: string;
+  onDropData?: (dropData: unknown, parent: UiTreeNode | undefined) => void;
+}> = ({ data, emptyText, onDropData }) => {
+  if (data?.children?.length) {
+    return (
+      <div className="drop-area-node-list">
+        {data.children.map((child) => (
+          <CommonComponent key={child.key} type={child.type} data={child} onDropData={onDropData} />
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <div className="drop-area-empty">
+      <AddCircleIcon className="drop-area-empty-icon" />
+      <span>{emptyText}</span>
+    </div>
+  );
+};
 
 export default function DropArea({
   children,
@@ -21,10 +48,15 @@ export default function DropArea({
   className = '',
   disabled = false,
   emptyText = '拖拽组件到此处',
-  data, 
+  data,
   onDropData,
+  isTreeNode = false,
 }: DropAreaProps) {
   const [isDragOver, setIsDragOver] = useState(false);
+  const childrenLength = React.Children.count(children);
+  const activeNodeKey = useCreateComponentStore((state) => state.activeNodeKey);
+  const toggleActiveNode = useCreateComponentStore((state) => state.toggleActiveNode);
+  const isNodeActive = !!data?.key && activeNodeKey === data.key;
 
   // 拖拽经过时允许放置，并切换高亮态
   const handleDragOver = (event: DragEvent<HTMLDivElement>) => {
@@ -73,23 +105,43 @@ export default function DropArea({
   };
 
   const dropAreaClassName = useMemo(() => {
-    const activeClass = isDragOver ? ' drop-area-active' : '';
-    return `drop-area${activeClass}${className ? ` ${className}` : ''}`;
-  }, [className, isDragOver]);
+    const dragOverClass = isDragOver ? ' drop-area-active' : '';
+    const selectedClass = isNodeActive ? ' drop-area-selected' : '';
+    return `drop-area${dragOverClass}${selectedClass}${className ? ` ${className}` : ''}`;
+  }, [className, isDragOver, isNodeActive]);
+
+  const handleClick = (event: React.MouseEvent<HTMLDivElement>) => {
+    event.stopPropagation();
+    if (!data?.key) {
+      return;
+    }
+
+    toggleActiveNode(data.key);
+  };
 
   return (
     <div
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
+      onClick={handleClick}
+      data-active={isNodeActive ? 'true' : 'false'}
       className={dropAreaClassName}
       style={style}
     >
-      {children ?? (
-        <div className="drop-area-empty">
-          <AddCircleIcon className="drop-area-empty-icon" />
-          <span>{emptyText}</span>
-        </div>
+      {childrenLength ? (
+        React.Children.map(children, (child) => {
+          if (React.isValidElement(child) && !isTreeNode) {
+            return React.cloneElement(
+              child,
+              undefined,
+              <RenderNode data={data} emptyText={emptyText} onDropData={onDropData} />,
+            );
+          }
+          return child;
+        })
+      ) : (
+        <RenderNode data={data} emptyText={emptyText} onDropData={onDropData} />
       )}
     </div>
   );

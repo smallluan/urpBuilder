@@ -14,6 +14,8 @@ interface RenderUiTreeNode extends Omit<UiTreeNode, 'label' | 'children'> {
 const ComponentAsideLeft: React.FC = () => {
   const uiPageData = useCreateComponentStore((state) => state.uiPageData);
   const setTreeInstance = useCreateComponentStore((state) => state.setTreeInstance);
+  const activeNodeKey = useCreateComponentStore((state) => state.activeNodeKey);
+  const toggleActiveNode = useCreateComponentStore((state) => state.toggleActiveNode);
 
   const uiPageDataWithWrappedLabel = useMemo(() => {
     const cloned = cloneDeep(uiPageData) as UiTreeNode;
@@ -36,6 +38,14 @@ const ComponentAsideLeft: React.FC = () => {
   const treeData = useMemo(() => [uiPageDataWithWrappedLabel], [uiPageDataWithWrappedLabel]);
   const treeRef = useRef<TreeInstanceFunctions<any>>(null);
 
+  const handleTreeClick = (context: any) => {
+    const key = context?.node?.value ?? context?.node?.key;
+    if (typeof key !== 'string') {
+      return;
+    }
+    toggleActiveNode(key);
+  };
+
   useEffect(() => {
     setTreeInstance(treeRef.current);
     return () => setTreeInstance(null);
@@ -50,7 +60,16 @@ const ComponentAsideLeft: React.FC = () => {
           </div>
 
           <div className="structure-tree" role="tree">
-            <Tree keys={{value: 'key'}} ref={treeRef} activable expandAll line data={treeData} />
+            <Tree
+              keys={{ value: 'key' }}
+              ref={treeRef}
+              activable
+              expandAll
+              line
+              data={treeData}
+              actived={activeNodeKey ? [activeNodeKey] : []}
+              onClick={handleTreeClick}
+            />
           </div>
         </div>
       </div>

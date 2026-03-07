@@ -9,6 +9,18 @@ import {
   toUiTreeNode,
 } from '../../../utils/createComponentTree';
 
+const containsNodeKey = (node: { key: string; children?: { key: string; children?: any[] }[] }, targetKey: string): boolean => {
+  if (node.key === targetKey) {
+    return true;
+  }
+
+  if (!node.children?.length) {
+    return false;
+  }
+
+  return node.children.some((child) => containsNodeKey(child, targetKey));
+};
+
 const pushHistoryAction = (actions: UiHistoryAction[], pointer: number, action: UiHistoryAction) => {
   const nextActions = pointer < actions.length - 1 ? actions.slice(0, pointer + 1) : actions;
   return [...nextActions, action];
@@ -27,6 +39,7 @@ export const useCreateComponentStore = create<CreateComponentStore>((set) => ({
     props: {},
     lifetimes: []
   },
+  activeNodeKey: null,
   treeInstance: null,
   history: {
     pointer: -1,
@@ -36,6 +49,11 @@ export const useCreateComponentStore = create<CreateComponentStore>((set) => ({
   setScreenSize: (screenSize) => set({ screenSize }),
   // 更新自适应模式下的自定义宽度
   setAutoWidth: (width) => set({ autoWidth: width }),
+  // 切换当前激活节点：重复点击同一节点则取消激活
+  toggleActiveNode: (nodeKey) =>
+    set((state) => ({
+      activeNodeKey: state.activeNodeKey === nodeKey ? null : nodeKey ?? null,
+    })),
   // 挂载/卸载左侧树组件实例
   setTreeInstance: (instance) => set({ treeInstance: instance }),
   // 将拖拽得到的组件结构插入到指定父节点下
@@ -86,8 +104,11 @@ export const useCreateComponentStore = create<CreateComponentStore>((set) => ({
       };
 
       const nextActions = pushHistoryAction(state.history.actions, state.history.pointer, action);
+      const shouldClearActive =
+        !!state.activeNodeKey && containsNodeKey(result.removedNode, state.activeNodeKey);
       return {
         uiPageData: result.tree,
+        activeNodeKey: shouldClearActive ? null : state.activeNodeKey,
         history: {
           pointer: nextActions.length - 1,
           actions: nextActions,
