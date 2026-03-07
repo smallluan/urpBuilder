@@ -1,0 +1,146 @@
+.create-page {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+
+  .create-header {
+    height: 64px;
+    display: flex;
+    align-items: center;
+    padding: 0 16px;
+    background: #fff;
+    border-bottom: 1px solid #e7e7e7;
+    // box-sizing: border-box;
+
+    .header-controls {
+      width: 100%;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+
+      .header-left-control {
+        display: flex;
+        align-items: center;
+      }
+
+      .header-right-control {
+        display: flex;
+        align-items: center;
+      }
+
+      .nav-group {
+        display: inline-flex;
+        align-items: center;
+      }
+
+      .divider {
+        width: 1px;
+        height: 20px;
+        background: #e6e6e6;
+        margin: 0 8px;
+      }
+
+      .action-group {
+        display: inline-flex;
+        gap: 8px;
+        margin-left: 12px;
+      }
+    }
+  }
+
+  .create-body {
+    flex: 1; /* 占满 header 之外的全部高度 */
+    display: flex;
+    min-height: 0; /* 允许子元素正确溢出滚动 */
+  }
+
+  .aside-left {
+    width: 250px;
+    background: #fafafa;
+    border-right: 1px solid #eee;
+    padding: 12px;
+    overflow: auto;
+    box-sizing: border-box;
+  }
+
+  .aside-left {
+    display: flex;
+    flex-direction: column;
+
+    .structure-top {
+      flex: 1 1 50%;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+
+      .structure-header {
+        padding-bottom: 8px;
+      }
+
+      .search-row {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+
+        input {
+          flex: 1;
+        }
+
+        .search-toolbar {
+          display: inline-flex;
+          gap: 8px;
+          align-items: center;
+          color: #666;
+
+          .match-count {
+            font-size: 12px;
+            color: #999;
+          }
+        }
+      }
+
+      .structure-tree {
+        flex: 1 1 auto;
+        overflow: auto;
+        background: #fff;
+        border: 1px solid #f0f0f0;
+        border-radius: 4px;
+        padding: 8px;
+        font-size: 13px;
+        color: #333;
+      }
+    }
+
+    .structure-bottom {
+      flex: 1 1 50%;
+      margin-top: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: transparent;
+      border-top: 1px dashed #f0f0f0;
+      padding-top: 12px;
+    }
+  }
+
+  .main-body {
+    flex: 1;
+    padding: 16px;
+    overflow: auto;
+    background: #fff;
+
+    .main-inner {
+      max-width: 1000px;
+      margin: 0 auto;
+    }
+  }
+
+  .aside-right {
+    width: 250px;
+    background: #fafafa;
+    border-left: 1px solid #eee;
+    padding: 12px;
+    overflow: auto;
+    box-sizing: border-box;
+  }
+}

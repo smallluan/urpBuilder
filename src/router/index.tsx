@@ -5,6 +5,8 @@ import BuildComponent from '../pages/BuildComponent';
 import BuildPage from '../pages/BuildPage';
 import DataApi from '../pages/DataApi';
 import DataConstance from '../pages/DataConstance';
+import CreateComponent from '../pages/CreateComponent';
+import CreatePage from '../pages/CreatePage';
 
 export const router = createBrowserRouter([
   {
@@ -32,6 +34,15 @@ export const router = createBrowserRouter([
         element: <DataConstance />,
       },
     ],
+  },
+  // standalone pages (no layout)
+  {
+    path: '/create-component',
+    element: <CreateComponent />,
+  },
+  {
+    path: '/create-page',
+    element: <CreatePage />,
   },
 ]);
 

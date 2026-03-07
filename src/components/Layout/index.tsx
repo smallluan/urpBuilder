@@ -89,8 +89,8 @@ const AppLayout: React.FC = () => {
   return (
     <Layout className="app-layout">
       <Header className="layout-header">
-        <div className="header-title">
-          URP Builder 管理系统
+        <div className="header-left">
+          <img src="/urpBuilder.png" alt="URP" className="header-logo" />
         </div>
       </Header>
       <Layout>
