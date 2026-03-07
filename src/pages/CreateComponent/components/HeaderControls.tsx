@@ -5,9 +5,13 @@ import { ArrowLeftIcon, ArrowRightIcon, AnticlockwiseIcon, UploadIcon, ViewImage
 type Props = {
   mode: 'component' | 'flow';
   onChange: (v: 'component' | 'flow') => void;
+  onUndo: () => void;
+  onRedo: () => void;
+  canUndo: boolean;
+  canRedo: boolean;
 };
 
-const HeaderControls: React.FC<Props> = ({ mode, onChange }) => {
+const HeaderControls: React.FC<Props> = ({ mode, onChange, onUndo, onRedo, canUndo, canRedo }) => {
   const handleChange = (value: any) => {
     onChange(String(value) === '1' ? 'component' : 'flow');
   };
@@ -24,11 +28,38 @@ const HeaderControls: React.FC<Props> = ({ mode, onChange }) => {
       <div className="header-right-control">
         <Space>
             <div className="nav-group">
-              <Button theme="default" variant="text" size="small" icon={<ArrowLeftIcon />}>上一步</Button>
+              <Button
+                theme="default"
+                variant="text"
+                size="small"
+                icon={<ArrowLeftIcon />}
+                disabled={!canUndo}
+                onClick={onUndo}
+              >
+                上一步
+              </Button>
               <span className="divider" />
-              <Button theme="default" variant="text" size="small" icon={<AnticlockwiseIcon />}>重做</Button>
+              <Button
+                theme="default"
+                variant="text"
+                size="small"
+                icon={<AnticlockwiseIcon />}
+                disabled={!canRedo}
+                onClick={onRedo}
+              >
+                重做
+              </Button>
               <span className="divider" />
-              <Button theme="default" variant="text" size="small" icon={<ArrowRightIcon />}>下一步</Button>
+              <Button
+                theme="default"
+                variant="text"
+                size="small"
+                icon={<ArrowRightIcon />}
+                disabled={!canRedo}
+                onClick={onRedo}
+              >
+                下一步
+              </Button>
             </div>
 
             <div className="action-group">

@@ -47,6 +47,38 @@ const componentCatalog = [
       }
     },
     lifetimes: ['onClick']
+  },
+  {
+    type: 'Space',
+    name: '间隔',
+    props: {
+      align: {
+        name: '对齐方式',
+        value: 'start',
+        editType: 'select',
+        payload: {
+          options: ['start', 'end', 'center', 'baseline']
+        }
+      },
+      direction: {
+        name: '间距方向',
+        value: 'horizontal',
+        editType: 'select',
+        payload: {
+          options: ['horizontal', 'vertical']
+        }
+      },
+      size: {
+        name: '间距大小',
+        value: 8,
+        editInput: 'inputNumber'
+      },
+      breakLine: {
+        name: '自动换行',
+        value: false,
+        editInput: 'switch'
+      }
+    }
   }
 ];
 
