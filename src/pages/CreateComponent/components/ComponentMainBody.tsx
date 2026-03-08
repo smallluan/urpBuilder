@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Input, Space, Select, Typography, Button, Drawer, Timeline, Tag } from 'tdesign-react';
-import { ArrowLeftIcon, ArrowRightIcon, AnticlockwiseIcon, HistoryIcon } from 'tdesign-icons-react';
+import { HistoryIcon } from 'tdesign-icons-react';
 import ComponentBody from '../ComponentBody';
 import SCREEN_SIZES from '../screenSizes';
 import { useCreateComponentStore } from '../store';
@@ -50,6 +50,19 @@ const toActionDescription = (action: UiHistoryAction) => {
     };
   }
 
+  if (action.type === 'flow-edit') {
+    return {
+      title: `流程操作：${action.actionLabel}`,
+      subtitle: '流程画布',
+      theme: 'primary' as const,
+      kind: '流程',
+      lines: [
+        `节点：+${action.nodePatch.added.length} -${action.nodePatch.removed.length} ~${action.nodePatch.updated.length}`,
+        `连线：+${action.edgePatch.added.length} -${action.edgePatch.removed.length} ~${action.edgePatch.updated.length}`,
+      ],
+    };
+  }
+
   return {
     title: `修改属性：${action.propKey}`,
     subtitle: `${action.nodeLabel}（${action.nodeType || '未知类型'}） · ${action.nodeKey}`,
@@ -65,16 +78,11 @@ const ComponentMainBody: React.FC = () => {
   const setScreenSize = useCreateComponentStore((state) => state.setScreenSize);
   const setAutoWidth = useCreateComponentStore((state) => state.setAutoWidth);
   const history = useCreateComponentStore((state) => state.history);
-  const undo = useCreateComponentStore((state) => state.undo);
-  const redo = useCreateComponentStore((state) => state.redo);
   const jumpToHistory = useCreateComponentStore((state) => state.jumpToHistory);
 
   const inputDisabled = screenSize !== 'auto';
   const [draftInputValue, setDraftInputValue] = useState<string>(String(autoWidth));
   const [historyVisible, setHistoryVisible] = useState(false);
-
-  const canUndo = history.pointer >= 0;
-  const canRedo = history.pointer < history.actions.length - 1;
 
   const timelineItems = history.actions.map((action, index) => ({
     index,
@@ -139,40 +147,7 @@ const ComponentMainBody: React.FC = () => {
           />
           </Space>
 
-          <div className="component-body-nav-group">
-            <Button
-              theme="default"
-              variant="text"
-              size="small"
-              icon={<ArrowLeftIcon />}
-              disabled={!canUndo}
-              onClick={undo}
-            >
-              上一步
-            </Button>
-            <span className="divider" />
-            <Button
-              theme="default"
-              variant="text"
-              size="small"
-              icon={<AnticlockwiseIcon />}
-              disabled={!canRedo}
-              onClick={redo}
-            >
-              重做
-            </Button>
-            <span className="divider" />
-            <Button
-              theme="default"
-              variant="text"
-              size="small"
-              icon={<ArrowRightIcon />}
-              disabled={!canRedo}
-              onClick={redo}
-            >
-              下一步
-            </Button>
-            <span className="divider" />
+          <div>
             <Button
               theme="default"
               variant="text"

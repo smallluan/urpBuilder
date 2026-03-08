@@ -29,6 +29,11 @@ export interface AddHistoryAction {
   timestamp: number;
 }
 
+export interface FlowHistorySnapshot {
+  nodes: Node[];
+  edges: Edge[];
+}
+
 export interface RemoveHistoryAction {
   type: 'remove';
   parentKey: string;
@@ -37,6 +42,7 @@ export interface RemoveHistoryAction {
   nodeKey: string;
   nodeLabel: string;
   nodeType?: string;
+  flowSnapshot?: FlowHistorySnapshot;
   timestamp: number;
 }
 
@@ -60,11 +66,34 @@ export interface UpdatePropHistoryAction {
   timestamp: number;
 }
 
+export interface FlowEditHistoryAction {
+  type: 'flow-edit';
+  actionLabel: string;
+  nodePatch: {
+    added: Node[];
+    removed: Node[];
+    updated: Array<{
+      before: Node;
+      after: Node;
+    }>;
+  };
+  edgePatch: {
+    added: Edge[];
+    removed: Edge[];
+    updated: Array<{
+      before: Edge;
+      after: Edge;
+    }>;
+  };
+  timestamp: number;
+}
+
 export type UiHistoryAction =
   | AddHistoryAction
   | RemoveHistoryAction
   | UpdateLabelHistoryAction
-  | UpdatePropHistoryAction;
+  | UpdatePropHistoryAction
+  | FlowEditHistoryAction;
 
 export interface UiHistoryState {
   pointer: number;
@@ -92,6 +121,13 @@ export interface CreateComponentStore {
   setTreeInstance: (instance: UiTreeInstance | null) => void;
   insertToUiPageData: (parentKey: string, componentData: Record<string, unknown>) => void;
   removeFromUiPageData: (nodeKey: string) => void;
+  recordFlowEditHistory: (
+    actionLabel: string,
+    prevFlowNodes: Node[],
+    prevFlowEdges: Edge[],
+    nextFlowNodes: Node[],
+    nextFlowEdges: Edge[],
+  ) => void;
   undo: () => void;
   redo: () => void;
   jumpToHistory: (pointer: number) => void;

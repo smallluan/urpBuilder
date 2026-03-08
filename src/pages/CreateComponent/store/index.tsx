@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { v4 as uuidv4 } from 'uuid';
 import cloneDeep from 'lodash/cloneDeep';
+import isEqual from 'lodash/isEqual';
 import type { Edge, Node } from '@xyflow/react';
 import type { CreateComponentStore, UiHistoryAction, UiTreeNode } from './type';
 import {
@@ -57,6 +58,143 @@ const containsNodeKey = (node: { key: string; children?: { key: string; children
   return node.children.some((child) => containsNodeKey(child, targetKey));
 };
 
+const collectTreeKeys = (node: UiTreeNode, collector = new Set<string>()) => {
+  collector.add(node.key);
+  node.children?.forEach((child) => collectTreeKeys(child, collector));
+  return collector;
+};
+
+const buildEntityPatch = <T extends { id: string }>(previous: T[], next: T[]) => {
+  const previousMap = new Map(previous.map((item) => [item.id, item]));
+  const nextMap = new Map(next.map((item) => [item.id, item]));
+
+  const added = next.filter((item) => !previousMap.has(item.id)).map((item) => cloneDeep(item));
+  const removed = previous
+    .filter((item) => !nextMap.has(item.id))
+    .map((item) => cloneDeep(item));
+
+  const updated = previous
+    .filter((item) => {
+      const nextItem = nextMap.get(item.id);
+      return !!nextItem && !isEqual(item, nextItem);
+    })
+    .map((item) => ({
+      before: cloneDeep(item),
+      after: cloneDeep(nextMap.get(item.id) as T),
+    }));
+
+  return {
+    added,
+    removed,
+    updated,
+  };
+};
+
+const applyEntityPatch = <T extends { id: string }>(
+  current: T[],
+  patch: {
+    added: T[];
+    removed: T[];
+    updated: Array<{ before: T; after: T }>;
+  },
+  direction: 'undo' | 'redo',
+) => {
+  const nextMap = new Map(current.map((item) => [item.id, item]));
+
+  if (direction === 'redo') {
+    patch.removed.forEach((item) => {
+      nextMap.delete(item.id);
+    });
+
+    patch.updated.forEach(({ after }) => {
+      nextMap.set(after.id, cloneDeep(after));
+    });
+
+    patch.added.forEach((item) => {
+      nextMap.set(item.id, cloneDeep(item));
+    });
+  } else {
+    patch.added.forEach((item) => {
+      nextMap.delete(item.id);
+    });
+
+    patch.updated.forEach(({ before }) => {
+      nextMap.set(before.id, cloneDeep(before));
+    });
+
+    patch.removed.forEach((item) => {
+      nextMap.set(item.id, cloneDeep(item));
+    });
+  }
+
+  return Array.from(nextMap.values());
+};
+
+const applyFlowHistoryAction = (
+  flowNodes: Node[],
+  flowEdges: Edge[],
+  action: UiHistoryAction,
+  direction: 'undo' | 'redo',
+) => {
+  if (action.type === 'flow-edit') {
+    const nextFlowNodes = applyEntityPatch(flowNodes, action.nodePatch, direction);
+    const nextFlowNodeIds = new Set(nextFlowNodes.map((node) => node.id));
+    const nextFlowEdges = applyEntityPatch(flowEdges, action.edgePatch, direction).filter(
+      (edge) => nextFlowNodeIds.has(edge.source) && nextFlowNodeIds.has(edge.target),
+    );
+
+    return {
+      flowNodes: nextFlowNodes,
+      flowEdges: nextFlowEdges,
+    };
+  }
+
+  if (action.type !== 'remove' || !action.flowSnapshot) {
+    return { flowNodes, flowEdges };
+  }
+
+  const snapshotNodeIds = new Set(action.flowSnapshot.nodes.map((node) => node.id));
+  const snapshotEdgeIds = new Set(action.flowSnapshot.edges.map((edge) => edge.id));
+
+  if (direction === 'undo') {
+    const existingNodeIds = new Set(flowNodes.map((node) => node.id));
+    const mergedNodes = [...flowNodes, ...action.flowSnapshot.nodes.filter((node) => !existingNodeIds.has(node.id))];
+
+    const mergedNodeIds = new Set(mergedNodes.map((node) => node.id));
+    const existingEdgeIds = new Set(flowEdges.map((edge) => edge.id));
+    const mergedEdges = [
+      ...flowEdges,
+      ...action.flowSnapshot.edges.filter(
+        (edge) =>
+          !existingEdgeIds.has(edge.id) &&
+          mergedNodeIds.has(edge.source) &&
+          mergedNodeIds.has(edge.target),
+      ),
+    ];
+
+    return {
+      flowNodes: mergedNodes,
+      flowEdges: mergedEdges,
+    };
+  }
+
+  const nextFlowNodes = flowNodes.filter((node) => !snapshotNodeIds.has(node.id));
+  const nextFlowNodeIds = new Set(nextFlowNodes.map((node) => node.id));
+  const nextFlowEdges = flowEdges.filter(
+    (edge) =>
+      !snapshotEdgeIds.has(edge.id) &&
+      !snapshotNodeIds.has(edge.source) &&
+      !snapshotNodeIds.has(edge.target) &&
+      nextFlowNodeIds.has(edge.source) &&
+      nextFlowNodeIds.has(edge.target),
+  );
+
+  return {
+    flowNodes: nextFlowNodes,
+    flowEdges: nextFlowEdges,
+  };
+};
+
 const pushHistoryAction = (actions: UiHistoryAction[], pointer: number, action: UiHistoryAction) => {
   const branchActions = pointer < actions.length - 1 ? actions.slice(0, pointer + 1) : actions;
   const mergedActions = [...branchActions, action];
@@ -83,6 +221,10 @@ const applyHistoryAction = (
   action: UiHistoryAction,
   direction: 'undo' | 'redo',
 ): UiTreeNode => {
+  if (action.type === 'flow-edit') {
+    return tree;
+  }
+
   if (action.type === 'add') {
     const node = getNodeFromPool(action.nodeRef);
     if (!node) {
@@ -316,6 +458,70 @@ export const useCreateComponentStore = create<CreateComponentStore>((set) => ({
         return state;
       }
 
+      const removedTreeKeys = collectTreeKeys(result.removedNode);
+      const flowNodesToRemove = state.flowNodes.filter((node) => {
+        if (node.type !== 'componentNode') {
+          return false;
+        }
+
+        const sourceKey = (node.data as { sourceKey?: string } | undefined)?.sourceKey;
+        return typeof sourceKey === 'string' && removedTreeKeys.has(sourceKey);
+      });
+
+      const removedFlowNodeIds = new Set(flowNodesToRemove.map((node) => node.id));
+      const flowEdgesToRemove = state.flowEdges.filter(
+        (edge) => removedFlowNodeIds.has(edge.source) || removedFlowNodeIds.has(edge.target),
+      );
+      const removedFlowEdgeIds = new Set(flowEdgesToRemove.map((edge) => edge.id));
+
+      const nextFlowNodes = state.flowNodes
+        .filter((node) => !removedFlowNodeIds.has(node.id))
+        .map((node) => {
+          if (node.type !== 'eventFilterNode') {
+            return node;
+          }
+
+          const nodeData = (node.data ?? {}) as {
+            upstreamNodeId?: string;
+            upstreamLabel?: string;
+            availableLifetimes?: string[];
+            selectedLifetimes?: string[];
+          };
+
+          if (!nodeData.upstreamNodeId || !removedFlowNodeIds.has(nodeData.upstreamNodeId)) {
+            return node;
+          }
+
+          return {
+            ...node,
+            data: {
+              ...nodeData,
+              upstreamNodeId: undefined,
+              upstreamLabel: undefined,
+              availableLifetimes: [],
+              selectedLifetimes: [],
+            },
+          };
+        });
+
+      const nextFlowNodeIds = new Set(nextFlowNodes.map((node) => node.id));
+      const nextFlowEdges = state.flowEdges.filter(
+        (edge) =>
+          !removedFlowEdgeIds.has(edge.id) &&
+          !removedFlowNodeIds.has(edge.source) &&
+          !removedFlowNodeIds.has(edge.target) &&
+          nextFlowNodeIds.has(edge.source) &&
+          nextFlowNodeIds.has(edge.target),
+      );
+
+      const flowSnapshot =
+        flowNodesToRemove.length > 0 || flowEdgesToRemove.length > 0
+          ? {
+              nodes: cloneDeep(flowNodesToRemove),
+              edges: cloneDeep(flowEdgesToRemove),
+            }
+          : undefined;
+
       const nodeRef = saveNodeToPool(result.removedNode);
 
       const action: UiHistoryAction = {
@@ -326,6 +532,7 @@ export const useCreateComponentStore = create<CreateComponentStore>((set) => ({
         nodeKey: result.removedNode.key,
         nodeLabel: result.removedNode.label,
         nodeType: result.removedNode.type,
+        flowSnapshot,
         timestamp: Date.now(),
       };
 
@@ -336,8 +543,38 @@ export const useCreateComponentStore = create<CreateComponentStore>((set) => ({
       const activeNode = resolveActiveNode(result.tree, nextActiveNodeKey);
       return {
         uiPageData: result.tree,
+        flowNodes: nextFlowNodes,
+        flowEdges: nextFlowEdges,
         activeNodeKey: nextActiveNodeKey,
         activeNode,
+        history: nextHistory,
+      };
+    }),
+  recordFlowEditHistory: (actionLabel, prevFlowNodes, prevFlowEdges, nextFlowNodes, nextFlowEdges) =>
+    set((state) => {
+      const nodePatch = buildEntityPatch(prevFlowNodes, nextFlowNodes);
+      const edgePatch = buildEntityPatch(prevFlowEdges, nextFlowEdges);
+      const hasNodeChange =
+        nodePatch.added.length > 0 || nodePatch.removed.length > 0 || nodePatch.updated.length > 0;
+      const hasEdgeChange =
+        edgePatch.added.length > 0 || edgePatch.removed.length > 0 || edgePatch.updated.length > 0;
+
+      if (!hasNodeChange && !hasEdgeChange) {
+        return state;
+      }
+
+      const action: UiHistoryAction = {
+        type: 'flow-edit',
+        actionLabel,
+        nodePatch,
+        edgePatch,
+        timestamp: Date.now(),
+      };
+      const nextHistory = pushHistoryAction(state.history.actions, state.history.pointer, action);
+
+      return {
+        flowNodes: nextFlowNodes,
+        flowEdges: nextFlowEdges,
         history: nextHistory,
       };
     }),
@@ -351,11 +588,14 @@ export const useCreateComponentStore = create<CreateComponentStore>((set) => ({
 
       const action = actions[pointer];
       const nextTree = applyHistoryAction(state.uiPageData, action, 'undo');
+      const nextFlow = applyFlowHistoryAction(state.flowNodes, state.flowEdges, action, 'undo');
 
       const activeNode = resolveActiveNode(nextTree, state.activeNodeKey);
 
       return {
         uiPageData: nextTree,
+        flowNodes: nextFlow.flowNodes,
+        flowEdges: nextFlow.flowEdges,
         activeNode,
         history: {
           pointer: pointer - 1,
@@ -374,11 +614,14 @@ export const useCreateComponentStore = create<CreateComponentStore>((set) => ({
 
       const action = actions[nextPointer];
       const nextTree = applyHistoryAction(state.uiPageData, action, 'redo');
+      const nextFlow = applyFlowHistoryAction(state.flowNodes, state.flowEdges, action, 'redo');
 
       const activeNode = resolveActiveNode(nextTree, state.activeNodeKey);
 
       return {
         uiPageData: nextTree,
+        flowNodes: nextFlow.flowNodes,
+        flowEdges: nextFlow.flowEdges,
         activeNode,
         history: {
           pointer: nextPointer,
@@ -395,19 +638,29 @@ export const useCreateComponentStore = create<CreateComponentStore>((set) => ({
       }
 
       let nextTree = state.uiPageData;
+      let nextFlowNodes = state.flowNodes;
+      let nextFlowEdges = state.flowEdges;
 
       if (clampedTarget < pointer) {
         for (let index = pointer; index > clampedTarget; index -= 1) {
           nextTree = applyHistoryAction(nextTree, actions[index], 'undo');
+          const nextFlow = applyFlowHistoryAction(nextFlowNodes, nextFlowEdges, actions[index], 'undo');
+          nextFlowNodes = nextFlow.flowNodes;
+          nextFlowEdges = nextFlow.flowEdges;
         }
       } else {
         for (let index = pointer + 1; index <= clampedTarget; index += 1) {
           nextTree = applyHistoryAction(nextTree, actions[index], 'redo');
+          const nextFlow = applyFlowHistoryAction(nextFlowNodes, nextFlowEdges, actions[index], 'redo');
+          nextFlowNodes = nextFlow.flowNodes;
+          nextFlowEdges = nextFlow.flowEdges;
         }
       }
 
       return {
         uiPageData: nextTree,
+        flowNodes: nextFlowNodes,
+        flowEdges: nextFlowEdges,
         activeNode: resolveActiveNode(nextTree, state.activeNodeKey),
         history: {
           pointer: clampedTarget,

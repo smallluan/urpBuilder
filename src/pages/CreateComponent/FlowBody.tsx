@@ -80,6 +80,7 @@ const FlowCanvas: React.FC = () => {
   const edges = useCreateComponentStore((state) => state.flowEdges);
   const setFlowNodes = useCreateComponentStore((state) => state.setFlowNodes);
   const setFlowEdges = useCreateComponentStore((state) => state.setFlowEdges);
+  const recordFlowEditHistory = useCreateComponentStore((state) => state.recordFlowEditHistory);
   const [traceActiveNodeId, setTraceActiveNodeId] = useState<string | null>(null);
   const [flowAlertMessage, setFlowAlertMessage] = useState<string | null>(null);
   const [editingEdgeId, setEditingEdgeId] = useState<string | null>(null);
@@ -110,6 +111,19 @@ const FlowCanvas: React.FC = () => {
   });
   const { screenToFlowPosition } = useReactFlow();
 
+  const applyFlowEdit = useCallback(
+    (
+      actionLabel: string,
+      updater: (payload: { nodes: Node[]; edges: Edge[] }) => { nodes: Node[]; edges: Edge[] },
+    ) => {
+      const { flowNodes: prevNodes, flowEdges: prevEdges } = useCreateComponentStore.getState();
+      const result = updater({ nodes: prevNodes, edges: prevEdges });
+
+      recordFlowEditHistory(actionLabel, prevNodes, prevEdges, result.nodes, result.edges);
+    },
+    [recordFlowEditHistory],
+  );
+
   const createAnnotationNode = useCallback(
     (x: number, y: number, text = '') => {
       const nodeId = createFlowNodeId('annotation-node');
@@ -123,9 +137,12 @@ const FlowCanvas: React.FC = () => {
         },
       };
 
-      setFlowNodes((previous) => [...previous, nextNode]);
+      applyFlowEdit('新建流程注释节点', ({ nodes: previous, edges: previousEdges }) => ({
+        nodes: [...previous, nextNode],
+        edges: previousEdges,
+      }));
     },
-    [setFlowNodes],
+    [applyFlowEdit],
   );
 
   const traceColor = useMemo(() => {
@@ -248,14 +265,14 @@ const FlowCanvas: React.FC = () => {
           },
           onChangeEditingValue: (value: string) => setEditingEdgeValue(value),
           onCommitEdit: () => {
-            setFlowEdges((previous) =>
-              previous.map((item) => {
+            const nextAnnotation = editingEdgeValue.trim();
+            applyFlowEdit('编辑连线注释', ({ nodes: previousNodes, edges: previousEdges }) => {
+              const nextEdges = previousEdges.map((item) => {
                 if (item.id !== edge.id) {
                   return item;
                 }
 
                 const currentData = (item.data ?? {}) as Record<string, unknown>;
-                const nextAnnotation = editingEdgeValue.trim();
 
                 if (!nextAnnotation) {
                   const { annotation: _, ...restData } = currentData;
@@ -272,8 +289,13 @@ const FlowCanvas: React.FC = () => {
                     annotation: nextAnnotation,
                   },
                 };
-              }),
-            );
+              });
+
+              return {
+                nodes: previousNodes,
+                edges: nextEdges,
+              };
+            });
 
             setEditingEdgeId(null);
             setEditingEdgeValue('');
@@ -296,7 +318,7 @@ const FlowCanvas: React.FC = () => {
         },
       } as Edge;
     });
-  }, [editingEdgeId, editingEdgeValue, edges, setFlowEdges, traceColor, traceNodeIds]);
+  }, [editingEdgeId, editingEdgeValue, edges, applyFlowEdit, traceColor, traceNodeIds]);
 
   const handleStartEditEdge = useCallback((edgeId: string) => {
     const targetEdge = useCreateComponentStore.getState().flowEdges.find((item) => item.id === edgeId);
@@ -305,16 +327,17 @@ const FlowCanvas: React.FC = () => {
     setEditingEdgeValue(typeof targetData.annotation === 'string' ? targetData.annotation : '');
   }, []);
 
-  const handleCommitEdgeAnnotation = useCallback(() => {
-    if (!editingEdgeId) {
+  const handleCommitEdgeAnnotation = useCallback((edgeId?: string) => {
+    const targetEdgeId = edgeId ?? editingEdgeId;
+    if (!targetEdgeId) {
       return;
     }
 
     const nextAnnotation = editingEdgeValue.trim();
 
-    setFlowEdges((previous) =>
-      previous.map((edge) => {
-        if (edge.id !== editingEdgeId) {
+    applyFlowEdit('编辑连线注释', ({ nodes: previousNodes, edges: previousEdges }) => {
+      const nextEdges = previousEdges.map((edge) => {
+        if (edge.id !== targetEdgeId) {
           return edge;
         }
 
@@ -335,12 +358,17 @@ const FlowCanvas: React.FC = () => {
             annotation: nextAnnotation,
           },
         };
-      }),
-    );
+      });
+
+      return {
+        nodes: previousNodes,
+        edges: nextEdges,
+      };
+    });
 
     setEditingEdgeId(null);
     setEditingEdgeValue('');
-  }, [editingEdgeId, editingEdgeValue, setFlowEdges]);
+  }, [applyFlowEdit, editingEdgeId, editingEdgeValue]);
 
   const handleCancelEdgeAnnotation = useCallback(() => {
     setEditingEdgeId(null);
@@ -371,14 +399,14 @@ const FlowCanvas: React.FC = () => {
 
   const handleDeleteFlowNode = useCallback(
     (nodeId: string) => {
-      setFlowNodes((previous) => previous.filter((node) => node.id !== nodeId));
-      setFlowEdges((previous) =>
-        previous.filter((edge) => edge.source !== nodeId && edge.target !== nodeId),
-      );
+      applyFlowEdit('删除流程节点', ({ nodes: previousNodes, edges: previousEdges }) => ({
+        nodes: previousNodes.filter((node) => node.id !== nodeId),
+        edges: previousEdges.filter((edge) => edge.source !== nodeId && edge.target !== nodeId),
+      }));
 
       setTraceActiveNodeId((previous) => (previous === nodeId ? null : previous));
     },
-    [setFlowEdges, setFlowNodes],
+    [applyFlowEdit],
   );
 
   const handleFlipFlowNode = useCallback(
@@ -448,11 +476,13 @@ const FlowCanvas: React.FC = () => {
         };
       });
 
-      setFlowNodes(nextNodes);
-      setFlowEdges(nextEdges);
+      applyFlowEdit('翻转流程节点端口', () => ({
+        nodes: nextNodes,
+        edges: nextEdges,
+      }));
       setTraceActiveNodeId((previous) => (previous === nodeId ? nextNodeId : previous));
     },
-    [setFlowEdges, setFlowNodes],
+    [applyFlowEdit],
   );
 
   const renderedNodes = useMemo(() => {
@@ -497,6 +527,8 @@ const FlowCanvas: React.FC = () => {
       const sourceNode = currentNodes.find((item) => item.id === params.source);
       const targetNode = currentNodes.find((item) => item.id === params.target);
 
+      let nextNodes = currentNodes;
+
       if (sourceNode?.type === 'componentNode' && targetNode?.type === 'eventFilterNode') {
         const sourceData = (sourceNode.data ?? {}) as ComponentNodeData;
         const sourceKey = sourceData.sourceKey ?? '';
@@ -521,7 +553,7 @@ const FlowCanvas: React.FC = () => {
         const lifetimes = Array.isArray(sourceData.lifetimes) ? sourceData.lifetimes : [];
         const selectedLifetimes = lifetimes.length === 1 ? [lifetimes[0]] : [];
 
-        const nextNodes = currentNodes.map((item) => {
+        nextNodes = currentNodes.map((item) => {
           if (item.id !== targetNode.id) {
             return item;
           }
@@ -538,8 +570,6 @@ const FlowCanvas: React.FC = () => {
             },
           };
         });
-
-        setFlowNodes(nextNodes);
       }
 
       const nextEdge: Edge = {
@@ -560,9 +590,13 @@ const FlowCanvas: React.FC = () => {
         },
       };
 
-      setFlowEdges((previous) => addEdge(nextEdge, previous));
+      const nextEdges = addEdge(nextEdge, currentEdges);
+      applyFlowEdit('新增流程连线', () => ({
+        nodes: nextNodes,
+        edges: nextEdges,
+      }));
     },
-    [setFlowEdges, setFlowNodes],
+    [applyFlowEdit],
   );
 
   const isValidConnection = useCallback((params: Edge | Connection) => {
@@ -629,7 +663,10 @@ const FlowCanvas: React.FC = () => {
           },
         };
 
-        setFlowNodes((previous) => [...previous, nextNode]);
+        applyFlowEdit('新增组件流程节点', ({ nodes: previousNodes, edges: previousEdges }) => ({
+          nodes: [...previousNodes, nextNode],
+          edges: previousEdges,
+        }));
         return;
       }
 
@@ -646,7 +683,10 @@ const FlowCanvas: React.FC = () => {
           },
         };
 
-        setFlowNodes((previous) => [...previous, nextNode]);
+        applyFlowEdit('新增事件过滤节点', ({ nodes: previousNodes, edges: previousEdges }) => ({
+          nodes: [...previousNodes, nextNode],
+          edges: previousEdges,
+        }));
         return;
       }
 
@@ -663,12 +703,15 @@ const FlowCanvas: React.FC = () => {
           },
         };
 
-        setFlowNodes((previous) => [...previous, nextNode]);
+        applyFlowEdit('新增代码节点', ({ nodes: previousNodes, edges: previousEdges }) => ({
+          nodes: [...previousNodes, nextNode],
+          edges: previousEdges,
+        }));
         return;
       }
 
     },
-    [screenToFlowPosition, setFlowNodes],
+    [applyFlowEdit, screenToFlowPosition],
   );
 
   const handlePaneContextMenu = useCallback(
@@ -733,11 +776,14 @@ const FlowCanvas: React.FC = () => {
       return;
     }
 
-    setFlowEdges((previous) => previous.filter((edge) => edge.id !== edgeMenu.edgeId));
+    applyFlowEdit('删除流程连线', ({ nodes: previousNodes, edges: previousEdges }) => ({
+      nodes: previousNodes,
+      edges: previousEdges.filter((edge) => edge.id !== edgeMenu.edgeId),
+    }));
     setEditingEdgeId((previous) => (previous === edgeMenu.edgeId ? null : previous));
     setEditingEdgeValue((previous) => (edgeMenu.edgeId ? '' : previous));
     closeEdgeMenu();
-  }, [closeEdgeMenu, edgeMenu.edgeId, setFlowEdges]);
+  }, [applyFlowEdit, closeEdgeMenu, edgeMenu.edgeId]);
 
   const handleCreateAnnotationFromMenu = useCallback(() => {
     createAnnotationNode(annotationMenu.flowX, annotationMenu.flowY, '');
