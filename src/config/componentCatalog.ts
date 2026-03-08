@@ -77,6 +77,29 @@ const componentCatalog = [
         name: '自动换行',
         value: false,
         editType: 'switch'
+      },
+      splitEnabled: {
+        name: '使用分割线',
+        value: false,
+        editType: 'switch'
+      },
+      splitDashed: {
+        name: '分割线虚线',
+        value: false,
+        editType: 'switch'
+      },
+      splitAlign: {
+        name: '分割线文本位置',
+        value: 'center',
+        editType: 'select',
+        payload: {
+          options: ['left', 'center', 'right']
+        }
+      },
+      splitContent: {
+        name: '分割线文本',
+        value: '',
+        editType: 'input'
       }
     }
   },
@@ -90,6 +113,14 @@ const componentCatalog = [
         editType: 'select',
         payload: {
           options: ['top', 'middle', 'bottom', 'stretch', 'baseline']
+        }
+      },
+      justify: {
+        name: '水平排列',
+        value: 'start',
+        editType: 'select',
+        payload: {
+          options: ['start', 'end', 'center', 'space-around', 'space-between']
         }
       },
       gutter: {
@@ -107,6 +138,166 @@ const componentCatalog = [
         name: '占栅格数',
         value: 4,
         editType: 'inputNumber',
+      },
+      offset: {
+        name: '左侧空格',
+        value: 0,
+        editType: 'inputNumber',
+      }
+    }
+  },
+  {
+    type: 'Card',
+    name: '卡片',
+    props: {
+      title: {
+        name: '标题',
+        value: '卡片标题',
+        editType: 'input'
+      },
+      subtitle: {
+        name: '副标题',
+        value: '',
+        editType: 'input'
+      },
+      theme: {
+        name: '风格',
+        value: 'normal',
+        editType: 'select',
+        payload: {
+          options: ['normal', 'poster1', 'poster2']
+        }
+      },
+      size: {
+        name: '尺寸',
+        value: 'medium',
+        editType: 'select',
+        payload: {
+          options: ['medium', 'small']
+        }
+      },
+      bordered: {
+        name: '显示边框',
+        value: true,
+        editType: 'switch'
+      },
+      headerBordered: {
+        name: '头部分割线',
+        value: false,
+        editType: 'switch'
+      },
+      shadow: {
+        name: '显示阴影',
+        value: false,
+        editType: 'switch'
+      },
+      hoverShadow: {
+        name: '悬浮阴影',
+        value: false,
+        editType: 'switch'
+      }
+    }
+  },
+  {
+    type: 'Divider',
+    name: '分割线',
+    props: {
+      align: {
+        name: '文本位置',
+        value: 'center',
+        editType: 'select',
+        payload: {
+          options: ['left', 'center', 'right']
+        }
+      },
+      dashed: {
+        name: '虚线样式',
+        value: false,
+        editType: 'switch'
+      },
+      size: {
+        name: '间距大小',
+        value: 0,
+        editType: 'inputNumber'
+      },
+      content: {
+        name: '文本内容',
+        value: '',
+        editType: 'input'
+      }
+    }
+  },
+  {
+    type: 'Typography.Title',
+    name: '标题文本',
+    props: {
+      content: {
+        name: '文本内容',
+        value: '标题内容',
+        editType: 'input'
+      },
+      level: {
+        name: '标题级别',
+        value: 'h4',
+        editType: 'select',
+        payload: {
+          options: ['h1', 'h2', 'h3', 'h4', 'h5', 'h6']
+        }
+      }
+    }
+  },
+  {
+    type: 'Typography.Paragraph',
+    name: '段落文本',
+    props: {
+      content: {
+        name: '文本内容',
+        value: '这是一段可编辑的段落文本。',
+        editType: 'input'
+      }
+    }
+  },
+  {
+    type: 'Typography.Text',
+    name: '普通文本',
+    props: {
+      content: {
+        name: '文本内容',
+        value: '这是一段普通文本',
+        editType: 'input'
+      },
+      theme: {
+        name: '文本主题',
+        value: 'primary',
+        editType: 'select',
+        payload: {
+          options: ['primary', 'secondary', 'success', 'warning', 'error']
+        }
+      },
+      strong: {
+        name: '加粗',
+        value: false,
+        editType: 'switch'
+      },
+      underline: {
+        name: '下划线',
+        value: false,
+        editType: 'switch'
+      },
+      delete: {
+        name: '删除线',
+        value: false,
+        editType: 'switch'
+      },
+      code: {
+        name: '代码样式',
+        value: false,
+        editType: 'switch'
+      },
+      mark: {
+        name: '高亮标记',
+        value: false,
+        editType: 'switch'
       }
     }
   }

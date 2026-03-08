@@ -120,6 +120,7 @@ const ComponentConfigPanel: React.FC = () => {
 
     return (
       <Input
+        clearable
         value={inputDrafts[propKey] ?? (typeof currentValue === 'string' ? currentValue : String(currentValue ?? ''))}
         onChange={(value) => {
           setInputDrafts((previous) => ({
@@ -141,6 +142,7 @@ const ComponentConfigPanel: React.FC = () => {
           <span className="config-label">组件名称</span>
           <Input
             className="config-editor"
+            clearable
             value={labelDraft}
             placeholder="请输入组件名称"
             onChange={(value) => setLabelDraft(String(value ?? ''))}
