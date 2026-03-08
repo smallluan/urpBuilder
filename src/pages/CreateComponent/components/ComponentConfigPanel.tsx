@@ -162,6 +162,7 @@ const ComponentConfigPanel: React.FC = () => {
           <span className="config-label">通用样式</span>
           <div className="config-editor">
             <NodeStyleDrawer
+              targetKey={activeNode.key}
               value={styleValue}
               onChange={(nextStyle) => updateActiveNodeProp('__style', nextStyle)}
             />

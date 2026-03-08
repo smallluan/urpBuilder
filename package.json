@@ -10,6 +10,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@codemirror/lang-css": "^6.3.1",
+    "@uiw/react-codemirror": "^4.25.8",
     "lodash": "^4.17.23",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",

@@ -6,6 +6,7 @@ import { SearchIcon } from 'tdesign-icons-react';
 import { useCreateComponentStore } from '../store';
 import type { UiTreeNode } from '../store/type';
 import ComponentConfigPanel from './ComponentConfigPanel';
+import NodeStyleDrawer from './NodeStyleDrawer';
 
 interface RenderUiTreeNode extends Omit<UiTreeNode, 'label' | 'children'> {
   label: React.ReactNode;
@@ -19,6 +20,7 @@ const ComponentAsideLeft: React.FC = () => {
   const setActiveNode = useCreateComponentStore((state) => state.setActiveNode);
   const toggleActiveNode = useCreateComponentStore((state) => state.toggleActiveNode);
   const removeFromUiPageData = useCreateComponentStore((state) => state.removeFromUiPageData);
+  const updateActiveNodeProp = useCreateComponentStore((state) => state.updateActiveNodeProp);
   const [contextMenuState, setContextMenuState] = useState<{
     visible: boolean;
     nodeKey: string | null;
@@ -101,10 +103,33 @@ const ComponentAsideLeft: React.FC = () => {
             onVisibleChange={(visible) => handlePopupVisibleChange(visible, node.key)}
             content={
               <div className="tree-node-context-popup-content" onMouseDown={(event) => event.stopPropagation()}>
+                <NodeStyleDrawer
+                  targetKey={node.key}
+                  value={(node.props?.__style as { value?: Record<string, unknown> } | undefined)?.value}
+                  onChange={(nextStyle) => {
+                    setActiveNode(node.key);
+                    updateActiveNodeProp('__style', nextStyle);
+                  }}
+                  triggerRenderer={(openDrawer) => (
+                    <Button
+                      size="small"
+                      variant="text"
+                      theme="default"
+                      className="tree-node-context-action"
+                      onClick={() => {
+                        setActiveNode(node.key);
+                        closeContextMenu();
+                        openDrawer();
+                      }}
+                    >
+                      样式配置
+                    </Button>
+                  )}
+                />
                 <Button
                   size="small"
-                  variant="text"
-                  theme="danger"
+                  variant="base"
+                  theme="default"
                   className="tree-node-context-action"
                   disabled={node.key === uiPageData.key}
                   onClick={() => handleDeleteNode(node.key)}
