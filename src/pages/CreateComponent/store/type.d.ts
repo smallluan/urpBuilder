@@ -19,7 +19,10 @@ export interface AddHistoryAction {
   type: 'add';
   parentKey: string;
   index: number;
-  node: UiTreeNode;
+  nodeRef: string;
+  nodeKey: string;
+  nodeLabel: string;
+  nodeType?: string;
   timestamp: number;
 }
 
@@ -27,13 +30,17 @@ export interface RemoveHistoryAction {
   type: 'remove';
   parentKey: string;
   index: number;
-  node: UiTreeNode;
+  nodeRef: string;
+  nodeKey: string;
+  nodeLabel: string;
+  nodeType?: string;
   timestamp: number;
 }
 
 export interface UpdateLabelHistoryAction {
   type: 'update-label';
   nodeKey: string;
+  nodeType?: string;
   prevLabel: string;
   nextLabel: string;
   timestamp: number;
@@ -42,6 +49,8 @@ export interface UpdateLabelHistoryAction {
 export interface UpdatePropHistoryAction {
   type: 'update-prop';
   nodeKey: string;
+  nodeLabel: string;
+  nodeType?: string;
   propKey: string;
   prevValue: unknown;
   nextValue: unknown;

@@ -117,6 +117,11 @@
         padding: 4px;
         font-size: 13px;
         color: #333;
+
+        .tree-node-label {
+          width: 100%;
+          user-select: none;
+        }
       }
     }
 
@@ -345,22 +350,24 @@
 }
 
 .history-card {
-  border: 1px solid #f0f0f0;
-  border-radius: 6px;
-  padding: 10px;
+  border: 1px solid #eef0f4;
+  border-radius: 8px;
+  padding: 10px 12px;
   background: #fff;
   transition: all 0.2s ease;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+  box-shadow: 0 2px 8px rgba(17, 24, 39, 0.04);
 }
 
 .history-card:hover {
   border-color: #c8d6ff;
   background: #f8faff;
+  box-shadow: 0 6px 14px rgba(0, 82, 217, 0.08);
 }
 
 .history-card.is-current {
   border-color: #0052d9;
   background: #eef3ff;
+  box-shadow: 0 6px 14px rgba(0, 82, 217, 0.12);
 }
 
 .history-card-head {
@@ -374,7 +381,7 @@
 .history-card-title {
   font-size: 13px;
   font-weight: 600;
-  color: #222;
+  color: #1f2329;
 }
 
 .history-card-tags {
@@ -383,9 +390,28 @@
   gap: 4px;
 }
 
+.history-card-subtitle {
+  font-size: 12px;
+  color: #8b92a1;
+  line-height: 18px;
+  margin-bottom: 4px;
+  word-break: break-all;
+}
+
 .history-card-line {
   font-size: 12px;
-  color: #666;
+  color: #57606a;
   line-height: 19px;
   word-break: break-all;
+}
+
+
+.tree-node-context-popup-content {
+  padding: 4px;
+  min-width: 132px;
+
+  .tree-node-context-action {
+    width: 100%;
+    justify-content: flex-start;
+  }
 }

@@ -31,12 +31,11 @@ const toReadableValue = (value: unknown) => {
 const toActionDescription = (action: UiHistoryAction) => {
   if (action.type === 'add') {
     return {
-      title: `新增组件：${action.node.label}`,
+      title: `新增组件：${action.nodeLabel}`,
+      subtitle: `${action.nodeType || '未知类型'} · ${action.nodeKey}`,
       theme: 'success' as const,
       kind: '新增',
       lines: [
-        `类型：${action.node.type || '-'}`,
-        `标识：${action.node.key}`,
         `父节点：${action.parentKey}`,
         `插入位置：${action.index}`,
       ],
@@ -44,12 +43,11 @@ const toActionDescription = (action: UiHistoryAction) => {
   }
   if (action.type === 'remove') {
     return {
-      title: `删除组件：${action.node.label}`,
+      title: `删除组件：${action.nodeLabel}`,
+      subtitle: `${action.nodeType || '未知类型'} · ${action.nodeKey}`,
       theme: 'danger' as const,
       kind: '删除',
       lines: [
-        `类型：${action.node.type || '-'}`,
-        `标识：${action.node.key}`,
         `原父节点：${action.parentKey}`,
         `原位置：${action.index}`,
       ],
@@ -57,11 +55,11 @@ const toActionDescription = (action: UiHistoryAction) => {
   }
   if (action.type === 'update-label') {
     return {
-      title: '修改组件名称',
+      title: `修改组件名称：${action.nextLabel}`,
+      subtitle: `${action.nodeType || '未知类型'} · ${action.nodeKey}`,
       theme: 'primary' as const,
       kind: '改名',
       lines: [
-        `目标标识：${action.nodeKey}`,
         `旧名称：${action.prevLabel}`,
         `新名称：${action.nextLabel}`,
       ],
@@ -70,10 +68,10 @@ const toActionDescription = (action: UiHistoryAction) => {
 
   return {
     title: `修改属性：${action.propKey}`,
+    subtitle: `${action.nodeLabel}（${action.nodeType || '未知类型'}） · ${action.nodeKey}`,
     theme: 'warning' as const,
     kind: '改属性',
     lines: [
-      `目标标识：${action.nodeKey}`,
       `旧值：${toReadableValue(action.prevValue)}`,
       `新值：${toReadableValue(action.nextValue)}`,
     ],
@@ -213,6 +211,7 @@ const HeaderControls: React.FC<Props> = ({
                           {isCurrent ? <Tag size="small" theme="primary" variant="light">当前</Tag> : null}
                         </div>
                       </div>
+                      {'subtitle' in item.detail ? <div className="history-card-subtitle">{item.detail.subtitle}</div> : null}
                       {item.detail.lines.map((line) => (
                         <div key={line} className="history-card-line">{line}</div>
                       ))}

@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { v4 as uuidv4 } from 'uuid';
+import cloneDeep from 'lodash/cloneDeep';
 import type { CreateComponentStore, UiHistoryAction, UiTreeNode } from './type';
 import {
   appendNodeByParentKey,
@@ -9,6 +10,39 @@ import {
   toUiTreeNode,
   updateNodeByKey,
 } from '../../../utils/createComponentTree';
+
+const HISTORY_MAX_ACTIONS = 200;
+
+const nodePool = new Map<string, UiTreeNode>();
+
+const saveNodeToPool = (node: UiTreeNode) => {
+  nodePool.set(node.key, cloneDeep(node));
+  return node.key;
+};
+
+const getNodeFromPool = (nodeRef: string) => {
+  const node = nodePool.get(nodeRef);
+  return node ? cloneDeep(node) : null;
+};
+
+const collectActionNodeRefs = (actions: UiHistoryAction[]) => {
+  const refs = new Set<string>();
+  actions.forEach((action) => {
+    if (action.type === 'add' || action.type === 'remove') {
+      refs.add(action.nodeRef);
+    }
+  });
+  return refs;
+};
+
+const cleanupNodePool = (actions: UiHistoryAction[]) => {
+  const usedRefs = collectActionNodeRefs(actions);
+  for (const key of nodePool.keys()) {
+    if (!usedRefs.has(key)) {
+      nodePool.delete(key);
+    }
+  }
+};
 
 const containsNodeKey = (node: { key: string; children?: { key: string; children?: any[] }[] }, targetKey: string): boolean => {
   if (node.key === targetKey) {
@@ -23,8 +57,16 @@ const containsNodeKey = (node: { key: string; children?: { key: string; children
 };
 
 const pushHistoryAction = (actions: UiHistoryAction[], pointer: number, action: UiHistoryAction) => {
-  const nextActions = pointer < actions.length - 1 ? actions.slice(0, pointer + 1) : actions;
-  return [...nextActions, action];
+  const branchActions = pointer < actions.length - 1 ? actions.slice(0, pointer + 1) : actions;
+  const mergedActions = [...branchActions, action];
+  const overflow = Math.max(0, mergedActions.length - HISTORY_MAX_ACTIONS);
+  const nextActions = overflow > 0 ? mergedActions.slice(overflow) : mergedActions;
+  cleanupNodePool(nextActions);
+
+  return {
+    actions: nextActions,
+    pointer: nextActions.length - 1,
+  };
 };
 
 const resolveActiveNode = (uiPageData: UiTreeNode, activeNodeKey: string | null) => {
@@ -41,15 +83,25 @@ const applyHistoryAction = (
   direction: 'undo' | 'redo',
 ): UiTreeNode => {
   if (action.type === 'add') {
+    const node = getNodeFromPool(action.nodeRef);
+    if (!node) {
+      return tree;
+    }
+
     return direction === 'undo'
-      ? removeNodeByKey(tree, action.node.key).tree
-      : insertNodeAtParentIndex(tree, action.parentKey, action.index, action.node);
+      ? removeNodeByKey(tree, action.nodeKey).tree
+      : insertNodeAtParentIndex(tree, action.parentKey, action.index, node);
   }
 
   if (action.type === 'remove') {
+    const node = getNodeFromPool(action.nodeRef);
+    if (!node) {
+      return tree;
+    }
+
     return direction === 'undo'
-      ? insertNodeAtParentIndex(tree, action.parentKey, action.index, action.node)
-      : removeNodeByKey(tree, action.node.key).tree;
+      ? insertNodeAtParentIndex(tree, action.parentKey, action.index, node)
+      : removeNodeByKey(tree, action.nodeKey).tree;
   }
 
   if (action.type === 'update-label') {
@@ -137,19 +189,17 @@ export const useCreateComponentStore = create<CreateComponentStore>((set) => ({
       const action: UiHistoryAction = {
         type: 'update-label',
         nodeKey: state.activeNodeKey,
+        nodeType: currentNode.type,
         prevLabel: currentNode.label,
         nextLabel: label,
         timestamp: Date.now(),
       };
-      const nextActions = pushHistoryAction(state.history.actions, state.history.pointer, action);
+      const nextHistory = pushHistoryAction(state.history.actions, state.history.pointer, action);
 
       return {
         uiPageData: nextTree,
         activeNode: resolveActiveNode(nextTree, state.activeNodeKey),
-        history: {
-          pointer: nextActions.length - 1,
-          actions: nextActions,
-        },
+        history: nextHistory,
       };
     }),
   updateActiveNodeProp: (propKey, value) =>
@@ -189,20 +239,19 @@ export const useCreateComponentStore = create<CreateComponentStore>((set) => ({
       const action: UiHistoryAction = {
         type: 'update-prop',
         nodeKey: state.activeNodeKey,
+        nodeLabel: currentNode.label,
+        nodeType: currentNode.type,
         propKey,
         prevValue,
         nextValue: value,
         timestamp: Date.now(),
       };
-      const nextActions = pushHistoryAction(state.history.actions, state.history.pointer, action);
+      const nextHistory = pushHistoryAction(state.history.actions, state.history.pointer, action);
 
       return {
         uiPageData: nextTree,
         activeNode: resolveActiveNode(nextTree, state.activeNodeKey),
-        history: {
-          pointer: nextActions.length - 1,
-          actions: nextActions,
-        },
+        history: nextHistory,
       };
     }),
   // 挂载/卸载左侧树组件实例
@@ -216,25 +265,26 @@ export const useCreateComponentStore = create<CreateComponentStore>((set) => ({
       }
 
       const newNode = toUiTreeNode(componentData);
+      const nodeRef = saveNodeToPool(newNode);
       const index = parentNode.children?.length ?? 0;
       const action: UiHistoryAction = {
         type: 'add',
         parentKey,
         index,
-        node: newNode,
+        nodeRef,
+        nodeKey: newNode.key,
+        nodeLabel: newNode.label,
+        nodeType: newNode.type,
         timestamp: Date.now(),
       };
 
-      const nextActions = pushHistoryAction(state.history.actions, state.history.pointer, action);
+      const nextHistory = pushHistoryAction(state.history.actions, state.history.pointer, action);
       const nextTree = appendNodeByParentKey(state.uiPageData, parentKey, newNode);
       const activeNode = resolveActiveNode(nextTree, state.activeNodeKey);
       return {
         uiPageData: nextTree,
         activeNode,
-        history: {
-          pointer: nextActions.length - 1,
-          actions: nextActions,
-        },
+        history: nextHistory,
       };
     }),
   // 删除指定节点并记录 remove 历史
@@ -249,15 +299,20 @@ export const useCreateComponentStore = create<CreateComponentStore>((set) => ({
         return state;
       }
 
+      const nodeRef = saveNodeToPool(result.removedNode);
+
       const action: UiHistoryAction = {
         type: 'remove',
         parentKey: result.parentKey,
         index: result.index,
-        node: result.removedNode,
+        nodeRef,
+        nodeKey: result.removedNode.key,
+        nodeLabel: result.removedNode.label,
+        nodeType: result.removedNode.type,
         timestamp: Date.now(),
       };
 
-      const nextActions = pushHistoryAction(state.history.actions, state.history.pointer, action);
+      const nextHistory = pushHistoryAction(state.history.actions, state.history.pointer, action);
       const shouldClearActive =
         !!state.activeNodeKey && containsNodeKey(result.removedNode, state.activeNodeKey);
       const nextActiveNodeKey = shouldClearActive ? null : state.activeNodeKey;
@@ -266,10 +321,7 @@ export const useCreateComponentStore = create<CreateComponentStore>((set) => ({
         uiPageData: result.tree,
         activeNodeKey: nextActiveNodeKey,
         activeNode,
-        history: {
-          pointer: nextActions.length - 1,
-          actions: nextActions,
-        },
+        history: nextHistory,
       };
     }),
   // 回退一步：对当前 action 执行逆操作
