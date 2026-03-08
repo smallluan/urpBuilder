@@ -11,6 +11,7 @@ import {
   applyNodeChanges,
   useReactFlow,
   MarkerType,
+  type EdgeTypes,
   type EdgeChange,
   type NodeChange,
   type Connection,
@@ -19,6 +20,7 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { flowNodeTypes } from './nodes';
+import AnnotatedEdge, { type AnnotatedEdgeData } from './edges/AnnotatedEdge';
 import { useCreateComponentStore } from './store';
 
 const FLOW_DRAG_DATA_KEY = 'drag-component-data';
@@ -69,6 +71,10 @@ const createFlowNodeId = (prefix: string) =>
 const createFlowEdgeId = (source: string, target: string) =>
   `edge-${source}-${target}-${Date.now()}-${Math.round(Math.random() * 1000)}`;
 
+const flowEdgeTypes: EdgeTypes = {
+  annotatedEdge: AnnotatedEdge,
+};
+
 const FlowCanvas: React.FC = () => {
   const nodes = useCreateComponentStore((state) => state.flowNodes);
   const edges = useCreateComponentStore((state) => state.flowEdges);
@@ -76,6 +82,8 @@ const FlowCanvas: React.FC = () => {
   const setFlowEdges = useCreateComponentStore((state) => state.setFlowEdges);
   const [traceActiveNodeId, setTraceActiveNodeId] = useState<string | null>(null);
   const [flowAlertMessage, setFlowAlertMessage] = useState<string | null>(null);
+  const [editingEdgeId, setEditingEdgeId] = useState<string | null>(null);
+  const [editingEdgeValue, setEditingEdgeValue] = useState('');
   const [annotationMenu, setAnnotationMenu] = useState<{
     visible: boolean;
     x: number;
@@ -88,6 +96,17 @@ const FlowCanvas: React.FC = () => {
     y: 0,
     flowX: 0,
     flowY: 0,
+  });
+  const [edgeMenu, setEdgeMenu] = useState<{
+    visible: boolean;
+    x: number;
+    y: number;
+    edgeId: string | null;
+  }>({
+    visible: false,
+    x: 0,
+    y: 0,
+    edgeId: null,
   });
   const { screenToFlowPosition } = useReactFlow();
 
@@ -205,12 +224,65 @@ const FlowCanvas: React.FC = () => {
     const hasTrace = traceNodeIds.size > 0;
 
     return edges.map((edge) => {
+      const edgeData = (edge.data ?? {}) as Record<string, unknown>;
+      const annotation = typeof edgeData.annotation === 'string' ? edgeData.annotation : '';
       const highlighted =
         traceNodeIds.size > 0 && traceNodeIds.has(edge.source) && traceNodeIds.has(edge.target);
 
       return {
         ...edge,
+        type: 'annotatedEdge',
         animated: highlighted,
+        data: {
+          ...edgeData,
+          annotation,
+          isEditing: editingEdgeId === edge.id,
+          editingValue: editingEdgeId === edge.id ? editingEdgeValue : annotation,
+          onStartEdit: (edgeId: string) => {
+            const targetEdge = useCreateComponentStore
+              .getState()
+              .flowEdges.find((item) => item.id === edgeId);
+            const targetData = (targetEdge?.data ?? {}) as Record<string, unknown>;
+            setEditingEdgeId(edgeId);
+            setEditingEdgeValue(typeof targetData.annotation === 'string' ? targetData.annotation : '');
+          },
+          onChangeEditingValue: (value: string) => setEditingEdgeValue(value),
+          onCommitEdit: () => {
+            setFlowEdges((previous) =>
+              previous.map((item) => {
+                if (item.id !== edge.id) {
+                  return item;
+                }
+
+                const currentData = (item.data ?? {}) as Record<string, unknown>;
+                const nextAnnotation = editingEdgeValue.trim();
+
+                if (!nextAnnotation) {
+                  const { annotation: _, ...restData } = currentData;
+                  return {
+                    ...item,
+                    data: restData,
+                  };
+                }
+
+                return {
+                  ...item,
+                  data: {
+                    ...currentData,
+                    annotation: nextAnnotation,
+                  },
+                };
+              }),
+            );
+
+            setEditingEdgeId(null);
+            setEditingEdgeValue('');
+          },
+          onCancelEdit: () => {
+            setEditingEdgeId(null);
+            setEditingEdgeValue('');
+          },
+        } as AnnotatedEdgeData,
         style: {
           ...edge.style,
           stroke: highlighted ? traceColor : DEFAULT_EDGE_COLOR,
@@ -224,7 +296,56 @@ const FlowCanvas: React.FC = () => {
         },
       } as Edge;
     });
-  }, [edges, traceColor, traceNodeIds]);
+  }, [editingEdgeId, editingEdgeValue, edges, setFlowEdges, traceColor, traceNodeIds]);
+
+  const handleStartEditEdge = useCallback((edgeId: string) => {
+    const targetEdge = useCreateComponentStore.getState().flowEdges.find((item) => item.id === edgeId);
+    const targetData = (targetEdge?.data ?? {}) as Record<string, unknown>;
+    setEditingEdgeId(edgeId);
+    setEditingEdgeValue(typeof targetData.annotation === 'string' ? targetData.annotation : '');
+  }, []);
+
+  const handleCommitEdgeAnnotation = useCallback(() => {
+    if (!editingEdgeId) {
+      return;
+    }
+
+    const nextAnnotation = editingEdgeValue.trim();
+
+    setFlowEdges((previous) =>
+      previous.map((edge) => {
+        if (edge.id !== editingEdgeId) {
+          return edge;
+        }
+
+        const currentData = (edge.data ?? {}) as Record<string, unknown>;
+
+        if (!nextAnnotation) {
+          const { annotation: _, ...restData } = currentData;
+          return {
+            ...edge,
+            data: restData,
+          };
+        }
+
+        return {
+          ...edge,
+          data: {
+            ...currentData,
+            annotation: nextAnnotation,
+          },
+        };
+      }),
+    );
+
+    setEditingEdgeId(null);
+    setEditingEdgeValue('');
+  }, [editingEdgeId, editingEdgeValue, setFlowEdges]);
+
+  const handleCancelEdgeAnnotation = useCallback(() => {
+    setEditingEdgeId(null);
+    setEditingEdgeValue('');
+  }, []);
 
   const handleAnnotationTextChange = useCallback(
     (nodeId: string, text: string) => {
@@ -428,7 +549,7 @@ const FlowCanvas: React.FC = () => {
         sourceHandle: params.sourceHandle,
         targetHandle: params.targetHandle,
         animated: false,
-        type: 'smoothstep',
+        type: 'annotatedEdge',
         markerEnd: {
           type: MarkerType.ArrowClosed,
           color: DEFAULT_EDGE_COLOR,
@@ -568,6 +689,8 @@ const FlowCanvas: React.FC = () => {
         y: event.clientY,
       });
 
+      setEdgeMenu((previous) => ({ ...previous, visible: false, edgeId: null }));
+
       setAnnotationMenu({
         visible: true,
         x: event.clientX,
@@ -582,6 +705,39 @@ const FlowCanvas: React.FC = () => {
   const closeAnnotationMenu = useCallback(() => {
     setAnnotationMenu((previous) => ({ ...previous, visible: false }));
   }, []);
+
+  const closeEdgeMenu = useCallback(() => {
+    setEdgeMenu((previous) => ({ ...previous, visible: false, edgeId: null }));
+  }, []);
+
+  const handleEdgeContextMenu = useCallback(
+    (event: React.MouseEvent<Element, MouseEvent> | MouseEvent, edge: Edge) => {
+      event.preventDefault();
+      event.stopPropagation();
+
+      closeAnnotationMenu();
+      setFlowAlertMessage(null);
+
+      setEdgeMenu({
+        visible: true,
+        x: event.clientX,
+        y: event.clientY,
+        edgeId: edge.id,
+      });
+    },
+    [closeAnnotationMenu],
+  );
+
+  const handleDeleteEdgeFromMenu = useCallback(() => {
+    if (!edgeMenu.edgeId) {
+      return;
+    }
+
+    setFlowEdges((previous) => previous.filter((edge) => edge.id !== edgeMenu.edgeId));
+    setEditingEdgeId((previous) => (previous === edgeMenu.edgeId ? null : previous));
+    setEditingEdgeValue((previous) => (edgeMenu.edgeId ? '' : previous));
+    closeEdgeMenu();
+  }, [closeEdgeMenu, edgeMenu.edgeId, setFlowEdges]);
 
   const handleCreateAnnotationFromMenu = useCallback(() => {
     createAnnotationNode(annotationMenu.flowX, annotationMenu.flowY, '');
@@ -598,12 +754,15 @@ const FlowCanvas: React.FC = () => {
         nodes={renderedNodes}
         edges={renderedEdges}
         nodeTypes={flowNodeTypes}
+        edgeTypes={flowEdgeTypes}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
         isValidConnection={isValidConnection}
         zoomOnDoubleClick={false}
         onNodeClick={(_, node) => {
+          handleCancelEdgeAnnotation();
+          closeEdgeMenu();
           closeAnnotationMenu();
           setFlowAlertMessage(null);
           if (node.type === 'annotationNode') {
@@ -615,12 +774,21 @@ const FlowCanvas: React.FC = () => {
         }}
         onPaneClick={() => {
           setTraceActiveNodeId(null);
+          handleCommitEdgeAnnotation();
+          closeEdgeMenu();
           closeAnnotationMenu();
           setFlowAlertMessage(null);
         }}
+        onEdgeDoubleClick={(_, edge) => {
+          closeEdgeMenu();
+          closeAnnotationMenu();
+          setFlowAlertMessage(null);
+          handleStartEditEdge(edge.id);
+        }}
+        onEdgeContextMenu={handleEdgeContextMenu}
         onPaneContextMenu={handlePaneContextMenu}
         defaultEdgeOptions={{
-          type: 'smoothstep',
+          type: 'annotatedEdge',
           animated: false,
           markerEnd: {
             type: MarkerType.ArrowClosed,
@@ -646,6 +814,18 @@ const FlowCanvas: React.FC = () => {
             onClick={handleCreateAnnotationFromMenu}
           >
             新建注释
+          </button>
+        </div>
+      ) : null}
+
+      {edgeMenu.visible ? (
+        <div className="flow-context-menu" style={{ left: edgeMenu.x, top: edgeMenu.y }}>
+          <button
+            className="flow-context-menu__item"
+            type="button"
+            onClick={handleDeleteEdgeFromMenu}
+          >
+            删除连线
           </button>
         </div>
       ) : null}
