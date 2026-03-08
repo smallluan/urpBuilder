@@ -43,6 +43,7 @@ export interface CreateComponentStore {
   autoWidth: number;
   uiPageData: UiTreeNode;
   activeNodeKey: string | null;
+  activeNode: UiTreeNode | null;
   treeInstance: UiTreeInstance | null;
   history: UiHistoryState;
   setScreenSize: (screenSize: ScreenSize) => void;

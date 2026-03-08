@@ -123,11 +123,35 @@
       flex: 1 1 50%;
       margin-top: 12px;
       display: flex;
-      align-items: center;
-      justify-content: center;
+      align-items: stretch;
+      justify-content: stretch;
       background: transparent;
       border-top: 1px dashed #f0f0f0;
       padding-top: 12px;
+
+      .right-panel-body {
+        flex: 1 1 auto;
+        min-height: 0;
+        background: #fff;
+        border: 1px solid #f0f0f0;
+        border-radius: 4px;
+        padding: 8px;
+        overflow: auto;
+      }
+
+      .right-panel-empty {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .config-form {
+        .config-title {
+          display: block;
+          margin-bottom: 8px;
+          font-weight: 600;
+        }
+      }
     }
   }
 
@@ -165,10 +189,6 @@
     box-sizing: border-box;
     display: flex;
     flex-direction: column;
-
-    .right-panel-header {
-      margin-bottom: 12px;
-    }
 
     .right-panel-body {
       flex: 1 1 auto;

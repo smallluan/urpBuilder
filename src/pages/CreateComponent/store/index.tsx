@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { v4 as uuidv4 } from 'uuid';
-import type { CreateComponentStore, UiHistoryAction } from './type';
+import type { CreateComponentStore, UiHistoryAction, UiTreeNode } from './type';
 import {
   appendNodeByParentKey,
   findNodeByKey,
@@ -26,6 +26,14 @@ const pushHistoryAction = (actions: UiHistoryAction[], pointer: number, action: 
   return [...nextActions, action];
 };
 
+const resolveActiveNode = (uiPageData: UiTreeNode, activeNodeKey: string | null) => {
+  if (!activeNodeKey) {
+    return null;
+  }
+
+  return findNodeByKey(uiPageData, activeNodeKey);
+};
+
 export const useCreateComponentStore = create<CreateComponentStore>((set) => ({
   screenSize: 'auto',
   autoWidth: 1800,
@@ -40,6 +48,7 @@ export const useCreateComponentStore = create<CreateComponentStore>((set) => ({
     lifetimes: []
   },
   activeNodeKey: null,
+  activeNode: null,
   treeInstance: null,
   history: {
     pointer: -1,
@@ -51,9 +60,13 @@ export const useCreateComponentStore = create<CreateComponentStore>((set) => ({
   setAutoWidth: (width) => set({ autoWidth: width }),
   // 切换当前激活节点：重复点击同一节点则取消激活
   toggleActiveNode: (nodeKey) =>
-    set((state) => ({
-      activeNodeKey: state.activeNodeKey === nodeKey ? null : nodeKey ?? null,
-    })),
+    set((state) => {
+      const nextActiveNodeKey = state.activeNodeKey === nodeKey ? null : nodeKey ?? null;
+      return {
+        activeNodeKey: nextActiveNodeKey,
+        activeNode: resolveActiveNode(state.uiPageData, nextActiveNodeKey),
+      };
+    }),
   // 挂载/卸载左侧树组件实例
   setTreeInstance: (instance) => set({ treeInstance: instance }),
   // 将拖拽得到的组件结构插入到指定父节点下
@@ -75,8 +88,11 @@ export const useCreateComponentStore = create<CreateComponentStore>((set) => ({
       };
 
       const nextActions = pushHistoryAction(state.history.actions, state.history.pointer, action);
+      const nextTree = appendNodeByParentKey(state.uiPageData, parentKey, newNode);
+      const activeNode = resolveActiveNode(nextTree, state.activeNodeKey);
       return {
-        uiPageData: appendNodeByParentKey(state.uiPageData, parentKey, newNode),
+        uiPageData: nextTree,
+        activeNode,
         history: {
           pointer: nextActions.length - 1,
           actions: nextActions,
@@ -106,9 +122,12 @@ export const useCreateComponentStore = create<CreateComponentStore>((set) => ({
       const nextActions = pushHistoryAction(state.history.actions, state.history.pointer, action);
       const shouldClearActive =
         !!state.activeNodeKey && containsNodeKey(result.removedNode, state.activeNodeKey);
+      const nextActiveNodeKey = shouldClearActive ? null : state.activeNodeKey;
+      const activeNode = resolveActiveNode(result.tree, nextActiveNodeKey);
       return {
         uiPageData: result.tree,
-        activeNodeKey: shouldClearActive ? null : state.activeNodeKey,
+        activeNodeKey: nextActiveNodeKey,
+        activeNode,
         history: {
           pointer: nextActions.length - 1,
           actions: nextActions,
@@ -132,8 +151,11 @@ export const useCreateComponentStore = create<CreateComponentStore>((set) => ({
         nextTree = insertNodeAtParentIndex(nextTree, action.parentKey, action.index, action.node);
       }
 
+      const activeNode = resolveActiveNode(nextTree, state.activeNodeKey);
+
       return {
         uiPageData: nextTree,
+        activeNode,
         history: {
           pointer: pointer - 1,
           actions,
@@ -158,8 +180,11 @@ export const useCreateComponentStore = create<CreateComponentStore>((set) => ({
         nextTree = removeNodeByKey(nextTree, action.node.key).tree;
       }
 
+      const activeNode = resolveActiveNode(nextTree, state.activeNodeKey);
+
       return {
         uiPageData: nextTree,
+        activeNode,
         history: {
           pointer: nextPointer,
           actions,

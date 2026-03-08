@@ -1,17 +1,15 @@
 import React from 'react';
 import { Empty, Form, Input, Switch, Typography } from 'tdesign-react';
+import { useCreateComponentStore } from '../store';
 
-const { Text } = Typography;
+const ComponentConfigPanel: React.FC = () => {
+  const activeNode = useCreateComponentStore((state) => state.activeNode);
+  const selectedName = activeNode?.label;
 
-interface ComponentConfigPanelProps {
-  selectedName: string | null;
-}
-
-const ComponentConfigPanel: React.FC<ComponentConfigPanelProps> = ({ selectedName }) => {
-  if (!selectedName) {
+  if (!activeNode) {
     return (
       <div className="right-panel-body right-panel-empty">
-        <Empty description="请先从组件库选择一个组件" />
+        <Empty description="请先在画布或组件树中选择一个组件" />
       </div>
     );
   }
@@ -19,9 +17,12 @@ const ComponentConfigPanel: React.FC<ComponentConfigPanelProps> = ({ selectedNam
   return (
     <div className="right-panel-body">
       <Form layout="vertical" className="config-form">
-        <Text className="config-title">当前组件：{selectedName}</Text>
+        <Typography.Title level="h6" className="config-title">组件配置</Typography.Title>
+        <Form.FormItem label="组件名称">
+          <Input value={String(selectedName ?? '')} placeholder="请输入组件名称" />
+        </Form.FormItem>
         <Form.FormItem label="组件标题">
-          <Input value={selectedName} placeholder="请输入组件标题" />
+          <Input value={String(selectedName ?? '')} placeholder="请输入组件标题" />
         </Form.FormItem>
         <Form.FormItem label="字段标识">
           <Input placeholder="例如：fieldName" />

@@ -1,10 +1,11 @@
 import React, { useEffect, useMemo, useRef } from 'react';
 import cloneDeep from 'lodash/cloneDeep';
-import { Empty, Input, Tree } from 'tdesign-react';
+import { Input, Tree } from 'tdesign-react';
 import type { TreeInstanceFunctions } from 'tdesign-react';
 import { SearchIcon } from 'tdesign-icons-react';
 import { useCreateComponentStore } from '../store';
 import type { UiTreeNode } from '../store/type';
+import ComponentConfigPanel from './ComponentConfigPanel';
 
 interface RenderUiTreeNode extends Omit<UiTreeNode, 'label' | 'children'> {
   label: React.ReactNode;
@@ -75,7 +76,7 @@ const ComponentAsideLeft: React.FC = () => {
       </div>
 
       <div className="structure-bottom">
-        <Empty description="暂无页面元素" />
+        <ComponentConfigPanel />
       </div>
     </aside>
   );

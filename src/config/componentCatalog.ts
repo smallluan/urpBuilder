@@ -89,7 +89,7 @@ const componentCatalog = [
         value: 'top',
         editType: 'select',
         payload: {
-          options: ['top', 'middle', 'bottom', 'stretch', 'baseline']
+          options: ['top', 'middle', 'bottom', 'stretc  h', 'baseline']
         }
       },
       gutter: {
