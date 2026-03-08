@@ -26,11 +26,11 @@ const RenderNode: React.FC<{
 }> = ({ data, emptyText, onDropData }) => {
   if (data?.children?.length) {
     return (
-      <div className="drop-area-node-list">
+      <>
         {data.children.map((child) => (
           <CommonComponent key={child.key} type={child.type} data={child} onDropData={onDropData} />
         ))}
-      </div>
+      </>
     );
   }
 
@@ -41,6 +41,14 @@ const RenderNode: React.FC<{
     </div>
   );
 };
+
+const renderNodeList = (
+  data: UiTreeNode | undefined,
+  onDropData?: (dropData: unknown, parent: UiTreeNode | undefined) => void,
+) =>
+  data?.children?.map((child) => (
+    <CommonComponent key={child.key} type={child.type} data={child} onDropData={onDropData} />
+  ));
 
 export default function DropArea({
   children,
@@ -132,10 +140,13 @@ export default function DropArea({
       {childrenLength ? (
         React.Children.map(children, (child) => {
           if (React.isValidElement(child) && !isTreeNode) {
+            const nodeList = renderNodeList(data, onDropData);
             return React.cloneElement(
               child,
               undefined,
-              <RenderNode data={data} emptyText={emptyText} onDropData={onDropData} />,
+              nodeList?.length
+                ? nodeList
+                : <RenderNode data={data} emptyText={emptyText} onDropData={onDropData} />,
             );
           }
           return child;

@@ -76,7 +76,37 @@ const componentCatalog = [
       breakLine: {
         name: '自动换行',
         value: false,
-        editInput: 'switch'
+        editType: 'switch'
+      }
+    }
+  },
+  {
+    type: 'Grid.Row',
+    name: '栅格行',
+    props: {
+      align: {
+        name: '纵向对齐',
+        value: 'top',
+        editType: 'select',
+        payload: {
+          options: ['top', 'middle', 'bottom', 'stretch', 'baseline']
+        }
+      },
+      gutter: {
+        name: '栅格间隔',
+        value: 0,
+        editType: '',
+      }
+    }
+  },
+  {
+    type: 'Grid.Col',
+    name: '栅格列',
+    props: {
+      span: {
+        name: '占栅格数',
+        value: 4,
+        editType: '',
       }
     }
   }

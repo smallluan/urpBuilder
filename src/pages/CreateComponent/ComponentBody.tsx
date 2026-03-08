@@ -29,13 +29,19 @@ const ComponentBody: React.FC = () => {
       transition: 'width 0.3s ease',
       boxSizing: 'content-box', // Ensure border doesn't eat into width if strict specific
       display: 'flex',
+      overflow: 'scroll'
     };
   }, [screenSize, autoWidth]);
 
   return (
     <div className="component-body">
       <div className="simulator-container" style={simulatorStyle}>
-        <DropArea style={{ flex: 1, height: '100%' }} data={uiPageData} onDropData={handleDropData} />
+        <DropArea
+          className="drop-area-root"
+          style={{ flex: 1, height: '100%' }}
+          data={uiPageData}
+          onDropData={handleDropData}
+        />
       </div>
     </div>
   );

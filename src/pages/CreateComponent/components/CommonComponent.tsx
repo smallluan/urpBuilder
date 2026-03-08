@@ -1,4 +1,4 @@
-import { Button, Space } from 'tdesign-react';
+import { Button, Space, Row, Col } from 'tdesign-react';
 import DropArea from '../../../components/DropArea';
 import type { UiTreeNode } from '../store/type';
 
@@ -16,6 +16,11 @@ export default function CommonComponent(properties: CommonComponentProps) {
     return prop?.value;
   };
 
+  const getNumberProp = (propName: string) => {
+    const value = getProp(propName);
+    return typeof value === 'number' ? value : undefined;
+  };
+
   switch(type) {
     case 'Button':
       return (
@@ -26,8 +31,22 @@ export default function CommonComponent(properties: CommonComponentProps) {
         <DropArea data={data} onDropData={onDropData}>
           <Space />
         </DropArea>
-
       );
+      case 'Grid.Row':
+        return (
+          <DropArea style={{width: '400px'}} data={data} onDropData={onDropData}>
+            <Row> </Row>
+          </DropArea>
+        )
+      case 'Grid.Col':
+        return (
+          <Col span={getNumberProp('span')}>
+            <DropArea data={data} onDropData={onDropData}>
+            
+            </DropArea>
+          </Col>
+          
+        )
     default:
       return null;
   }
