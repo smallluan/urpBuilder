@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   ReactFlow,
   ReactFlowProvider,
@@ -46,12 +46,126 @@ interface EventFilterNodeData {
   availableLifetimes?: string[];
 }
 
+const DEFAULT_EDGE_COLOR = '#9aa5b5';
+const COMPONENT_TRACE_COLOR = '#0052d9';
+const EVENT_FILTER_TRACE_COLOR = '#2ba471';
+
 const FlowCanvas: React.FC = () => {
   const nodes = useCreateComponentStore((state) => state.flowNodes);
   const edges = useCreateComponentStore((state) => state.flowEdges);
   const setFlowNodes = useCreateComponentStore((state) => state.setFlowNodes);
   const setFlowEdges = useCreateComponentStore((state) => state.setFlowEdges);
+  const [traceActiveNodeId, setTraceActiveNodeId] = useState<string | null>(null);
   const { screenToFlowPosition } = useReactFlow();
+
+  const traceColor = useMemo(() => {
+    if (!traceActiveNodeId) {
+      return COMPONENT_TRACE_COLOR;
+    }
+
+    const activeNode = nodes.find((item) => item.id === traceActiveNodeId);
+    if (!activeNode) {
+      return COMPONENT_TRACE_COLOR;
+    }
+
+    if (activeNode.type === 'eventFilterNode') {
+      return EVENT_FILTER_TRACE_COLOR;
+    }
+
+    return COMPONENT_TRACE_COLOR;
+  }, [traceActiveNodeId, nodes]);
+
+  const traceNodeIds = useMemo(() => {
+    if (!traceActiveNodeId) {
+      return new Set<string>();
+    }
+
+    const activeNode = nodes.find((item) => item.id === traceActiveNodeId);
+    if (!activeNode) {
+      return new Set<string>();
+    }
+
+    const seedNodeIds = new Set<string>([activeNode.id]);
+
+    if (activeNode.type === 'componentNode') {
+      const activeSourceKey = (activeNode.data as ComponentNodeData | undefined)?.sourceKey;
+      if (activeSourceKey) {
+        nodes.forEach((item) => {
+          if (item.type !== 'componentNode') {
+            return;
+          }
+
+          const sourceKey = (item.data as ComponentNodeData | undefined)?.sourceKey;
+          if (sourceKey === activeSourceKey) {
+            seedNodeIds.add(item.id);
+          }
+        });
+      }
+    }
+
+    const outgoingMap = new Map<string, string[]>();
+    const incomingMap = new Map<string, string[]>();
+
+    edges.forEach((edge) => {
+      if (!outgoingMap.has(edge.source)) {
+        outgoingMap.set(edge.source, []);
+      }
+      outgoingMap.get(edge.source)?.push(edge.target);
+
+      if (!incomingMap.has(edge.target)) {
+        incomingMap.set(edge.target, []);
+      }
+      incomingMap.get(edge.target)?.push(edge.source);
+    });
+
+    const visited = new Set<string>();
+    const queue = Array.from(seedNodeIds);
+
+    while (queue.length > 0) {
+      const currentNodeId = queue.shift();
+      if (!currentNodeId || visited.has(currentNodeId)) {
+        continue;
+      }
+
+      visited.add(currentNodeId);
+
+      const downstream = outgoingMap.get(currentNodeId) ?? [];
+      const upstream = incomingMap.get(currentNodeId) ?? [];
+
+      [...downstream, ...upstream].forEach((neighborId) => {
+        if (!visited.has(neighborId)) {
+          queue.push(neighborId);
+        }
+      });
+    }
+
+    return visited;
+  }, [traceActiveNodeId, nodes, edges]);
+
+  const renderedEdges = useMemo(() => {
+    const hasTrace = traceNodeIds.size > 0;
+
+    return edges.map((edge) => {
+      const highlighted =
+        traceNodeIds.size > 0 && traceNodeIds.has(edge.source) && traceNodeIds.has(edge.target);
+
+      return {
+        ...edge,
+        animated: highlighted,
+        style: {
+          ...edge.style,
+          stroke: highlighted ? traceColor : DEFAULT_EDGE_COLOR,
+          strokeWidth: highlighted ? 2 : 1.6,
+          strokeDasharray: highlighted ? '6 4' : undefined,
+          opacity: hasTrace ? (highlighted ? 1 : 0.28) : 1,
+        },
+        markerEnd: {
+          type: MarkerType.ArrowClosed,
+          color: highlighted ? traceColor : DEFAULT_EDGE_COLOR,
+        },
+      } as Edge;
+    });
+  }, [edges, traceColor, traceNodeIds]);
 
   const onNodesChange = useCallback(
     (changes: NodeChange<Node>[]) => {
@@ -107,14 +221,14 @@ const FlowCanvas: React.FC = () => {
         target: params.target,
         sourceHandle: params.sourceHandle,
         targetHandle: params.targetHandle,
-        animated: true,
+        animated: false,
         type: 'smoothstep',
         markerEnd: {
           type: MarkerType.ArrowClosed,
-          color: '#4b5563',
+          color: DEFAULT_EDGE_COLOR,
         },
         style: {
-          stroke: '#4b5563',
+          stroke: DEFAULT_EDGE_COLOR,
           strokeWidth: 1.6,
         },
       };
@@ -210,20 +324,23 @@ const FlowCanvas: React.FC = () => {
     <div className="flow-canvas" onDragOver={handleDragOver} onDrop={handleDrop}>
       <ReactFlow
         nodes={nodes}
-        edges={edges}
+        edges={renderedEdges}
         nodeTypes={flowNodeTypes}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
         isValidConnection={isValidConnection}
+        onNodeClick={(_, node) => setTraceActiveNodeId(node.id)}
+        onPaneClick={() => setTraceActiveNodeId(null)}
         defaultEdgeOptions={{
           type: 'smoothstep',
+          animated: false,
           markerEnd: {
             type: MarkerType.ArrowClosed,
-            color: '#4b5563',
+            color: DEFAULT_EDGE_COLOR,
           },
           style: {
-            stroke: '#4b5563',
+            stroke: DEFAULT_EDGE_COLOR,
             strokeWidth: 1.6,
           },
         }}
