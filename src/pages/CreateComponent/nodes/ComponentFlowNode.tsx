@@ -13,7 +13,7 @@ const ComponentFlowNode: React.FC<NodeProps> = ({ data, selected }) => {
 
   return (
     <div className={`flow-component-node${selected ? ' is-selected' : ''}`}>
-      <Handle type="target" position={Position.Left} />
+      <Handle type="target" position={Position.Left} isConnectable />
 
       <div className="flow-component-node__top">
         <span className="flow-component-node__badge">组件节点</span>
@@ -26,7 +26,7 @@ const ComponentFlowNode: React.FC<NodeProps> = ({ data, selected }) => {
         源节点：{sourceText}
       </div>
 
-      <Handle type="source" position={Position.Right} />
+      <Handle type="source" position={Position.Right} isConnectable />
     </div>
   );
 };

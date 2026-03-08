@@ -124,19 +124,21 @@ const FlowCanvas: React.FC = () => {
     [setFlowEdges, setFlowNodes],
   );
 
-  const isValidConnection = useCallback(
-    (params: Edge | Connection) => {
-      const sourceNode = nodes.find((item) => item.id === params.source);
-      const targetNode = nodes.find((item) => item.id === params.target);
-
-      if (targetNode?.type === 'eventFilterNode') {
-        return sourceNode?.type === 'componentNode';
-      }
-
+  const isValidConnection = useCallback((params: Edge | Connection) => {
+    if (!params.source || !params.target) {
       return true;
-    },
-    [nodes],
-  );
+    }
+
+    const currentNodes = useCreateComponentStore.getState().flowNodes;
+    const sourceNode = currentNodes.find((item) => item.id === params.source);
+    const targetNode = currentNodes.find((item) => item.id === params.target);
+
+    if (targetNode?.type === 'eventFilterNode') {
+      return sourceNode?.type === 'componentNode';
+    }
+
+    return true;
+  }, []);
 
   const handleDragOver = useCallback((event: React.DragEvent<HTMLDivElement>) => {
     event.preventDefault();

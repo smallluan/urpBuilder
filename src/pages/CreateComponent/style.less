@@ -753,3 +753,31 @@
   font-size: 11px;
   color: #8b92a1;
 }
+
+.flow-canvas .react-flow svg {
+  max-width: none;
+}
+
+.flow-canvas .react-flow__edges svg,
+.flow-canvas .react-flow__edgelabel-renderer,
+.flow-canvas .react-flow__connectionline {
+  overflow: visible;
+}
+
+.flow-canvas .react-flow__edge-path {
+  stroke: #4b5563;
+  stroke-width: 1.6;
+}
+
+.flow-canvas .react-flow__handle {
+  width: 12px;
+  height: 12px;
+  border: 2px solid #fff;
+  background: #4b5563;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.18);
+}
+
+.flow-canvas .react-flow__handle-connecting,
+.flow-canvas .react-flow__handle-valid {
+  background: #0052d9;
+}

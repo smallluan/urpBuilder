@@ -14,7 +14,7 @@ const EventFilterNode: React.FC<NodeProps> = ({ data, selected }) => {
 
   return (
     <div className={`flow-event-filter-node${selected ? ' is-selected' : ''}`}>
-      <Handle type="target" position={Position.Left} />
+      <Handle type="target" position={Position.Left} isConnectable />
 
       <div className="flow-event-filter-node__top">
         <span className="flow-event-filter-node__badge">事件过滤</span>
@@ -36,7 +36,7 @@ const EventFilterNode: React.FC<NodeProps> = ({ data, selected }) => {
         )}
       </div>
 
-      <Handle type="source" position={Position.Right} />
+      <Handle type="source" position={Position.Right} isConnectable />
     </div>
   );
 };
