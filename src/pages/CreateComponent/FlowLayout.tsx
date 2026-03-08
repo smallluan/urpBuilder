@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Button, Drawer, Input, InputNumber, Select, Switch, Textarea } from 'tdesign-react';
 import FlowBody from './FlowBody';
 import FlowAsideLeft from './components/FlowAsideLeft';
+import CodeEditorDialog, { type CodeEditorValue } from './components/CodeEditorDialog';
 import { useCreateComponentStore } from './store';
 import './style.less';
 
@@ -16,6 +17,8 @@ interface NetworkRequestFormState {
   onError: string;
   mockEnabled: boolean;
 }
+
+interface CodeNodeFormState extends CodeEditorValue {}
 
 const METHOD_OPTIONS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'].map((item) => ({
   label: item,
@@ -34,6 +37,13 @@ const ERROR_OPTIONS = [
   { label: 'throw', value: 'throw' },
   { label: 'continue', value: 'continue' },
   { label: 'useFallback', value: 'useFallback' },
+];
+
+const CODE_LANGUAGE_OPTIONS = [
+  { label: 'javascript', value: 'javascript' },
+  { label: 'typescript', value: 'typescript' },
+  { label: 'json', value: 'json' },
+  { label: 'css', value: 'css' },
 ];
 
 const FlowLayout: React.FC = () => {
@@ -61,6 +71,8 @@ const FlowLayout: React.FC = () => {
 
   const [networkDraft, setNetworkDraft] = useState<NetworkRequestFormState | null>(null);
   const [networkEditorVisible, setNetworkEditorVisible] = useState(false);
+  const [codeDraft, setCodeDraft] = useState<CodeNodeFormState | null>(null);
+  const [codeEditorVisible, setCodeEditorVisible] = useState(false);
 
   useEffect(() => {
     if (!activeFlowNode || activeFlowNode.type !== 'networkRequestNode') {
@@ -83,8 +95,30 @@ const FlowLayout: React.FC = () => {
   }, [activeFlowNode]);
 
   useEffect(() => {
+    if (!activeFlowNode || activeFlowNode.type !== 'codeNode') {
+      setCodeDraft(null);
+      return;
+    }
+
+    const nodeData = (activeFlowNode.data ?? {}) as Record<string, unknown>;
+    setCodeDraft({
+      label: String(nodeData.label ?? '代码节点'),
+      language: String(nodeData.language ?? 'javascript'),
+      editorTheme: (String(nodeData.editorTheme ?? 'vscode-dark') === 'vscode-light' ? 'vscode-light' : 'vscode-dark'),
+      note: String(nodeData.note ?? ''),
+      code: String(nodeData.code ?? ''),
+    });
+  }, [activeFlowNode]);
+
+  useEffect(() => {
     if (!activeFlowNode || activeFlowNode.type !== 'networkRequestNode') {
       setNetworkEditorVisible(false);
+    }
+  }, [activeFlowNode]);
+
+  useEffect(() => {
+    if (!activeFlowNode || activeFlowNode.type !== 'codeNode') {
+      setCodeEditorVisible(false);
     }
   }, [activeFlowNode]);
 
@@ -109,6 +143,23 @@ const FlowLayout: React.FC = () => {
     return JSON.stringify(currentComparable) !== JSON.stringify(networkDraft);
   }, [activeFlowNode, networkDraft]);
 
+  const canApplyCodeDraft = useMemo(() => {
+    if (!activeFlowNode || activeFlowNode.type !== 'codeNode' || !codeDraft) {
+      return false;
+    }
+
+    const nodeData = (activeFlowNode.data ?? {}) as Record<string, unknown>;
+    const currentComparable = {
+      label: String(nodeData.label ?? '代码节点'),
+      language: String(nodeData.language ?? 'javascript'),
+      editorTheme: (String(nodeData.editorTheme ?? 'vscode-dark') === 'vscode-light' ? 'vscode-light' : 'vscode-dark'),
+      note: String(nodeData.note ?? ''),
+      code: String(nodeData.code ?? ''),
+    };
+
+    return JSON.stringify(currentComparable) !== JSON.stringify(codeDraft);
+  }, [activeFlowNode, codeDraft]);
+
   const handleApplyNetworkDraft = () => {
     if (!activeFlowNode || activeFlowNode.type !== 'networkRequestNode' || !networkDraft) {
       return;
@@ -130,6 +181,32 @@ const FlowLayout: React.FC = () => {
       }),
       '更新网络请求节点配置',
     );
+  };
+
+  const handleApplyCodeDraft = (nextDraft?: CodeNodeFormState) => {
+    if (!activeFlowNode || activeFlowNode.type !== 'codeNode') {
+      return;
+    }
+
+    const resolvedDraft = nextDraft ?? codeDraft;
+    if (!resolvedDraft) {
+      return;
+    }
+
+    updateFlowNodeData(
+      activeFlowNode.id,
+      (previous) => ({
+        ...previous,
+        label: resolvedDraft.label,
+        language: resolvedDraft.language,
+        editorTheme: resolvedDraft.editorTheme,
+        note: resolvedDraft.note,
+        code: resolvedDraft.code,
+      }),
+      '更新代码节点配置',
+    );
+
+    setCodeDraft(resolvedDraft);
   };
 
   return (
@@ -175,11 +252,6 @@ const FlowLayout: React.FC = () => {
                 <span className="config-value">{outputEdgesCount}</span>
               </div>
 
-              <div className="flow-config-panel__placeholder">
-                <div className="flow-config-panel__placeholder-title">配置编辑方式</div>
-                <div className="flow-config-panel__placeholder-desc">右侧仅展示摘要，详细配置通过弹出抽屉编辑。</div>
-              </div>
-
               {activeFlowNode.type === 'componentNode' ? (
                 <div className="flow-config-panel__group">
                   <div className="flow-config-panel__group-title">组件节点信息（只展示）</div>
@@ -213,6 +285,66 @@ const FlowLayout: React.FC = () => {
                   <div className="flow-config-panel__actions">
                     <Button size="small" theme="primary" variant="outline" onClick={() => setNetworkEditorVisible(true)}>
                       编辑配置
+                    </Button>
+                  </div>
+                </div>
+              ) : null}
+
+              {activeFlowNode.type === 'codeNode' && codeDraft ? (
+                <div className="flow-config-panel__group">
+                  <div className="flow-config-panel__group-title">代码节点配置</div>
+
+                  <div className="flow-config-field">
+                    <div className="flow-config-field__label">节点名称</div>
+                    <Input
+                      size="small"
+                      value={codeDraft.label}
+                      onChange={(value) =>
+                        setCodeDraft((previous) => (previous ? { ...previous, label: String(value ?? '') } : previous))
+                      }
+                    />
+                  </div>
+
+                  <div className="flow-config-field">
+                    <div className="flow-config-field__label">语言</div>
+                    <Select
+                      size="small"
+                      options={CODE_LANGUAGE_OPTIONS}
+                      value={codeDraft.language}
+                      onChange={(value) =>
+                        setCodeDraft((previous) => (previous ? { ...previous, language: String(value ?? 'javascript') } : previous))
+                      }
+                    />
+                  </div>
+
+                  <div className="flow-config-field">
+                    <div className="flow-config-field__label">备注</div>
+                    <Input
+                      size="small"
+                      value={codeDraft.note}
+                      onChange={(value) =>
+                        setCodeDraft((previous) => (previous ? { ...previous, note: String(value ?? '') } : previous))
+                      }
+                    />
+                  </div>
+
+                  <div className="config-row">
+                    <span className="config-label">代码长度</span>
+                    <span className="config-value">{codeDraft.code.length} chars</span>
+                  </div>
+
+                  <div className="flow-config-panel__actions">
+                    <Button
+                      size="small"
+                      theme="default"
+                      variant="outline"
+                      disabled={!canApplyCodeDraft}
+                      onClick={() => handleApplyCodeDraft()}
+                    >
+                      应用配置
+                    </Button>
+                    <Button size="small" theme="primary" variant="outline" onClick={() => setCodeEditorVisible(true)}>
+                      编辑代码
                     </Button>
                   </div>
                 </div>
@@ -381,6 +513,34 @@ const FlowLayout: React.FC = () => {
             </div>
           ) : null}
         </Drawer>
+
+        <CodeEditorDialog
+          visible={codeEditorVisible && !!activeFlowNode && activeFlowNode.type === 'codeNode' && !!codeDraft}
+          value={
+            codeDraft ?? {
+              label: '代码节点',
+              language: 'javascript',
+              editorTheme: 'vscode-dark',
+              note: '',
+              code: '',
+            }
+          }
+          onClose={() => setCodeEditorVisible(false)}
+          onApply={(nextCode) => {
+            if (!codeDraft) {
+              return;
+            }
+
+            const nextDraft = {
+              ...codeDraft,
+              code: nextCode.code,
+              editorTheme: nextCode.editorTheme,
+            };
+
+            handleApplyCodeDraft(nextDraft);
+            setCodeEditorVisible(false);
+          }}
+        />
       </aside>
     </div>
   );

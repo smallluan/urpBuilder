@@ -712,7 +712,9 @@ const FlowCanvas: React.FC = () => {
           data: {
             label: payload.label || '代码节点',
             language: 'javascript',
+            editorTheme: 'vscode-dark',
             note: '注释信息',
+            code: '',
           },
         };
 
