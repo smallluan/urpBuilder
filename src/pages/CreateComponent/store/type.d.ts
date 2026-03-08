@@ -49,6 +49,8 @@ export interface CreateComponentStore {
   setScreenSize: (screenSize: ScreenSize) => void;
   setAutoWidth: (width: number) => void;
   toggleActiveNode: (nodeKey?: string) => void;
+  updateActiveNodeLabel: (label: string) => void;
+  updateActiveNodeProp: (propKey: string, value: unknown) => void;
   setTreeInstance: (instance: UiTreeInstance | null) => void;
   insertToUiPageData: (parentKey: string, componentData: Record<string, unknown>) => void;
   removeFromUiPageData: (nodeKey: string) => void;

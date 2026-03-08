@@ -69,6 +69,31 @@ export const findNodeByKey = (node: UiTreeNode, targetKey: string): UiTreeNode |
   return null;
 };
 
+export const updateNodeByKey = (
+  node: UiTreeNode,
+  targetKey: string,
+  updater: (target: UiTreeNode) => UiTreeNode,
+): UiTreeNode => {
+  if (node.key === targetKey) {
+    return updater(node);
+  }
+
+  if (!node.children?.length) {
+    return node;
+  }
+
+  let changed = false;
+  const nextChildren = node.children.map((child) => {
+    const next = updateNodeByKey(child, targetKey, updater);
+    if (next !== child) {
+      changed = true;
+    }
+    return next;
+  });
+
+  return changed ? { ...node, children: nextChildren } : node;
+};
+
 export interface RemoveNodeResult {
   tree: UiTreeNode;
   removedNode: UiTreeNode | null;

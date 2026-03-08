@@ -7,6 +7,7 @@ import {
   insertNodeAtParentIndex,
   removeNodeByKey,
   toUiTreeNode,
+  updateNodeByKey,
 } from '../../../utils/createComponentTree';
 
 const containsNodeKey = (node: { key: string; children?: { key: string; children?: any[] }[] }, targetKey: string): boolean => {
@@ -65,6 +66,49 @@ export const useCreateComponentStore = create<CreateComponentStore>((set) => ({
       return {
         activeNodeKey: nextActiveNodeKey,
         activeNode: resolveActiveNode(state.uiPageData, nextActiveNodeKey),
+      };
+    }),
+  updateActiveNodeLabel: (label) =>
+    set((state) => {
+      if (!state.activeNodeKey) {
+        return state;
+      }
+
+      const nextTree = updateNodeByKey(state.uiPageData, state.activeNodeKey, (target) => ({
+        ...target,
+        label,
+      }));
+
+      return {
+        uiPageData: nextTree,
+        activeNode: resolveActiveNode(nextTree, state.activeNodeKey),
+      };
+    }),
+  updateActiveNodeProp: (propKey, value) =>
+    set((state) => {
+      if (!state.activeNodeKey) {
+        return state;
+      }
+
+      const nextTree = updateNodeByKey(state.uiPageData, state.activeNodeKey, (target) => {
+        const currentProps = (target.props ?? {}) as Record<string, unknown>;
+        const currentProp = (currentProps[propKey] ?? {}) as Record<string, unknown>;
+
+        return {
+          ...target,
+          props: {
+            ...currentProps,
+            [propKey]: {
+              ...currentProp,
+              value,
+            },
+          },
+        };
+      });
+
+      return {
+        uiPageData: nextTree,
+        activeNode: resolveActiveNode(nextTree, state.activeNodeKey),
       };
     }),
   // 挂载/卸载左侧树组件实例

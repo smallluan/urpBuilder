@@ -146,10 +146,34 @@
       }
 
       .config-form {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+
         .config-title {
           display: block;
-          margin-bottom: 8px;
+          margin-bottom: 4px;
           font-weight: 600;
+        }
+
+        .config-row {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          gap: 12px;
+          padding: 2px 0;
+        }
+
+        .config-label {
+          font-size: 12px;
+          color: #999;
+          flex: 1 1 auto;
+        }
+
+        .config-editor {
+          width: 120px;
+          flex: 0 0 auto;
+          margin-left: auto;
         }
       }
     }
@@ -230,10 +254,34 @@
     }
 
     .config-form {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+
       .config-title {
         display: block;
-        margin-bottom: 8px;
+        margin-bottom: 4px;
         font-weight: 600;
+      }
+
+      .config-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        padding: 2px 0;
+      }
+
+      .config-label {
+        font-size: 12px;
+        color: #999;
+        flex: 1 1 auto;
+      }
+
+      .config-editor {
+        width: 120px;
+        flex: 0 0 auto;
+        margin-left: auto;
       }
     }
   }

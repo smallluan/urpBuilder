@@ -119,6 +119,10 @@ export default function DropArea({
   }, [className, isDragOver, isNodeActive]);
 
   const handleClick = (event: React.MouseEvent<HTMLDivElement>) => {
+    if (event.target !== event.currentTarget) {
+      return;
+    }
+
     event.stopPropagation();
     if (!data?.key) {
       return;
