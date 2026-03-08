@@ -21,13 +21,19 @@ const FlowAsideLeft: React.FC = () => {
 
   const handleDragStart = (event: React.DragEvent<HTMLDivElement>, node: UiTreeNode) => {
     const payload = {
+      kind: 'component-node',
       name: String(node.label ?? '节点'),
-      type: String(node.type ?? 'Flow.Node'),
-      props: node.props ?? {},
-      lifetimes: node.lifetimes ?? [],
+      componentType: String(node.type ?? 'Unknown'),
+      sourceKey: node.key,
+      lifetimes: Array.isArray(node.lifetimes) ? node.lifetimes : [],
     };
 
     event.dataTransfer?.setData('drag-component-data', JSON.stringify(payload));
+    event.dataTransfer.effectAllowed = 'copy';
+  };
+
+  const handleBuiltinDragStart = (event: React.DragEvent<HTMLDivElement>, data: Record<string, unknown>) => {
+    event.dataTransfer?.setData('drag-component-data', JSON.stringify(data));
     event.dataTransfer.effectAllowed = 'copy';
   };
 
@@ -87,7 +93,20 @@ const FlowAsideLeft: React.FC = () => {
       </div>
 
       <div className="structure-bottom">
-        <div className="right-panel-body right-panel-empty">流程模式下暂无组件配置</div>
+        <div className="right-panel-body">
+          <div className="flow-builtins-panel">
+            <div className="flow-builtins-title">内置节点</div>
+            <DragableWrapper
+              data={{ kind: 'builtin-node', nodeType: 'eventFilterNode', label: '事件过滤节点' }}
+              onDragStart={handleBuiltinDragStart}
+            >
+              <div className="flow-builtins-item">
+                <span className="flow-builtins-item__name">事件过滤节点</span>
+                <span className="flow-builtins-item__type">builtin</span>
+              </div>
+            </DragableWrapper>
+          </div>
+        </div>
       </div>
     </aside>
   );

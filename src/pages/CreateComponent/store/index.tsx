@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { v4 as uuidv4 } from 'uuid';
 import cloneDeep from 'lodash/cloneDeep';
+import type { Edge, Node } from '@xyflow/react';
 import type { CreateComponentStore, UiHistoryAction, UiTreeNode } from './type';
 import {
   appendNodeByParentKey,
@@ -131,6 +132,8 @@ const applyHistoryAction = (
 export const useCreateComponentStore = create<CreateComponentStore>((set) => ({
   screenSize: 'auto',
   autoWidth: 1800,
+  flowNodes: [],
+  flowEdges: [],
   // 不同于之前的实现，这里 ui 和流程共享一个树
   // 可以避免涉及到添加/回滚等操作时，要同时维护两个树
   // label 部分两个组件内部自己维护
@@ -152,6 +155,20 @@ export const useCreateComponentStore = create<CreateComponentStore>((set) => ({
   setScreenSize: (screenSize) => set({ screenSize }),
   // 更新自适应模式下的自定义宽度
   setAutoWidth: (width) => set({ autoWidth: width }),
+  setFlowNodes: (flowNodes) =>
+    set((state) => ({
+      flowNodes:
+        typeof flowNodes === 'function'
+          ? (flowNodes as (previous: Node[]) => Node[])(state.flowNodes)
+          : flowNodes,
+    })),
+  setFlowEdges: (flowEdges) =>
+    set((state) => ({
+      flowEdges:
+        typeof flowEdges === 'function'
+          ? (flowEdges as (previous: Edge[]) => Edge[])(state.flowEdges)
+          : flowEdges,
+    })),
   // 设置当前激活节点：重复点击同一节点不会取消激活
   setActiveNode: (nodeKey) =>
     set((state) => {

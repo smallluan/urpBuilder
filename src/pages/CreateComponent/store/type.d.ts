@@ -1,4 +1,7 @@
+import type { Edge, Node } from '@xyflow/react';
+
 export type ScreenSize = string | number;
+export type StateAction<T> = T | ((previous: T) => T);
 
 export interface UiTreeNode {
   key: string;
@@ -71,6 +74,8 @@ export interface UiHistoryState {
 export interface CreateComponentStore {
   screenSize: ScreenSize;
   autoWidth: number;
+  flowNodes: Node[];
+  flowEdges: Edge[];
   uiPageData: UiTreeNode;
   activeNodeKey: string | null;
   activeNode: UiTreeNode | null;
@@ -78,6 +83,8 @@ export interface CreateComponentStore {
   history: UiHistoryState;
   setScreenSize: (screenSize: ScreenSize) => void;
   setAutoWidth: (width: number) => void;
+  setFlowNodes: (nodes: StateAction<Node[]>) => void;
+  setFlowEdges: (edges: StateAction<Edge[]>) => void;
   setActiveNode: (nodeKey?: string) => void;
   toggleActiveNode: (nodeKey?: string) => void;
   updateActiveNodeLabel: (label: string) => void;
