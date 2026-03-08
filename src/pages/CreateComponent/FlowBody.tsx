@@ -51,12 +51,23 @@ interface EventFilterNodeData {
 interface AnnotationNodeData {
   text?: string;
   onChange?: (nodeId: string, text: string) => void;
+  flipX?: boolean;
+  flipY?: boolean;
+  onDeleteNode?: (nodeId: string) => void;
+  onFlipHorizontal?: (nodeId: string) => void;
+  onFlipVertical?: (nodeId: string) => void;
 }
 
 const DEFAULT_EDGE_COLOR = '#9aa5b5';
 const COMPONENT_TRACE_COLOR = '#0052d9';
 const EVENT_FILTER_TRACE_COLOR = '#2ba471';
 const CODE_TRACE_COLOR = '#6f5af0';
+
+const createFlowNodeId = (prefix: string) =>
+  `${prefix}-${Date.now()}-${Math.round(Math.random() * 1000)}`;
+
+const createFlowEdgeId = (source: string, target: string) =>
+  `edge-${source}-${target}-${Date.now()}-${Math.round(Math.random() * 1000)}`;
 
 const FlowCanvas: React.FC = () => {
   const nodes = useCreateComponentStore((state) => state.flowNodes);
@@ -82,7 +93,7 @@ const FlowCanvas: React.FC = () => {
 
   const createAnnotationNode = useCallback(
     (x: number, y: number, text = '') => {
-      const nodeId = `annotation-node-${Date.now()}-${Math.round(Math.random() * 1000)}`;
+      const nodeId = createFlowNodeId('annotation-node');
       const nextNode: Node = {
         id: nodeId,
         type: 'annotationNode',
@@ -237,23 +248,108 @@ const FlowCanvas: React.FC = () => {
     [setFlowNodes],
   );
 
-  const renderedNodes = useMemo(() => {
-    return nodes.map((node) => {
-      if (node.type !== 'annotationNode') {
-        return node;
+  const handleDeleteFlowNode = useCallback(
+    (nodeId: string) => {
+      setFlowNodes((previous) => previous.filter((node) => node.id !== nodeId));
+      setFlowEdges((previous) =>
+        previous.filter((edge) => edge.source !== nodeId && edge.target !== nodeId),
+      );
+
+      setTraceActiveNodeId((previous) => (previous === nodeId ? null : previous));
+    },
+    [setFlowEdges, setFlowNodes],
+  );
+
+  const handleFlipFlowNode = useCallback(
+    (nodeId: string, axis: 'x' | 'y') => {
+      const { flowNodes: currentNodes, flowEdges: currentEdges } = useCreateComponentStore.getState();
+      const targetNode = currentNodes.find((node) => node.id === nodeId);
+      if (!targetNode) {
+        return;
       }
 
+      if (
+        axis === 'y' &&
+        (targetNode.type === 'componentNode' ||
+          targetNode.type === 'codeNode' ||
+          targetNode.type === 'eventFilterNode')
+      ) {
+        return;
+      }
+
+      const nextNodeId = createFlowNodeId(String(targetNode.type || 'node'));
+      const targetNodeData = (targetNode.data ?? {}) as Record<string, unknown>;
+      const nextFlipX = axis === 'x' ? !(targetNodeData.flipX as boolean | undefined) : (targetNodeData.flipX as boolean | undefined);
+      const nextFlipY = axis === 'y' ? !(targetNodeData.flipY as boolean | undefined) : (targetNodeData.flipY as boolean | undefined);
+
+      const nextNodes = currentNodes.map((node) => {
+        if (node.id === nodeId) {
+          return {
+            ...node,
+            id: nextNodeId,
+            data: {
+              ...targetNodeData,
+              flipX: !!nextFlipX,
+              flipY: !!nextFlipY,
+            },
+          };
+        }
+
+        if (node.type === 'eventFilterNode') {
+          const nodeData = (node.data ?? {}) as EventFilterNodeData;
+          if (nodeData.upstreamNodeId === nodeId) {
+            return {
+              ...node,
+              data: {
+                ...nodeData,
+                upstreamNodeId: nextNodeId,
+              },
+            };
+          }
+        }
+
+        return node;
+      });
+
+      const nextEdges = currentEdges.map((edge) => {
+        const source = edge.source === nodeId ? nextNodeId : edge.source;
+        const target = edge.target === nodeId ? nextNodeId : edge.target;
+
+        if (source === edge.source && target === edge.target) {
+          return edge;
+        }
+
+        return {
+          ...edge,
+          id: createFlowEdgeId(source, target),
+          source,
+          target,
+        };
+      });
+
+      setFlowNodes(nextNodes);
+      setFlowEdges(nextEdges);
+      setTraceActiveNodeId((previous) => (previous === nodeId ? nextNodeId : previous));
+    },
+    [setFlowEdges, setFlowNodes],
+  );
+
+  const renderedNodes = useMemo(() => {
+    return nodes.map((node) => {
       const nodeData = (node.data ?? {}) as AnnotationNodeData;
       return {
         ...node,
-        connectable: false,
+        connectable: node.type === 'annotationNode' ? false : node.connectable,
         data: {
           ...nodeData,
-          onChange: handleAnnotationTextChange,
+          onChange: node.type === 'annotationNode' ? handleAnnotationTextChange : nodeData.onChange,
+          onDeleteNode: handleDeleteFlowNode,
+          onFlipHorizontal: (nodeId: string) => handleFlipFlowNode(nodeId, 'x'),
+          onFlipVertical: (nodeId: string) => handleFlipFlowNode(nodeId, 'y'),
         },
       };
     });
-  }, [nodes, handleAnnotationTextChange]);
+  }, [nodes, handleAnnotationTextChange, handleDeleteFlowNode, handleFlipFlowNode]);
 
   const onNodesChange = useCallback(
     (changes: NodeChange<Node>[]) => {
@@ -326,7 +422,7 @@ const FlowCanvas: React.FC = () => {
       }
 
       const nextEdge: Edge = {
-        id: `edge-${params.source}-${params.target}-${Date.now()}-${Math.round(Math.random() * 1000)}`,
+        id: createFlowEdgeId(params.source, params.target),
         source: params.source,
         target: params.target,
         sourceHandle: params.sourceHandle,
@@ -399,7 +495,7 @@ const FlowCanvas: React.FC = () => {
       });
 
       if (payload.kind === 'component-node') {
-        const nodeId = `component-node-${Date.now()}-${Math.round(Math.random() * 1000)}`;
+        const nodeId = createFlowNodeId('component-node');
         const nextNode: Node = {
           id: nodeId,
           type: 'componentNode',
@@ -417,7 +513,7 @@ const FlowCanvas: React.FC = () => {
       }
 
       if (payload.kind === 'builtin-node' && payload.nodeType === 'eventFilterNode') {
-        const nodeId = `event-filter-node-${Date.now()}-${Math.round(Math.random() * 1000)}`;
+        const nodeId = createFlowNodeId('event-filter-node');
         const nextNode: Node = {
           id: nodeId,
           type: 'eventFilterNode',
@@ -434,7 +530,7 @@ const FlowCanvas: React.FC = () => {
       }
 
       if (payload.kind === 'builtin-node' && payload.nodeType === 'codeNode') {
-        const nodeId = `code-node-${Date.now()}-${Math.round(Math.random() * 1000)}`;
+        const nodeId = createFlowNodeId('code-node');
         const nextNode: Node = {
           id: nodeId,
           type: 'codeNode',
@@ -442,7 +538,7 @@ const FlowCanvas: React.FC = () => {
           data: {
             label: payload.label || '代码节点',
             language: 'javascript',
-            code: '// 在这里编写代码',
+            note: '注释信息',
           },
         };
 

@@ -1,20 +1,28 @@
 import React from 'react';
 import { Handle, Position, type NodeProps } from '@xyflow/react';
+import NodeActionButtons from './NodeActionButtons';
 
 export interface CodeNodeData {
   label?: string;
   language?: string;
-  code?: string;
+  note?: string;
+  flipX?: boolean;
+  flipY?: boolean;
+  onDeleteNode?: (nodeId: string) => void;
+  onFlipHorizontal?: (nodeId: string) => void;
+  onFlipVertical?: (nodeId: string) => void;
 }
 
-const CodeNode: React.FC<NodeProps> = ({ data, selected }) => {
+const CodeNode: React.FC<NodeProps> = ({ id, data, selected }) => {
   const nodeData = (data ?? {}) as CodeNodeData;
   const language = nodeData.language || 'javascript';
-  const code = nodeData.code || '// 在这里编写代码';
+  const note = nodeData.note || '注释信息';
+  const targetPosition = nodeData.flipX ? Position.Right : Position.Left;
+  const sourcePosition = nodeData.flipX ? Position.Left : Position.Right;
 
   return (
     <div className={`flow-code-node${selected ? ' is-selected' : ''}`}>
-      <Handle type="target" position={Position.Left} isConnectable />
+      <Handle type="target" position={targetPosition} isConnectable />
 
       <div className="flow-code-node__top">
         <span className="flow-code-node__badge">代码节点</span>
@@ -22,9 +30,17 @@ const CodeNode: React.FC<NodeProps> = ({ data, selected }) => {
       </div>
 
       <div className="flow-code-node__title">{nodeData.label || '代码节点'}</div>
-      <pre className="flow-code-node__code">{code}</pre>
+      <div className="flow-code-node__note" title={note}>{note}</div>
 
-      <Handle type="source" position={Position.Right} isConnectable />
+      <div className="flow-node-actions-row flow-node-actions-row--end">
+        <NodeActionButtons
+          onDelete={() => nodeData.onDeleteNode?.(id)}
+          onFlipHorizontal={() => nodeData.onFlipHorizontal?.(id)}
+          onFlipVertical={() => nodeData.onFlipVertical?.(id)}
+        />
+      </div>
+
+      <Handle type="source" position={sourcePosition} isConnectable />
     </div>
   );
 };

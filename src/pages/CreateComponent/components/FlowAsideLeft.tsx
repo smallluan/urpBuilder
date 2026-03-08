@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef } from 'react';
 import { Input, Tree } from 'tdesign-react';
 import type { TreeInstanceFunctions } from 'tdesign-react';
-import { SearchIcon } from 'tdesign-icons-react';
+import { SearchIcon, ApiIcon, CodeIcon } from 'tdesign-icons-react';
 import DragableWrapper from '../../../components/DragableWrapper';
 import { useCreateComponentStore } from '../store';
 import type { UiTreeNode } from '../store/type';
@@ -45,7 +45,12 @@ const FlowAsideLeft: React.FC = () => {
         ...node,
         label: (
           <DragableWrapper data={node} onDragStart={handleDragStart}>
-            <div className="tree-node-label">{String(node.label ?? '节点')}</div>
+            <div className="tree-node-label">
+              <div className="tree-node-item">
+                <span className="tree-node-item__title">{String(node.label ?? '节点')}</span>
+                <span className="tree-node-item__meta">{String(node.type ?? 'Unknown')}</span>
+              </div>
+            </div>
           </DragableWrapper>
         ),
         children,
@@ -69,10 +74,29 @@ const FlowAsideLeft: React.FC = () => {
     return () => setTreeInstance(null);
   }, [setTreeInstance]);
 
+  const builtinNodes = [
+    {
+      nodeType: 'eventFilterNode',
+      label: '事件过滤节点',
+      theme: 'event',
+      icon: <ApiIcon />,
+    },
+    {
+      nodeType: 'codeNode',
+      label: '代码节点',
+      theme: 'code',
+      icon: <CodeIcon />,
+    },
+  ] as const;
+
   return (
     <aside className="aside-left">
       <div className="structure-top">
         <div className="structure-panel">
+          <div className="structure-title">
+            <div className="structure-title__main">结构节点</div>
+          </div>
+
           <div className="search-row">
             <Input placeholder="搜索流程节点（示例）" clearable suffix={<SearchIcon />} />
           </div>
@@ -95,26 +119,25 @@ const FlowAsideLeft: React.FC = () => {
       <div className="structure-bottom">
         <div className="right-panel-body">
           <div className="flow-builtins-panel">
-            <div className="flow-builtins-title">内置节点</div>
-            <DragableWrapper
-              data={{ kind: 'builtin-node', nodeType: 'eventFilterNode', label: '事件过滤节点' }}
-              onDragStart={handleBuiltinDragStart}
-            >
-              <div className="flow-builtins-item">
-                <span className="flow-builtins-item__name">事件过滤节点</span>
-                <span className="flow-builtins-item__type">builtin</span>
-              </div>
-            </DragableWrapper>
-
-            <DragableWrapper
-              data={{ kind: 'builtin-node', nodeType: 'codeNode', label: '代码节点' }}
-              onDragStart={handleBuiltinDragStart}
-            >
-              <div className="flow-builtins-item">
-                <span className="flow-builtins-item__name">代码节点</span>
-                <span className="flow-builtins-item__type">builtin</span>
-              </div>
-            </DragableWrapper>
+            <div className="flow-builtins-header">
+              <div className="flow-builtins-title">内置节点</div>
+            </div>
+            {builtinNodes.map((item) => (
+              <DragableWrapper
+                key={item.nodeType}
+                data={{ kind: 'builtin-node', nodeType: item.nodeType, label: item.label }}
+                onDragStart={handleBuiltinDragStart}
+              >
+                <div className={`flow-builtins-item flow-builtins-item--${item.theme}`}>
+                  <span className="flow-builtins-item__left">
+                    <span className={`flow-builtins-item__icon flow-builtins-item__icon--${item.theme}`}>
+                      {item.icon}
+                    </span>
+                    <span className="flow-builtins-item__name">{item.label}</span>
+                  </span>
+                </div>
+              </DragableWrapper>
+            ))}
           </div>
         </div>
       </div>

@@ -1,19 +1,27 @@
 import React from 'react';
 import { Handle, Position, type NodeProps } from '@xyflow/react';
+import NodeActionButtons from './NodeActionButtons';
 
 export interface ComponentFlowNodeData {
   label?: string;
   componentType?: string;
   sourceKey?: string;
+  flipX?: boolean;
+  flipY?: boolean;
+  onDeleteNode?: (nodeId: string) => void;
+  onFlipHorizontal?: (nodeId: string) => void;
+  onFlipVertical?: (nodeId: string) => void;
 }
 
-const ComponentFlowNode: React.FC<NodeProps> = ({ data, selected }) => {
+const ComponentFlowNode: React.FC<NodeProps> = ({ id, data, selected }) => {
   const nodeData = (data ?? {}) as ComponentFlowNodeData;
   const sourceText = nodeData.sourceKey ? String(nodeData.sourceKey).slice(0, 8) : '-';
+  const targetPosition = nodeData.flipX ? Position.Right : Position.Left;
+  const sourcePosition = nodeData.flipX ? Position.Left : Position.Right;
 
   return (
     <div className={`flow-component-node${selected ? ' is-selected' : ''}`}>
-      <Handle type="target" position={Position.Left} isConnectable />
+      <Handle type="target" position={targetPosition} isConnectable />
 
       <div className="flow-component-node__top">
         <span className="flow-component-node__badge">组件节点</span>
@@ -26,7 +34,15 @@ const ComponentFlowNode: React.FC<NodeProps> = ({ data, selected }) => {
         源节点：{sourceText}
       </div>
 
-      <Handle type="source" position={Position.Right} isConnectable />
+      <div className="flow-node-actions-row flow-node-actions-row--end">
+        <NodeActionButtons
+          onDelete={() => nodeData.onDeleteNode?.(id)}
+          onFlipHorizontal={() => nodeData.onFlipHorizontal?.(id)}
+          onFlipVertical={() => nodeData.onFlipVertical?.(id)}
+        />
+      </div>
+
+      <Handle type="source" position={sourcePosition} isConnectable />
     </div>
   );
 };
