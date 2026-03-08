@@ -1,4 +1,5 @@
 import React, { useCallback, useMemo, useState } from 'react';
+import { Alert } from 'tdesign-react';
 import {
   ReactFlow,
   ReactFlowProvider,
@@ -55,6 +56,7 @@ interface AnnotationNodeData {
 const DEFAULT_EDGE_COLOR = '#9aa5b5';
 const COMPONENT_TRACE_COLOR = '#0052d9';
 const EVENT_FILTER_TRACE_COLOR = '#2ba471';
+const CODE_TRACE_COLOR = '#6f5af0';
 
 const FlowCanvas: React.FC = () => {
   const nodes = useCreateComponentStore((state) => state.flowNodes);
@@ -62,6 +64,7 @@ const FlowCanvas: React.FC = () => {
   const setFlowNodes = useCreateComponentStore((state) => state.setFlowNodes);
   const setFlowEdges = useCreateComponentStore((state) => state.setFlowEdges);
   const [traceActiveNodeId, setTraceActiveNodeId] = useState<string | null>(null);
+  const [flowAlertMessage, setFlowAlertMessage] = useState<string | null>(null);
   const [annotationMenu, setAnnotationMenu] = useState<{
     visible: boolean;
     x: number;
@@ -107,6 +110,10 @@ const FlowCanvas: React.FC = () => {
 
     if (activeNode.type === 'eventFilterNode') {
       return EVENT_FILTER_TRACE_COLOR;
+    }
+
+    if (activeNode.type === 'codeNode') {
+      return CODE_TRACE_COLOR;
     }
 
     return COMPONENT_TRACE_COLOR;
@@ -269,11 +276,31 @@ const FlowCanvas: React.FC = () => {
       }
 
       const currentNodes = useCreateComponentStore.getState().flowNodes;
+      const currentEdges = useCreateComponentStore.getState().flowEdges;
       const sourceNode = currentNodes.find((item) => item.id === params.source);
       const targetNode = currentNodes.find((item) => item.id === params.target);
 
       if (sourceNode?.type === 'componentNode' && targetNode?.type === 'eventFilterNode') {
         const sourceData = (sourceNode.data ?? {}) as ComponentNodeData;
+        const sourceKey = sourceData.sourceKey ?? '';
+
+        const existingUpstreamSourceIds = currentEdges
+          .filter((edge) => edge.target === targetNode.id)
+          .map((edge) => edge.source);
+
+        const hasDifferentSourceKey = existingUpstreamSourceIds
+          .map((sourceId) => currentNodes.find((node) => node.id === sourceId))
+          .filter((node): node is Node => !!node && node.type === 'componentNode')
+          .some((node) => {
+            const upstreamData = (node.data ?? {}) as ComponentNodeData;
+            return (upstreamData.sourceKey ?? '') !== sourceKey;
+          });
+
+        if (hasDifferentSourceKey) {
+          setFlowAlertMessage('事件过滤节点仅支持连接同一树节点示例（sourceKey 相同）的组件。');
+          return;
+        }
+
         const lifetimes = Array.isArray(sourceData.lifetimes) ? sourceData.lifetimes : [];
         const selectedLifetimes = lifetimes.length === 1 ? [lifetimes[0]] : [];
 
@@ -406,6 +433,23 @@ const FlowCanvas: React.FC = () => {
         return;
       }
 
+      if (payload.kind === 'builtin-node' && payload.nodeType === 'codeNode') {
+        const nodeId = `code-node-${Date.now()}-${Math.round(Math.random() * 1000)}`;
+        const nextNode: Node = {
+          id: nodeId,
+          type: 'codeNode',
+          position,
+          data: {
+            label: payload.label || '代码节点',
+            language: 'javascript',
+            code: '// 在这里编写代码',
+          },
+        };
+
+        setFlowNodes((previous) => [...previous, nextNode]);
+        return;
+      }
+
     },
     [screenToFlowPosition, setFlowNodes],
   );
@@ -465,6 +509,7 @@ const FlowCanvas: React.FC = () => {
         zoomOnDoubleClick={false}
         onNodeClick={(_, node) => {
           closeAnnotationMenu();
+          setFlowAlertMessage(null);
           if (node.type === 'annotationNode') {
             setTraceActiveNodeId(null);
             return;
@@ -475,6 +520,7 @@ const FlowCanvas: React.FC = () => {
         onPaneClick={() => {
           setTraceActiveNodeId(null);
           closeAnnotationMenu();
+          setFlowAlertMessage(null);
         }}
         onPaneContextMenu={handlePaneContextMenu}
         defaultEdgeOptions={{
@@ -507,6 +553,17 @@ const FlowCanvas: React.FC = () => {
           </button>
         </div>
       ) : null}
+
+      {flowAlertMessage ? (
+        <div className="flow-alert">
+          <Alert
+            theme="error"
+            close
+            message={flowAlertMessage}
+            onClose={() => setFlowAlertMessage(null)}
+          />
+        </div>
+      ) : null}
     </div>
   );
 };
@@ -514,9 +571,12 @@ const FlowCanvas: React.FC = () => {
 const FlowBody: React.FC = () => {
   return (
     <div className="flow-body">
-      <ReactFlowProvider>
-        <FlowCanvas />
-      </ReactFlowProvider>
+      <div className="flow-body-topbar" />
+      <div className="flow-body-content">
+        <ReactFlowProvider>
+          <FlowCanvas />
+        </ReactFlowProvider>
+      </div>
     </div>
   );
 };

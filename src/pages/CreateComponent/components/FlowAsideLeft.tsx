@@ -105,6 +105,16 @@ const FlowAsideLeft: React.FC = () => {
                 <span className="flow-builtins-item__type">builtin</span>
               </div>
             </DragableWrapper>
+
+            <DragableWrapper
+              data={{ kind: 'builtin-node', nodeType: 'codeNode', label: '代码节点' }}
+              onDragStart={handleBuiltinDragStart}
+            >
+              <div className="flow-builtins-item">
+                <span className="flow-builtins-item__name">代码节点</span>
+                <span className="flow-builtins-item__type">builtin</span>
+              </div>
+            </DragableWrapper>
           </div>
         </div>
       </div>
