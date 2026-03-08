@@ -160,13 +160,10 @@ const componentCatalog = [
         value: '',
         editType: 'input'
       },
-      theme: {
-        name: '风格',
-        value: 'normal',
-        editType: 'select',
-        payload: {
-          options: ['normal', 'poster1', 'poster2']
-        }
+      content: {
+        name: '默认内容',
+        value: '卡片内容',
+        editType: 'input'
       },
       size: {
         name: '尺寸',
@@ -193,6 +190,77 @@ const componentCatalog = [
       },
       hoverShadow: {
         name: '悬浮阴影',
+        value: false,
+        editType: 'switch'
+      }
+    }
+  },
+  {
+    type: 'Image',
+    name: '图片',
+    props: {
+      src: {
+        name: '图片地址',
+        value: 'https://tdesign.gtimg.com/demo/demo-image-1.png',
+        editType: 'input'
+      },
+      alt: {
+        name: '描述文本',
+        value: '图片',
+        editType: 'input'
+      },
+      fit: {
+        name: '填充模式',
+        value: 'cover',
+        editType: 'select',
+        payload: {
+          options: ['contain', 'cover', 'fill', 'none', 'scale-down']
+        }
+      },
+      shape: {
+        name: '圆角类型',
+        value: 'square',
+        editType: 'select',
+        payload: {
+          options: ['square', 'round', 'circle']
+        }
+      }
+    }
+  },
+  {
+    type: 'Avatar',
+    name: '头像',
+    props: {
+      image: {
+        name: '头像地址',
+        value: 'https://tdesign.gtimg.com/site/avatar.jpg',
+        editType: 'input'
+      },
+      alt: {
+        name: '替代文本',
+        value: '用户',
+        editType: 'input'
+      },
+      content: {
+        name: '默认文本',
+        value: 'U',
+        editType: 'input'
+      },
+      shape: {
+        name: '形状',
+        value: 'circle',
+        editType: 'select',
+        payload: {
+          options: ['circle', 'round', 'square']
+        }
+      },
+      size: {
+        name: '尺寸',
+        value: '40px',
+        editType: 'input'
+      },
+      hideOnLoadFailed: {
+        name: '失败隐藏图片',
         value: false,
         editType: 'switch'
       }

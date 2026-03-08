@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Empty, Input, InputNumber, Select, Switch, Typography } from 'tdesign-react';
 import { useCreateComponentStore } from '../store';
+import NodeStyleDrawer from './NodeStyleDrawer';
 
 type EditType = 'switch' | 'input' | 'inputNumber' | 'select';
 
@@ -32,6 +33,8 @@ const ComponentConfigPanel: React.FC = () => {
   const [numberDrafts, setNumberDrafts] = useState<Record<string, number | undefined>>({});
 
   const propsMap = (activeNode?.props ?? {}) as Record<string, ComponentPropSchema>;
+  const styleValue = (propsMap.__style?.value ?? {}) as Record<string, unknown>;
+  const editableProps = Object.entries(propsMap).filter(([propKey]) => propKey !== '__style');
 
   useEffect(() => {
     if (!activeNode) {
@@ -46,7 +49,7 @@ const ComponentConfigPanel: React.FC = () => {
     const nextInputDrafts: Record<string, string> = {};
     const nextNumberDrafts: Record<string, number | undefined> = {};
 
-    Object.entries(propsMap).forEach(([propKey, schema]) => {
+    editableProps.forEach(([propKey, schema]) => {
       const editType = resolveEditType(schema);
       if (editType === 'input') {
         nextInputDrafts[propKey] = typeof schema.value === 'string' ? schema.value : String(schema.value ?? '');
@@ -155,7 +158,17 @@ const ComponentConfigPanel: React.FC = () => {
           <Input className="config-editor" value={activeNode.key} disabled />
         </div>
 
-        {Object.entries(propsMap).map(([propKey, schema]) => (
+        <div className="config-row">
+          <span className="config-label">通用样式</span>
+          <div className="config-editor">
+            <NodeStyleDrawer
+              value={styleValue}
+              onChange={(nextStyle) => updateActiveNodeProp('__style', nextStyle)}
+            />
+          </div>
+        </div>
+
+        {editableProps.map(([propKey, schema]) => (
           <div key={propKey} className="config-row">
             <span className="config-label">{schema.name ?? propKey}</span>
             <div className="config-editor">{renderEditor(propKey, schema)}</div>
