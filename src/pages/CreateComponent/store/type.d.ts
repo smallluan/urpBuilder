@@ -105,6 +105,7 @@ export interface CreateComponentStore {
   autoWidth: number;
   flowNodes: Node[];
   flowEdges: Edge[];
+  flowActiveNodeId: string | null;
   uiPageData: UiTreeNode;
   activeNodeKey: string | null;
   activeNode: UiTreeNode | null;
@@ -114,6 +115,7 @@ export interface CreateComponentStore {
   setAutoWidth: (width: number) => void;
   setFlowNodes: (nodes: StateAction<Node[]>) => void;
   setFlowEdges: (edges: StateAction<Edge[]>) => void;
+  setFlowActiveNodeId: (nodeId: string | null) => void;
   setActiveNode: (nodeKey?: string) => void;
   toggleActiveNode: (nodeKey?: string) => void;
   updateActiveNodeLabel: (label: string) => void;
@@ -127,6 +129,11 @@ export interface CreateComponentStore {
     prevFlowEdges: Edge[],
     nextFlowNodes: Node[],
     nextFlowEdges: Edge[],
+  ) => void;
+  updateFlowNodeData: (
+    nodeId: string,
+    updater: (data: Record<string, unknown>) => Record<string, unknown>,
+    actionLabel?: string,
   ) => void;
   undo: () => void;
   redo: () => void;

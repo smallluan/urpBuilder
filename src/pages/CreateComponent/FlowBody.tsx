@@ -64,6 +64,7 @@ const DEFAULT_EDGE_COLOR = '#9aa5b5';
 const COMPONENT_TRACE_COLOR = '#0052d9';
 const EVENT_FILTER_TRACE_COLOR = '#2ba471';
 const CODE_TRACE_COLOR = '#6f5af0';
+const NETWORK_REQUEST_TRACE_COLOR = '#eb6f0a';
 
 const createFlowNodeId = (prefix: string) =>
   `${prefix}-${Date.now()}-${Math.round(Math.random() * 1000)}`;
@@ -80,6 +81,7 @@ const FlowCanvas: React.FC = () => {
   const edges = useCreateComponentStore((state) => state.flowEdges);
   const setFlowNodes = useCreateComponentStore((state) => state.setFlowNodes);
   const setFlowEdges = useCreateComponentStore((state) => state.setFlowEdges);
+  const setFlowActiveNodeId = useCreateComponentStore((state) => state.setFlowActiveNodeId);
   const recordFlowEditHistory = useCreateComponentStore((state) => state.recordFlowEditHistory);
   const [traceActiveNodeId, setTraceActiveNodeId] = useState<string | null>(null);
   const [flowAlertMessage, setFlowAlertMessage] = useState<string | null>(null);
@@ -161,6 +163,10 @@ const FlowCanvas: React.FC = () => {
 
     if (activeNode.type === 'codeNode') {
       return CODE_TRACE_COLOR;
+    }
+
+    if (activeNode.type === 'networkRequestNode') {
+      return NETWORK_REQUEST_TRACE_COLOR;
     }
 
     return COMPONENT_TRACE_COLOR;
@@ -405,8 +411,12 @@ const FlowCanvas: React.FC = () => {
       }));
 
       setTraceActiveNodeId((previous) => (previous === nodeId ? null : previous));
+      const currentActiveNodeId = useCreateComponentStore.getState().flowActiveNodeId;
+      if (currentActiveNodeId === nodeId) {
+        setFlowActiveNodeId(null);
+      }
     },
-    [applyFlowEdit],
+    [applyFlowEdit, setFlowActiveNodeId],
   );
 
   const handleFlipFlowNode = useCallback(
@@ -421,7 +431,8 @@ const FlowCanvas: React.FC = () => {
         axis === 'y' &&
         (targetNode.type === 'componentNode' ||
           targetNode.type === 'codeNode' ||
-          targetNode.type === 'eventFilterNode')
+          targetNode.type === 'eventFilterNode' ||
+          targetNode.type === 'networkRequestNode')
       ) {
         return;
       }
@@ -481,8 +492,10 @@ const FlowCanvas: React.FC = () => {
         edges: nextEdges,
       }));
       setTraceActiveNodeId((previous) => (previous === nodeId ? nextNodeId : previous));
+      const currentActiveNodeId = useCreateComponentStore.getState().flowActiveNodeId;
+      setFlowActiveNodeId(currentActiveNodeId === nodeId ? nextNodeId : currentActiveNodeId);
     },
-    [applyFlowEdit],
+    [applyFlowEdit, setFlowActiveNodeId],
   );
 
   const renderedNodes = useMemo(() => {
@@ -710,6 +723,26 @@ const FlowCanvas: React.FC = () => {
         return;
       }
 
+      if (payload.kind === 'builtin-node' && payload.nodeType === 'networkRequestNode') {
+        const nodeId = createFlowNodeId('network-request-node');
+        const nextNode: Node = {
+          id: nodeId,
+          type: 'networkRequestNode',
+          position,
+          data: {
+            label: payload.label || '网络请求节点',
+            method: 'GET',
+            endpoint: '/api/example',
+          },
+        };
+
+        applyFlowEdit('新增网络请求节点', ({ nodes: previousNodes, edges: previousEdges }) => ({
+          nodes: [...previousNodes, nextNode],
+          edges: previousEdges,
+        }));
+        return;
+      }
+
     },
     [applyFlowEdit, screenToFlowPosition],
   );
@@ -811,6 +844,7 @@ const FlowCanvas: React.FC = () => {
           closeEdgeMenu();
           closeAnnotationMenu();
           setFlowAlertMessage(null);
+          setFlowActiveNodeId(node.id);
           if (node.type === 'annotationNode') {
             setTraceActiveNodeId(null);
             return;
@@ -820,6 +854,7 @@ const FlowCanvas: React.FC = () => {
         }}
         onPaneClick={() => {
           setTraceActiveNodeId(null);
+          setFlowActiveNodeId(null);
           handleCommitEdgeAnnotation();
           closeEdgeMenu();
           closeAnnotationMenu();
@@ -829,6 +864,7 @@ const FlowCanvas: React.FC = () => {
           closeEdgeMenu();
           closeAnnotationMenu();
           setFlowAlertMessage(null);
+          setFlowActiveNodeId(null);
           handleStartEditEdge(edge.id);
         }}
         onEdgeContextMenu={handleEdgeContextMenu}

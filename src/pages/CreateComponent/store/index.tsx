@@ -276,6 +276,7 @@ export const useCreateComponentStore = create<CreateComponentStore>((set) => ({
   autoWidth: 1800,
   flowNodes: [],
   flowEdges: [],
+  flowActiveNodeId: null,
   // 不同于之前的实现，这里 ui 和流程共享一个树
   // 可以避免涉及到添加/回滚等操作时，要同时维护两个树
   // label 部分两个组件内部自己维护
@@ -298,12 +299,21 @@ export const useCreateComponentStore = create<CreateComponentStore>((set) => ({
   // 更新自适应模式下的自定义宽度
   setAutoWidth: (width) => set({ autoWidth: width }),
   setFlowNodes: (flowNodes) =>
-    set((state) => ({
-      flowNodes:
+    set((state) => {
+      const nextFlowNodes =
         typeof flowNodes === 'function'
           ? (flowNodes as (previous: Node[]) => Node[])(state.flowNodes)
-          : flowNodes,
-    })),
+          : flowNodes;
+
+      return {
+        flowNodes: nextFlowNodes,
+        flowActiveNodeId: state.flowActiveNodeId
+          ? (nextFlowNodes.some((item) => item.id === state.flowActiveNodeId)
+              ? state.flowActiveNodeId
+              : null)
+          : null,
+      };
+    }),
   setFlowEdges: (flowEdges) =>
     set((state) => ({
       flowEdges:
@@ -311,6 +321,7 @@ export const useCreateComponentStore = create<CreateComponentStore>((set) => ({
           ? (flowEdges as (previous: Edge[]) => Edge[])(state.flowEdges)
           : flowEdges,
     })),
+  setFlowActiveNodeId: (flowActiveNodeId) => set({ flowActiveNodeId }),
   // 设置当前激活节点：重复点击同一节点不会取消激活
   setActiveNode: (nodeKey) =>
     set((state) => {
@@ -575,6 +586,45 @@ export const useCreateComponentStore = create<CreateComponentStore>((set) => ({
       return {
         flowNodes: nextFlowNodes,
         flowEdges: nextFlowEdges,
+        history: nextHistory,
+      };
+    }),
+  updateFlowNodeData: (nodeId, updater, actionLabel = '更新流程节点配置') =>
+    set((state) => {
+      const targetNode = state.flowNodes.find((item) => item.id === nodeId);
+      if (!targetNode) {
+        return state;
+      }
+
+      const currentData = (targetNode.data ?? {}) as Record<string, unknown>;
+      const nextData = updater(currentData);
+
+      if (isEqual(currentData, nextData)) {
+        return state;
+      }
+
+      const nextFlowNodes = state.flowNodes.map((node) =>
+        node.id === nodeId
+          ? {
+              ...node,
+              data: nextData,
+            }
+          : node,
+      );
+
+      const nodePatch = buildEntityPatch(state.flowNodes, nextFlowNodes);
+      const edgePatch = buildEntityPatch(state.flowEdges, state.flowEdges);
+      const action: UiHistoryAction = {
+        type: 'flow-edit',
+        actionLabel,
+        nodePatch,
+        edgePatch,
+        timestamp: Date.now(),
+      };
+      const nextHistory = pushHistoryAction(state.history.actions, state.history.pointer, action);
+
+      return {
+        flowNodes: nextFlowNodes,
         history: nextHistory,
       };
     }),

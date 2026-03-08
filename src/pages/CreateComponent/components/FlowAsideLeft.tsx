@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef } from 'react';
 import { Input, Tree } from 'tdesign-react';
 import type { TreeInstanceFunctions } from 'tdesign-react';
-import { SearchIcon, ApiIcon, CodeIcon } from 'tdesign-icons-react';
+import { SearchIcon, ApiIcon, CodeIcon, UploadIcon } from 'tdesign-icons-react';
 import DragableWrapper from '../../../components/DragableWrapper';
 import { useCreateComponentStore } from '../store';
 import type { UiTreeNode } from '../store/type';
@@ -86,6 +86,12 @@ const FlowAsideLeft: React.FC = () => {
       label: '代码节点',
       theme: 'code',
       icon: <CodeIcon />,
+    },
+    {
+      nodeType: 'networkRequestNode',
+      label: '网络请求节点',
+      theme: 'request',
+      icon: <UploadIcon />,
     },
   ] as const;
 
