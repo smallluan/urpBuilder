@@ -754,6 +754,81 @@
   color: #8b92a1;
 }
 
+.flow-annotation-node {
+  width: 240px;
+  min-height: 120px;
+  border: 1px solid #f0d98a;
+  border-radius: 8px;
+  background: #fff8dc;
+  box-shadow: 0 2px 6px rgba(31, 35, 41, 0.08);
+  padding: 8px;
+}
+
+.flow-annotation-node.is-collapsed {
+  min-height: 0;
+}
+
+.flow-annotation-node.is-selected {
+  border-color: #d5b24d;
+  box-shadow: 0 0 0 2px rgba(213, 178, 77, 0.2);
+}
+
+.flow-annotation-node__textarea {
+  width: 100%;
+  min-height: 100px;
+  border: none;
+  outline: none;
+  resize: none;
+  background: transparent;
+  color: #5b4a1f;
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.flow-annotation-node__textarea::placeholder {
+  color: #9f8b5a;
+}
+
+.flow-annotation-node__collapsed {
+  width: 100%;
+  line-height: 22px;
+  min-height: 22px;
+  color: #5b4a1f;
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: text;
+}
+
+.flow-context-menu {
+  position: fixed;
+  z-index: 30;
+  min-width: 120px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.15);
+  padding: 6px;
+}
+
+.flow-context-menu__item {
+  width: 100%;
+  border: none;
+  background: transparent;
+  text-align: left;
+  font-size: 13px;
+  color: #1f2329;
+  padding: 8px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.flow-context-menu__item:hover {
+  background: #f2f3ff;
+  color: #0052d9;
+}
+
 .flow-canvas .react-flow svg {
   max-width: none;
 }

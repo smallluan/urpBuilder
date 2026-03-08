@@ -6,11 +6,12 @@ export interface EventFilterNodeData {
   upstreamNodeId?: string;
   upstreamLabel?: string;
   availableLifetimes?: string[];
+  selectedLifetimes?: string[];
 }
 
 const EventFilterNode: React.FC<NodeProps> = ({ data, selected }) => {
   const nodeData = (data ?? {}) as EventFilterNodeData;
-  const lifetimes = Array.isArray(nodeData.availableLifetimes) ? nodeData.availableLifetimes : [];
+  const selectedLifetimes = Array.isArray(nodeData.selectedLifetimes) ? nodeData.selectedLifetimes : [];
 
   return (
     <div className={`flow-event-filter-node${selected ? ' is-selected' : ''}`}>
@@ -22,17 +23,13 @@ const EventFilterNode: React.FC<NodeProps> = ({ data, selected }) => {
 
       <div className="flow-event-filter-node__title">{nodeData.label || '事件过滤节点'}</div>
 
-      <div className="flow-event-filter-node__meta">
-        上游：{nodeData.upstreamLabel || '未连接组件节点'}
-      </div>
-
       <div className="flow-event-filter-node__lifetimes">
-        {lifetimes.length > 0 ? (
-          lifetimes.map((item) => (
+        {selectedLifetimes.length > 0 ? (
+          selectedLifetimes.map((item) => (
             <span className="flow-event-filter-node__tag" key={item}>{item}</span>
           ))
         ) : (
-          <span className="flow-event-filter-node__empty">连接组件后自动读取 lifetimes</span>
+          <span className="flow-event-filter-node__empty">未选择生命周期事件</span>
         )}
       </div>
 

@@ -44,6 +44,12 @@ interface EventFilterNodeData {
   upstreamNodeId?: string;
   upstreamLabel?: string;
   availableLifetimes?: string[];
+  selectedLifetimes?: string[];
+}
+
+interface AnnotationNodeData {
+  text?: string;
+  onChange?: (nodeId: string, text: string) => void;
 }
 
 const DEFAULT_EDGE_COLOR = '#9aa5b5';
@@ -56,7 +62,38 @@ const FlowCanvas: React.FC = () => {
   const setFlowNodes = useCreateComponentStore((state) => state.setFlowNodes);
   const setFlowEdges = useCreateComponentStore((state) => state.setFlowEdges);
   const [traceActiveNodeId, setTraceActiveNodeId] = useState<string | null>(null);
+  const [annotationMenu, setAnnotationMenu] = useState<{
+    visible: boolean;
+    x: number;
+    y: number;
+    flowX: number;
+    flowY: number;
+  }>({
+    visible: false,
+    x: 0,
+    y: 0,
+    flowX: 0,
+    flowY: 0,
+  });
   const { screenToFlowPosition } = useReactFlow();
+
+  const createAnnotationNode = useCallback(
+    (x: number, y: number, text = '') => {
+      const nodeId = `annotation-node-${Date.now()}-${Math.round(Math.random() * 1000)}`;
+      const nextNode: Node = {
+        id: nodeId,
+        type: 'annotationNode',
+        position: { x, y },
+        connectable: false,
+        data: {
+          text,
+        },
+      };
+
+      setFlowNodes((previous) => [...previous, nextNode]);
+    },
+    [setFlowNodes],
+  );
 
   const traceColor = useMemo(() => {
     if (!traceActiveNodeId) {
@@ -82,6 +119,10 @@ const FlowCanvas: React.FC = () => {
 
     const activeNode = nodes.find((item) => item.id === traceActiveNodeId);
     if (!activeNode) {
+      return new Set<string>();
+    }
+
+    if (activeNode.type === 'annotationNode') {
       return new Set<string>();
     }
 
@@ -167,6 +208,46 @@ const FlowCanvas: React.FC = () => {
     });
   }, [edges, traceColor, traceNodeIds]);
 
+  const handleAnnotationTextChange = useCallback(
+    (nodeId: string, text: string) => {
+      setFlowNodes((previous) =>
+        previous.map((node) => {
+          if (node.id !== nodeId || node.type !== 'annotationNode') {
+            return node;
+          }
+
+          const nodeData = (node.data ?? {}) as AnnotationNodeData;
+          return {
+            ...node,
+            data: {
+              ...nodeData,
+              text,
+            },
+          };
+        }),
+      );
+    },
+    [setFlowNodes],
+  );
+
+  const renderedNodes = useMemo(() => {
+    return nodes.map((node) => {
+      if (node.type !== 'annotationNode') {
+        return node;
+      }
+
+      const nodeData = (node.data ?? {}) as AnnotationNodeData;
+      return {
+        ...node,
+        connectable: false,
+        data: {
+          ...nodeData,
+          onChange: handleAnnotationTextChange,
+        },
+      };
+    });
+  }, [nodes, handleAnnotationTextChange]);
+
   const onNodesChange = useCallback(
     (changes: NodeChange<Node>[]) => {
       setFlowNodes((previous) => applyNodeChanges(changes, previous));
@@ -194,6 +275,7 @@ const FlowCanvas: React.FC = () => {
       if (sourceNode?.type === 'componentNode' && targetNode?.type === 'eventFilterNode') {
         const sourceData = (sourceNode.data ?? {}) as ComponentNodeData;
         const lifetimes = Array.isArray(sourceData.lifetimes) ? sourceData.lifetimes : [];
+        const selectedLifetimes = lifetimes.length === 1 ? [lifetimes[0]] : [];
 
         const nextNodes = currentNodes.map((item) => {
           if (item.id !== targetNode.id) {
@@ -208,6 +290,7 @@ const FlowCanvas: React.FC = () => {
               upstreamNodeId: sourceNode.id,
               upstreamLabel: sourceData.label || sourceData.componentType || '组件节点',
               availableLifetimes: lifetimes,
+              selectedLifetimes,
             },
           };
         });
@@ -246,6 +329,10 @@ const FlowCanvas: React.FC = () => {
     const currentNodes = useCreateComponentStore.getState().flowNodes;
     const sourceNode = currentNodes.find((item) => item.id === params.source);
     const targetNode = currentNodes.find((item) => item.id === params.target);
+
+    if (sourceNode?.type === 'annotationNode' || targetNode?.type === 'annotationNode') {
+      return false;
+    }
 
     if (targetNode?.type === 'eventFilterNode') {
       return sourceNode?.type === 'componentNode';
@@ -311,27 +398,85 @@ const FlowCanvas: React.FC = () => {
           data: {
             label: payload.label || '事件过滤节点',
             availableLifetimes: [],
+            selectedLifetimes: [],
           },
         };
 
         setFlowNodes((previous) => [...previous, nextNode]);
+        return;
       }
+
     },
     [screenToFlowPosition, setFlowNodes],
   );
 
+  const handlePaneContextMenu = useCallback(
+    (event: React.MouseEvent<Element, MouseEvent> | MouseEvent) => {
+      event.preventDefault();
+
+      const target = event.target as HTMLElement | null;
+      if (!target) {
+        return;
+      }
+
+      if (!target.closest('.react-flow__pane')) {
+        return;
+      }
+
+      const position = screenToFlowPosition({
+        x: event.clientX,
+        y: event.clientY,
+      });
+
+      setAnnotationMenu({
+        visible: true,
+        x: event.clientX,
+        y: event.clientY,
+        flowX: position.x,
+        flowY: position.y,
+      });
+    },
+    [screenToFlowPosition],
+  );
+
+  const closeAnnotationMenu = useCallback(() => {
+    setAnnotationMenu((previous) => ({ ...previous, visible: false }));
+  }, []);
+
+  const handleCreateAnnotationFromMenu = useCallback(() => {
+    createAnnotationNode(annotationMenu.flowX, annotationMenu.flowY, '');
+    closeAnnotationMenu();
+  }, [annotationMenu.flowX, annotationMenu.flowY, closeAnnotationMenu, createAnnotationNode]);
+
   return (
-    <div className="flow-canvas" onDragOver={handleDragOver} onDrop={handleDrop}>
+    <div
+      className="flow-canvas"
+      onDragOver={handleDragOver}
+      onDrop={handleDrop}
+    >
       <ReactFlow
-        nodes={nodes}
+        nodes={renderedNodes}
         edges={renderedEdges}
         nodeTypes={flowNodeTypes}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
         isValidConnection={isValidConnection}
-        onNodeClick={(_, node) => setTraceActiveNodeId(node.id)}
-        onPaneClick={() => setTraceActiveNodeId(null)}
+        zoomOnDoubleClick={false}
+        onNodeClick={(_, node) => {
+          closeAnnotationMenu();
+          if (node.type === 'annotationNode') {
+            setTraceActiveNodeId(null);
+            return;
+          }
+
+          setTraceActiveNodeId(node.id);
+        }}
+        onPaneClick={() => {
+          setTraceActiveNodeId(null);
+          closeAnnotationMenu();
+        }}
+        onPaneContextMenu={handlePaneContextMenu}
         defaultEdgeOptions={{
           type: 'smoothstep',
           animated: false,
@@ -350,6 +495,18 @@ const FlowCanvas: React.FC = () => {
         <Controls />
         <Background gap={16} size={1} />
       </ReactFlow>
+
+      {annotationMenu.visible ? (
+        <div className="flow-context-menu" style={{ left: annotationMenu.x, top: annotationMenu.y }}>
+          <button
+            className="flow-context-menu__item"
+            type="button"
+            onClick={handleCreateAnnotationFromMenu}
+          >
+            新建注释
+          </button>
+        </div>
+      ) : null}
     </div>
   );
 };
