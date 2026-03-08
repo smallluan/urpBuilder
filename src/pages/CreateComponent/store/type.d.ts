@@ -31,7 +31,28 @@ export interface RemoveHistoryAction {
   timestamp: number;
 }
 
-export type UiHistoryAction = AddHistoryAction | RemoveHistoryAction;
+export interface UpdateLabelHistoryAction {
+  type: 'update-label';
+  nodeKey: string;
+  prevLabel: string;
+  nextLabel: string;
+  timestamp: number;
+}
+
+export interface UpdatePropHistoryAction {
+  type: 'update-prop';
+  nodeKey: string;
+  propKey: string;
+  prevValue: unknown;
+  nextValue: unknown;
+  timestamp: number;
+}
+
+export type UiHistoryAction =
+  | AddHistoryAction
+  | RemoveHistoryAction
+  | UpdateLabelHistoryAction
+  | UpdatePropHistoryAction;
 
 export interface UiHistoryState {
   pointer: number;
@@ -56,4 +77,5 @@ export interface CreateComponentStore {
   removeFromUiPageData: (nodeKey: string) => void;
   undo: () => void;
   redo: () => void;
+  jumpToHistory: (pointer: number) => void;
 }

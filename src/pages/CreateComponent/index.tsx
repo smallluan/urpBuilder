@@ -11,6 +11,7 @@ const CreateComponent: React.FC = () => {
   const history = useCreateComponentStore((state) => state.history);
   const undo = useCreateComponentStore((state) => state.undo);
   const redo = useCreateComponentStore((state) => state.redo);
+  const jumpToHistory = useCreateComponentStore((state) => state.jumpToHistory);
 
   const canUndo = history.pointer >= 0;
   const canRedo = history.pointer < history.actions.length - 1;
@@ -23,8 +24,11 @@ const CreateComponent: React.FC = () => {
           onChange={setMode}
           onUndo={undo}
           onRedo={redo}
+          onJumpToHistory={jumpToHistory}
           canUndo={canUndo}
           canRedo={canRedo}
+          historyPointer={history.pointer}
+          historyActions={history.actions}
         />
       </header>
 

@@ -71,7 +71,7 @@ const componentCatalog = [
       size: {
         name: '间距大小',
         value: 8,
-        editInput: 'inputNumber'
+        editType: 'inputNumber'
       },
       breakLine: {
         name: '自动换行',
@@ -89,13 +89,13 @@ const componentCatalog = [
         value: 'top',
         editType: 'select',
         payload: {
-          options: ['top', 'middle', 'bottom', 'stretc  h', 'baseline']
+          options: ['top', 'middle', 'bottom', 'stretch', 'baseline']
         }
       },
       gutter: {
         name: '栅格间隔',
         value: 0,
-        editType: '',
+        editType: 'inputNumber',
       }
     }
   },
@@ -106,7 +106,7 @@ const componentCatalog = [
       span: {
         name: '占栅格数',
         value: 4,
-        editType: '',
+        editType: 'inputNumber',
       }
     }
   }

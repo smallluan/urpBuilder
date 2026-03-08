@@ -35,6 +35,47 @@ const resolveActiveNode = (uiPageData: UiTreeNode, activeNodeKey: string | null)
   return findNodeByKey(uiPageData, activeNodeKey);
 };
 
+const applyHistoryAction = (
+  tree: UiTreeNode,
+  action: UiHistoryAction,
+  direction: 'undo' | 'redo',
+): UiTreeNode => {
+  if (action.type === 'add') {
+    return direction === 'undo'
+      ? removeNodeByKey(tree, action.node.key).tree
+      : insertNodeAtParentIndex(tree, action.parentKey, action.index, action.node);
+  }
+
+  if (action.type === 'remove') {
+    return direction === 'undo'
+      ? insertNodeAtParentIndex(tree, action.parentKey, action.index, action.node)
+      : removeNodeByKey(tree, action.node.key).tree;
+  }
+
+  if (action.type === 'update-label') {
+    return updateNodeByKey(tree, action.nodeKey, (target) => ({
+      ...target,
+      label: direction === 'undo' ? action.prevLabel : action.nextLabel,
+    }));
+  }
+
+  return updateNodeByKey(tree, action.nodeKey, (target) => {
+    const currentProps = (target.props ?? {}) as Record<string, unknown>;
+    const currentProp = (currentProps[action.propKey] ?? {}) as Record<string, unknown>;
+
+    return {
+      ...target,
+      props: {
+        ...currentProps,
+        [action.propKey]: {
+          ...currentProp,
+          value: direction === 'undo' ? action.prevValue : action.nextValue,
+        },
+      },
+    };
+  });
+};
+
 export const useCreateComponentStore = create<CreateComponentStore>((set) => ({
   screenSize: 'auto',
   autoWidth: 1800,
@@ -74,19 +115,49 @@ export const useCreateComponentStore = create<CreateComponentStore>((set) => ({
         return state;
       }
 
+      const currentNode = resolveActiveNode(state.uiPageData, state.activeNodeKey);
+      if (!currentNode || currentNode.label === label) {
+        return state;
+      }
+
       const nextTree = updateNodeByKey(state.uiPageData, state.activeNodeKey, (target) => ({
         ...target,
         label,
       }));
 
+      const action: UiHistoryAction = {
+        type: 'update-label',
+        nodeKey: state.activeNodeKey,
+        prevLabel: currentNode.label,
+        nextLabel: label,
+        timestamp: Date.now(),
+      };
+      const nextActions = pushHistoryAction(state.history.actions, state.history.pointer, action);
+
       return {
         uiPageData: nextTree,
         activeNode: resolveActiveNode(nextTree, state.activeNodeKey),
+        history: {
+          pointer: nextActions.length - 1,
+          actions: nextActions,
+        },
       };
     }),
   updateActiveNodeProp: (propKey, value) =>
     set((state) => {
       if (!state.activeNodeKey) {
+        return state;
+      }
+
+      const currentNode = resolveActiveNode(state.uiPageData, state.activeNodeKey);
+      if (!currentNode) {
+        return state;
+      }
+
+      const currentProps = (currentNode.props ?? {}) as Record<string, unknown>;
+      const currentProp = (currentProps[propKey] ?? {}) as Record<string, unknown>;
+      const prevValue = currentProp.value;
+      if (Object.is(prevValue, value)) {
         return state;
       }
 
@@ -106,9 +177,23 @@ export const useCreateComponentStore = create<CreateComponentStore>((set) => ({
         };
       });
 
+      const action: UiHistoryAction = {
+        type: 'update-prop',
+        nodeKey: state.activeNodeKey,
+        propKey,
+        prevValue,
+        nextValue: value,
+        timestamp: Date.now(),
+      };
+      const nextActions = pushHistoryAction(state.history.actions, state.history.pointer, action);
+
       return {
         uiPageData: nextTree,
         activeNode: resolveActiveNode(nextTree, state.activeNodeKey),
+        history: {
+          pointer: nextActions.length - 1,
+          actions: nextActions,
+        },
       };
     }),
   // 挂载/卸载左侧树组件实例
@@ -187,13 +272,7 @@ export const useCreateComponentStore = create<CreateComponentStore>((set) => ({
       }
 
       const action = actions[pointer];
-      let nextTree = state.uiPageData;
-
-      if (action.type === 'add') {
-        nextTree = removeNodeByKey(nextTree, action.node.key).tree;
-      } else if (action.type === 'remove') {
-        nextTree = insertNodeAtParentIndex(nextTree, action.parentKey, action.index, action.node);
-      }
+      const nextTree = applyHistoryAction(state.uiPageData, action, 'undo');
 
       const activeNode = resolveActiveNode(nextTree, state.activeNodeKey);
 
@@ -216,13 +295,7 @@ export const useCreateComponentStore = create<CreateComponentStore>((set) => ({
       }
 
       const action = actions[nextPointer];
-      let nextTree = state.uiPageData;
-
-      if (action.type === 'add') {
-        nextTree = insertNodeAtParentIndex(nextTree, action.parentKey, action.index, action.node);
-      } else if (action.type === 'remove') {
-        nextTree = removeNodeByKey(nextTree, action.node.key).tree;
-      }
+      const nextTree = applyHistoryAction(state.uiPageData, action, 'redo');
 
       const activeNode = resolveActiveNode(nextTree, state.activeNodeKey);
 
@@ -231,6 +304,35 @@ export const useCreateComponentStore = create<CreateComponentStore>((set) => ({
         activeNode,
         history: {
           pointer: nextPointer,
+          actions,
+        },
+      };
+    }),
+  jumpToHistory: (targetPointer) =>
+    set((state) => {
+      const { pointer, actions } = state.history;
+      const clampedTarget = Math.max(-1, Math.min(targetPointer, actions.length - 1));
+      if (clampedTarget === pointer) {
+        return state;
+      }
+
+      let nextTree = state.uiPageData;
+
+      if (clampedTarget < pointer) {
+        for (let index = pointer; index > clampedTarget; index -= 1) {
+          nextTree = applyHistoryAction(nextTree, actions[index], 'undo');
+        }
+      } else {
+        for (let index = pointer + 1; index <= clampedTarget; index += 1) {
+          nextTree = applyHistoryAction(nextTree, actions[index], 'redo');
+        }
+      }
+
+      return {
+        uiPageData: nextTree,
+        activeNode: resolveActiveNode(nextTree, state.activeNodeKey),
+        history: {
+          pointer: clampedTarget,
           actions,
         },
       };

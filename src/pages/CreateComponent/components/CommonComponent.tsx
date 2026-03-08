@@ -42,6 +42,8 @@ export default function CommonComponent(properties: CommonComponentProps) {
     toggleActiveNode(data.key);
   };
 
+  const isBlockButton = getBooleanProp('block') === true;
+
   switch(type) {
     case 'Button':
       return (
@@ -50,7 +52,8 @@ export default function CommonComponent(properties: CommonComponentProps) {
           shape={getStringProp('shape') as any}
           size={getStringProp('size') as any}
           variant={getStringProp('variant') as any}
-          block={getBooleanProp('block')}
+          block={isBlockButton}
+          style={isBlockButton ? { width: '100%' } : undefined}
           content={getStringProp('content')}
           onClick={handleActivateSelf}
         />

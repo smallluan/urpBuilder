@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Empty, Input, InputNumber, Select, Switch, Typography } from 'tdesign-react';
 import { useCreateComponentStore } from '../store';
 
@@ -27,6 +27,38 @@ const ComponentConfigPanel: React.FC = () => {
   const activeNode = useCreateComponentStore((state) => state.activeNode);
   const updateActiveNodeLabel = useCreateComponentStore((state) => state.updateActiveNodeLabel);
   const updateActiveNodeProp = useCreateComponentStore((state) => state.updateActiveNodeProp);
+  const [labelDraft, setLabelDraft] = useState('');
+  const [inputDrafts, setInputDrafts] = useState<Record<string, string>>({});
+  const [numberDrafts, setNumberDrafts] = useState<Record<string, number | undefined>>({});
+
+  const propsMap = (activeNode?.props ?? {}) as Record<string, ComponentPropSchema>;
+
+  useEffect(() => {
+    if (!activeNode) {
+      setLabelDraft('');
+      setInputDrafts({});
+      setNumberDrafts({});
+      return;
+    }
+
+    setLabelDraft(String(activeNode.label ?? ''));
+
+    const nextInputDrafts: Record<string, string> = {};
+    const nextNumberDrafts: Record<string, number | undefined> = {};
+
+    Object.entries(propsMap).forEach(([propKey, schema]) => {
+      const editType = resolveEditType(schema);
+      if (editType === 'input') {
+        nextInputDrafts[propKey] = typeof schema.value === 'string' ? schema.value : String(schema.value ?? '');
+      }
+      if (editType === 'inputNumber') {
+        nextNumberDrafts[propKey] = typeof schema.value === 'number' ? schema.value : undefined;
+      }
+    });
+
+    setInputDrafts(nextInputDrafts);
+    setNumberDrafts(nextNumberDrafts);
+  }, [activeNode?.key, activeNode?.label, activeNode?.props]);
 
   if (!activeNode) {
     return (
@@ -35,8 +67,6 @@ const ComponentConfigPanel: React.FC = () => {
       </div>
     );
   }
-
-  const propsMap = (activeNode.props ?? {}) as Record<string, ComponentPropSchema>;
 
   const renderEditor = (propKey: string, schema: ComponentPropSchema) => {
     const editType = resolveEditType(schema);
@@ -52,11 +82,23 @@ const ComponentConfigPanel: React.FC = () => {
     }
 
     if (editType === 'inputNumber') {
+      const draftValue = numberDrafts[propKey];
       return (
         <InputNumber
           size='small'
-          value={typeof currentValue === 'number' ? currentValue : undefined}
-          onChange={(value) => updateActiveNodeProp(propKey, Number(value ?? 0))}
+          value={typeof draftValue === 'number' ? draftValue : undefined}
+          onChange={(value) => {
+            setNumberDrafts((previous) => ({
+              ...previous,
+              [propKey]: typeof value === 'number' ? value : undefined,
+            }));
+          }}
+          onBlur={() => {
+            const value = numberDrafts[propKey];
+            if (typeof value === 'number' && !Number.isNaN(value)) {
+              updateActiveNodeProp(propKey, value);
+            }
+          }}
         />
       );
     }
@@ -78,8 +120,14 @@ const ComponentConfigPanel: React.FC = () => {
 
     return (
       <Input
-        value={typeof currentValue === 'string' ? currentValue : String(currentValue ?? '')}
-        onChange={(value) => updateActiveNodeProp(propKey, String(value ?? ''))}
+        value={inputDrafts[propKey] ?? (typeof currentValue === 'string' ? currentValue : String(currentValue ?? ''))}
+        onChange={(value) => {
+          setInputDrafts((previous) => ({
+            ...previous,
+            [propKey]: String(value ?? ''),
+          }));
+        }}
+        onBlur={() => updateActiveNodeProp(propKey, inputDrafts[propKey] ?? '')}
       />
     );
   };
@@ -93,9 +141,10 @@ const ComponentConfigPanel: React.FC = () => {
           <span className="config-label">组件名称</span>
           <Input
             className="config-editor"
-            value={String(activeNode.label ?? '')}
+            value={labelDraft}
             placeholder="请输入组件名称"
-            onChange={(value) => updateActiveNodeLabel(String(value ?? ''))}
+            onChange={(value) => setLabelDraft(String(value ?? ''))}
+            onBlur={() => updateActiveNodeLabel(labelDraft)}
           />
         </div>
 
