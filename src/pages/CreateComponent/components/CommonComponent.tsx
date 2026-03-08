@@ -11,7 +11,7 @@ interface CommonComponentProps {
 
 export default function CommonComponent(properties: CommonComponentProps) {
   const { type, data, onDropData } = properties;
-  const toggleActiveNode = useCreateComponentStore((state) => state.toggleActiveNode);
+  const setActiveNode = useCreateComponentStore((state) => state.setActiveNode);
 
   const getProp = (propName: string) => {
     const prop = data?.props?.[propName] as { value?: unknown } | undefined;
@@ -39,7 +39,7 @@ export default function CommonComponent(properties: CommonComponentProps) {
       return;
     }
 
-    toggleActiveNode(data.key);
+    setActiveNode(data.key);
   };
 
   const isBlockButton = getBooleanProp('block') === true;
@@ -53,10 +53,11 @@ export default function CommonComponent(properties: CommonComponentProps) {
           size={getStringProp('size') as any}
           variant={getStringProp('variant') as any}
           block={isBlockButton}
-          style={isBlockButton ? { width: '100%' } : undefined}
-          content={getStringProp('content')}
+          style={isBlockButton ? { width: '100%', display: 'flex' } : undefined}
           onClick={handleActivateSelf}
-        />
+        >
+          {getStringProp('content')}
+        </Button>
       );
     case 'Space':
       return (

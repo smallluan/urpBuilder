@@ -100,6 +100,15 @@ export const useCreateComponentStore = create<CreateComponentStore>((set) => ({
   setScreenSize: (screenSize) => set({ screenSize }),
   // 更新自适应模式下的自定义宽度
   setAutoWidth: (width) => set({ autoWidth: width }),
+  // 设置当前激活节点：重复点击同一节点不会取消激活
+  setActiveNode: (nodeKey) =>
+    set((state) => {
+      const nextActiveNodeKey = nodeKey ?? null;
+      return {
+        activeNodeKey: nextActiveNodeKey,
+        activeNode: resolveActiveNode(state.uiPageData, nextActiveNodeKey),
+      };
+    }),
   // 切换当前激活节点：重复点击同一节点则取消激活
   toggleActiveNode: (nodeKey) =>
     set((state) => {

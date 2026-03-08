@@ -63,7 +63,7 @@ export default function DropArea({
   const [isDragOver, setIsDragOver] = useState(false);
   const childrenLength = React.Children.count(children);
   const activeNodeKey = useCreateComponentStore((state) => state.activeNodeKey);
-  const toggleActiveNode = useCreateComponentStore((state) => state.toggleActiveNode);
+  const setActiveNode = useCreateComponentStore((state) => state.setActiveNode);
   const isNodeActive = !!data?.key && activeNodeKey === data.key;
 
   // 拖拽经过时允许放置，并切换高亮态
@@ -128,7 +128,7 @@ export default function DropArea({
       return;
     }
 
-    toggleActiveNode(data.key);
+    setActiveNode(data.key);
   };
 
   return (

@@ -69,6 +69,7 @@ export interface CreateComponentStore {
   history: UiHistoryState;
   setScreenSize: (screenSize: ScreenSize) => void;
   setAutoWidth: (width: number) => void;
+  setActiveNode: (nodeKey?: string) => void;
   toggleActiveNode: (nodeKey?: string) => void;
   updateActiveNodeLabel: (label: string) => void;
   updateActiveNodeProp: (propKey: string, value: unknown) => void;
