@@ -1,9 +1,47 @@
 import React, { useEffect, useState } from 'react';
-import { Empty, Input, InputNumber, Select, Switch, Typography } from 'tdesign-react';
+import { Button, Dialog, Empty, Input, InputNumber, Select, Space, Switch, Table, Typography } from 'tdesign-react';
 import { useCreateComponentStore } from '../store';
 import NodeStyleDrawer from './NodeStyleDrawer';
 
-type EditType = 'switch' | 'input' | 'inputNumber' | 'select';
+type EditType = 'switch' | 'input' | 'inputNumber' | 'select' | 'swiperImages';
+
+interface SwiperImageRow {
+  id: string;
+  src: string;
+  fallback: string;
+  lazy: boolean;
+  objectFit: string;
+  objectPosition: string;
+}
+
+const SWIPER_FIT_OPTIONS = ['contain', 'cover', 'fill', 'none', 'scale-down'].map((item) => ({
+  label: item,
+  value: item,
+}));
+
+const SWIPER_POSITION_OPTIONS = ['left', 'center', 'right', 'top', 'bottom'].map((item) => ({
+  label: item,
+  value: item,
+}));
+
+const createSwiperImageRow = (seed?: Partial<SwiperImageRow>): SwiperImageRow => ({
+  id: `swiper-image-${Date.now()}-${Math.round(Math.random() * 10000)}`,
+  src: String(seed?.src ?? ''),
+  fallback: String(seed?.fallback ?? ''),
+  lazy: typeof seed?.lazy === 'boolean' ? seed.lazy : true,
+  objectFit: String(seed?.objectFit ?? 'cover'),
+  objectPosition: String(seed?.objectPosition ?? 'center'),
+});
+
+const normalizeSwiperImageRows = (value: unknown): SwiperImageRow[] => {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .filter((item) => !!item && typeof item === 'object')
+    .map((item) => createSwiperImageRow(item as Partial<SwiperImageRow>));
+};
 
 interface ComponentPropSchema {
   name?: string;
@@ -17,7 +55,7 @@ interface ComponentPropSchema {
 
 const resolveEditType = (schema: ComponentPropSchema): EditType => {
   const type = (schema.editType ?? schema.editInput) as EditType | string | undefined;
-  if (type === 'switch' || type === 'input' || type === 'inputNumber' || type === 'select') {
+  if (type === 'switch' || type === 'input' || type === 'inputNumber' || type === 'select' || type === 'swiperImages') {
     return type;
   }
 
@@ -32,6 +70,8 @@ const ComponentConfigPanel: React.FC = () => {
   const [labelDraft, setLabelDraft] = useState('');
   const [keyDraft, setKeyDraft] = useState('');
   const [keyError, setKeyError] = useState('');
+  const [swiperDialogVisible, setSwiperDialogVisible] = useState(false);
+  const [swiperImageDraft, setSwiperImageDraft] = useState<SwiperImageRow[]>([]);
   const [inputDrafts, setInputDrafts] = useState<Record<string, string>>({});
   const [numberDrafts, setNumberDrafts] = useState<Record<string, number | undefined>>({});
 
@@ -126,6 +166,22 @@ const ComponentConfigPanel: React.FC = () => {
       );
     }
 
+    if (editType === 'swiperImages') {
+      return (
+        <Button
+          size="small"
+          variant="outline"
+          onClick={() => {
+            const rows = normalizeSwiperImageRows(currentValue);
+            setSwiperImageDraft(rows.length > 0 ? rows : [createSwiperImageRow(), createSwiperImageRow()]);
+            setSwiperDialogVisible(true);
+          }}
+        >
+          配置图片
+        </Button>
+      );
+    }
+
     return (
       <Input
         clearable
@@ -150,6 +206,20 @@ const ComponentConfigPanel: React.FC = () => {
   };
 
   const keyHintText = keyError || '仅支持字母、数字、下划线(_)和中划线(-)';
+
+  const applySwiperImageDraft = () => {
+    updateActiveNodeProp(
+      'images',
+      swiperImageDraft.map((item) => ({
+        src: item.src,
+        fallback: item.fallback,
+        lazy: item.lazy,
+        objectFit: item.objectFit,
+        objectPosition: item.objectPosition,
+      })),
+    );
+    setSwiperDialogVisible(false);
+  };
 
   return (
     <div className="right-panel-body">
@@ -207,6 +277,133 @@ const ComponentConfigPanel: React.FC = () => {
           </div>
         ))}
       </div>
+
+      <Dialog
+        visible={swiperDialogVisible}
+        width="980px"
+        header="配置轮播图片"
+        closeOnOverlayClick={false}
+        confirmBtn="应用"
+        cancelBtn="取消"
+        onConfirm={applySwiperImageDraft}
+        onClose={() => setSwiperDialogVisible(false)}
+      >
+        <div style={{ marginBottom: 12 }}>
+          <Button
+            size="small"
+            variant="outline"
+            onClick={() => setSwiperImageDraft((previous) => [...previous, createSwiperImageRow()])}
+          >
+            增加一行
+          </Button>
+        </div>
+
+        <Table
+          rowKey="id"
+          data={swiperImageDraft}
+          columns={[
+            {
+              colKey: 'src',
+              title: 'src',
+              cell: ({ row }: { row: SwiperImageRow }) => (
+                <Input
+                  clearable
+                  value={row.src}
+                  onChange={(value) =>
+                    setSwiperImageDraft((previous) =>
+                      previous.map((item) => (item.id === row.id ? { ...item, src: String(value ?? '') } : item)),
+                    )
+                  }
+                />
+              ),
+            },
+            {
+              colKey: 'fallback',
+              title: 'fallback',
+              cell: ({ row }: { row: SwiperImageRow }) => (
+                <Input
+                  clearable
+                  value={row.fallback}
+                  onChange={(value) =>
+                    setSwiperImageDraft((previous) =>
+                      previous.map((item) => (item.id === row.id ? { ...item, fallback: String(value ?? '') } : item)),
+                    )
+                  }
+                />
+              ),
+            },
+            {
+              colKey: 'lazy',
+              title: 'lazy',
+              width: 88,
+              cell: ({ row }: { row: SwiperImageRow }) => (
+                <Switch
+                  size="small"
+                  value={row.lazy}
+                  onChange={(value) =>
+                    setSwiperImageDraft((previous) =>
+                      previous.map((item) => (item.id === row.id ? { ...item, lazy: Boolean(value) } : item)),
+                    )
+                  }
+                />
+              ),
+            },
+            {
+              colKey: 'objectFit',
+              title: 'objectFit',
+              width: 140,
+              cell: ({ row }: { row: SwiperImageRow }) => (
+                <Select
+                  size="small"
+                  options={SWIPER_FIT_OPTIONS}
+                  value={row.objectFit}
+                  onChange={(value) =>
+                    setSwiperImageDraft((previous) =>
+                      previous.map((item) => (item.id === row.id ? { ...item, objectFit: String(value ?? 'cover') } : item)),
+                    )
+                  }
+                />
+              ),
+            },
+            {
+              colKey: 'objectPosition',
+              title: 'objectPosition',
+              width: 140,
+              cell: ({ row }: { row: SwiperImageRow }) => (
+                <Select
+                  size="small"
+                  options={SWIPER_POSITION_OPTIONS}
+                  value={row.objectPosition}
+                  onChange={(value) =>
+                    setSwiperImageDraft((previous) =>
+                      previous.map((item) => (item.id === row.id ? { ...item, objectPosition: String(value ?? 'center') } : item)),
+                    )
+                  }
+                />
+              ),
+            },
+            {
+              colKey: 'action',
+              title: '操作',
+              width: 90,
+              cell: ({ row }: { row: SwiperImageRow }) => (
+                <Space>
+                  <Button
+                    size="small"
+                    variant="text"
+                    theme="danger"
+                    onClick={() =>
+                      setSwiperImageDraft((previous) => previous.filter((item) => item.id !== row.id))
+                    }
+                  >
+                    删除
+                  </Button>
+                </Space>
+              ),
+            },
+          ]}
+        />
+      </Dialog>
     </div>
   );
 };

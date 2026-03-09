@@ -1,5 +1,5 @@
 import React from 'react';
-import { Button, Space, Row, Col, Card, Divider, Typography, Image, Avatar } from 'tdesign-react';
+import { Button, Space, Row, Col, Card, Divider, Typography, Image, Avatar, Switch, Swiper } from 'tdesign-react';
 import DropArea from '../../../components/DropArea';
 import type { UiTreeNode } from '../store/type';
 import { useCreateComponentStore } from '../store';
@@ -8,6 +8,14 @@ interface CommonComponentProps {
   type?: string;
   data?: UiTreeNode;
   onDropData?: (dropData: unknown, parent: UiTreeNode | undefined) => void;
+}
+
+interface SwiperImageItem {
+  src: string;
+  fallback: string;
+  lazy: boolean;
+  objectFit: string;
+  objectPosition: string;
 }
 
 interface ActivateWrapperProps {
@@ -193,6 +201,49 @@ export default function CommonComponent(properties: CommonComponentProps) {
     return value as React.CSSProperties;
   };
 
+  const getStringArrayProp = (propName: string) => {
+    const value = getProp(propName);
+    if (Array.isArray(value)) {
+      return value.map((item) => String(item).trim()).filter(Boolean);
+    }
+
+    if (typeof value === 'string') {
+      return value
+        .split(/\r?\n|,|，/)
+        .map((item) => item.trim())
+        .filter(Boolean);
+    }
+
+    return [];
+  };
+
+  const getSwiperImages = (): SwiperImageItem[] => {
+    const value = getProp('images');
+    if (Array.isArray(value)) {
+      return value
+        .filter((item) => !!item && typeof item === 'object')
+        .map((item) => {
+          const record = item as Partial<SwiperImageItem>;
+          return {
+            src: String(record.src ?? '').trim(),
+            fallback: String(record.fallback ?? '').trim(),
+            lazy: typeof record.lazy === 'boolean' ? record.lazy : true,
+            objectFit: String(record.objectFit ?? 'cover'),
+            objectPosition: String(record.objectPosition ?? 'center'),
+          };
+        })
+        .filter((item) => !!item.src);
+    }
+
+    return getStringArrayProp('images').map((src) => ({
+      src,
+      fallback: '',
+      lazy: true,
+      objectFit: 'cover',
+      objectPosition: 'center',
+    }));
+  };
+
   const handleActivateSelf = (event: React.MouseEvent<HTMLElement>) => {
     event.stopPropagation();
     if (!data?.key) {
@@ -321,6 +372,46 @@ export default function CommonComponent(properties: CommonComponentProps) {
             />
           </ActivateWrapper>
         );
+      case 'Switch':
+        return (
+          <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf}>
+            <Space align="center" size={8}>
+              <Switch
+                size={getStringProp('size') as any}
+                value={Boolean(getBooleanProp('value'))}
+                onChange={() => {
+                  // 搭建态仅展示，不在此处驱动运行时逻辑
+                }}
+              />
+            </Space>
+          </ActivateWrapper>
+        );
+      case 'Swiper': {
+        const imageList = getSwiperImages();
+        const height = getNumberProp('height') ?? 240;
+
+        if (imageList.length === 0) {
+          return null;
+        }
+
+        return (
+          <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf}>
+            <Swiper autoplay height={height} style={{ width: '100%' }}>
+              {imageList.map((imageItem, index) => (
+                <div key={`${data?.key ?? 'swiper'}-${index}`} style={{ width: '100%', height: '100%' }}>
+                  <Image
+                    src={imageItem.src}
+                    fallback={imageItem.fallback || undefined}
+                    lazy={imageItem.lazy}
+                    fit={imageItem.objectFit as any}
+                    style={{ width: '100%', height: '100%', objectPosition: imageItem.objectPosition }}
+                  />
+                </div>
+              ))}
+            </Swiper>
+          </ActivateWrapper>
+        );
+      }
       case 'Divider':
         return (
           <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf}>

@@ -13,6 +13,8 @@ interface NodeStyleDrawerProps {
 type StyleValue = Record<string, string>;
 
 const QUICK_INSERT_PROPERTIES = [
+  { label: '插入宽度', line: 'width: 100%;' },
+  { label: '插入高度', line: 'height: 240px;' },
   { label: '插入背景色', line: 'background-color: #ffffff;' },
   { label: '插入文字色', line: 'color: #333333;' },
   { label: '插入内边距', line: 'padding: 8px 12px;' },
@@ -65,6 +67,12 @@ interface VisualField {
 }
 
 const VISUAL_FIELDS: VisualField[] = [
+  { key: 'width', label: '宽度', type: 'input' },
+  { key: 'height', label: '高度', type: 'input' },
+  { key: 'min-width', label: '最小宽度', type: 'input' },
+  { key: 'min-height', label: '最小高度', type: 'input' },
+  { key: 'max-width', label: '最大宽度', type: 'input' },
+  { key: 'max-height', label: '最大高度', type: 'input' },
   { key: 'background-color', label: '背景色', type: 'color' },
   { key: 'color', label: '文字色', type: 'color' },
   { key: 'border-color', label: '边框色', type: 'color' },

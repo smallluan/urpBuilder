@@ -267,6 +267,57 @@ const componentCatalog = [
     }
   },
   {
+    type: 'Switch',
+    name: '开关',
+    props: {
+      value: {
+        name: '开关状态',
+        value: false,
+        editType: 'switch'
+      },
+      size: {
+        name: '尺寸',
+        value: 'medium',
+        editType: 'select',
+        payload: {
+          options: ['small', 'medium', 'large']
+        }
+      },
+    },
+    lifetimes: ['onChange']
+  },
+  {
+    type: 'Swiper',
+    name: '轮播图',
+    props: {
+      images: {
+        name: '图片配置',
+        value: [
+          {
+            src: 'https://tdesign.gtimg.com/demo/demo-image-1.png',
+            fallback: 'https://tdesign.gtimg.com/demo/demo-image-4.png',
+            lazy: true,
+            objectFit: 'cover',
+            objectPosition: 'center',
+          },
+          {
+            src: 'https://tdesign.gtimg.com/demo/demo-image-2.png',
+            fallback: 'https://tdesign.gtimg.com/demo/demo-image-5.png',
+            lazy: true,
+            objectFit: 'cover',
+            objectPosition: 'center',
+          },
+        ],
+        editType: 'swiperImages'
+      },
+      height: {
+        name: '高度(px)',
+        value: 240,
+        editType: 'inputNumber'
+      }
+    }
+  },
+  {
     type: 'Divider',
     name: '分割线',
     props: {

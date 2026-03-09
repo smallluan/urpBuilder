@@ -1,10 +1,18 @@
 import React from 'react';
-import { Avatar, Button, Card, Col, Divider, Image, Row, Space, Typography } from 'tdesign-react';
+import { Avatar, Button, Card, Col, Divider, Image, Row, Space, Switch, Swiper, Typography } from 'tdesign-react';
 import type { UiTreeNode } from '../../CreateComponent/store/type';
 
 interface PreviewRendererProps {
   node: UiTreeNode;
   onLifecycle?: (componentKey: string, lifetime: string, payload?: unknown) => void;
+}
+
+interface SwiperImageItem {
+  src: string;
+  fallback: string;
+  lazy: boolean;
+  objectFit: string;
+  objectPosition: string;
 }
 
 const getProp = (node: UiTreeNode, propName: string) => {
@@ -22,6 +30,17 @@ const getStringProp = (node: UiTreeNode, propName: string) => {
   return typeof value === 'string' ? value : undefined;
 };
 
+const getTextProp = (node: UiTreeNode, propName: string) => {
+  const value = getProp(node, propName);
+  if (typeof value === 'string') {
+    return value;
+  }
+  if (typeof value === 'number' || typeof value === 'boolean') {
+    return String(value);
+  }
+  return undefined;
+};
+
 const getBooleanProp = (node: UiTreeNode, propName: string) => {
   const value = getProp(node, propName);
   return typeof value === 'boolean' ? value : undefined;
@@ -36,6 +55,49 @@ const getStyleProp = (node: UiTreeNode) => {
   return value as React.CSSProperties;
 };
 
+const getStringArrayProp = (node: UiTreeNode, propName: string) => {
+  const value = getProp(node, propName);
+  if (Array.isArray(value)) {
+    return value.map((item) => String(item).trim()).filter(Boolean);
+  }
+
+  if (typeof value === 'string') {
+    return value
+      .split(/\r?\n|,|，/)
+      .map((item) => item.trim())
+      .filter(Boolean);
+  }
+
+  return [];
+};
+
+const getSwiperImages = (node: UiTreeNode): SwiperImageItem[] => {
+  const value = getProp(node, 'images');
+  if (Array.isArray(value)) {
+    return value
+      .filter((item) => !!item && typeof item === 'object')
+      .map((item) => {
+        const record = item as Partial<SwiperImageItem>;
+        return {
+          src: String(record.src ?? '').trim(),
+          fallback: String(record.fallback ?? '').trim(),
+          lazy: typeof record.lazy === 'boolean' ? record.lazy : true,
+          objectFit: String(record.objectFit ?? 'cover'),
+          objectPosition: String(record.objectPosition ?? 'center'),
+        };
+      })
+      .filter((item) => !!item.src);
+  }
+
+  return getStringArrayProp(node, 'images').map((src) => ({
+    src,
+    fallback: '',
+    lazy: true,
+    objectFit: 'cover',
+    objectPosition: 'center',
+  }));
+};
+
 const renderChildren = (
   node?: UiTreeNode,
   onLifecycle?: (componentKey: string, lifetime: string, payload?: unknown) => void,
@@ -46,8 +108,11 @@ const renderChildren = (
 const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) => {
   const inlineStyle = getStyleProp(node);
   const type = node.type;
+  const switchValue = type === 'Switch' ? Boolean(getBooleanProp(node, 'value')) : undefined;
   const lifetimes = Array.isArray(node.lifetimes) ? node.lifetimes.map((item) => String(item)) : [];
   const didUpdateReadyRef = React.useRef(false);
+  const didInitSwitchValueRef = React.useRef(false);
+  const lastSwitchValueRef = React.useRef<boolean | undefined>(undefined);
 
   const hasLifetime = React.useCallback(
     (lifetime: string) => lifetimes.includes(lifetime),
@@ -127,6 +192,27 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) 
     [hasLifetime, node.key, node.type, onLifecycle],
   );
 
+  React.useEffect(() => {
+    if (type !== 'Switch') {
+      didInitSwitchValueRef.current = false;
+      lastSwitchValueRef.current = undefined;
+      return;
+    }
+
+    if (!didInitSwitchValueRef.current) {
+      didInitSwitchValueRef.current = true;
+      lastSwitchValueRef.current = switchValue;
+      return;
+    }
+
+    if (Object.is(lastSwitchValueRef.current, switchValue)) {
+      return;
+    }
+
+    lastSwitchValueRef.current = switchValue;
+    emitInteractionLifecycle('onChange', { value: switchValue, source: 'propChange' });
+  }, [emitInteractionLifecycle, switchValue, type]);
+
   switch (type) {
     case 'Button': {
       const isBlockButton = getBooleanProp(node, 'block') === true;
@@ -141,7 +227,7 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) 
             style={mergeStyle(isBlockButton ? { width: '100%', display: 'flex' } : undefined)}
             onClick={() => emitInteractionLifecycle('onClick')}
           >
-            {getStringProp(node, 'content')}
+            {getTextProp(node, 'content')}
           </Button>
         </div>
       );
@@ -264,6 +350,49 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) 
           />
         </div>
       );
+    case 'Switch':
+      return (
+        <div style={mergeStyle()}>
+          <Space align="center" size={8}>
+            <Switch
+              size={getStringProp(node, 'size') as any}
+              value={switchValue}
+              onChange={(nextValue) => {
+                const normalizedValue = Boolean(nextValue);
+                didInitSwitchValueRef.current = true;
+                lastSwitchValueRef.current = normalizedValue;
+                emitInteractionLifecycle('onChange', { value: normalizedValue, source: 'userInput' });
+              }}
+            />
+          </Space>
+        </div>
+      );
+    case 'Swiper': {
+      const imageList = getSwiperImages(node);
+      const height = getNumberProp(node, 'height') ?? 240;
+
+      if (imageList.length === 0) {
+        return null;
+      }
+
+      return (
+        <div style={mergeStyle()}>
+          <Swiper autoplay height={height} style={{ width: '100%' }}>
+            {imageList.map((imageItem, index) => (
+              <div key={`${node.key}-swiper-${index}`} style={{ width: '100%', height: '100%' }}>
+                <Image
+                  src={imageItem.src}
+                  fallback={imageItem.fallback || undefined}
+                  lazy={imageItem.lazy}
+                  fit={imageItem.objectFit as any}
+                  style={{ width: '100%', height: '100%', objectPosition: imageItem.objectPosition }}
+                />
+              </div>
+            ))}
+          </Swiper>
+        </div>
+      );
+    }
     case 'Divider':
       return (
         <div style={mergeStyle()}>
@@ -280,7 +409,7 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) 
       return (
         <div style={mergeStyle()}>
           <Typography.Title level={getStringProp(node, 'level') as any} style={mergeStyle()}>
-            {getStringProp(node, 'content')}
+            {getTextProp(node, 'content')}
           </Typography.Title>
         </div>
       );
@@ -288,7 +417,7 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) 
       return (
         <div style={mergeStyle()}>
           <Typography.Paragraph style={mergeStyle()}>
-            {getStringProp(node, 'content')}
+            {getTextProp(node, 'content')}
           </Typography.Paragraph>
         </div>
       );
@@ -304,7 +433,7 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) 
             mark={getBooleanProp(node, 'mark')}
             style={mergeStyle()}
           >
-            {getStringProp(node, 'content')}
+            {getTextProp(node, 'content')}
           </Typography.Text>
         </div>
       );
