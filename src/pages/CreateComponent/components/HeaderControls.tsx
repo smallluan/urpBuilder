@@ -3,6 +3,7 @@ import { Radio, Button, Space, Drawer, Timeline, Tag } from 'tdesign-react';
 import { UploadIcon, ViewImageIcon, ArrowLeftIcon, ArrowRightIcon, HistoryIcon } from 'tdesign-icons-react';
 import { useCreateComponentStore } from '../store';
 import type { UiHistoryAction } from '../store/type';
+import { serializePreviewSnapshot } from '../../PreviewEngine/utils/snapshot';
 
 type Props = {
   mode: 'component' | 'flow';
@@ -80,6 +81,9 @@ const toActionDescription = (action: UiHistoryAction) => {
 
 const HeaderControls: React.FC<Props> = ({ mode, onChange }) => {
   const history = useCreateComponentStore((state) => state.history);
+  const uiTreeData = useCreateComponentStore((state) => state.uiPageData);
+  const flowNodes = useCreateComponentStore((state) => state.flowNodes);
+  const flowEdges = useCreateComponentStore((state) => state.flowEdges);
   const undo = useCreateComponentStore((state) => state.undo);
   const redo = useCreateComponentStore((state) => state.redo);
   const jumpToHistory = useCreateComponentStore((state) => state.jumpToHistory);
@@ -102,6 +106,22 @@ const HeaderControls: React.FC<Props> = ({ mode, onChange }) => {
 
   const handleChange = (value: any) => {
     onChange(String(value) === '1' ? 'component' : 'flow');
+  };
+
+  const handlePreview = () => {
+    const snapshot = serializePreviewSnapshot({
+      uiTreeData,
+      flowNodes,
+      flowEdges,
+    });
+
+    const snapshotKey = `preview-snapshot-${Date.now()}-${Math.round(Math.random() * 10000)}`;
+    window.localStorage.setItem(snapshotKey, snapshot);
+
+    const previewUrl = new URL('/preview-engine', window.location.origin);
+    previewUrl.searchParams.set('snapshotKey', snapshotKey);
+
+    window.open(previewUrl.toString(), '_blank', 'noopener,noreferrer');
   };
 
   return (
@@ -146,7 +166,7 @@ const HeaderControls: React.FC<Props> = ({ mode, onChange }) => {
               操作历史
             </Button>
             <Button theme="primary" size="small" icon={<UploadIcon />}>保存</Button>
-            <Button theme="default" size="small" icon={<ViewImageIcon />}>预览</Button>
+            <Button theme="default" size="small" icon={<ViewImageIcon />} onClick={handlePreview}>预览</Button>
           </div>
         </Space>
       </div>
