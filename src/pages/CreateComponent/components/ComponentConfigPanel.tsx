@@ -77,7 +77,26 @@ const ComponentConfigPanel: React.FC = () => {
 
   const propsMap = (activeNode?.props ?? {}) as Record<string, ComponentPropSchema>;
   const styleValue = (propsMap.__style?.value ?? {}) as Record<string, unknown>;
-  const editableProps = Object.entries(propsMap).filter(([propKey]) => propKey !== '__style');
+  const switchControlled = activeNode?.type === 'Switch'
+    ? Boolean((propsMap.controlled?.value ?? true))
+    : undefined;
+
+  const editableProps = Object.entries(propsMap).filter(([propKey]) => {
+    if (propKey === '__style') {
+      return false;
+    }
+
+    if (activeNode?.type === 'Switch') {
+      if (propKey === 'value' && switchControlled === false) {
+        return false;
+      }
+      if (propKey === 'defaultValue' && switchControlled === true) {
+        return false;
+      }
+    }
+
+    return true;
+  });
 
   useEffect(() => {
     if (!activeNode) {

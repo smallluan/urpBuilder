@@ -270,8 +270,18 @@ const componentCatalog = [
     type: 'Switch',
     name: '开关',
     props: {
+      controlled: {
+        name: '受控模式',
+        value: true,
+        editType: 'switch'
+      },
       value: {
-        name: '开关状态',
+        name: '受控值(value)',
+        value: false,
+        editType: 'switch'
+      },
+      defaultValue: {
+        name: '非受控默认值(defaultValue)',
         value: false,
         editType: 'switch'
       },

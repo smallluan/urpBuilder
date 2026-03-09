@@ -16,6 +16,8 @@ import {
 const HISTORY_MAX_ACTIONS = 200;
 const COMPONENT_KEY_PATTERN = /^[A-Za-z0-9_-]+$/;
 
+// 历史记录中的 add/remove 只保存 nodeRef（key），实际节点快照放在内存池，
+// 避免 history 里反复存大对象导致体积膨胀。
 const nodePool = new Map<string, UiTreeNode>();
 
 const saveNodeToPool = (node: UiTreeNode) => {
@@ -59,12 +61,14 @@ const containsNodeKey = (node: { key: string; children?: { key: string; children
   return node.children.some((child) => containsNodeKey(child, targetKey));
 };
 
+// 收集子树全部 key，用于删除组件时级联清理对应流程节点。
 const collectTreeKeys = (node: UiTreeNode, collector = new Set<string>()) => {
   collector.add(node.key);
   node.children?.forEach((child) => collectTreeKeys(child, collector));
   return collector;
 };
 
+// key 全局唯一校验（支持排除自身，用于重命名场景）。
 const hasDuplicateKey = (node: UiTreeNode, targetKey: string, excludeKey?: string): boolean => {
   if (node.key === targetKey && node.key !== excludeKey) {
     return true;
@@ -103,6 +107,9 @@ const buildEntityPatch = <T extends { id: string }>(previous: T[], next: T[]) =>
   };
 };
 
+// 按 patch 应用流程节点/连线变更。
+// - redo: 应用新增/更新并删除旧项
+// - undo: 回滚新增并恢复旧项
 const applyEntityPatch = <T extends { id: string }>(
   current: T[],
   patch: {
@@ -149,6 +156,7 @@ const applyFlowHistoryAction = (
   action: UiHistoryAction,
   direction: 'undo' | 'redo',
 ) => {
+  // 流程编辑动作：直接按实体 patch 回放。
   if (action.type === 'flow-edit') {
     const nextFlowNodes = applyEntityPatch(flowNodes, action.nodePatch, direction);
     const nextFlowNodeIds = new Set(nextFlowNodes.map((node) => node.id));
@@ -166,6 +174,7 @@ const applyFlowHistoryAction = (
     return { flowNodes, flowEdges };
   }
 
+  // 组件删除动作：flowSnapshot 负责恢复/移除该组件关联的流程图局部状态。
   const snapshotNodeIds = new Set(action.flowSnapshot.nodes.map((node) => node.id));
   const snapshotEdgeIds = new Set(action.flowSnapshot.edges.map((edge) => edge.id));
 
@@ -208,6 +217,8 @@ const applyFlowHistoryAction = (
   };
 };
 
+// 历史分支策略：
+// 若当前不在末尾，写入新动作时先截断“未来分支”，再追加新动作。
 const pushHistoryAction = (actions: UiHistoryAction[], pointer: number, action: UiHistoryAction) => {
   const branchActions = pointer < actions.length - 1 ? actions.slice(0, pointer + 1) : actions;
   const mergedActions = [...branchActions, action];
@@ -234,6 +245,7 @@ const applyHistoryAction = (
   action: UiHistoryAction,
   direction: 'undo' | 'redo',
 ): UiTreeNode => {
+  // flow-edit 只影响流程图，不改 UI 树。
   if (action.type === 'flow-edit') {
     return tree;
   }
@@ -285,11 +297,16 @@ const applyHistoryAction = (
 };
 
 export const useCreateComponentStore = create<CreateComponentStore>((set) => ({
+  // ===== 视图环境 =====
   screenSize: 'auto',
   autoWidth: 1800,
+
+  // ===== 流程图状态 =====
   flowNodes: [],
   flowEdges: [],
   flowActiveNodeId: null,
+
+  // ===== UI 树状态（组件结构） =====
   // 不同于之前的实现，这里 ui 和流程共享一个树
   // 可以避免涉及到添加/回滚等操作时，要同时维护两个树
   // label 部分两个组件内部自己维护
@@ -311,6 +328,8 @@ export const useCreateComponentStore = create<CreateComponentStore>((set) => ({
   activeNodeKey: null,
   activeNode: null,
   treeInstance: null,
+
+  // ===== 历史系统 =====
   history: {
     pointer: -1,
     actions: [],
@@ -394,6 +413,7 @@ export const useCreateComponentStore = create<CreateComponentStore>((set) => ({
       };
     }),
   updateActiveNodeKey: (nextKey) => {
+    // key 修改属于结构变更：不仅改 UI 树，还要同步 flow 中 componentNode.data.sourceKey。
     const trimmedKey = String(nextKey ?? '').trim();
     if (!trimmedKey) {
       return {
@@ -517,6 +537,7 @@ export const useCreateComponentStore = create<CreateComponentStore>((set) => ({
         };
       });
 
+      // 属性改动走细粒度历史，便于精确撤销。
       const action: UiHistoryAction = {
         type: 'update-prop',
         nodeKey: state.activeNodeKey,
@@ -548,6 +569,7 @@ export const useCreateComponentStore = create<CreateComponentStore>((set) => ({
       const newNode = toUiTreeNode(componentData);
       const nodeRef = saveNodeToPool(newNode);
       const index = parentNode.children?.length ?? 0;
+      // add 历史只记录 nodeRef 与插入位置信息。
       const action: UiHistoryAction = {
         type: 'add',
         parentKey,
@@ -580,6 +602,7 @@ export const useCreateComponentStore = create<CreateComponentStore>((set) => ({
         return state;
       }
 
+      // 先定位被删子树，再级联删除绑定这批 sourceKey 的 componentNode。
       const removedTreeKeys = collectTreeKeys(result.removedNode);
       const flowNodesToRemove = state.flowNodes.filter((node) => {
         if (node.type !== 'componentNode') {
@@ -636,6 +659,7 @@ export const useCreateComponentStore = create<CreateComponentStore>((set) => ({
           nextFlowNodeIds.has(edge.target),
       );
 
+      // remove 动作会附带 flowSnapshot，保证 undo 能完整恢复流程子图。
       const flowSnapshot =
         flowNodesToRemove.length > 0 || flowEdgesToRemove.length > 0
           ? {
@@ -685,6 +709,7 @@ export const useCreateComponentStore = create<CreateComponentStore>((set) => ({
         return state;
       }
 
+      // 流程历史统一归并为 flow-edit，避免把 nodes/edges 拆成多条杂乱历史。
       const action: UiHistoryAction = {
         type: 'flow-edit',
         actionLabel,
@@ -802,6 +827,7 @@ export const useCreateComponentStore = create<CreateComponentStore>((set) => ({
       let nextFlowNodes = state.flowNodes;
       let nextFlowEdges = state.flowEdges;
 
+      // 多步跳转按区间依次回放 undo/redo，保证树和流程图同步推进。
       if (clampedTarget < pointer) {
         for (let index = pointer; index > clampedTarget; index -= 1) {
           nextTree = applyHistoryAction(nextTree, actions[index], 'undo');

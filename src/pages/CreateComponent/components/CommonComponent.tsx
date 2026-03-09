@@ -373,12 +373,17 @@ export default function CommonComponent(properties: CommonComponentProps) {
           </ActivateWrapper>
         );
       case 'Switch':
+        {
+        const isControlled = getBooleanProp('controlled') !== false;
+        const controlledValue = Boolean(getBooleanProp('value'));
+        const defaultValue = Boolean(getBooleanProp('defaultValue'));
         return (
           <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf}>
             <Space align="center" size={8}>
               <Switch
                 size={getStringProp('size') as any}
-                value={Boolean(getBooleanProp('value'))}
+                value={isControlled ? controlledValue : undefined}
+                defaultValue={isControlled ? undefined : defaultValue}
                 onChange={() => {
                   // 搭建态仅展示，不在此处驱动运行时逻辑
                 }}
@@ -386,6 +391,7 @@ export default function CommonComponent(properties: CommonComponentProps) {
             </Space>
           </ActivateWrapper>
         );
+        }
       case 'Swiper': {
         const imageList = getSwiperImages();
         const height = getNumberProp('height') ?? 240;

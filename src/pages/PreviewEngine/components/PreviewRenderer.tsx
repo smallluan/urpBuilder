@@ -108,11 +108,17 @@ const renderChildren = (
 const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) => {
   const inlineStyle = getStyleProp(node);
   const type = node.type;
-  const switchValue = type === 'Switch' ? Boolean(getBooleanProp(node, 'value')) : undefined;
+  const isSwitchNode = type === 'Switch';
+  const isSwitchControlled = isSwitchNode ? getBooleanProp(node, 'controlled') !== false : false;
+  const controlledSwitchValue = isSwitchNode ? Boolean(getBooleanProp(node, 'value')) : false;
+  const switchDefaultValue = isSwitchNode ? Boolean(getBooleanProp(node, 'defaultValue')) : false;
   const lifetimes = Array.isArray(node.lifetimes) ? node.lifetimes.map((item) => String(item)) : [];
   const didUpdateReadyRef = React.useRef(false);
-  const didInitSwitchValueRef = React.useRef(false);
-  const lastSwitchValueRef = React.useRef<boolean | undefined>(undefined);
+  const [uncontrolledSwitchValue, setUncontrolledSwitchValue] = React.useState<boolean>(switchDefaultValue);
+  const didInitControlledSwitchValueRef = React.useRef(false);
+  const lastControlledSwitchValueRef = React.useRef<boolean | undefined>(undefined);
+  const suppressNextControlledPropEventRef = React.useRef(false);
+  const expectedControlledSwitchValueRef = React.useRef<boolean | undefined>(undefined);
 
   const hasLifetime = React.useCallback(
     (lifetime: string) => lifetimes.includes(lifetime),
@@ -193,25 +199,57 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) 
   );
 
   React.useEffect(() => {
-    if (type !== 'Switch') {
-      didInitSwitchValueRef.current = false;
-      lastSwitchValueRef.current = undefined;
+    if (!isSwitchNode) {
+      setUncontrolledSwitchValue(false);
+      didInitControlledSwitchValueRef.current = false;
+      lastControlledSwitchValueRef.current = undefined;
+      suppressNextControlledPropEventRef.current = false;
+      expectedControlledSwitchValueRef.current = undefined;
       return;
     }
 
-    if (!didInitSwitchValueRef.current) {
-      didInitSwitchValueRef.current = true;
-      lastSwitchValueRef.current = switchValue;
+    if (!isSwitchControlled) {
+      setUncontrolledSwitchValue(switchDefaultValue);
+      didInitControlledSwitchValueRef.current = false;
+      lastControlledSwitchValueRef.current = undefined;
+      suppressNextControlledPropEventRef.current = false;
+      expectedControlledSwitchValueRef.current = undefined;
       return;
     }
 
-    if (Object.is(lastSwitchValueRef.current, switchValue)) {
+    if (!didInitControlledSwitchValueRef.current) {
+      didInitControlledSwitchValueRef.current = true;
+      lastControlledSwitchValueRef.current = controlledSwitchValue;
       return;
     }
 
-    lastSwitchValueRef.current = switchValue;
-    emitInteractionLifecycle('onChange', { value: switchValue, source: 'propChange' });
-  }, [emitInteractionLifecycle, switchValue, type]);
+    if (Object.is(lastControlledSwitchValueRef.current, controlledSwitchValue)) {
+      return;
+    }
+
+    if (
+      suppressNextControlledPropEventRef.current
+      && Object.is(expectedControlledSwitchValueRef.current, controlledSwitchValue)
+    ) {
+      suppressNextControlledPropEventRef.current = false;
+      expectedControlledSwitchValueRef.current = undefined;
+      lastControlledSwitchValueRef.current = controlledSwitchValue;
+      return;
+    }
+
+    lastControlledSwitchValueRef.current = controlledSwitchValue;
+    emitInteractionLifecycle('onChange', {
+      value: controlledSwitchValue,
+      source: 'propChange',
+      controlMode: 'controlled',
+    });
+  }, [
+    controlledSwitchValue,
+    emitInteractionLifecycle,
+    isSwitchControlled,
+    isSwitchNode,
+    switchDefaultValue,
+  ]);
 
   switch (type) {
     case 'Button': {
@@ -351,22 +389,37 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) 
         </div>
       );
     case 'Switch':
+      {
+      const renderedSwitchValue = isSwitchControlled ? controlledSwitchValue : uncontrolledSwitchValue;
       return (
         <div style={mergeStyle()}>
           <Space align="center" size={8}>
             <Switch
               size={getStringProp(node, 'size') as any}
-              value={switchValue}
+              value={isSwitchControlled ? renderedSwitchValue : undefined}
+              defaultValue={isSwitchControlled ? undefined : switchDefaultValue}
               onChange={(nextValue) => {
                 const normalizedValue = Boolean(nextValue);
-                didInitSwitchValueRef.current = true;
-                lastSwitchValueRef.current = normalizedValue;
-                emitInteractionLifecycle('onChange', { value: normalizedValue, source: 'userInput' });
+                if (isSwitchControlled) {
+                  didInitControlledSwitchValueRef.current = true;
+                  lastControlledSwitchValueRef.current = normalizedValue;
+                  suppressNextControlledPropEventRef.current = true;
+                  expectedControlledSwitchValueRef.current = normalizedValue;
+                } else {
+                  setUncontrolledSwitchValue(normalizedValue);
+                }
+
+                emitInteractionLifecycle('onChange', {
+                  value: normalizedValue,
+                  source: 'userInput',
+                  controlMode: isSwitchControlled ? 'controlled' : 'uncontrolled',
+                });
               }}
             />
           </Space>
         </div>
       );
+      }
     case 'Swiper': {
       const imageList = getSwiperImages(node);
       const height = getNumberProp(node, 'height') ?? 240;
