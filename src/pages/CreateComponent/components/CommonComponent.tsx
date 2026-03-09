@@ -3,11 +3,12 @@ import { Button, Space, Row, Col, Card, Divider, Typography, Image, Avatar, Swit
 import DropArea from '../../../components/DropArea';
 import type { UiTreeNode } from '../store/type';
 import { useCreateComponentStore } from '../store';
+import { getNodeSlotKey, isSlotNode } from '../utils/slot';
 
 interface CommonComponentProps {
   type?: string;
   data?: UiTreeNode;
-  onDropData?: (dropData: unknown, parent: UiTreeNode | undefined) => void;
+  onDropData?: (dropData: unknown, parent: UiTreeNode | undefined, options?: { slotKey?: string }) => void;
 }
 
 interface SwiperImageItem {
@@ -130,6 +131,7 @@ const RowContent: React.FC<RowContentProps> = ({ children, align, justify, gutte
 
 interface CardContentProps {
   children?: React.ReactNode;
+  header?: React.ReactNode;
   title?: string;
   subtitle?: string;
   size?: string;
@@ -143,6 +145,7 @@ interface CardContentProps {
 
 const CardContent: React.FC<CardContentProps> = ({
   children,
+  header,
   title,
   subtitle,
   size,
@@ -155,6 +158,7 @@ const CardContent: React.FC<CardContentProps> = ({
 }) => (
   <ActivateWrapper style={style} onActivate={onActivate}>
     <Card
+      header={header}
       title={title}
       subtitle={subtitle}
       size={size as any}
@@ -273,6 +277,21 @@ export default function CommonComponent(properties: CommonComponentProps) {
   const spaceSplitAlign = getStringProp('splitAlign') as any;
   const spaceSplitDashed = getBooleanProp('splitDashed');
 
+  if (isSlotNode(data)) {
+    return (
+      <DropArea data={data} onDropData={onDropData} emptyText="拖拽组件到此插槽" />
+    );
+  }
+
+  const getCardSlotNode = (slotKey: 'header' | 'body') => {
+    const sourceChildren = data?.children ?? [];
+    return sourceChildren.find((child) => getNodeSlotKey(child) === slotKey);
+  };
+
+  const cardHeaderSlotNode = getCardSlotNode('header');
+  const cardBodySlotNode = getCardSlotNode('body');
+  const hasCardSlotStructure = Boolean(cardHeaderSlotNode && cardBodySlotNode);
+
   switch(type) {
     case 'Button':
       return (
@@ -331,20 +350,55 @@ export default function CommonComponent(properties: CommonComponentProps) {
           
         )
       case 'Card':
+        if (!hasCardSlotStructure) {
+          return (
+            <DropArea data={data} onDropData={onDropData}>
+              <CardContent
+                title={getStringProp('title')}
+                subtitle={getStringProp('subtitle')}
+                size={getStringProp('size')}
+                bordered={getBooleanProp('bordered')}
+                headerBordered={getBooleanProp('headerBordered')}
+                shadow={getBooleanProp('shadow')}
+                hoverShadow={getBooleanProp('hoverShadow')}
+                style={mergeStyle()}
+                onActivate={handleActivateSelf}
+              />
+            </DropArea>
+          );
+        }
+
         return (
-          <DropArea data={data} onDropData={onDropData}>
-            <CardContent
-              title={getStringProp('title')}
-              subtitle={getStringProp('subtitle')}
-              size={getStringProp('size')}
-              bordered={getBooleanProp('bordered')}
-              headerBordered={getBooleanProp('headerBordered')}
-              shadow={getBooleanProp('shadow')}
-              hoverShadow={getBooleanProp('hoverShadow')}
-              style={mergeStyle()}
-              onActivate={handleActivateSelf}
+          <CardContent
+            title={!cardHeaderSlotNode?.children?.length ? getStringProp('title') : undefined}
+            subtitle={!cardHeaderSlotNode?.children?.length ? getStringProp('subtitle') : undefined}
+            size={getStringProp('size')}
+            bordered={getBooleanProp('bordered')}
+            headerBordered={getBooleanProp('headerBordered')}
+            shadow={getBooleanProp('shadow')}
+            hoverShadow={getBooleanProp('hoverShadow')}
+            style={mergeStyle()}
+            onActivate={handleActivateSelf}
+            header={(
+              <DropArea
+                data={cardHeaderSlotNode}
+                onDropData={onDropData}
+                dropSlotKey="header"
+                selectable={false}
+                compactWhenFilled
+                emptyText="拖拽组件到卡片头部"
+              />
+            )}
+          >
+            <DropArea
+              data={cardBodySlotNode}
+              onDropData={onDropData}
+              dropSlotKey="body"
+              selectable={false}
+              compactWhenFilled
+              emptyText="拖拽组件到卡片内容"
             />
-          </DropArea>
+          </CardContent>
         );
       case 'Image':
         return (

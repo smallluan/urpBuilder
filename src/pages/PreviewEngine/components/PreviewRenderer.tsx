@@ -1,6 +1,7 @@
 import React from 'react';
 import { Avatar, Button, Card, Col, Divider, Image, Row, Space, Switch, Swiper, Typography } from 'tdesign-react';
 import type { UiTreeNode } from '../../CreateComponent/store/type';
+import { getNodeSlotKey, isSlotNode } from '../../CreateComponent/utils/slot';
 
 interface PreviewRendererProps {
   node: UiTreeNode;
@@ -98,6 +99,28 @@ const getSwiperImages = (node: UiTreeNode): SwiperImageItem[] => {
   }));
 };
 
+const getSlotChildren = (node: UiTreeNode, slotKey: 'header' | 'body') => {
+  const sourceChildren = node.children ?? [];
+  const slotNode = sourceChildren.find((child) => getNodeSlotKey(child) === slotKey && isSlotNode(child));
+  if (slotNode) {
+    return slotNode.children ?? [];
+  }
+
+  // 兼容旧结构：没有影子插槽节点时，全部旧 children 视为 body。
+  if (slotKey === 'body') {
+    return sourceChildren.filter((child) => !isSlotNode(child));
+  }
+
+  return [];
+};
+
+const renderChildList = (
+  children: UiTreeNode[],
+  onLifecycle?: (componentKey: string, lifetime: string, payload?: unknown) => void,
+) => {
+  return children.map((child) => <PreviewRenderer key={child.key} node={child} onLifecycle={onLifecycle} />);
+};
+
 const renderChildren = (
   node?: UiTreeNode,
   onLifecycle?: (componentKey: string, lifetime: string, payload?: unknown) => void,
@@ -108,6 +131,10 @@ const renderChildren = (
 const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) => {
   const inlineStyle = getStyleProp(node);
   const type = node.type;
+  if (isSlotNode(node)) {
+    return null;
+  }
+
   const isSwitchNode = type === 'Switch';
   const isSwitchControlled = isSwitchNode ? getBooleanProp(node, 'controlled') !== false : false;
   const controlledSwitchValue = isSwitchNode ? Boolean(getBooleanProp(node, 'value')) : false;
@@ -346,11 +373,15 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) 
         </div>
       );
     case 'Card':
+      {
+      const headerChildren = getSlotChildren(node, 'header');
+      const bodyChildren = getSlotChildren(node, 'body');
       return (
         <div style={mergeStyle()}>
           <Card
-            title={getStringProp(node, 'title')}
-            subtitle={getStringProp(node, 'subtitle')}
+            header={headerChildren.length > 0 ? renderChildList(headerChildren, onLifecycle) : undefined}
+            title={headerChildren.length > 0 ? undefined : getStringProp(node, 'title')}
+            subtitle={headerChildren.length > 0 ? undefined : getStringProp(node, 'subtitle')}
             size={getStringProp(node, 'size') as any}
             bordered={getBooleanProp(node, 'bordered')}
             headerBordered={getBooleanProp(node, 'headerBordered')}
@@ -358,10 +389,11 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) 
             hoverShadow={getBooleanProp(node, 'hoverShadow')}
             style={mergeStyle()}
           >
-            {renderChildren(node, onLifecycle)}
+            {renderChildList(bodyChildren, onLifecycle)}
           </Card>
         </div>
       );
+      }
     case 'Image':
       return (
         <div style={mergeStyle()}>

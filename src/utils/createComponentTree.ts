@@ -1,5 +1,55 @@
 import { v4 as uuidv4 } from 'uuid';
 import type { UiTreeNode } from '../pages/CreateComponent/store/type';
+import { createSlotNode } from '../pages/CreateComponent/utils/slot';
+
+const createTypographyTitleNode = (): UiTreeNode => ({
+  key: uuidv4(),
+  label: '标题文本',
+  type: 'Typography.Title',
+  props: {
+    content: {
+      name: '文本内容',
+      value: '卡片标题',
+      editType: 'input',
+    },
+    level: {
+      name: '标题级别',
+      value: 'h5',
+      editType: 'select',
+      payload: {
+        options: ['h1', 'h2', 'h3', 'h4', 'h5', 'h6'],
+      },
+    },
+  },
+  lifetimes: [],
+  children: [],
+});
+
+const createTypographyParagraphNode = (): UiTreeNode => ({
+  key: uuidv4(),
+  label: '段落文本',
+  type: 'Typography.Paragraph',
+  props: {
+    content: {
+      name: '文本内容',
+      value: '这是一段可编辑的段落文本。',
+      editType: 'input',
+    },
+  },
+  lifetimes: [],
+  children: [],
+});
+
+const buildInitialChildren = (type: string): UiTreeNode[] => {
+  if (type === 'Card') {
+    return [
+      createSlotNode('header', '头部插槽', [createTypographyTitleNode()]),
+      createSlotNode('body', '内容插槽', [createTypographyParagraphNode()]),
+    ];
+  }
+
+  return [];
+};
 
 export const toUiTreeNode = (componentData: Record<string, unknown>): UiTreeNode => {
   const name = typeof componentData.name === 'string' ? componentData.name : '';
@@ -18,7 +68,7 @@ export const toUiTreeNode = (componentData: Record<string, unknown>): UiTreeNode
     type,
     props,
     lifetimes,
-    children: [],
+    children: buildInitialChildren(type),
   };
 };
 

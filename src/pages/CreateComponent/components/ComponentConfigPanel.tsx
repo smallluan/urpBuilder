@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Button, Dialog, Empty, Input, InputNumber, Select, Space, Switch, Table, Typography } from 'tdesign-react';
 import { useCreateComponentStore } from '../store';
 import NodeStyleDrawer from './NodeStyleDrawer';
+import { isSlotNode } from '../utils/slot';
 
 type EditType = 'switch' | 'input' | 'inputNumber' | 'select' | 'swiperImages';
 
@@ -82,7 +83,7 @@ const ComponentConfigPanel: React.FC = () => {
     : undefined;
 
   const editableProps = Object.entries(propsMap).filter(([propKey]) => {
-    if (propKey === '__style') {
+    if (propKey.startsWith('__')) {
       return false;
     }
 
@@ -131,6 +132,14 @@ const ComponentConfigPanel: React.FC = () => {
     return (
       <div className="right-panel-body right-panel-empty">
         <Empty description="请先在画布或组件树中选择一个组件" />
+      </div>
+    );
+  }
+
+  if (isSlotNode(activeNode)) {
+    return (
+      <div className="right-panel-body right-panel-empty">
+        <Empty description="插槽节点仅用于承载拖拽，不支持单独配置" />
       </div>
     );
   }

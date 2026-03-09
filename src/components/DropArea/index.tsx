@@ -13,7 +13,10 @@ interface DropAreaProps {
   disabled?: boolean;
   emptyText?: string;
   data?: UiTreeNode;
-  onDropData?: (dropData: unknown, parent: UiTreeNode | undefined) => void;
+  onDropData?: (dropData: unknown, parent: UiTreeNode | undefined, options?: { slotKey?: string }) => void;
+  dropSlotKey?: string;
+  selectable?: boolean;
+  compactWhenFilled?: boolean;
   isTreeNode?: boolean;
 }
 
@@ -22,7 +25,7 @@ const DROP_DATA_KEY = 'drag-component-data';
 const RenderNode: React.FC<{
   data?: UiTreeNode;
   emptyText: string;
-  onDropData?: (dropData: unknown, parent: UiTreeNode | undefined) => void;
+  onDropData?: (dropData: unknown, parent: UiTreeNode | undefined, options?: { slotKey?: string }) => void;
 }> = ({ data, emptyText, onDropData }) => {
   if (data?.children?.length) {
     return (
@@ -44,7 +47,7 @@ const RenderNode: React.FC<{
 
 const renderNodeList = (
   data: UiTreeNode | undefined,
-  onDropData?: (dropData: unknown, parent: UiTreeNode | undefined) => void,
+  onDropData?: (dropData: unknown, parent: UiTreeNode | undefined, options?: { slotKey?: string }) => void,
 ) =>
   data?.children?.map((child) => (
     <CommonComponent key={child.key} type={child.type} data={child} onDropData={onDropData} />
@@ -58,6 +61,9 @@ export default function DropArea({
   emptyText = '拖拽组件到此处',
   data,
   onDropData,
+  dropSlotKey,
+  selectable = true,
+  compactWhenFilled = false,
   isTreeNode = false,
 }: DropAreaProps) {
   const [isDragOver, setIsDragOver] = useState(false);
@@ -106,7 +112,7 @@ export default function DropArea({
 
     try {
       const parsedData = JSON.parse(rawData);
-      onDropData?.(parsedData, data);
+      onDropData?.(parsedData, data, dropSlotKey ? { slotKey: dropSlotKey } : undefined);
     } catch {
       console.error(rawData)
     }
@@ -115,10 +121,15 @@ export default function DropArea({
   const dropAreaClassName = useMemo(() => {
     const dragOverClass = isDragOver ? ' drop-area-active' : '';
     const selectedClass = isNodeActive ? ' drop-area-selected' : '';
-    return `drop-area${dragOverClass}${selectedClass}${className ? ` ${className}` : ''}`;
-  }, [className, isDragOver, isNodeActive]);
+    const filledClass = compactWhenFilled && (data?.children?.length ?? 0) > 0 ? ' drop-area--filled' : '';
+    return `drop-area${dragOverClass}${selectedClass}${filledClass}${className ? ` ${className}` : ''}`;
+  }, [className, compactWhenFilled, data?.children?.length, isDragOver, isNodeActive]);
 
   const handleClick = (event: React.MouseEvent<HTMLDivElement>) => {
+    if (!selectable) {
+      return;
+    }
+
     if (event.target !== event.currentTarget) {
       return;
     }

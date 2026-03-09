@@ -559,7 +559,7 @@ export const useCreateComponentStore = create<CreateComponentStore>((set) => ({
   // 挂载/卸载左侧树组件实例
   setTreeInstance: (instance) => set({ treeInstance: instance }),
   // 将拖拽得到的组件结构插入到指定父节点下
-  insertToUiPageData: (parentKey, componentData) =>
+  insertToUiPageData: (parentKey, componentData, slotKey) =>
     set((state) => {
       const parentNode = findNodeByKey(state.uiPageData, parentKey);
       if (!parentNode) {
@@ -567,6 +567,16 @@ export const useCreateComponentStore = create<CreateComponentStore>((set) => ({
       }
 
       const newNode = toUiTreeNode(componentData);
+      if (slotKey) {
+        const currentProps = (newNode.props ?? {}) as Record<string, unknown>;
+        newNode.props = {
+          ...currentProps,
+          __slot: {
+            ...((currentProps.__slot ?? {}) as Record<string, unknown>),
+            value: slotKey,
+          },
+        };
+      }
       const nodeRef = saveNodeToPool(newNode);
       const index = parentNode.children?.length ?? 0;
       // add 历史只记录 nodeRef 与插入位置信息。

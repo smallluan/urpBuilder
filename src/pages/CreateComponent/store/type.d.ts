@@ -127,7 +127,7 @@ export interface CreateComponentStore {
   updateActiveNodeKey: (nextKey: string) => UpdateNodeKeyResult;
   updateActiveNodeProp: (propKey: string, value: unknown) => void;
   setTreeInstance: (instance: UiTreeInstance | null) => void;
-  insertToUiPageData: (parentKey: string, componentData: Record<string, unknown>) => void;
+  insertToUiPageData: (parentKey: string, componentData: Record<string, unknown>, slotKey?: string) => void;
   removeFromUiPageData: (nodeKey: string) => void;
   recordFlowEditHistory: (
     actionLabel: string,

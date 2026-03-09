@@ -5,6 +5,7 @@ import { SearchIcon, ApiIcon, CodeIcon, UploadIcon } from 'tdesign-icons-react';
 import DragableWrapper from '../../../components/DragableWrapper';
 import { useCreateComponentStore } from '../store';
 import type { UiTreeNode } from '../store/type';
+import { isSlotNode } from '../utils/slot';
 
 interface RenderUiTreeNode extends Omit<UiTreeNode, 'label' | 'children'> {
   label: React.ReactNode;
@@ -20,6 +21,10 @@ const FlowAsideLeft: React.FC = () => {
   const treeRef = useRef<TreeInstanceFunctions<any>>(null);
 
   const handleDragStart = (event: React.DragEvent<HTMLDivElement>, node: UiTreeNode) => {
+    if (isSlotNode(node)) {
+      return;
+    }
+
     const payload = {
       kind: 'component-node',
       name: String(node.label ?? '节点'),
@@ -43,7 +48,14 @@ const FlowAsideLeft: React.FC = () => {
 
       return {
         ...node,
-        label: (
+        label: isSlotNode(node) ? (
+          <div className="tree-node-label">
+            <div className="tree-node-item">
+              <span className="tree-node-item__title">{String(node.label ?? '插槽')}</span>
+              <span className="tree-node-item__meta">Slot</span>
+            </div>
+          </div>
+        ) : (
           <DragableWrapper data={node} onDragStart={handleDragStart}>
             <div className="tree-node-label">
               <div className="tree-node-item">

@@ -3,15 +3,69 @@ import cloneDeep from 'lodash/cloneDeep';
 import { Button, Input, Popup, Tree } from 'tdesign-react';
 import type { TreeInstanceFunctions } from 'tdesign-react';
 import { SearchIcon } from 'tdesign-icons-react';
+import { GripHorizontal, LayoutGrid, Minus } from 'lucide-react';
 import { useCreateComponentStore } from '../store';
 import type { UiTreeNode } from '../store/type';
-import ComponentConfigPanel from './ComponentConfigPanel';
 import NodeStyleDrawer from './NodeStyleDrawer';
+import { getNodeSlotKey, isSlotNode } from '../utils/slot';
 
 interface RenderUiTreeNode extends Omit<UiTreeNode, 'label' | 'children'> {
   label: React.ReactNode;
   children?: RenderUiTreeNode[];
 }
+
+const DROP_DATA_KEY = 'drag-component-data';
+const CONTAINER_NODE_TYPES = new Set(['Space', 'Grid.Row', 'Grid.Col']);
+
+type NodeVisualKind = 'slot' | 'container' | 'leaf';
+
+interface TreeNodeDropTarget {
+  parentKey: string;
+  slotKey?: string;
+}
+
+const getCardPreferredSlotNode = (node: UiTreeNode) => {
+  const slotChildren = (node.children ?? []).filter((child) => isSlotNode(child));
+  const bodySlot = slotChildren.find((child) => getNodeSlotKey(child) === 'body');
+  return bodySlot ?? slotChildren[0];
+};
+
+const getTreeNodeDropTarget = (node: UiTreeNode): TreeNodeDropTarget | null => {
+  if (isSlotNode(node)) {
+    return {
+      parentKey: node.key,
+      slotKey: getNodeSlotKey(node),
+    };
+  }
+
+  if (!node.type || CONTAINER_NODE_TYPES.has(node.type)) {
+    return {
+      parentKey: node.key,
+    };
+  }
+
+  if (node.type === 'Card') {
+    const preferredSlotNode = getCardPreferredSlotNode(node);
+    if (!preferredSlotNode) {
+      return null;
+    }
+
+    return {
+      parentKey: preferredSlotNode.key,
+      slotKey: getNodeSlotKey(preferredSlotNode),
+    };
+  }
+
+  return null;
+};
+
+const getNodeVisualKind = (node: UiTreeNode): NodeVisualKind => {
+  if (isSlotNode(node)) {
+    return 'slot';
+  }
+
+  return getTreeNodeDropTarget(node) ? 'container' : 'leaf';
+};
 
 const ComponentAsideLeft: React.FC = () => {
   const uiPageData = useCreateComponentStore((state) => state.uiPageData);
@@ -20,7 +74,9 @@ const ComponentAsideLeft: React.FC = () => {
   const setActiveNode = useCreateComponentStore((state) => state.setActiveNode);
   const toggleActiveNode = useCreateComponentStore((state) => state.toggleActiveNode);
   const removeFromUiPageData = useCreateComponentStore((state) => state.removeFromUiPageData);
+  const insertToUiPageData = useCreateComponentStore((state) => state.insertToUiPageData);
   const updateActiveNodeProp = useCreateComponentStore((state) => state.updateActiveNodeProp);
+  const [dragOverNodeKey, setDragOverNodeKey] = useState<string | null>(null);
   const [contextMenuState, setContextMenuState] = useState<{
     visible: boolean;
     nodeKey: string | null;
@@ -83,6 +139,58 @@ const ComponentAsideLeft: React.FC = () => {
     closeContextMenu();
   };
 
+  const handleTreeNodeDragOver = (event: React.DragEvent<HTMLDivElement>, node: UiTreeNode) => {
+    const dropTarget = getTreeNodeDropTarget(node);
+    if (!dropTarget) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+    event.dataTransfer.dropEffect = 'copy';
+    setDragOverNodeKey(node.key);
+  };
+
+  const handleTreeNodeDragLeave = (event: React.DragEvent<HTMLDivElement>, node: UiTreeNode) => {
+    event.preventDefault();
+    event.stopPropagation();
+
+    const relatedTarget = event.relatedTarget as Node | null;
+    if (relatedTarget && event.currentTarget.contains(relatedTarget)) {
+      return;
+    }
+
+    setDragOverNodeKey((previous) => (previous === node.key ? null : previous));
+  };
+
+  const handleTreeNodeDrop = (event: React.DragEvent<HTMLDivElement>, node: UiTreeNode) => {
+    const dropTarget = getTreeNodeDropTarget(node);
+    if (!dropTarget) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+    setDragOverNodeKey(null);
+
+    const rawData = event.dataTransfer.getData(DROP_DATA_KEY);
+    if (!rawData) {
+      return;
+    }
+
+    try {
+      const parsedData = JSON.parse(rawData);
+      if (!parsedData || typeof parsedData !== 'object') {
+        return;
+      }
+
+      insertToUiPageData(dropTarget.parentKey, parsedData as Record<string, unknown>, dropTarget.slotKey);
+      setActiveNode(node.key);
+    } catch {
+      console.error(rawData);
+    }
+  };
+
   const uiPageDataWithWrappedLabel = useMemo(() => {
     const cloned = cloneDeep(uiPageData) as UiTreeNode;
 
@@ -91,9 +199,21 @@ const ComponentAsideLeft: React.FC = () => {
         ? node.children.map((child) => transformNode(child))
         : [];
 
+      const nodeVisualKind = getNodeVisualKind(node);
+      const dropTarget = getTreeNodeDropTarget(node);
+      const isDroppable = !!dropTarget;
+      const isDragOver = dragOverNodeKey === node.key;
+      const title = String(node.label ?? '未命名节点');
+
+      const icon = nodeVisualKind === 'slot'
+        ? <GripHorizontal size={12} strokeWidth={2} />
+        : nodeVisualKind === 'container'
+          ? <LayoutGrid size={12} strokeWidth={2} />
+          : <Minus size={12} strokeWidth={2} />;
+
       return {
         ...node,
-        label: typeof node.label === 'string' ? (
+        label: (
           <Popup
             visible={contextMenuState.visible && contextMenuState.nodeKey === node.key}
             trigger="context-menu"
@@ -131,7 +251,7 @@ const ComponentAsideLeft: React.FC = () => {
                   variant="base"
                   theme="default"
                   className="tree-node-context-action"
-                  disabled={node.key === uiPageData.key}
+                  disabled={node.key === uiPageData.key || isSlotNode(node)}
                   onClick={() => handleDeleteNode(node.key)}
                 >
                   删除该节点
@@ -140,19 +260,27 @@ const ComponentAsideLeft: React.FC = () => {
             }
           >
             <div
-              className="tree-node-label"
+              className={`tree-node-label${isDroppable ? ' tree-node-label--droppable' : ''}${isDragOver ? ' tree-node-label--drag-over' : ''}`}
               onContextMenu={(event) => handleNodeContextMenu(event, node.key)}
+              onDragOver={(event) => handleTreeNodeDragOver(event, node)}
+              onDragLeave={(event) => handleTreeNodeDragLeave(event, node)}
+              onDrop={(event) => handleTreeNodeDrop(event, node)}
             >
-              {node.label}
+              <div className="tree-node-item">
+                <span className="tree-node-item__left">
+                  <span className={`tree-node-item__icon tree-node-item__icon--${nodeVisualKind}`}>{icon}</span>
+                  <span className="tree-node-item__title">{title}</span>
+                </span>
+              </div>
             </div>
           </Popup>
-        ) : node.label,
+        ),
         children,
       };
     };
 
     return transformNode(cloned);
-  }, [contextMenuState.nodeKey, contextMenuState.visible, uiPageData]);
+  }, [contextMenuState.nodeKey, contextMenuState.visible, dragOverNodeKey, uiPageData]);
 
   const treeData = useMemo(() => [uiPageDataWithWrappedLabel], [uiPageDataWithWrappedLabel]);
   const treeRef = useRef<TreeInstanceFunctions<any>>(null);
@@ -188,13 +316,10 @@ const ComponentAsideLeft: React.FC = () => {
               data={treeData}
               actived={activeNodeKey ? [activeNodeKey] : []}
               onClick={handleTreeClick}
+              onDragLeave={() => setDragOverNodeKey(null)}
             />
           </div>
         </div>
-      </div>
-
-      <div className="structure-bottom">
-        <ComponentConfigPanel />
       </div>
     </aside>
   );

@@ -9,11 +9,11 @@ const ComponentBody: React.FC = () => {
   const insertToUiPageData = useCreateComponentStore((state) => state.insertToUiPageData);
 
   // 组件拖拽后接收结构化数据，并插入到对应父节点下
-  const handleDropData = (data: any, parent: any) => {
+  const handleDropData = (data: any, parent: any, options?: { slotKey?: string }) => {
     if (!parent?.key || !data || typeof data !== 'object') {
       return;
     }
-    insertToUiPageData(parent.key, data as Record<string, unknown>);
+    insertToUiPageData(parent.key, data as Record<string, unknown>, options?.slotKey);
     setTimeout(() => {
       console.log(useCreateComponentStore.getState().uiPageData);
     }, 0);
