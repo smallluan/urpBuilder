@@ -14,6 +14,7 @@ import {
 } from '../../../utils/createComponentTree';
 
 const HISTORY_MAX_ACTIONS = 200;
+const COMPONENT_KEY_PATTERN = /^[A-Za-z0-9_-]+$/;
 
 const nodePool = new Map<string, UiTreeNode>();
 
@@ -62,6 +63,18 @@ const collectTreeKeys = (node: UiTreeNode, collector = new Set<string>()) => {
   collector.add(node.key);
   node.children?.forEach((child) => collectTreeKeys(child, collector));
   return collector;
+};
+
+const hasDuplicateKey = (node: UiTreeNode, targetKey: string, excludeKey?: string): boolean => {
+  if (node.key === targetKey && node.key !== excludeKey) {
+    return true;
+  }
+
+  if (!node.children?.length) {
+    return false;
+  }
+
+  return node.children.some((child) => hasDuplicateKey(child, targetKey, excludeKey));
 };
 
 const buildEntityPatch = <T extends { id: string }>(previous: T[], next: T[]) => {
@@ -380,6 +393,96 @@ export const useCreateComponentStore = create<CreateComponentStore>((set) => ({
         history: nextHistory,
       };
     }),
+  updateActiveNodeKey: (nextKey) => {
+    const trimmedKey = String(nextKey ?? '').trim();
+    if (!trimmedKey) {
+      return {
+        success: false,
+        message: '组件标识不能为空',
+      };
+    }
+
+    if (!COMPONENT_KEY_PATTERN.test(trimmedKey)) {
+      return {
+        success: false,
+        message: '组件标识仅支持字母、数字、下划线(_)和中划线(-)',
+      };
+    }
+
+    let result: { success: boolean; message?: string } = {
+      success: true,
+    };
+
+    set((state) => {
+      if (!state.activeNodeKey) {
+        result = {
+          success: false,
+          message: '请先选择组件',
+        };
+        return state;
+      }
+
+      const currentNode = resolveActiveNode(state.uiPageData, state.activeNodeKey);
+      if (!currentNode) {
+        result = {
+          success: false,
+          message: '当前组件不存在',
+        };
+        return state;
+      }
+
+      if (currentNode.key === trimmedKey) {
+        result = { success: true };
+        return state;
+      }
+
+      if (hasDuplicateKey(state.uiPageData, trimmedKey, currentNode.key)) {
+        result = {
+          success: false,
+          message: `组件标识“${trimmedKey}”已存在，请更换`,
+        };
+        return state;
+      }
+
+      const prevKey = currentNode.key;
+      const nextTree = updateNodeByKey(state.uiPageData, prevKey, (target) => ({
+        ...target,
+        key: trimmedKey,
+      }));
+
+      const nextFlowNodes = state.flowNodes.map((node) => {
+        if (node.type !== 'componentNode') {
+          return node;
+        }
+
+        const nodeData = (node.data ?? {}) as { sourceKey?: string };
+        if (nodeData.sourceKey !== prevKey) {
+          return node;
+        }
+
+        return {
+          ...node,
+          data: {
+            ...nodeData,
+            sourceKey: trimmedKey,
+          },
+        };
+      });
+
+      result = {
+        success: true,
+      };
+
+      return {
+        uiPageData: nextTree,
+        flowNodes: nextFlowNodes,
+        activeNodeKey: trimmedKey,
+        activeNode: resolveActiveNode(nextTree, trimmedKey),
+      };
+    });
+
+    return result;
+  },
   updateActiveNodeProp: (propKey, value) =>
     set((state) => {
       if (!state.activeNodeKey) {

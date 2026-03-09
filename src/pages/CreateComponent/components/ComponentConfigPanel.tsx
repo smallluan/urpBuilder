@@ -27,8 +27,11 @@ const resolveEditType = (schema: ComponentPropSchema): EditType => {
 const ComponentConfigPanel: React.FC = () => {
   const activeNode = useCreateComponentStore((state) => state.activeNode);
   const updateActiveNodeLabel = useCreateComponentStore((state) => state.updateActiveNodeLabel);
+  const updateActiveNodeKey = useCreateComponentStore((state) => state.updateActiveNodeKey);
   const updateActiveNodeProp = useCreateComponentStore((state) => state.updateActiveNodeProp);
   const [labelDraft, setLabelDraft] = useState('');
+  const [keyDraft, setKeyDraft] = useState('');
+  const [keyError, setKeyError] = useState('');
   const [inputDrafts, setInputDrafts] = useState<Record<string, string>>({});
   const [numberDrafts, setNumberDrafts] = useState<Record<string, number | undefined>>({});
 
@@ -45,6 +48,8 @@ const ComponentConfigPanel: React.FC = () => {
     }
 
     setLabelDraft(String(activeNode.label ?? ''));
+    setKeyDraft(String(activeNode.key ?? ''));
+    setKeyError('');
 
     const nextInputDrafts: Record<string, string> = {};
     const nextNumberDrafts: Record<string, number | undefined> = {};
@@ -136,6 +141,16 @@ const ComponentConfigPanel: React.FC = () => {
     );
   };
 
+  const handleApplyNodeKey = () => {
+    const result = updateActiveNodeKey(keyDraft);
+    setKeyError(result.success ? '' : String(result.message ?? '组件标识重复'));
+    if (result.success && activeNode) {
+      setKeyDraft(String(keyDraft.trim()));
+    }
+  };
+
+  const keyHintText = keyError || '仅支持字母、数字、下划线(_)和中划线(-)';
+
   return (
     <div className="right-panel-body">
       <div className="config-form">
@@ -155,7 +170,23 @@ const ComponentConfigPanel: React.FC = () => {
 
         <div className="config-row">
           <span className="config-label">组件标识</span>
-          <Input className="config-editor" value={activeNode.key} disabled />
+          <Input
+            className="config-editor"
+            clearable
+            value={keyDraft}
+            status={keyError ? 'error' : 'default'}
+            onChange={(value) => {
+              setKeyDraft(String(value ?? ''));
+              if (keyError) {
+                setKeyError('');
+              }
+            }}
+            onBlur={handleApplyNodeKey}
+            onEnter={handleApplyNodeKey}
+          />
+        </div>
+        <div className="config-row">
+          <span className="config-label" style={{ color: keyError ? '#d54941' : '#8b92a1' }}>{keyHintText}</span>
         </div>
 
         <div className="config-row">

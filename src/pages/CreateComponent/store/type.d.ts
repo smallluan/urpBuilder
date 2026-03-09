@@ -100,6 +100,11 @@ export interface UiHistoryState {
   actions: UiHistoryAction[];
 }
 
+export interface UpdateNodeKeyResult {
+  success: boolean;
+  message?: string;
+}
+
 export interface CreateComponentStore {
   screenSize: ScreenSize;
   autoWidth: number;
@@ -119,6 +124,7 @@ export interface CreateComponentStore {
   setActiveNode: (nodeKey?: string) => void;
   toggleActiveNode: (nodeKey?: string) => void;
   updateActiveNodeLabel: (label: string) => void;
+  updateActiveNodeKey: (nextKey: string) => UpdateNodeKeyResult;
   updateActiveNodeProp: (propKey: string, value: unknown) => void;
   setTreeInstance: (instance: UiTreeInstance | null) => void;
   insertToUiPageData: (parentKey: string, componentData: Record<string, unknown>) => void;
