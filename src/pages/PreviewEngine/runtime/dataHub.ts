@@ -95,14 +95,25 @@ export class PreviewDataHub {
     }
 
     const propsMap = (targetNode.props ?? {}) as Record<string, unknown>;
+    let hasChanged = false;
     Object.entries(patch).forEach(([propKey, nextValue]) => {
       const currentSchema = (propsMap[propKey] ?? {}) as Record<string, unknown>;
+      const previousValue = (currentSchema as { value?: unknown }).value;
+      if (Object.is(previousValue, nextValue)) {
+        return;
+      }
+
+      hasChanged = true;
       propsMap[propKey] = {
         ...currentSchema,
         value: nextValue,
       };
       targetState.props[propKey] = nextValue;
     });
+
+    if (!hasChanged) {
+      return false;
+    }
 
     targetNode.props = propsMap;
     this.publish('component:patched', {

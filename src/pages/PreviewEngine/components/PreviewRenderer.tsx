@@ -4,6 +4,7 @@ import type { UiTreeNode } from '../../CreateComponent/store/type';
 
 interface PreviewRendererProps {
   node: UiTreeNode;
+  onLifecycle?: (componentKey: string, lifetime: string, payload?: unknown) => void;
 }
 
 const getProp = (node: UiTreeNode, propName: string) => {
@@ -35,13 +36,71 @@ const getStyleProp = (node: UiTreeNode) => {
   return value as React.CSSProperties;
 };
 
-const renderChildren = (node?: UiTreeNode) => {
-  return node?.children?.map((child) => <PreviewRenderer key={child.key} node={child} />) ?? null;
+const renderChildren = (
+  node?: UiTreeNode,
+  onLifecycle?: (componentKey: string, lifetime: string, payload?: unknown) => void,
+) => {
+  return node?.children?.map((child) => <PreviewRenderer key={child.key} node={child} onLifecycle={onLifecycle} />) ?? null;
 };
 
-const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node }) => {
+const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) => {
   const inlineStyle = getStyleProp(node);
   const type = node.type;
+  const lifetimes = Array.isArray(node.lifetimes) ? node.lifetimes.map((item) => String(item)) : [];
+  const didUpdateReadyRef = React.useRef(false);
+
+  const hasLifetime = React.useCallback(
+    (lifetime: string) => lifetimes.includes(lifetime),
+    [lifetimes],
+  );
+
+  React.useEffect(() => {
+    if (!onLifecycle) {
+      return;
+    }
+
+    if (hasLifetime('onInit')) {
+      onLifecycle(node.key, 'onInit', { nodeType: node.type });
+    }
+    if (hasLifetime('onBeforeMount')) {
+      onLifecycle(node.key, 'onBeforeMount', { nodeType: node.type });
+    }
+    if (hasLifetime('onMounted')) {
+      onLifecycle(node.key, 'onMounted', { nodeType: node.type });
+    }
+
+    return () => {
+      if (hasLifetime('onBeforeUnmount')) {
+        onLifecycle(node.key, 'onBeforeUnmount', { nodeType: node.type });
+      }
+      if (hasLifetime('onUnmounted')) {
+        onLifecycle(node.key, 'onUnmounted', { nodeType: node.type });
+      }
+    };
+  }, [hasLifetime, node.key, node.type, onLifecycle]);
+
+  React.useEffect(() => {
+    if (!onLifecycle) {
+      return;
+    }
+
+    if (!didUpdateReadyRef.current) {
+      didUpdateReadyRef.current = true;
+      return;
+    }
+
+    if (hasLifetime('onBeforeUpdate')) {
+      onLifecycle(node.key, 'onBeforeUpdate', { nodeType: node.type });
+    }
+    if (hasLifetime('onUpdated')) {
+      onLifecycle(node.key, 'onUpdated', { nodeType: node.type });
+    }
+  }, [hasLifetime, node.children, node.key, node.label, node.props, node.type, onLifecycle]);
+
+  const visible = getBooleanProp(node, 'visible');
+  if (visible === false) {
+    return null;
+  }
 
   const mergeStyle = (baseStyle?: React.CSSProperties): React.CSSProperties | undefined => {
     if (!baseStyle && !inlineStyle) {
@@ -53,6 +112,20 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node }) => {
       ...(inlineStyle ?? {}),
     };
   };
+
+  const emitInteractionLifecycle = React.useCallback(
+    (lifetime: string, payload?: unknown) => {
+      if (!onLifecycle || !hasLifetime(lifetime)) {
+        return;
+      }
+
+      onLifecycle(node.key, lifetime, {
+        nodeType: node.type,
+        ...(payload && typeof payload === 'object' ? payload : {}),
+      });
+    },
+    [hasLifetime, node.key, node.type, onLifecycle],
+  );
 
   switch (type) {
     case 'Button': {
@@ -66,6 +139,7 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node }) => {
             variant={getStringProp(node, 'variant') as any}
             block={isBlockButton}
             style={mergeStyle(isBlockButton ? { width: '100%', display: 'flex' } : undefined)}
+            onClick={() => emitInteractionLifecycle('onClick')}
           >
             {getStringProp(node, 'content')}
           </Button>
@@ -79,7 +153,7 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node }) => {
       const spaceSplitContent = getStringProp(node, 'splitContent');
       const spaceSplitAlign = getStringProp(node, 'splitAlign') as any;
       const spaceSplitDashed = getBooleanProp(node, 'splitDashed');
-      const childrenList = renderChildren(node);
+      const childrenList = renderChildren(node, onLifecycle);
       const childrenArray = React.Children.toArray(childrenList);
 
       if (!isSpaceSplitEnabled || childrenArray.length <= 1) {
@@ -135,7 +209,7 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node }) => {
             justify={getStringProp(node, 'justify') as any}
             gutter={getNumberProp(node, 'gutter')}
           >
-            {renderChildren(node)}
+            {renderChildren(node, onLifecycle)}
           </Row>
         </div>
       );
@@ -143,7 +217,7 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node }) => {
       return (
         <div style={mergeStyle()}>
           <Col span={getNumberProp(node, 'span')} offset={getNumberProp(node, 'offset')}>
-            {renderChildren(node)}
+            {renderChildren(node, onLifecycle)}
           </Col>
         </div>
       );
@@ -160,7 +234,7 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node }) => {
             hoverShadow={getBooleanProp(node, 'hoverShadow')}
             style={mergeStyle()}
           >
-            {renderChildren(node)}
+            {renderChildren(node, onLifecycle)}
           </Card>
         </div>
       );
@@ -235,7 +309,7 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node }) => {
         </div>
       );
     default:
-      return <>{renderChildren(node)}</>;
+      return <>{renderChildren(node, onLifecycle)}</>;
   }
 };
 

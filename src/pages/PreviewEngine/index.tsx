@@ -4,6 +4,7 @@ import { useCreateComponentStore } from '../CreateComponent/store';
 import PreviewRenderer from './components/PreviewRenderer';
 import { deserializePreviewSnapshot, type PreviewSnapshot } from './utils/snapshot';
 import { createPreviewDataHub } from './runtime/dataHub';
+import { createPreviewFlowRuntime, type PreviewFlowRuntime } from './runtime/flowRuntime';
 import './style.less';
 
 const PreviewEngine: React.FC = () => {
@@ -17,30 +18,56 @@ const PreviewEngine: React.FC = () => {
   const serializedFromStorage = snapshotKey ? window.localStorage.getItem(snapshotKey) : null;
 
   const serialized = serializedFromStorage ?? serializedFromState;
-  const parsedSnapshot = serialized ? deserializePreviewSnapshot(serialized) : null;
+  const parsedSnapshot = React.useMemo(
+    () => (serialized ? deserializePreviewSnapshot(serialized) : null),
+    [serialized],
+  );
 
-  const snapshot: PreviewSnapshot = parsedSnapshot ?? {
-    uiTreeData,
-    flowNodes,
-    flowEdges,
-  };
+  const snapshot: PreviewSnapshot = React.useMemo(
+    () =>
+      parsedSnapshot ?? {
+        uiTreeData,
+        flowNodes,
+        flowEdges,
+      },
+    [parsedSnapshot, uiTreeData, flowNodes, flowEdges],
+  );
+
+  const [renderTree, setRenderTree] = React.useState(snapshot.uiTreeData);
+  const runtimeRef = React.useRef<PreviewFlowRuntime | null>(null);
+
+  React.useEffect(() => {
+    setRenderTree(snapshot.uiTreeData);
+  }, [snapshot.uiTreeData]);
 
   React.useEffect(() => {
     const hub = createPreviewDataHub(snapshot.uiTreeData);
+    const runtime = createPreviewFlowRuntime(snapshot.flowNodes, snapshot.flowEdges, hub);
+    const unsubscribePatched = hub.subscribe('component:patched', () => {
+      setRenderTree(hub.getTreeSnapshot());
+    });
+
+    runtimeRef.current = runtime;
     window.dataHub = hub;
 
     return () => {
+      unsubscribePatched();
+      runtimeRef.current = null;
       if (window.dataHub === hub) {
         delete window.dataHub;
       }
     };
-  }, [snapshot.uiTreeData]);
+  }, [snapshot.flowEdges, snapshot.flowNodes, snapshot.uiTreeData]);
+
+  const handleLifecycle = React.useCallback((componentKey: string, lifetime: string, payload?: unknown) => {
+    runtimeRef.current?.emitLifecycle(componentKey, lifetime, payload);
+  }, []);
 
   return (
     <div className="preview-engine-page">
       <div className="preview-engine-canvas" data-preview-page>
-        {(snapshot.uiTreeData.children ?? []).map((child) => (
-          <PreviewRenderer key={child.key} node={child} />
+        {(renderTree.children ?? []).map((child) => (
+          <PreviewRenderer key={child.key} node={child} onLifecycle={handleLifecycle} />
         ))}
       </div>
     </div>
