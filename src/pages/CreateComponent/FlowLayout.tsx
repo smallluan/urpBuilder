@@ -20,6 +20,13 @@ interface NetworkRequestFormState {
 
 interface CodeNodeFormState extends CodeEditorValue {}
 
+interface EventFilterFormState {
+  label: string;
+  upstreamLabel: string;
+  availableLifetimes: string[];
+  selectedLifetimes: string[];
+}
+
 const METHOD_OPTIONS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'].map((item) => ({
   label: item,
   value: item,
@@ -73,6 +80,7 @@ const FlowLayout: React.FC = () => {
   const [networkEditorVisible, setNetworkEditorVisible] = useState(false);
   const [codeDraft, setCodeDraft] = useState<CodeNodeFormState | null>(null);
   const [codeEditorVisible, setCodeEditorVisible] = useState(false);
+  const [eventFilterDraft, setEventFilterDraft] = useState<EventFilterFormState | null>(null);
 
   useEffect(() => {
     if (!activeFlowNode || activeFlowNode.type !== 'networkRequestNode') {
@@ -107,6 +115,29 @@ const FlowLayout: React.FC = () => {
       editorTheme: (String(nodeData.editorTheme ?? 'vscode-dark') === 'vscode-light' ? 'vscode-light' : 'vscode-dark'),
       note: String(nodeData.note ?? ''),
       code: String(nodeData.code ?? ''),
+    });
+  }, [activeFlowNode]);
+
+  useEffect(() => {
+    if (!activeFlowNode || activeFlowNode.type !== 'eventFilterNode') {
+      setEventFilterDraft(null);
+      return;
+    }
+
+    const nodeData = (activeFlowNode.data ?? {}) as Record<string, unknown>;
+    const availableLifetimes = Array.isArray(nodeData.availableLifetimes)
+      ? nodeData.availableLifetimes.map((item) => String(item))
+      : [];
+    const selectedRaw = Array.isArray(nodeData.selectedLifetimes)
+      ? nodeData.selectedLifetimes.map((item) => String(item))
+      : [];
+    const selectedLifetimes = selectedRaw.filter((item) => availableLifetimes.includes(item));
+
+    setEventFilterDraft({
+      label: String(nodeData.label ?? '事件过滤节点'),
+      upstreamLabel: String(nodeData.upstreamLabel ?? '-'),
+      availableLifetimes,
+      selectedLifetimes,
     });
   }, [activeFlowNode]);
 
@@ -160,6 +191,31 @@ const FlowLayout: React.FC = () => {
     return JSON.stringify(currentComparable) !== JSON.stringify(codeDraft);
   }, [activeFlowNode, codeDraft]);
 
+  const canApplyEventFilterDraft = useMemo(() => {
+    if (!activeFlowNode || activeFlowNode.type !== 'eventFilterNode' || !eventFilterDraft) {
+      return false;
+    }
+
+    const nodeData = (activeFlowNode.data ?? {}) as Record<string, unknown>;
+    const availableLifetimes = Array.isArray(nodeData.availableLifetimes)
+      ? nodeData.availableLifetimes.map((item) => String(item))
+      : [];
+    const selectedRaw = Array.isArray(nodeData.selectedLifetimes)
+      ? nodeData.selectedLifetimes.map((item) => String(item))
+      : [];
+    const selectedLifetimes = selectedRaw.filter((item) => availableLifetimes.includes(item));
+
+    const currentComparable = {
+      selectedLifetimes,
+    };
+
+    const draftComparable = {
+      selectedLifetimes: eventFilterDraft.selectedLifetimes,
+    };
+
+    return JSON.stringify(currentComparable) !== JSON.stringify(draftComparable);
+  }, [activeFlowNode, eventFilterDraft]);
+
   const handleApplyNetworkDraft = () => {
     if (!activeFlowNode || activeFlowNode.type !== 'networkRequestNode' || !networkDraft) {
       return;
@@ -207,6 +263,21 @@ const FlowLayout: React.FC = () => {
     );
 
     setCodeDraft(resolvedDraft);
+  };
+
+  const handleApplyEventFilterDraft = () => {
+    if (!activeFlowNode || activeFlowNode.type !== 'eventFilterNode' || !eventFilterDraft) {
+      return;
+    }
+
+    updateFlowNodeData(
+      activeFlowNode.id,
+      (previous) => ({
+        ...previous,
+        selectedLifetimes: eventFilterDraft.selectedLifetimes,
+      }),
+      '更新事件过滤节点配置',
+    );
   };
 
   return (
@@ -285,6 +356,58 @@ const FlowLayout: React.FC = () => {
                   <div className="flow-config-panel__actions">
                     <Button size="small" theme="primary" variant="outline" onClick={() => setNetworkEditorVisible(true)}>
                       编辑配置
+                    </Button>
+                  </div>
+                </div>
+              ) : null}
+
+              {activeFlowNode.type === 'eventFilterNode' && eventFilterDraft ? (
+                <div className="flow-config-panel__group">
+                  <div className="flow-config-panel__group-title">事件过滤节点配置</div>
+
+                  <div className="config-row">
+                    <span className="config-label">上游节点</span>
+                    <span className="config-value" title={eventFilterDraft.upstreamLabel}>{eventFilterDraft.upstreamLabel}</span>
+                  </div>
+
+                  <div className="flow-config-field">
+                    <div className="flow-config-field__label">监听事件</div>
+                    <Select
+                      size="small"
+                      multiple
+                      clearable
+                      disabled={eventFilterDraft.availableLifetimes.length === 0}
+                      placeholder={eventFilterDraft.availableLifetimes.length === 0 ? '请先连接上游组件节点' : '请选择要监听的事件'}
+                      options={eventFilterDraft.availableLifetimes.map((item) => ({
+                        label: item,
+                        value: item,
+                      }))}
+                      value={eventFilterDraft.selectedLifetimes}
+                      onChange={(value) => {
+                        const nextValues = Array.isArray(value)
+                          ? value.map((item) => String(item))
+                          : (value ? [String(value)] : []);
+                        setEventFilterDraft((previous) =>
+                          previous
+                            ? {
+                                ...previous,
+                                selectedLifetimes: nextValues,
+                              }
+                            : previous,
+                        );
+                      }}
+                    />
+                  </div>
+
+                  <div className="flow-config-panel__actions">
+                    <Button
+                      size="small"
+                      theme="primary"
+                      variant="outline"
+                      disabled={!canApplyEventFilterDraft}
+                      onClick={handleApplyEventFilterDraft}
+                    >
+                      应用配置
                     </Button>
                   </div>
                 </div>

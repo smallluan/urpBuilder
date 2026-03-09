@@ -18,6 +18,9 @@ export interface EventFilterNodeData {
 const EventFilterNode: React.FC<NodeProps> = ({ id, data, selected }) => {
   const nodeData = (data ?? {}) as EventFilterNodeData;
   const selectedLifetimes = Array.isArray(nodeData.selectedLifetimes) ? nodeData.selectedLifetimes : [];
+  const maxVisibleTags = 2;
+  const visibleLifetimes = selectedLifetimes.slice(0, maxVisibleTags);
+  const remainingCount = Math.max(0, selectedLifetimes.length - visibleLifetimes.length);
   const targetPosition = nodeData.flipX ? Position.Right : Position.Left;
   const sourcePosition = nodeData.flipX ? Position.Left : Position.Right;
 
@@ -33,9 +36,14 @@ const EventFilterNode: React.FC<NodeProps> = ({ id, data, selected }) => {
 
       <div className="flow-event-filter-node__lifetimes">
         {selectedLifetimes.length > 0 ? (
-          selectedLifetimes.map((item) => (
+          <>
+            {visibleLifetimes.map((item) => (
             <span className="flow-event-filter-node__tag" key={item}>{item}</span>
-          ))
+            ))}
+            {remainingCount > 0 ? (
+              <span className="flow-event-filter-node__tag flow-event-filter-node__tag--more">+{remainingCount}</span>
+            ) : null}
+          </>
         ) : (
           <span className="flow-event-filter-node__empty">未选择生命周期事件</span>
         )}

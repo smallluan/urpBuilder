@@ -285,7 +285,15 @@ export const useCreateComponentStore = create<CreateComponentStore>((set) => ({
     label: '该组件',
     children: [],
     props: {},
-    lifetimes: []
+    lifetimes: [
+      'onInit',
+      'onBeforeMount',
+      'onMounted',
+      'onBeforeUpdate',
+      'onUpdated',
+      'onBeforeUnmount',
+      'onUnmounted',
+    ]
   },
   activeNodeKey: null,
   activeNode: null,

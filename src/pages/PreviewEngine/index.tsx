@@ -3,6 +3,7 @@ import { useLocation } from 'react-router-dom';
 import { useCreateComponentStore } from '../CreateComponent/store';
 import PreviewRenderer from './components/PreviewRenderer';
 import { deserializePreviewSnapshot, type PreviewSnapshot } from './utils/snapshot';
+import { createPreviewDataHub } from './runtime/dataHub';
 import './style.less';
 
 const PreviewEngine: React.FC = () => {
@@ -23,6 +24,17 @@ const PreviewEngine: React.FC = () => {
     flowNodes,
     flowEdges,
   };
+
+  React.useEffect(() => {
+    const hub = createPreviewDataHub(snapshot.uiTreeData);
+    window.dataHub = hub;
+
+    return () => {
+      if (window.dataHub === hub) {
+        delete window.dataHub;
+      }
+    };
+  }, [snapshot.uiTreeData]);
 
   return (
     <div className="preview-engine-page">

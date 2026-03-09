@@ -1093,18 +1093,33 @@
 .flow-event-filter-node__lifetimes {
   margin-top: 8px;
   display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
+  align-items: center;
+  gap: 4px;
+  max-width: 100%;
+  overflow: hidden;
 }
 
 .flow-event-filter-node__tag {
-  font-size: 11px;
-  line-height: 16px;
-  padding: 2px 8px;
+  display: inline-flex;
+  align-items: center;
+  max-width: 88px;
+  font-size: 10px;
+  line-height: 14px;
+  padding: 1px 6px;
   border-radius: 999px;
-  color: #0f8a58;
-  background: #edf9f2;
-  border: 1px solid #d7f0e2;
+  color: #2a7a58;
+  background: #f3faf6;
+  border: 1px solid #e2f3e8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.flow-event-filter-node__tag--more {
+  flex: 0 0 auto;
+  max-width: none;
+  color: #4f7f67;
+  background: #f6fbf8;
 }
 
 .flow-event-filter-node__empty {
