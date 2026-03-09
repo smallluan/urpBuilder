@@ -12,14 +12,6 @@ interface NodeStyleDrawerProps {
 
 type StyleValue = Record<string, string>;
 
-const DEFAULT_TEMPLATE = [
-  '/* 直接写 CSS 声明，每行一条 */',
-  'background-color: #ffffff;',
-  'color: #333333;',
-  'padding: 8px 12px;',
-  'border-radius: 6px;',
-].join('\n');
-
 const QUICK_INSERT_PROPERTIES = [
   { label: '插入背景色', line: 'background-color: #ffffff;' },
   { label: '插入文字色', line: 'color: #333333;' },
@@ -220,6 +212,7 @@ const NodeStyleDrawer: React.FC<NodeStyleDrawerProps> = ({
   const [visible, setVisible] = useState(false);
   const [cssDraft, setCssDraft] = useState('');
   const [autoApply, setAutoApply] = useState(true);
+  const [hasUserEdited, setHasUserEdited] = useState(false);
   const [activeTab, setActiveTab] = useState<'visual' | 'code'>('visual');
   const [selectedColorProperty, setSelectedColorProperty] = useState('background-color');
   const [selectedColor, setSelectedColor] = useState('#0052d9');
@@ -231,7 +224,8 @@ const NodeStyleDrawer: React.FC<NodeStyleDrawerProps> = ({
 
   const resetFromCurrentValue = () => {
     const nextText = styleToCssText(normalized);
-    setCssDraft(nextText || DEFAULT_TEMPLATE);
+    setCssDraft(nextText);
+    setHasUserEdited(false);
     setSelectedColorProperty('background-color');
     setSelectedColor('#0052d9');
     setSelectedSnippet('');
@@ -253,7 +247,7 @@ const NodeStyleDrawer: React.FC<NodeStyleDrawerProps> = ({
   }, [targetKey]);
 
   useEffect(() => {
-    if (!visible || !autoApply) {
+    if (!visible || !autoApply || !hasUserEdited) {
       return;
     }
 
@@ -265,7 +259,7 @@ const NodeStyleDrawer: React.FC<NodeStyleDrawerProps> = ({
     return () => {
       window.clearTimeout(timeout);
     };
-  }, [cssDraft, autoApply, onChange, visible]);
+  }, [cssDraft, autoApply, hasUserEdited, onChange, visible]);
 
   const handleOpen = () => {
     resetFromCurrentValue();
@@ -282,10 +276,12 @@ const NodeStyleDrawer: React.FC<NodeStyleDrawerProps> = ({
   };
 
   const handleReset = () => {
-    setCssDraft(DEFAULT_TEMPLATE);
+    setHasUserEdited(true);
+    setCssDraft('');
   };
 
   const handleQuickInsert = (line: string) => {
+    setHasUserEdited(true);
     const splitIndex = line.indexOf(':');
     if (splitIndex <= 0) {
       setCssDraft((previous) => (previous.trim() ? `${previous.trim()}\n${line}` : line));
@@ -303,6 +299,7 @@ const NodeStyleDrawer: React.FC<NodeStyleDrawerProps> = ({
       return;
     }
 
+    setHasUserEdited(true);
     setCssDraft((previous) => upsertCssPropertyLine(previous, selectedColorProperty, colorText));
   };
 
@@ -312,6 +309,7 @@ const NodeStyleDrawer: React.FC<NodeStyleDrawerProps> = ({
   };
 
   const handleVisualFieldChange = (property: string, valueText: string) => {
+    setHasUserEdited(true);
     const text = String(valueText ?? '').trim();
     const propertyRegex = new RegExp(`(^|\\n)\\s*${property}\\s*:[^;]*;?`, 'i');
 
@@ -333,6 +331,7 @@ const NodeStyleDrawer: React.FC<NodeStyleDrawerProps> = ({
       return;
     }
 
+    setHasUserEdited(true);
     setCssDraft((previous) => {
       let nextText = previous;
       snippet.lines.forEach((line) => {
@@ -495,6 +494,7 @@ const NodeStyleDrawer: React.FC<NodeStyleDrawerProps> = ({
                   autocompletion: true,
                 }}
                 onChange={(nextValue) => {
+                  setHasUserEdited(true);
                   setCssDraft(nextValue);
                 }}
               />
