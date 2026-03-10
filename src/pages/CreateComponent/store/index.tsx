@@ -555,7 +555,7 @@ export const useCreateComponentStore = create<CreateComponentStore>((set) => ({
         return state;
       }
 
-      const nextTree = updateNodeByKey(state.uiPageData, state.activeNodeKey, (target) => {
+      let nextTree = updateNodeByKey(state.uiPageData, state.activeNodeKey, (target) => {
         const currentProps = (target.props ?? {}) as Record<string, unknown>;
         const currentProp = (currentProps[propKey] ?? {}) as Record<string, unknown>;
 
@@ -570,6 +570,20 @@ export const useCreateComponentStore = create<CreateComponentStore>((set) => ({
           },
         };
       });
+
+      if (currentNode.type === 'List' && propKey === 'customTemplateEnabled' && value === false) {
+        nextTree = updateNodeByKey(nextTree, state.activeNodeKey, (target) => ({
+          ...target,
+          children: (target.children ?? []).map((child) => (
+            child.type === 'List.Item'
+              ? {
+                  ...child,
+                  children: [],
+                }
+              : child
+          )),
+        }));
+      }
 
       // 属性改动走细粒度历史，便于精确撤销。
       const action: UiHistoryAction = {

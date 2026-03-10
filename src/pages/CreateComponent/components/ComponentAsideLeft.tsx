@@ -31,6 +31,15 @@ const ABSTRACT_NODE_TYPES = new Set([
   'List.Item',
 ]);
 
+const LIST_TEMPLATE_ALLOWED_TYPES = new Set([
+  'Image',
+  'Avatar',
+  'Button',
+  'Typography.Title',
+  'Typography.Paragraph',
+  'Typography.Text',
+]);
+
 type NodeVisualKind = 'slot' | 'container' | 'leaf' | 'abstract';
 
 interface TreeNodeDropTarget {
@@ -38,13 +47,47 @@ interface TreeNodeDropTarget {
   slotKey?: string;
 }
 
+const findNodePathByKey = (node: UiTreeNode, targetKey: string, path: UiTreeNode[] = []): UiTreeNode[] | null => {
+  const nextPath = [...path, node];
+  if (node.key === targetKey) {
+    return nextPath;
+  }
+
+  if (!node.children?.length) {
+    return null;
+  }
+
+  for (const child of node.children) {
+    const found = findNodePathByKey(child, targetKey, nextPath);
+    if (found) {
+      return found;
+    }
+  }
+
+  return null;
+};
+
+const isListItemTemplateDroppable = (node: UiTreeNode, root: UiTreeNode) => {
+  if (node.type !== 'List.Item') {
+    return false;
+  }
+
+  const path = findNodePathByKey(root, node.key);
+  const listAncestor = path?.slice().reverse().find((item) => item.type === 'List');
+  if (!listAncestor) {
+    return false;
+  }
+
+  return Boolean((listAncestor.props?.customTemplateEnabled as { value?: unknown } | undefined)?.value);
+};
+
 const getCardPreferredSlotNode = (node: UiTreeNode) => {
   const slotChildren = (node.children ?? []).filter((child) => isSlotNode(child));
   const bodySlot = slotChildren.find((child) => getNodeSlotKey(child) === 'body');
   return bodySlot ?? slotChildren[0];
 };
 
-const getTreeNodeDropTarget = (node: UiTreeNode): TreeNodeDropTarget | null => {
+const getTreeNodeDropTarget = (node: UiTreeNode, root: UiTreeNode): TreeNodeDropTarget | null => {
   if (isSlotNode(node)) {
     return {
       parentKey: node.key,
@@ -53,6 +96,12 @@ const getTreeNodeDropTarget = (node: UiTreeNode): TreeNodeDropTarget | null => {
   }
 
   if (!node.type || CONTAINER_NODE_TYPES.has(node.type)) {
+    return {
+      parentKey: node.key,
+    };
+  }
+
+  if (isListItemTemplateDroppable(node, root)) {
     return {
       parentKey: node.key,
     };
@@ -73,7 +122,7 @@ const getTreeNodeDropTarget = (node: UiTreeNode): TreeNodeDropTarget | null => {
   return null;
 };
 
-const getNodeVisualKind = (node: UiTreeNode): NodeVisualKind => {
+const getNodeVisualKind = (node: UiTreeNode, root: UiTreeNode): NodeVisualKind => {
   if (isSlotNode(node)) {
     return 'slot';
   }
@@ -82,7 +131,7 @@ const getNodeVisualKind = (node: UiTreeNode): NodeVisualKind => {
     return 'abstract';
   }
 
-  return getTreeNodeDropTarget(node) ? 'container' : 'leaf';
+  return getTreeNodeDropTarget(node, root) ? 'container' : 'leaf';
 };
 
 const GRID_COL_COMPONENT_SCHEMA = componentCatalog.find((item) => item.type === 'Grid.Col');
@@ -160,7 +209,7 @@ const ComponentAsideLeft: React.FC = () => {
   };
 
   const handleTreeNodeDragOver = (event: React.DragEvent<HTMLDivElement>, node: UiTreeNode) => {
-    const dropTarget = getTreeNodeDropTarget(node);
+    const dropTarget = getTreeNodeDropTarget(node, uiPageData);
     if (!dropTarget) {
       return;
     }
@@ -184,7 +233,7 @@ const ComponentAsideLeft: React.FC = () => {
   };
 
   const handleTreeNodeDrop = (event: React.DragEvent<HTMLDivElement>, node: UiTreeNode) => {
-    const dropTarget = getTreeNodeDropTarget(node);
+    const dropTarget = getTreeNodeDropTarget(node, uiPageData);
     if (!dropTarget) {
       return;
     }
@@ -204,6 +253,15 @@ const ComponentAsideLeft: React.FC = () => {
         return;
       }
 
+      if (node.type === 'List.Item') {
+        const droppedType = typeof (parsedData as { type?: unknown }).type === 'string'
+          ? String((parsedData as { type?: unknown }).type)
+          : '';
+        if (!LIST_TEMPLATE_ALLOWED_TYPES.has(droppedType)) {
+          return;
+        }
+      }
+
       insertToUiPageData(dropTarget.parentKey, parsedData as Record<string, unknown>, dropTarget.slotKey);
       setActiveNode(node.key);
     } catch {
@@ -219,8 +277,8 @@ const ComponentAsideLeft: React.FC = () => {
         ? node.children.map((child) => transformNode(child))
         : [];
 
-      const nodeVisualKind = getNodeVisualKind(node);
-      const dropTarget = getTreeNodeDropTarget(node);
+      const nodeVisualKind = getNodeVisualKind(node, uiPageData);
+      const dropTarget = getTreeNodeDropTarget(node, uiPageData);
       const isDroppable = !!dropTarget;
       const isDragOver = dragOverNodeKey === node.key;
       const title = String(node.label ?? '未命名节点');

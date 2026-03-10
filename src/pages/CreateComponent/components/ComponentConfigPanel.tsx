@@ -55,6 +55,66 @@ interface ComponentPropSchema {
   };
 }
 
+const LIST_BINDABLE_PROP_OPTIONS: Record<string, Array<{ label: string; value: string }>> = {
+  Image: [
+    { label: 'src', value: 'src' },
+    { label: 'alt', value: 'alt' },
+  ],
+  Avatar: [
+    { label: 'image', value: 'image' },
+    { label: 'content', value: 'content' },
+    { label: 'alt', value: 'alt' },
+  ],
+  Button: [
+    { label: 'content', value: 'content' },
+  ],
+  'Typography.Title': [
+    { label: 'content', value: 'content' },
+  ],
+  'Typography.Paragraph': [
+    { label: 'content', value: 'content' },
+  ],
+  'Typography.Text': [
+    { label: 'content', value: 'content' },
+  ],
+};
+
+const LIST_META_PROP_KEYS = new Set([
+  'titleField',
+  'descriptionField',
+  'imageField',
+  'actionField',
+]);
+
+const LIST_ITEM_META_PROP_KEYS = new Set([
+  'showImage',
+  'showDescription',
+  'showAction',
+  'actionTheme',
+  'actionVariant',
+  'actionSize',
+]);
+
+const findNodePathByKey = (node: any, targetKey: string, path: any[] = []): any[] | null => {
+  const nextPath = [...path, node];
+  if (node.key === targetKey) {
+    return nextPath;
+  }
+
+  if (!node.children?.length) {
+    return null;
+  }
+
+  for (const child of node.children) {
+    const found = findNodePathByKey(child, targetKey, nextPath);
+    if (found) {
+      return found;
+    }
+  }
+
+  return null;
+};
+
 const resolveEditType = (schema: ComponentPropSchema): EditType => {
   const type = (schema.editType ?? schema.editInput) as EditType | string | undefined;
   if (type === 'switch' || type === 'input' || type === 'inputNumber' || type === 'select' || type === 'swiperImages' || type === 'jsonCode') {
@@ -66,6 +126,7 @@ const resolveEditType = (schema: ComponentPropSchema): EditType => {
 
 const ComponentConfigPanel: React.FC = () => {
   const activeNode = useCreateComponentStore((state) => state.activeNode);
+  const uiPageData = useCreateComponentStore((state) => state.uiPageData);
   const updateActiveNodeLabel = useCreateComponentStore((state) => state.updateActiveNodeLabel);
   const updateActiveNodeKey = useCreateComponentStore((state) => state.updateActiveNodeKey);
   const updateActiveNodeProp = useCreateComponentStore((state) => state.updateActiveNodeProp);
@@ -92,6 +153,13 @@ const ComponentConfigPanel: React.FC = () => {
     ? Boolean((propsMap.controlled?.value ?? true))
     : undefined;
 
+  const activePath = activeNode?.key ? findNodePathByKey(uiPageData, activeNode.key) : null;
+  const listItemAncestor = activePath?.slice().reverse().find((node) => node.type === 'List.Item');
+  const listAncestor = activePath?.slice().reverse().find((node) => node.type === 'List');
+  const isListCustomTemplateEnabled = Boolean(
+    (listAncestor?.props?.customTemplateEnabled as { value?: unknown } | undefined)?.value,
+  );
+
   const editableProps = Object.entries(propsMap).filter(([propKey]) => {
     if (propKey.startsWith('__')) {
       return false;
@@ -106,8 +174,27 @@ const ComponentConfigPanel: React.FC = () => {
       }
     }
 
+    if (
+      activeNode?.type === 'List'
+      && Boolean((propsMap.customTemplateEnabled?.value as boolean | undefined) ?? false)
+      && LIST_META_PROP_KEYS.has(propKey)
+    ) {
+      return false;
+    }
+
+    if (activeNode?.type === 'List.Item' && isListCustomTemplateEnabled && LIST_ITEM_META_PROP_KEYS.has(propKey)) {
+      return false;
+    }
+
     return true;
   });
+
+  const isNodeInsideListTemplate = Boolean(listItemAncestor && activeNode && activeNode.type !== 'List.Item');
+  const bindableProps = activeNode?.type ? (LIST_BINDABLE_PROP_OPTIONS[activeNode.type] ?? []) : [];
+  const listBindingSchema = propsMap.__listBinding;
+  const listBindingValue = (listBindingSchema?.value ?? {}) as { prop?: string; field?: string };
+  const bindingPropValue = typeof listBindingValue.prop === 'string' ? listBindingValue.prop : '';
+  const bindingFieldValue = typeof listBindingValue.field === 'string' ? listBindingValue.field : '';
 
   useEffect(() => {
     if (!activeNode) {
@@ -371,6 +458,45 @@ const ComponentConfigPanel: React.FC = () => {
             <div className="config-editor">{renderEditor(propKey, schema)}</div>
           </div>
         ))}
+
+        {isListCustomTemplateEnabled && isNodeInsideListTemplate && bindableProps.length > 0 ? (
+          <>
+            <div className="config-row">
+              <span className="config-label">绑定属性</span>
+              <div className="config-editor">
+                <Select
+                  options={bindableProps}
+                  value={bindingPropValue || undefined}
+                  placeholder="选择组件属性"
+                  onChange={(value) => {
+                    const nextProp = String(value ?? '');
+                    updateActiveNodeProp('__listBinding', {
+                      prop: nextProp,
+                      field: bindingFieldValue,
+                    });
+                  }}
+                />
+              </div>
+            </div>
+            <div className="config-row">
+              <span className="config-label">数据字段</span>
+              <div className="config-editor">
+                <Input
+                  clearable
+                  placeholder="例如：title 或 cover.url"
+                  value={bindingFieldValue}
+                  onChange={(value) => {
+                    const nextField = String(value ?? '');
+                    updateActiveNodeProp('__listBinding', {
+                      prop: bindingPropValue,
+                      field: nextField,
+                    });
+                  }}
+                />
+              </div>
+            </div>
+          </>
+        ) : null}
       </div>
 
       <Dialog

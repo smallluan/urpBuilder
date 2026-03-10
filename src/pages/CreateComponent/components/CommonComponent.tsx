@@ -287,6 +287,65 @@ export default function CommonComponent(properties: CommonComponentProps) {
     return undefined;
   };
 
+  const getListFieldRawValue = (record: ListRecord, fieldPath?: string): unknown => {
+    if (!fieldPath) {
+      return undefined;
+    }
+
+    const path = fieldPath.trim();
+    if (!path) {
+      return undefined;
+    }
+
+    return path.split('.').reduce<unknown>((current, segment) => {
+      if (!segment) {
+        return current;
+      }
+
+      if (!current || typeof current !== 'object') {
+        return undefined;
+      }
+
+      return (current as Record<string, unknown>)[segment];
+    }, record);
+  };
+
+  const applyListBindingToNode = (node: UiTreeNode, item: ListRecord): UiTreeNode => {
+    const nextNode: UiTreeNode = {
+      ...node,
+      props: {
+        ...(node.props ?? {}),
+      },
+      children: (node.children ?? []).map((child) => applyListBindingToNode(child, item)),
+    };
+
+    const binding = (node.props?.__listBinding as { value?: unknown } | undefined)?.value as
+      | { prop?: string; field?: string }
+      | undefined;
+
+    const bindProp = typeof binding?.prop === 'string' ? binding.prop.trim() : '';
+    const bindField = typeof binding?.field === 'string' ? binding.field.trim() : '';
+    if (!bindProp || !bindField) {
+      return nextNode;
+    }
+
+    const rawBoundValue = getListFieldRawValue(item, bindField);
+    if (typeof rawBoundValue === 'undefined') {
+      return nextNode;
+    }
+
+    const targetProp = (nextNode.props?.[bindProp] ?? {}) as Record<string, unknown>;
+    nextNode.props = {
+      ...(nextNode.props ?? {}),
+      [bindProp]: {
+        ...targetProp,
+        value: rawBoundValue,
+      },
+    };
+
+    return nextNode;
+  };
+
   const getSwiperImages = (): SwiperImageItem[] => {
     const value = getProp('images');
     if (Array.isArray(value)) {
@@ -550,6 +609,7 @@ export default function CommonComponent(properties: CommonComponentProps) {
         )
       case 'List':
         {
+        const customTemplateEnabled = getBooleanProp('customTemplateEnabled') === true;
         const listItemTemplateNode = (data?.children ?? []).find((child) => child.type === 'List.Item');
         const getListItemTemplateProp = (propName: string) => {
           const prop = listItemTemplateNode?.props?.[propName] as { value?: unknown } | undefined;
@@ -565,6 +625,44 @@ export default function CommonComponent(properties: CommonComponentProps) {
         const actionTheme = String(getListItemTemplateProp('actionTheme') ?? 'default');
         const actionVariant = String(getListItemTemplateProp('actionVariant') ?? 'text');
         const actionSize = String(getListItemTemplateProp('actionSize') ?? 'small');
+
+        if (customTemplateEnabled) {
+          return (
+            <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf}>
+              <List
+                layout={getStringProp('layout') as any}
+                size={getStringProp('size') as any}
+                split={getBooleanProp('split')}
+                stripe={getBooleanProp('stripe')}
+                header={getStringProp('header') || undefined}
+                footer={getStringProp('footer') || undefined}
+                asyncLoading={getStringProp('asyncLoading') || undefined}
+                style={mergeStyle()}
+              >
+                {LIST_PREVIEW_DATA.map((item, index) => {
+                  const boundTemplateNode = listItemTemplateNode
+                    ? {
+                        ...listItemTemplateNode,
+                        children: (listItemTemplateNode.children ?? []).map((child) => applyListBindingToNode(child, item)),
+                      }
+                    : undefined;
+
+                  return (
+                    <ListItem key={`${data?.key ?? 'list'}-template-${index}`}>
+                      <DropArea
+                        data={boundTemplateNode}
+                        onDropData={onDropData}
+                        emptyText="拖拽组件到列表项模板"
+                        compactWhenFilled
+                      />
+                    </ListItem>
+                  );
+                })}
+              </List>
+            </ActivateWrapper>
+          );
+        }
+
         return (
           <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf}>
             <List

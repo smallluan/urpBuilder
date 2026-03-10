@@ -175,6 +175,11 @@ const componentCatalog = [
     type: 'List',
     name: '列表',
     props: {
+      customTemplateEnabled: {
+        name: '自定义数据格式',
+        value: false,
+        editType: 'switch'
+      },
       titleField: {
         name: '标题字段',
         value: 'title',
