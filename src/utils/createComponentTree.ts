@@ -40,12 +40,65 @@ const createTypographyParagraphNode = (): UiTreeNode => ({
   children: [],
 });
 
+const createListItemTemplateNode = (): UiTreeNode => ({
+  key: uuidv4(),
+  label: '列表项（抽象）',
+  type: 'List.Item',
+  props: {
+    showImage: {
+      name: '显示图片',
+      value: true,
+      editType: 'switch',
+    },
+    showDescription: {
+      name: '显示描述',
+      value: true,
+      editType: 'switch',
+    },
+    showAction: {
+      name: '显示操作按钮',
+      value: true,
+      editType: 'switch',
+    },
+    actionTheme: {
+      name: '按钮主题',
+      value: 'default',
+      editType: 'select',
+      payload: {
+        options: ['default', 'primary', 'danger', 'warning', 'success'],
+      },
+    },
+    actionVariant: {
+      name: '按钮风格',
+      value: 'text',
+      editType: 'select',
+      payload: {
+        options: ['base', 'outline', 'dashed', 'text'],
+      },
+    },
+    actionSize: {
+      name: '按钮尺寸',
+      value: 'small',
+      editType: 'select',
+      payload: {
+        options: ['small', 'medium', 'large'],
+      },
+    },
+  },
+  lifetimes: [],
+  children: [],
+});
+
 const buildInitialChildren = (type: string): UiTreeNode[] => {
   if (type === 'Card') {
     return [
       createSlotNode('header', '头部插槽', [createTypographyTitleNode()]),
       createSlotNode('body', '内容插槽', [createTypographyParagraphNode()]),
     ];
+  }
+
+  if (type === 'List') {
+    return [createListItemTemplateNode()];
   }
 
   return [];

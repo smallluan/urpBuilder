@@ -1,5 +1,5 @@
 import React from 'react';
-import { Avatar, Button, Card, Col, Divider, Image, Row, Space, Switch, Swiper, Typography, Layout, Calendar, ColorPicker, TimePicker, TimeRangePicker, InputNumber } from 'tdesign-react';
+import { Avatar, Button, Card, Col, Divider, Image, Row, Space, Switch, Swiper, Typography, Layout, Calendar, ColorPicker, TimePicker, TimeRangePicker, InputNumber, List } from 'tdesign-react';
 import type { UiTreeNode } from '../../CreateComponent/store/type';
 import { getNodeSlotKey, isSlotNode } from '../../CreateComponent/utils/slot';
 
@@ -15,6 +15,25 @@ interface SwiperImageItem {
   objectFit: string;
   objectPosition: string;
 }
+
+interface ListRecord {
+  [key: string]: unknown;
+}
+
+const LIST_DEFAULT_DATA: ListRecord[] = [
+  {
+    title: '列表项A',
+    description: '这是第一条示例数据',
+    image: 'https://tdesign.gtimg.com/demo/demo-image-1.png',
+    actionText: '查看',
+  },
+  {
+    title: '列表项B',
+    description: '这是第二条示例数据',
+    image: 'https://tdesign.gtimg.com/demo/demo-image-2.png',
+    actionText: '编辑',
+  },
+];
 
 const getProp = (node: UiTreeNode, propName: string) => {
   const prop = node?.props?.[propName] as { value?: unknown } | undefined;
@@ -184,6 +203,61 @@ const getFiniteNumberProp = (node: UiTreeNode, propName: string) => {
   return undefined;
 };
 
+const getListDataSource = (node: UiTreeNode): ListRecord[] => {
+  const value = getProp(node, 'dataSource');
+  if (Array.isArray(value)) {
+    const arrayValue = value.filter((item) => !!item && typeof item === 'object') as ListRecord[];
+    return arrayValue.length ? arrayValue : LIST_DEFAULT_DATA;
+  }
+
+  if (typeof value === 'string' && value.trim()) {
+    try {
+      const parsed = JSON.parse(value);
+      if (Array.isArray(parsed)) {
+        const arrayValue = parsed.filter((item) => !!item && typeof item === 'object') as ListRecord[];
+        return arrayValue.length ? arrayValue : LIST_DEFAULT_DATA;
+      }
+    } catch {
+      return LIST_DEFAULT_DATA;
+    }
+  }
+
+  return LIST_DEFAULT_DATA;
+};
+
+const getListFieldValue = (record: ListRecord, fieldPath?: string): string | undefined => {
+  if (!fieldPath) {
+    return undefined;
+  }
+
+  const path = fieldPath.trim();
+  if (!path) {
+    return undefined;
+  }
+
+  const value = path.split('.').reduce<unknown>((current, segment) => {
+    if (!segment) {
+      return current;
+    }
+
+    if (!current || typeof current !== 'object') {
+      return undefined;
+    }
+
+    return (current as Record<string, unknown>)[segment];
+  }, record);
+
+  if (typeof value === 'string') {
+    return value;
+  }
+
+  if (typeof value === 'number' || typeof value === 'boolean') {
+    return String(value);
+  }
+
+  return undefined;
+};
+
 const getSlotChildren = (node: UiTreeNode, slotKey: 'header' | 'body') => {
   const sourceChildren = node.children ?? [];
   const slotNode = sourceChildren.find((child) => getNodeSlotKey(child) === slotKey && isSlotNode(child));
@@ -203,20 +277,33 @@ const renderChildList = (
   children: UiTreeNode[],
   onLifecycle?: (componentKey: string, lifetime: string, payload?: unknown) => void,
 ) => {
-  return children.map((child) => <PreviewRenderer key={child.key} node={child} onLifecycle={onLifecycle} />);
+  return children.map((child) => (
+    <PreviewRenderer
+      key={child.key}
+      node={child}
+      onLifecycle={onLifecycle}
+    />
+  ));
 };
 
 const renderChildren = (
   node?: UiTreeNode,
   onLifecycle?: (componentKey: string, lifetime: string, payload?: unknown) => void,
 ) => {
-  return node?.children?.map((child) => <PreviewRenderer key={child.key} node={child} onLifecycle={onLifecycle} />) ?? null;
+  return node?.children?.map((child) => (
+    <PreviewRenderer
+      key={child.key}
+      node={child}
+      onLifecycle={onLifecycle}
+    />
+  )) ?? null;
 };
 
 const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) => {
   const inlineStyle = getStyleProp(node);
   const type = node.type;
   const { Header, Content, Aside, Footer } = Layout;
+  const { ListItem, ListItemMeta } = List;
   if (isSlotNode(node)) {
     return null;
   }
@@ -232,7 +319,6 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) 
   const lastControlledSwitchValueRef = React.useRef<boolean | undefined>(undefined);
   const suppressNextControlledPropEventRef = React.useRef(false);
   const expectedControlledSwitchValueRef = React.useRef<boolean | undefined>(undefined);
-
   const hasLifetime = React.useCallback(
     (lifetime: string) => lifetimes.includes(lifetime),
     [lifetimes],
@@ -458,6 +544,77 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) 
           </Col>
         </div>
       );
+    case 'List':
+      {
+      const listDataSource = getListDataSource(node);
+      const listItemTemplateNode = (node.children ?? []).find((child) => child.type === 'List.Item');
+      const getListItemTemplateProp = (propName: string) => {
+        const prop = listItemTemplateNode?.props?.[propName] as { value?: unknown } | undefined;
+        return prop?.value;
+      };
+      const titleField = getStringProp(node, 'titleField') || 'title';
+      const descriptionField = getStringProp(node, 'descriptionField') || 'description';
+      const imageField = getStringProp(node, 'imageField') || 'image';
+      const actionField = getStringProp(node, 'actionField') || 'actionText';
+      const showImage = getListItemTemplateProp('showImage') !== false;
+      const showDescription = getListItemTemplateProp('showDescription') !== false;
+      const showAction = getListItemTemplateProp('showAction') !== false;
+      const actionTheme = String(getListItemTemplateProp('actionTheme') ?? 'default');
+      const actionVariant = String(getListItemTemplateProp('actionVariant') ?? 'text');
+      const actionSize = String(getListItemTemplateProp('actionSize') ?? 'small');
+
+      return (
+        <div style={mergeStyle()}>
+          <List
+            layout={getStringProp(node, 'layout') as any}
+            size={getStringProp(node, 'size') as any}
+            split={getBooleanProp(node, 'split')}
+            stripe={getBooleanProp(node, 'stripe')}
+            header={getStringProp(node, 'header') || undefined}
+            footer={getStringProp(node, 'footer') || undefined}
+            asyncLoading={getStringProp(node, 'asyncLoading') || undefined}
+            onLoadMore={(options) => emitInteractionLifecycle('onLoadMore', options)}
+            onScroll={(options) => emitInteractionLifecycle('onScroll', options)}
+            style={mergeStyle()}
+          >
+            {listDataSource.map((item, index) => {
+              const itemRecord = (item && typeof item === 'object') ? (item as ListRecord) : {};
+              const metaTitle = getListFieldValue(itemRecord, titleField);
+              const metaDescription = getListFieldValue(itemRecord, descriptionField);
+              const metaImage = getListFieldValue(itemRecord, imageField);
+              const actionText = getListFieldValue(itemRecord, actionField);
+              const resolvedTitle = metaTitle || `列表项 ${index + 1}`;
+              const resolvedDescription = showDescription ? metaDescription : undefined;
+              const resolvedImage = showImage ? metaImage : undefined;
+
+              return (
+                <ListItem
+                  key={`${node.key}-item-${index}`}
+                  action={showAction && actionText ? (
+                    <Button
+                      size={actionSize as any}
+                      variant={actionVariant as any}
+                      theme={actionTheme as any}
+                      onClick={() => emitInteractionLifecycle('onActionClick', { item, index })}
+                    >
+                      {actionText}
+                    </Button>
+                  ) : undefined}
+                >
+                  <div onClick={() => emitInteractionLifecycle('onItemClick', { item, index })}>
+                    <ListItemMeta
+                      title={resolvedTitle}
+                      description={resolvedDescription}
+                      image={resolvedImage ? <Image src={resolvedImage} style={{ width: 56, height: 56, borderRadius: 6 }} /> : undefined}
+                    />
+                  </div>
+                </ListItem>
+              );
+            })}
+          </List>
+        </div>
+      );
+      }
     case 'Layout':
       return (
         <div style={mergeStyle()}>

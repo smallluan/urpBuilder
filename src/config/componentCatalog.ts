@@ -172,6 +172,122 @@ const componentCatalog = [
     props: {}
   },
   {
+    type: 'List',
+    name: '列表',
+    props: {
+      titleField: {
+        name: '标题字段',
+        value: 'title',
+        editType: 'input'
+      },
+      descriptionField: {
+        name: '描述字段',
+        value: 'description',
+        editType: 'input'
+      },
+      imageField: {
+        name: '图片字段',
+        value: 'image',
+        editType: 'input'
+      },
+      actionField: {
+        name: '操作文案字段',
+        value: 'actionText',
+        editType: 'input'
+      },
+      layout: {
+        name: '排列方式',
+        value: 'horizontal',
+        editType: 'select',
+        payload: {
+          options: ['horizontal', 'vertical']
+        }
+      },
+      size: {
+        name: '尺寸',
+        value: 'medium',
+        editType: 'select',
+        payload: {
+          options: ['small', 'medium', 'large']
+        }
+      },
+      split: {
+        name: '显示分割线',
+        value: false,
+        editType: 'switch'
+      },
+      stripe: {
+        name: '显示斑马纹',
+        value: false,
+        editType: 'switch'
+      },
+      header: {
+        name: '头部文本',
+        value: '',
+        editType: 'input'
+      },
+      footer: {
+        name: '底部文本',
+        value: '',
+        editType: 'input'
+      },
+      asyncLoading: {
+        name: '加载态',
+        value: '',
+        editType: 'select',
+        payload: {
+          options: ['', 'loading', 'load-more']
+        }
+      }
+    },
+    lifetimes: ['onLoadMore', 'onScroll', 'onItemClick', 'onActionClick']
+  },
+  {
+    type: 'List.Item',
+    name: '列表项（抽象）',
+    props: {
+      showImage: {
+        name: '显示图片',
+        value: true,
+        editType: 'switch'
+      },
+      showDescription: {
+        name: '显示描述',
+        value: true,
+        editType: 'switch'
+      },
+      showAction: {
+        name: '显示操作按钮',
+        value: true,
+        editType: 'switch'
+      },
+      actionTheme: {
+        name: '按钮主题',
+        value: 'default',
+        editType: 'select',
+        payload: {
+          options: ['default', 'primary', 'danger', 'warning', 'success']
+        }
+      },
+      actionVariant: {
+        name: '按钮风格',
+        value: 'text',
+        editType: 'select',
+        payload: {
+          options: ['base', 'outline', 'dashed', 'text']
+        }
+      },
+      actionSize: {
+        name: '按钮尺寸',
+        value: 'small',
+        editType: 'select',
+        payload: {
+          options: ['small', 'medium', 'large']
+        }
+      }
+    }
+  },
+  {
     type: 'Card',
     name: '卡片',
     props: {

@@ -20,6 +20,7 @@ import {
   Clock3,
   Timer,
   Hash,
+  List,
 } from 'lucide-react';
 import componentCatalog from '../../../config/componentCatalog';
 import DragableWrapper from '../../../components/DragableWrapper';
@@ -89,6 +90,7 @@ const getIconByType = (type: string) => {
     TimePicker: Clock3,
     TimeRangePicker: Timer,
     InputNumber: Hash,
+    List,
     Divider: Minus,
     'Typography.Title': Heading,
     'Typography.Paragraph': AlignLeft,
@@ -109,11 +111,13 @@ const ComponentLibraryPanel: React.FC<ComponentLibraryPanelProps> = ({ selectedN
 
   const filteredCatalog = useMemo(() => {
     const text = keyword.trim();
+    const catalogWithoutAbstractNodes = componentCatalog.filter((component) => component.type !== 'List.Item');
+
     if (!text) {
-      return componentCatalog;
+      return catalogWithoutAbstractNodes;
     }
 
-    return componentCatalog.filter((component) => String(component.name ?? '').includes(text));
+    return catalogWithoutAbstractNodes.filter((component) => String(component.name ?? '').includes(text));
   }, [keyword]);
 
   return (

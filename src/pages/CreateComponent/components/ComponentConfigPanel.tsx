@@ -3,8 +3,9 @@ import { Button, Dialog, Empty, Input, InputNumber, Select, Space, Switch, Table
 import { useCreateComponentStore } from '../store';
 import NodeStyleDrawer from './NodeStyleDrawer';
 import { isSlotNode } from '../utils/slot';
+import CodeEditorDialog, { type CodeEditorValue } from './CodeEditorDialog';
 
-type EditType = 'switch' | 'input' | 'inputNumber' | 'select' | 'swiperImages';
+type EditType = 'switch' | 'input' | 'inputNumber' | 'select' | 'swiperImages' | 'jsonCode';
 
 interface SwiperImageRow {
   id: string;
@@ -56,7 +57,7 @@ interface ComponentPropSchema {
 
 const resolveEditType = (schema: ComponentPropSchema): EditType => {
   const type = (schema.editType ?? schema.editInput) as EditType | string | undefined;
-  if (type === 'switch' || type === 'input' || type === 'inputNumber' || type === 'select' || type === 'swiperImages') {
+  if (type === 'switch' || type === 'input' || type === 'inputNumber' || type === 'select' || type === 'swiperImages' || type === 'jsonCode') {
     return type;
   }
 
@@ -75,6 +76,15 @@ const ComponentConfigPanel: React.FC = () => {
   const [swiperImageDraft, setSwiperImageDraft] = useState<SwiperImageRow[]>([]);
   const [inputDrafts, setInputDrafts] = useState<Record<string, string>>({});
   const [numberDrafts, setNumberDrafts] = useState<Record<string, number | undefined>>({});
+  const [jsonCodeDialogVisible, setJsonCodeDialogVisible] = useState(false);
+  const [jsonCodeTargetPropKey, setJsonCodeTargetPropKey] = useState<string | null>(null);
+  const [jsonCodeValue, setJsonCodeValue] = useState<CodeEditorValue>({
+    label: 'JSON示例数据',
+    language: 'json',
+    editorTheme: 'vscode-dark',
+    note: '',
+    code: '[]',
+  });
 
   const propsMap = (activeNode?.props ?? {}) as Record<string, ComponentPropSchema>;
   const styleValue = (propsMap.__style?.value ?? {}) as Record<string, unknown>;
@@ -208,6 +218,50 @@ const ComponentConfigPanel: React.FC = () => {
       );
     }
 
+    if (editType === 'jsonCode') {
+      const toJsonCode = (value: unknown) => {
+        if (typeof value === 'string') {
+          if (!value.trim()) {
+            return '[]';
+          }
+
+          try {
+            return JSON.stringify(JSON.parse(value), null, 2);
+          } catch {
+            return value;
+          }
+        }
+
+        if (Array.isArray(value) || (value && typeof value === 'object')) {
+          try {
+            return JSON.stringify(value, null, 2);
+          } catch {
+            return '[]';
+          }
+        }
+
+        return '[]';
+      };
+
+      return (
+        <Button
+          size="small"
+          variant="outline"
+          onClick={() => {
+            setJsonCodeTargetPropKey(propKey);
+            setJsonCodeValue((previous) => ({
+              ...previous,
+              label: schema.name ?? propKey,
+              code: toJsonCode(currentValue),
+            }));
+            setJsonCodeDialogVisible(true);
+          }}
+        >
+          编辑示例数据
+        </Button>
+      );
+    }
+
     return (
       <Input
         clearable
@@ -245,6 +299,21 @@ const ComponentConfigPanel: React.FC = () => {
       })),
     );
     setSwiperDialogVisible(false);
+  };
+
+  const applyJsonCodeDraft = (nextValue: Pick<CodeEditorValue, 'code' | 'editorTheme'>) => {
+    setJsonCodeValue((previous) => ({
+      ...previous,
+      code: nextValue.code,
+      editorTheme: nextValue.editorTheme,
+    }));
+
+    if (jsonCodeTargetPropKey) {
+      updateActiveNodeProp(jsonCodeTargetPropKey, nextValue.code);
+    }
+
+    setJsonCodeDialogVisible(false);
+    setJsonCodeTargetPropKey(null);
   };
 
   return (
@@ -430,6 +499,16 @@ const ComponentConfigPanel: React.FC = () => {
           ]}
         />
       </Dialog>
+
+      <CodeEditorDialog
+        visible={jsonCodeDialogVisible}
+        value={jsonCodeValue}
+        onClose={() => {
+          setJsonCodeDialogVisible(false);
+          setJsonCodeTargetPropKey(null);
+        }}
+        onApply={applyJsonCodeDraft}
+      />
     </div>
   );
 };

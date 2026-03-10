@@ -1,5 +1,5 @@
 import React from 'react';
-import { Button, Space, Row, Col, Card, Divider, Typography, Image, Avatar, Switch, Swiper, Layout, Calendar, ColorPicker, TimePicker, TimeRangePicker, InputNumber } from 'tdesign-react';
+import { Button, Space, Row, Col, Card, Divider, Typography, Image, Avatar, Switch, Swiper, Layout, Calendar, ColorPicker, TimePicker, TimeRangePicker, InputNumber, List } from 'tdesign-react';
 import DropArea from '../../../components/DropArea';
 import type { UiTreeNode } from '../store/type';
 import { useCreateComponentStore } from '../store';
@@ -18,6 +18,25 @@ interface SwiperImageItem {
   objectFit: string;
   objectPosition: string;
 }
+
+interface ListRecord {
+  [key: string]: unknown;
+}
+
+const LIST_PREVIEW_DATA: ListRecord[] = [
+  {
+    title: '列表项A',
+    description: '这是第一条示例数据',
+    image: 'https://tdesign.gtimg.com/demo/demo-image-1.png',
+    actionText: '查看',
+  },
+  {
+    title: '列表项B',
+    description: '这是第二条示例数据',
+    image: 'https://tdesign.gtimg.com/demo/demo-image-2.png',
+    actionText: '编辑',
+  },
+];
 
 interface ActivateWrapperProps {
   children: React.ReactNode;
@@ -174,6 +193,7 @@ export default function CommonComponent(properties: CommonComponentProps) {
   const { type, data, onDropData } = properties;
   const setActiveNode = useCreateComponentStore((state) => state.setActiveNode);
   const { Header, Content, Aside, Footer } = Layout;
+  const { ListItem, ListItemMeta } = List;
 
   const getProp = (propName: string) => {
     const prop = data?.props?.[propName] as { value?: unknown } | undefined;
@@ -232,6 +252,39 @@ export default function CommonComponent(properties: CommonComponentProps) {
     }
 
     return [];
+  };
+
+  const getListFieldValue = (record: ListRecord, fieldPath?: string): string | undefined => {
+    if (!fieldPath) {
+      return undefined;
+    }
+
+    const path = fieldPath.trim();
+    if (!path) {
+      return undefined;
+    }
+
+    const value = path.split('.').reduce<unknown>((current, segment) => {
+      if (!segment) {
+        return current;
+      }
+
+      if (!current || typeof current !== 'object') {
+        return undefined;
+      }
+
+      return (current as Record<string, unknown>)[segment];
+    }, record);
+
+    if (typeof value === 'string') {
+      return value;
+    }
+
+    if (typeof value === 'number' || typeof value === 'boolean') {
+      return String(value);
+    }
+
+    return undefined;
   };
 
   const getSwiperImages = (): SwiperImageItem[] => {
@@ -495,6 +548,62 @@ export default function CommonComponent(properties: CommonComponentProps) {
             <DropArea data={data} onDropData={onDropData} />
           </Footer>
         )
+      case 'List':
+        {
+        const listItemTemplateNode = (data?.children ?? []).find((child) => child.type === 'List.Item');
+        const getListItemTemplateProp = (propName: string) => {
+          const prop = listItemTemplateNode?.props?.[propName] as { value?: unknown } | undefined;
+          return prop?.value;
+        };
+        const titleField = getStringProp('titleField') || 'title';
+        const descriptionField = getStringProp('descriptionField') || 'description';
+        const imageField = getStringProp('imageField') || 'image';
+        const actionField = getStringProp('actionField') || 'actionText';
+        const showImage = getListItemTemplateProp('showImage') !== false;
+        const showDescription = getListItemTemplateProp('showDescription') !== false;
+        const showAction = getListItemTemplateProp('showAction') !== false;
+        const actionTheme = String(getListItemTemplateProp('actionTheme') ?? 'default');
+        const actionVariant = String(getListItemTemplateProp('actionVariant') ?? 'text');
+        const actionSize = String(getListItemTemplateProp('actionSize') ?? 'small');
+        return (
+          <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf}>
+            <List
+              layout={getStringProp('layout') as any}
+              size={getStringProp('size') as any}
+              split={getBooleanProp('split')}
+              stripe={getBooleanProp('stripe')}
+              header={getStringProp('header') || undefined}
+              footer={getStringProp('footer') || undefined}
+              asyncLoading={getStringProp('asyncLoading') || undefined}
+              style={mergeStyle()}
+            >
+              {LIST_PREVIEW_DATA.map((item, index) => {
+                const metaTitle = getListFieldValue(item, titleField);
+                const metaDescription = getListFieldValue(item, descriptionField);
+                const metaImage = getListFieldValue(item, imageField);
+                const actionText = getListFieldValue(item, actionField);
+                const resolvedTitle = metaTitle || `列表项 ${index + 1}`;
+                const resolvedDescription = showDescription ? metaDescription : undefined;
+                const resolvedImage = showImage ? metaImage : undefined;
+                return (
+                  <ListItem
+                    key={`${data?.key ?? 'list'}-preview-${index}`}
+                    action={showAction && actionText ? (
+                      <Button size={actionSize as any} variant={actionVariant as any} theme={actionTheme as any}>{actionText}</Button>
+                    ) : undefined}
+                  >
+                    <ListItemMeta
+                      title={resolvedTitle}
+                      description={resolvedDescription}
+                      image={resolvedImage ? <Image src={resolvedImage} style={{ width: 56, height: 56, borderRadius: 6 }} /> : undefined}
+                    />
+                  </ListItem>
+                );
+              })}
+            </List>
+          </ActivateWrapper>
+        );
+        }
       case 'Card':
         if (!hasCardSlotStructure) {
           return (

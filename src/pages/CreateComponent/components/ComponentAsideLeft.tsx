@@ -27,7 +27,11 @@ const CONTAINER_NODE_TYPES = new Set([
   'Layout.Footer',
 ]);
 
-type NodeVisualKind = 'slot' | 'container' | 'leaf';
+const ABSTRACT_NODE_TYPES = new Set([
+  'List.Item',
+]);
+
+type NodeVisualKind = 'slot' | 'container' | 'leaf' | 'abstract';
 
 interface TreeNodeDropTarget {
   parentKey: string;
@@ -72,6 +76,10 @@ const getTreeNodeDropTarget = (node: UiTreeNode): TreeNodeDropTarget | null => {
 const getNodeVisualKind = (node: UiTreeNode): NodeVisualKind => {
   if (isSlotNode(node)) {
     return 'slot';
+  }
+
+  if (node.type && ABSTRACT_NODE_TYPES.has(node.type)) {
+    return 'abstract';
   }
 
   return getTreeNodeDropTarget(node) ? 'container' : 'leaf';
@@ -221,7 +229,11 @@ const ComponentAsideLeft: React.FC = () => {
         ? <GripHorizontal size={12} strokeWidth={2} />
         : nodeVisualKind === 'container'
           ? <LayoutGrid size={12} strokeWidth={2} />
+          : nodeVisualKind === 'abstract'
+            ? <GripHorizontal size={12} strokeWidth={2} />
           : <Minus size={12} strokeWidth={2} />;
+
+      const isAbstractNode = nodeVisualKind === 'abstract';
 
       return {
         ...node,
@@ -301,6 +313,7 @@ const ComponentAsideLeft: React.FC = () => {
                 <span className="tree-node-item__left">
                   <span className={`tree-node-item__icon tree-node-item__icon--${nodeVisualKind}`}>{icon}</span>
                   <span className="tree-node-item__title">{title}</span>
+                  {isAbstractNode ? <span className="tree-node-item__badge">抽象</span> : null}
                 </span>
               </div>
             </div>
