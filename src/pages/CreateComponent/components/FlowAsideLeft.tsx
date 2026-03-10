@@ -52,7 +52,6 @@ const FlowAsideLeft: React.FC = () => {
           <div className="tree-node-label">
             <div className="tree-node-item">
               <span className="tree-node-item__title">{String(node.label ?? '插槽')}</span>
-              <span className="tree-node-item__meta">Slot</span>
             </div>
           </div>
         ) : (
@@ -60,7 +59,6 @@ const FlowAsideLeft: React.FC = () => {
             <div className="tree-node-label">
               <div className="tree-node-item">
                 <span className="tree-node-item__title">{String(node.label ?? '节点')}</span>
-                <span className="tree-node-item__meta">{String(node.type ?? 'Unknown')}</span>
               </div>
             </div>
           </DragableWrapper>
