@@ -1,4 +1,5 @@
 import type { Edge, Node } from '@xyflow/react';
+import type { BuiltInLayoutTemplateId } from '../layoutTemplates';
 
 export type ScreenSize = string | number;
 export type StateAction<T> = T | ((previous: T) => T);
@@ -88,12 +89,22 @@ export interface FlowEditHistoryAction {
   timestamp: number;
 }
 
+export interface ReplaceLayoutHistoryAction {
+  type: 'replace-layout';
+  prevChildren: UiTreeNode[];
+  nextChildren: UiTreeNode[];
+  prevLayoutTemplateId: BuiltInLayoutTemplateId | null;
+  nextLayoutTemplateId: BuiltInLayoutTemplateId;
+  timestamp: number;
+}
+
 export type UiHistoryAction =
   | AddHistoryAction
   | RemoveHistoryAction
   | UpdateLabelHistoryAction
   | UpdatePropHistoryAction
-  | FlowEditHistoryAction;
+  | FlowEditHistoryAction
+  | ReplaceLayoutHistoryAction;
 
 export interface UiHistoryState {
   pointer: number;
@@ -114,6 +125,7 @@ export interface CreateComponentStore {
   uiPageData: UiTreeNode;
   activeNodeKey: string | null;
   activeNode: UiTreeNode | null;
+  selectedLayoutTemplateId: BuiltInLayoutTemplateId | null;
   treeInstance: UiTreeInstance | null;
   history: UiHistoryState;
   setScreenSize: (screenSize: ScreenSize) => void;
@@ -141,6 +153,7 @@ export interface CreateComponentStore {
     updater: (data: Record<string, unknown>) => Record<string, unknown>,
     actionLabel?: string,
   ) => void;
+  applyBuiltInLayoutTemplate: (templateId: BuiltInLayoutTemplateId) => void;
   undo: () => void;
   redo: () => void;
   jumpToHistory: (pointer: number) => void;

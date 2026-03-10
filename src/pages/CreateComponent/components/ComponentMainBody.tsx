@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { Input, Space, Select, Typography } from 'tdesign-react';
+import { Button, Dialog, Input, Space, Select, Typography } from 'tdesign-react';
 import ComponentBody from '../ComponentBody';
 import SCREEN_SIZES from '../screenSizes';
 import { useCreateComponentStore } from '../store';
+import { BUILT_IN_LAYOUT_TEMPLATES, type BuiltInLayoutTemplateId } from '../layoutTemplates';
 
 const { Text } = Typography;
 
@@ -11,9 +12,15 @@ const ComponentMainBody: React.FC = () => {
   const autoWidth = useCreateComponentStore((state) => state.autoWidth);
   const setScreenSize = useCreateComponentStore((state) => state.setScreenSize);
   const setAutoWidth = useCreateComponentStore((state) => state.setAutoWidth);
+  const uiPageData = useCreateComponentStore((state) => state.uiPageData);
+  const selectedLayoutTemplateId = useCreateComponentStore((state) => state.selectedLayoutTemplateId);
+  const applyBuiltInLayoutTemplate = useCreateComponentStore((state) => state.applyBuiltInLayoutTemplate);
 
   const inputDisabled = screenSize !== 'auto';
   const [draftInputValue, setDraftInputValue] = useState<string>(String(autoWidth));
+  const [layoutDialogVisible, setLayoutDialogVisible] = useState(false);
+  const [replaceConfirmVisible, setReplaceConfirmVisible] = useState(false);
+  const [pendingTemplateId, setPendingTemplateId] = useState<BuiltInLayoutTemplateId | null>(null);
 
   useEffect(() => {
     const nextValue = screenSize === 'auto' ? String(autoWidth) : String(Number(screenSize));
@@ -39,6 +46,31 @@ const ComponentMainBody: React.FC = () => {
     }
 
     setDraftInputValue(String(autoWidth));
+  };
+
+  const isPageEmpty = (uiPageData.children?.length ?? 0) === 0;
+
+  const handleSelectLayoutTemplate = (templateId: BuiltInLayoutTemplateId) => {
+    if (isPageEmpty) {
+      applyBuiltInLayoutTemplate(templateId);
+      setLayoutDialogVisible(false);
+      return;
+    }
+
+    setPendingTemplateId(templateId);
+    setReplaceConfirmVisible(true);
+  };
+
+  const handleConfirmReplaceLayout = () => {
+    if (!pendingTemplateId) {
+      setReplaceConfirmVisible(false);
+      return;
+    }
+
+    applyBuiltInLayoutTemplate(pendingTemplateId);
+    setReplaceConfirmVisible(false);
+    setLayoutDialogVisible(false);
+    setPendingTemplateId(null);
   };
 
   return (
@@ -69,12 +101,86 @@ const ComponentMainBody: React.FC = () => {
             onBlur={(value) => handleInputBlur(String(value ?? ''))}
           />
           </Space>
+          <Button
+            size="small"
+            theme="default"
+            variant="outline"
+            onClick={() => setLayoutDialogVisible(true)}
+          >
+            选择布局
+          </Button>
         </Space>
       </div>
 
       <div className="main-inner">
         <ComponentBody />
       </div>
+
+      <Dialog
+        visible={layoutDialogVisible}
+        width="820px"
+        header="选择内置布局"
+        className="layout-selector-dialog"
+        footer={false}
+        closeOnOverlayClick
+        onClose={() => {
+          setLayoutDialogVisible(false);
+          setPendingTemplateId(null);
+          setReplaceConfirmVisible(false);
+        }}
+      >
+        <div className="layout-selector-headline">点击任一布局卡片即可应用到当前画布</div>
+        <div className="layout-selector-grid">
+          {BUILT_IN_LAYOUT_TEMPLATES.map((template) => {
+            const isSelected = selectedLayoutTemplateId === template.id;
+            return (
+              <div
+                key={template.id}
+                className={`layout-template-card ${isSelected ? 'is-selected' : ''}`}
+                onClick={() => handleSelectLayoutTemplate(template.id)}
+              >
+                <div className="layout-template-preview">
+                  {template.previewLines.map((line, lineIndex) => {
+                    const segments = line
+                      .split('|')
+                      .map((segment) => segment.trim())
+                      .filter(Boolean);
+
+                    return (
+                      <div key={`${template.id}-${lineIndex}`} className="layout-template-preview-row">
+                        {segments.map((segment) => (
+                          <div key={`${template.id}-${lineIndex}-${segment}`} className="layout-template-preview-block">
+                            {segment}
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  })}
+                </div>
+                <div className="layout-template-meta">
+                  <div className="layout-template-title">{template.name}</div>
+                  <div className="layout-template-description">{template.description}</div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </Dialog>
+
+      <Dialog
+        visible={replaceConfirmVisible}
+        header="确认替换布局"
+        confirmBtn="确认替换"
+        cancelBtn="取消"
+        closeOnOverlayClick={false}
+        onConfirm={handleConfirmReplaceLayout}
+        onClose={() => {
+          setReplaceConfirmVisible(false);
+          setPendingTemplateId(null);
+        }}
+      >
+        当前页面存在内容，应用新布局将删除页面所有信息。是否确认继续？
+      </Dialog>
     </main>
   );
 };

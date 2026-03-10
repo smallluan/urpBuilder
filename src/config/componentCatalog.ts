@@ -147,6 +147,31 @@ const componentCatalog = [
     }
   },
   {
+    type: 'Layout',
+    name: '布局容器',
+    props: {}
+  },
+  {
+    type: 'Layout.Header',
+    name: '布局头部',
+    props: {}
+  },
+  {
+    type: 'Layout.Content',
+    name: '布局内容',
+    props: {}
+  },
+  {
+    type: 'Layout.Aside',
+    name: '布局侧栏',
+    props: {}
+  },
+  {
+    type: 'Layout.Footer',
+    name: '布局底部',
+    props: {}
+  },
+  {
     type: 'Card',
     name: '卡片',
     props: {

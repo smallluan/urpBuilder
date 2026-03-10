@@ -12,6 +12,8 @@ import {
   toUiTreeNode,
   updateNodeByKey,
 } from '../../../utils/createComponentTree';
+import { buildNodesByLayoutTemplate } from '../layoutTemplates';
+import type { BuiltInLayoutTemplateId } from '../layoutTemplates';
 
 const HISTORY_MAX_ACTIONS = 200;
 const COMPONENT_KEY_PATTERN = /^[A-Za-z0-9_-]+$/;
@@ -240,6 +242,20 @@ const resolveActiveNode = (uiPageData: UiTreeNode, activeNodeKey: string | null)
   return findNodeByKey(uiPageData, activeNodeKey);
 };
 
+const resolveLayoutTemplateId = (uiPageData: UiTreeNode) => {
+  const layoutMeta = (uiPageData.props?.__layoutTemplate as { value?: unknown } | undefined)?.value;
+  if (
+    layoutMeta === 'header-body'
+    || layoutMeta === 'header-aside-body'
+    || layoutMeta === 'header-body-footer'
+    || layoutMeta === 'header-aside-body-footer'
+  ) {
+    return layoutMeta as BuiltInLayoutTemplateId;
+  }
+
+  return null;
+};
+
 const applyHistoryAction = (
   tree: UiTreeNode,
   action: UiHistoryAction,
@@ -277,6 +293,23 @@ const applyHistoryAction = (
       ...target,
       label: direction === 'undo' ? action.prevLabel : action.nextLabel,
     }));
+  }
+
+  if (action.type === 'replace-layout') {
+    const layoutTemplateId = direction === 'undo' ? action.prevLayoutTemplateId : action.nextLayoutTemplateId;
+    const children = direction === 'undo' ? action.prevChildren : action.nextChildren;
+
+    return {
+      ...tree,
+      props: {
+        ...(tree.props ?? {}),
+        __layoutTemplate: {
+          name: '布局模板',
+          value: layoutTemplateId,
+        },
+      },
+      children: cloneDeep(children),
+    };
   }
 
   return updateNodeByKey(tree, action.nodeKey, (target) => {
@@ -327,6 +360,7 @@ export const useCreateComponentStore = create<CreateComponentStore>((set) => ({
   },
   activeNodeKey: null,
   activeNode: null,
+  selectedLayoutTemplateId: null,
   treeInstance: null,
 
   // ===== 历史系统 =====
@@ -774,6 +808,43 @@ export const useCreateComponentStore = create<CreateComponentStore>((set) => ({
         history: nextHistory,
       };
     }),
+  applyBuiltInLayoutTemplate: (templateId) =>
+    set((state) => {
+      const nextChildren = buildNodesByLayoutTemplate(templateId);
+      const prevChildren = cloneDeep(state.uiPageData.children ?? []);
+      const prevLayoutTemplateId = state.selectedLayoutTemplateId;
+
+      const nextTree: UiTreeNode = {
+        ...state.uiPageData,
+        props: {
+          ...(state.uiPageData.props ?? {}),
+          __layoutTemplate: {
+            name: '布局模板',
+            value: templateId,
+          },
+        },
+        children: nextChildren,
+      };
+
+      const action: UiHistoryAction = {
+        type: 'replace-layout',
+        prevChildren,
+        nextChildren: cloneDeep(nextChildren),
+        prevLayoutTemplateId,
+        nextLayoutTemplateId: templateId,
+        timestamp: Date.now(),
+      };
+
+      const nextHistory = pushHistoryAction(state.history.actions, state.history.pointer, action);
+
+      return {
+        uiPageData: nextTree,
+        activeNodeKey: null,
+        activeNode: null,
+        selectedLayoutTemplateId: templateId,
+        history: nextHistory,
+      };
+    }),
   // 回退一步：对当前 action 执行逆操作
   undo: () =>
     set((state) => {
@@ -793,6 +864,7 @@ export const useCreateComponentStore = create<CreateComponentStore>((set) => ({
         flowNodes: nextFlow.flowNodes,
         flowEdges: nextFlow.flowEdges,
         activeNode,
+        selectedLayoutTemplateId: resolveLayoutTemplateId(nextTree),
         history: {
           pointer: pointer - 1,
           actions,
@@ -819,6 +891,7 @@ export const useCreateComponentStore = create<CreateComponentStore>((set) => ({
         flowNodes: nextFlow.flowNodes,
         flowEdges: nextFlow.flowEdges,
         activeNode,
+        selectedLayoutTemplateId: resolveLayoutTemplateId(nextTree),
         history: {
           pointer: nextPointer,
           actions,
@@ -859,6 +932,7 @@ export const useCreateComponentStore = create<CreateComponentStore>((set) => ({
         flowNodes: nextFlowNodes,
         flowEdges: nextFlowEdges,
         activeNode: resolveActiveNode(nextTree, state.activeNodeKey),
+        selectedLayoutTemplateId: resolveLayoutTemplateId(nextTree),
         history: {
           pointer: clampedTarget,
           actions,

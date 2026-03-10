@@ -15,7 +15,16 @@ interface RenderUiTreeNode extends Omit<UiTreeNode, 'label' | 'children'> {
 }
 
 const DROP_DATA_KEY = 'drag-component-data';
-const CONTAINER_NODE_TYPES = new Set(['Space', 'Grid.Row', 'Grid.Col']);
+const CONTAINER_NODE_TYPES = new Set([
+  'Space',
+  'Grid.Row',
+  'Grid.Col',
+  'Layout',
+  'Layout.Header',
+  'Layout.Content',
+  'Layout.Aside',
+  'Layout.Footer',
+]);
 
 type NodeVisualKind = 'slot' | 'container' | 'leaf';
 

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Button, Space, Row, Col, Card, Divider, Typography, Image, Avatar, Switch, Swiper } from 'tdesign-react';
+import { Button, Space, Row, Col, Card, Divider, Typography, Image, Avatar, Switch, Swiper, Layout } from 'tdesign-react';
 import DropArea from '../../../components/DropArea';
 import type { UiTreeNode } from '../store/type';
 import { useCreateComponentStore } from '../store';
@@ -173,6 +173,7 @@ const CardContent: React.FC<CardContentProps> = ({
 export default function CommonComponent(properties: CommonComponentProps) {
   const { type, data, onDropData } = properties;
   const setActiveNode = useCreateComponentStore((state) => state.setActiveNode);
+  const { Header, Content, Aside, Footer } = Layout;
 
   const getProp = (propName: string) => {
     const prop = data?.props?.[propName] as { value?: unknown } | undefined;
@@ -378,6 +379,36 @@ export default function CommonComponent(properties: CommonComponentProps) {
             </DropArea>
           </Col>
 
+        )
+      case 'Layout':
+        return (
+          <Layout style={mergeStyle()}>
+            <DropArea data={data} onDropData={onDropData} />
+          </Layout>
+        )
+      case 'Layout.Header':
+        return (
+          <Header style={mergeStyle()}>
+            <DropArea data={data} onDropData={onDropData} />
+          </Header>
+        )
+      case 'Layout.Content':
+        return (
+          <Content style={mergeStyle()}>
+            <DropArea data={data} onDropData={onDropData} />
+          </Content>
+        )
+      case 'Layout.Aside':
+        return (
+          <Aside style={mergeStyle()}>
+            <DropArea data={data} onDropData={onDropData} />
+          </Aside>
+        )
+      case 'Layout.Footer':
+        return (
+          <Footer style={mergeStyle()}>
+            <DropArea data={data} onDropData={onDropData} />
+          </Footer>
         )
       case 'Card':
         if (!hasCardSlotStructure) {

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Avatar, Button, Card, Col, Divider, Image, Row, Space, Switch, Swiper, Typography } from 'tdesign-react';
+import { Avatar, Button, Card, Col, Divider, Image, Row, Space, Switch, Swiper, Typography, Layout } from 'tdesign-react';
 import type { UiTreeNode } from '../../CreateComponent/store/type';
 import { getNodeSlotKey, isSlotNode } from '../../CreateComponent/utils/slot';
 
@@ -131,6 +131,7 @@ const renderChildren = (
 const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) => {
   const inlineStyle = getStyleProp(node);
   const type = node.type;
+  const { Header, Content, Aside, Footer } = Layout;
   if (isSlotNode(node)) {
     return null;
   }
@@ -370,6 +371,46 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) 
           <Col span={getNumberProp(node, 'span') ?? 6} offset={getNumberProp(node, 'offset')}>
             {renderChildren(node, onLifecycle)}
           </Col>
+        </div>
+      );
+    case 'Layout':
+      return (
+        <div style={mergeStyle()}>
+          <Layout>
+            {renderChildren(node, onLifecycle)}
+          </Layout>
+        </div>
+      );
+    case 'Layout.Header':
+      return (
+        <div style={mergeStyle()}>
+          <Header>
+            {renderChildren(node, onLifecycle)}
+          </Header>
+        </div>
+      );
+    case 'Layout.Content':
+      return (
+        <div style={mergeStyle()}>
+          <Content>
+            {renderChildren(node, onLifecycle)}
+          </Content>
+        </div>
+      );
+    case 'Layout.Aside':
+      return (
+        <div style={mergeStyle()}>
+          <Aside>
+            {renderChildren(node, onLifecycle)}
+          </Aside>
+        </div>
+      );
+    case 'Layout.Footer':
+      return (
+        <div style={mergeStyle()}>
+          <Footer>
+            {renderChildren(node, onLifecycle)}
+          </Footer>
         </div>
       );
     case 'Card':

@@ -67,6 +67,19 @@ const toActionDescription = (action: UiHistoryAction) => {
     };
   }
 
+  if (action.type === 'replace-layout') {
+    return {
+      title: `应用布局：${action.nextLayoutTemplateId}`,
+      subtitle: '页面结构',
+      theme: 'primary' as const,
+      kind: '布局',
+      lines: [
+        `旧布局：${action.prevLayoutTemplateId ?? '无'}`,
+        `新布局：${action.nextLayoutTemplateId}`,
+      ],
+    };
+  }
+
   return {
     title: `流程操作：${action.actionLabel}`,
     subtitle: '流程画布',
