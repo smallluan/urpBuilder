@@ -1,5 +1,5 @@
 import React from 'react';
-import { Avatar, Button, Card, Col, Divider, Image, Row, Space, Switch, Swiper, Typography, Layout, Calendar, ColorPicker } from 'tdesign-react';
+import { Avatar, Button, Card, Col, Divider, Image, Row, Space, Switch, Swiper, Typography, Layout, Calendar, ColorPicker, TimePicker, TimeRangePicker, InputNumber } from 'tdesign-react';
 import type { UiTreeNode } from '../../CreateComponent/store/type';
 import { getNodeSlotKey, isSlotNode } from '../../CreateComponent/utils/slot';
 
@@ -111,6 +111,77 @@ const getSwiperImages = (node: UiTreeNode): SwiperImageItem[] => {
     objectFit: 'cover',
     objectPosition: 'center',
   }));
+};
+
+const getTimeStepsProp = (node: UiTreeNode) => {
+  const value = getProp(node, 'steps');
+  const toValidStep = (input: unknown) => {
+    const parsed = Number(input);
+    if (!Number.isFinite(parsed) || parsed <= 0) {
+      return 1;
+    }
+    return Math.max(1, Math.round(parsed));
+  };
+
+  if (Array.isArray(value)) {
+    const list = value.slice(0, 3).map((item) => toValidStep(item));
+    if (list.length === 3) {
+      return list;
+    }
+    return [1, 1, 1];
+  }
+
+  if (typeof value === 'string') {
+    const list = value
+      .split(/,|，|\s+/)
+      .map((item) => item.trim())
+      .filter(Boolean)
+      .slice(0, 3)
+      .map((item) => toValidStep(item));
+
+    if (list.length === 3) {
+      return list;
+    }
+  }
+
+  return [1, 1, 1];
+};
+
+const getTimeRangeValueProp = (node: UiTreeNode, propName: string) => {
+  const values = getStringArrayProp(node, propName).slice(0, 2);
+  if (values.length === 2) {
+    return values;
+  }
+
+  return undefined;
+};
+
+const getInputNumberValueProp = (node: UiTreeNode, propName: string) => {
+  const value = getProp(node, propName);
+  if (typeof value === 'number') {
+    return Number.isNaN(value) ? undefined : value;
+  }
+
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    return trimmed === '' ? undefined : trimmed;
+  }
+
+  return undefined;
+};
+
+const getFiniteNumberProp = (node: UiTreeNode, propName: string) => {
+  const value = getProp(node, propName);
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value;
+  }
+
+  if (typeof value === 'string' && value.trim()) {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : undefined;
+  }
+
+  return undefined;
 };
 
 const getSlotChildren = (node: UiTreeNode, slotKey: 'header' | 'body') => {
@@ -547,6 +618,111 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) 
             onClear={(context) => emitInteractionLifecycle('onClear', context)}
             onPaletteBarChange={(context) => emitInteractionLifecycle('onPaletteBarChange', context)}
             onRecentColorsChange={(value) => emitInteractionLifecycle('onRecentColorsChange', { value })}
+            style={mergeStyle()}
+          />
+        </div>
+      );
+      }
+    case 'TimePicker':
+      {
+      const isControlled = getBooleanProp(node, 'controlled') !== false;
+
+      return (
+        <div style={mergeStyle()}>
+          <TimePicker
+            format={getStringProp(node, 'format') || 'HH:mm:ss'}
+            value={isControlled ? (getStringProp(node, 'value') || undefined) : undefined}
+            defaultValue={isControlled ? undefined : (getStringProp(node, 'defaultValue') || undefined)}
+            placeholder={getStringProp(node, 'placeholder') || undefined}
+            size={getStringProp(node, 'size') as any}
+            status={getStringProp(node, 'status') as any}
+            steps={getTimeStepsProp(node) as any}
+            allowInput={getBooleanProp(node, 'allowInput')}
+            borderless={getBooleanProp(node, 'borderless')}
+            clearable={getBooleanProp(node, 'clearable')}
+            disabled={getBooleanProp(node, 'disabled')}
+            hideDisabledTime={getBooleanProp(node, 'hideDisabledTime')}
+            onBlur={(context) => emitInteractionLifecycle('onBlur', context)}
+            onChange={(value) => emitInteractionLifecycle('onChange', { value })}
+            onClear={(context) => emitInteractionLifecycle('onClear', context)}
+            onClose={(context) => emitInteractionLifecycle('onClose', context)}
+            onFocus={(context) => emitInteractionLifecycle('onFocus', context)}
+            onInput={(context) => emitInteractionLifecycle('onInput', context)}
+            onOpen={(context) => emitInteractionLifecycle('onOpen', context)}
+            onPick={(value, context) => emitInteractionLifecycle('onPick', { value, context })}
+            style={mergeStyle()}
+          />
+        </div>
+      );
+      }
+    case 'TimeRangePicker':
+      {
+      const isControlled = getBooleanProp(node, 'controlled') !== false;
+      const value = getTimeRangeValueProp(node, 'value');
+      const defaultValue = getTimeRangeValueProp(node, 'defaultValue');
+      const placeholderStart = getStringProp(node, 'placeholderStart');
+      const placeholderEnd = getStringProp(node, 'placeholderEnd');
+      const placeholder = placeholderStart || placeholderEnd
+        ? [placeholderStart || '开始时间', placeholderEnd || '结束时间']
+        : undefined;
+
+      return (
+        <div style={mergeStyle()}>
+          <TimeRangePicker
+            format={getStringProp(node, 'format') || 'HH:mm:ss'}
+            value={isControlled ? (value as any) : undefined}
+            defaultValue={isControlled ? undefined : (defaultValue as any)}
+            placeholder={placeholder as any}
+            size={getStringProp(node, 'size') as any}
+            status={getStringProp(node, 'status') as any}
+            steps={getTimeStepsProp(node) as any}
+            allowInput={getBooleanProp(node, 'allowInput')}
+            autoSwap={getBooleanProp(node, 'autoSwap')}
+            borderless={getBooleanProp(node, 'borderless')}
+            clearable={getBooleanProp(node, 'clearable')}
+            disabled={getBooleanProp(node, 'disabled')}
+            hideDisabledTime={getBooleanProp(node, 'hideDisabledTime')}
+            onBlur={(context) => emitInteractionLifecycle('onBlur', context)}
+            onChange={(nextValue) => emitInteractionLifecycle('onChange', { value: nextValue })}
+            onFocus={(context) => emitInteractionLifecycle('onFocus', context)}
+            onInput={(context) => emitInteractionLifecycle('onInput', context)}
+            onPick={(nextValue, context) => emitInteractionLifecycle('onPick', { value: nextValue, context })}
+            style={mergeStyle()}
+          />
+        </div>
+      );
+      }
+    case 'InputNumber':
+      {
+      const isControlled = getBooleanProp(node, 'controlled') !== false;
+
+      return (
+        <div style={mergeStyle()}>
+          <InputNumber
+            value={isControlled ? getInputNumberValueProp(node, 'value') as any : undefined}
+            defaultValue={isControlled ? undefined : getInputNumberValueProp(node, 'defaultValue') as any}
+            min={getInputNumberValueProp(node, 'min') as any}
+            max={getInputNumberValueProp(node, 'max') as any}
+            step={getInputNumberValueProp(node, 'step') as any}
+            decimalPlaces={getFiniteNumberProp(node, 'decimalPlaces') as any}
+            placeholder={getStringProp(node, 'placeholder') || undefined}
+            size={getStringProp(node, 'size') as any}
+            status={getStringProp(node, 'status') as any}
+            align={getStringProp(node, 'align') as any}
+            theme={getStringProp(node, 'theme') as any}
+            allowInputOverLimit={getBooleanProp(node, 'allowInputOverLimit')}
+            autoWidth={getBooleanProp(node, 'autoWidth')}
+            disabled={getBooleanProp(node, 'disabled')}
+            readOnly={getBooleanProp(node, 'readOnly')}
+            largeNumber={getBooleanProp(node, 'largeNumber')}
+            onBlur={(value, context) => emitInteractionLifecycle('onBlur', { value, context })}
+            onChange={(value, context) => emitInteractionLifecycle('onChange', { value, context })}
+            onEnter={(value, context) => emitInteractionLifecycle('onEnter', { value, context })}
+            onFocus={(value, context) => emitInteractionLifecycle('onFocus', { value, context })}
+            onKeydown={(value, context) => emitInteractionLifecycle('onKeydown', { value, context })}
+            onKeypress={(value, context) => emitInteractionLifecycle('onKeypress', { value, context })}
+            onKeyup={(value, context) => emitInteractionLifecycle('onKeyup', { value, context })}
+            onValidate={(context) => emitInteractionLifecycle('onValidate', context)}
             style={mergeStyle()}
           />
         </div>

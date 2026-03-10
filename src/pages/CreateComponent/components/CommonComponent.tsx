@@ -1,5 +1,5 @@
 import React from 'react';
-import { Button, Space, Row, Col, Card, Divider, Typography, Image, Avatar, Switch, Swiper, Layout, Calendar, ColorPicker } from 'tdesign-react';
+import { Button, Space, Row, Col, Card, Divider, Typography, Image, Avatar, Switch, Swiper, Layout, Calendar, ColorPicker, TimePicker, TimeRangePicker, InputNumber } from 'tdesign-react';
 import DropArea from '../../../components/DropArea';
 import type { UiTreeNode } from '../store/type';
 import { useCreateComponentStore } from '../store';
@@ -259,6 +259,77 @@ export default function CommonComponent(properties: CommonComponentProps) {
       objectFit: 'cover',
       objectPosition: 'center',
     }));
+  };
+
+  const getTimeStepsProp = () => {
+    const value = getProp('steps');
+    const toValidStep = (input: unknown) => {
+      const parsed = Number(input);
+      if (!Number.isFinite(parsed) || parsed <= 0) {
+        return 1;
+      }
+      return Math.max(1, Math.round(parsed));
+    };
+
+    if (Array.isArray(value)) {
+      const list = value.slice(0, 3).map((item) => toValidStep(item));
+      if (list.length === 3) {
+        return list;
+      }
+      return [1, 1, 1];
+    }
+
+    if (typeof value === 'string') {
+      const list = value
+        .split(/,|，|\s+/)
+        .map((item) => item.trim())
+        .filter(Boolean)
+        .slice(0, 3)
+        .map((item) => toValidStep(item));
+
+      if (list.length === 3) {
+        return list;
+      }
+    }
+
+    return [1, 1, 1];
+  };
+
+  const getTimeRangeValueProp = (propName: string) => {
+    const values = getStringArrayProp(propName).slice(0, 2);
+    if (values.length === 2) {
+      return values;
+    }
+
+    return undefined;
+  };
+
+  const getInputNumberValueProp = (propName: string) => {
+    const value = getProp(propName);
+    if (typeof value === 'number') {
+      return Number.isNaN(value) ? undefined : value;
+    }
+
+    if (typeof value === 'string') {
+      const trimmed = value.trim();
+      return trimmed === '' ? undefined : trimmed;
+    }
+
+    return undefined;
+  };
+
+  const getFiniteNumberProp = (propName: string) => {
+    const value = getProp(propName);
+    if (typeof value === 'number' && Number.isFinite(value)) {
+      return value;
+    }
+
+    if (typeof value === 'string' && value.trim()) {
+      const parsed = Number(value);
+      return Number.isFinite(parsed) ? parsed : undefined;
+    }
+
+    return undefined;
   };
 
   const handleActivateSelf = (event: React.MouseEvent<HTMLElement>) => {
@@ -552,6 +623,88 @@ export default function CommonComponent(properties: CommonComponentProps) {
               disabled={getBooleanProp('disabled')}
               enableAlpha={getBooleanProp('enableAlpha')}
               showPrimaryColorPreview={getBooleanProp('showPrimaryColorPreview')}
+              style={mergeStyle()}
+            />
+          </ActivateWrapper>
+        );
+        }
+      case 'TimePicker':
+        {
+        const isControlled = getBooleanProp('controlled') !== false;
+        return (
+          <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf}>
+            <TimePicker
+              format={getStringProp('format') || 'HH:mm:ss'}
+              value={isControlled ? (getStringProp('value') || undefined) : undefined}
+              defaultValue={isControlled ? undefined : (getStringProp('defaultValue') || undefined)}
+              placeholder={getStringProp('placeholder') || undefined}
+              size={getStringProp('size') as any}
+              status={getStringProp('status') as any}
+              steps={getTimeStepsProp() as any}
+              allowInput={getBooleanProp('allowInput')}
+              borderless={getBooleanProp('borderless')}
+              clearable={getBooleanProp('clearable')}
+              disabled={getBooleanProp('disabled')}
+              hideDisabledTime={getBooleanProp('hideDisabledTime')}
+              style={mergeStyle()}
+            />
+          </ActivateWrapper>
+        );
+        }
+      case 'TimeRangePicker':
+        {
+        const isControlled = getBooleanProp('controlled') !== false;
+        const value = getTimeRangeValueProp('value');
+        const defaultValue = getTimeRangeValueProp('defaultValue');
+        const placeholderStart = getStringProp('placeholderStart');
+        const placeholderEnd = getStringProp('placeholderEnd');
+        const placeholder = placeholderStart || placeholderEnd
+          ? [placeholderStart || '开始时间', placeholderEnd || '结束时间']
+          : undefined;
+
+        return (
+          <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf}>
+            <TimeRangePicker
+              format={getStringProp('format') || 'HH:mm:ss'}
+              value={isControlled ? (value as any) : undefined}
+              defaultValue={isControlled ? undefined : (defaultValue as any)}
+              placeholder={placeholder as any}
+              size={getStringProp('size') as any}
+              status={getStringProp('status') as any}
+              steps={getTimeStepsProp() as any}
+              allowInput={getBooleanProp('allowInput')}
+              autoSwap={getBooleanProp('autoSwap')}
+              borderless={getBooleanProp('borderless')}
+              clearable={getBooleanProp('clearable')}
+              disabled={getBooleanProp('disabled')}
+              hideDisabledTime={getBooleanProp('hideDisabledTime')}
+              style={mergeStyle()}
+            />
+          </ActivateWrapper>
+        );
+        }
+      case 'InputNumber':
+        {
+        const isControlled = getBooleanProp('controlled') !== false;
+        return (
+          <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf}>
+            <InputNumber
+              value={isControlled ? getInputNumberValueProp('value') as any : undefined}
+              defaultValue={isControlled ? undefined : getInputNumberValueProp('defaultValue') as any}
+              min={getInputNumberValueProp('min') as any}
+              max={getInputNumberValueProp('max') as any}
+              step={getInputNumberValueProp('step') as any}
+              decimalPlaces={getFiniteNumberProp('decimalPlaces') as any}
+              placeholder={getStringProp('placeholder') || undefined}
+              size={getStringProp('size') as any}
+              status={getStringProp('status') as any}
+              align={getStringProp('align') as any}
+              theme={getStringProp('theme') as any}
+              allowInputOverLimit={getBooleanProp('allowInputOverLimit')}
+              autoWidth={getBooleanProp('autoWidth')}
+              disabled={getBooleanProp('disabled')}
+              readOnly={getBooleanProp('readOnly')}
+              largeNumber={getBooleanProp('largeNumber')}
               style={mergeStyle()}
             />
           </ActivateWrapper>

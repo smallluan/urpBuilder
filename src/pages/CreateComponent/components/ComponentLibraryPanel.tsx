@@ -17,6 +17,9 @@ import {
   AlignLeft,
   CalendarDays,
   Pipette,
+  Clock3,
+  Timer,
+  Hash,
 } from 'lucide-react';
 import componentCatalog from '../../../config/componentCatalog';
 import DragableWrapper from '../../../components/DragableWrapper';
@@ -33,7 +36,15 @@ const getCategoryByType = (type: string): ComponentCategory => {
     return 'text';
   }
 
-  if (type === 'Image' || type === 'Avatar' || type === 'Calendar' || type === 'ColorPicker') {
+  if (
+    type === 'Image'
+    || type === 'Avatar'
+    || type === 'Calendar'
+    || type === 'ColorPicker'
+    || type === 'TimePicker'
+    || type === 'TimeRangePicker'
+    || type === 'InputNumber'
+  ) {
     return 'display';
   }
 
@@ -75,6 +86,9 @@ const getIconByType = (type: string) => {
     Avatar: UserRound,
     Calendar: CalendarDays,
     ColorPicker: Pipette,
+    TimePicker: Clock3,
+    TimeRangePicker: Timer,
+    InputNumber: Hash,
     Divider: Minus,
     'Typography.Title': Heading,
     'Typography.Paragraph': AlignLeft,

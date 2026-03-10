@@ -438,6 +438,276 @@ const componentCatalog = [
     lifetimes: ['onChange', 'onClear', 'onPaletteBarChange', 'onRecentColorsChange']
   },
   {
+    type: 'TimePicker',
+    name: '时间选择器',
+    props: {
+      controlled: {
+        name: '受控模式',
+        value: true,
+        editType: 'switch'
+      },
+      format: {
+        name: '时间格式',
+        value: 'HH:mm:ss',
+        editType: 'input'
+      },
+      value: {
+        name: '时间值(value)',
+        value: '',
+        editType: 'input'
+      },
+      defaultValue: {
+        name: '默认时间(defaultValue)',
+        value: '',
+        editType: 'input'
+      },
+      placeholder: {
+        name: '占位文本',
+        value: '',
+        editType: 'input'
+      },
+      size: {
+        name: '尺寸',
+        value: 'medium',
+        editType: 'select',
+        payload: {
+          options: ['small', 'medium', 'large']
+        }
+      },
+      status: {
+        name: '状态',
+        value: 'default',
+        editType: 'select',
+        payload: {
+          options: ['default', 'success', 'warning', 'error']
+        }
+      },
+      steps: {
+        name: '步长(时,分,秒)',
+        value: '1,1,1',
+        editType: 'input'
+      },
+      allowInput: {
+        name: '允许输入',
+        value: false,
+        editType: 'switch'
+      },
+      borderless: {
+        name: '无边框',
+        value: false,
+        editType: 'switch'
+      },
+      clearable: {
+        name: '可清空',
+        value: false,
+        editType: 'switch'
+      },
+      disabled: {
+        name: '禁用',
+        value: false,
+        editType: 'switch'
+      },
+      hideDisabledTime: {
+        name: '隐藏禁用时间',
+        value: true,
+        editType: 'switch'
+      }
+    },
+    lifetimes: ['onBlur', 'onChange', 'onClear', 'onClose', 'onFocus', 'onInput', 'onOpen', 'onPick']
+  },
+  {
+    type: 'TimeRangePicker',
+    name: '时间范围选择器',
+    props: {
+      controlled: {
+        name: '受控模式',
+        value: true,
+        editType: 'switch'
+      },
+      format: {
+        name: '时间格式',
+        value: 'HH:mm:ss',
+        editType: 'input'
+      },
+      value: {
+        name: '范围值(value)',
+        value: '',
+        editType: 'input'
+      },
+      defaultValue: {
+        name: '默认范围(defaultValue)',
+        value: '',
+        editType: 'input'
+      },
+      placeholderStart: {
+        name: '开始占位',
+        value: '开始时间',
+        editType: 'input'
+      },
+      placeholderEnd: {
+        name: '结束占位',
+        value: '结束时间',
+        editType: 'input'
+      },
+      size: {
+        name: '尺寸',
+        value: 'medium',
+        editType: 'select',
+        payload: {
+          options: ['small', 'medium', 'large']
+        }
+      },
+      status: {
+        name: '状态',
+        value: 'default',
+        editType: 'select',
+        payload: {
+          options: ['default', 'success', 'warning', 'error']
+        }
+      },
+      steps: {
+        name: '步长(时,分,秒)',
+        value: '1,1,1',
+        editType: 'input'
+      },
+      allowInput: {
+        name: '允许输入',
+        value: false,
+        editType: 'switch'
+      },
+      autoSwap: {
+        name: '自动交换顺序',
+        value: true,
+        editType: 'switch'
+      },
+      borderless: {
+        name: '无边框',
+        value: false,
+        editType: 'switch'
+      },
+      clearable: {
+        name: '可清空',
+        value: false,
+        editType: 'switch'
+      },
+      disabled: {
+        name: '禁用',
+        value: false,
+        editType: 'switch'
+      },
+      hideDisabledTime: {
+        name: '隐藏禁用时间',
+        value: true,
+        editType: 'switch'
+      }
+    },
+    lifetimes: ['onBlur', 'onChange', 'onFocus', 'onInput', 'onPick']
+  },
+  {
+    type: 'InputNumber',
+    name: '数字输入框',
+    props: {
+      controlled: {
+        name: '受控模式',
+        value: true,
+        editType: 'switch'
+      },
+      value: {
+        name: '值(value)',
+        value: 0,
+        editType: 'input'
+      },
+      defaultValue: {
+        name: '默认值(defaultValue)',
+        value: 0,
+        editType: 'input'
+      },
+      placeholder: {
+        name: '占位文本',
+        value: '',
+        editType: 'input'
+      },
+      min: {
+        name: '最小值(min)',
+        value: '',
+        editType: 'input'
+      },
+      max: {
+        name: '最大值(max)',
+        value: '',
+        editType: 'input'
+      },
+      step: {
+        name: '步长(step)',
+        value: 1,
+        editType: 'input'
+      },
+      decimalPlaces: {
+        name: '小数位数',
+        value: 0,
+        editType: 'inputNumber'
+      },
+      size: {
+        name: '尺寸',
+        value: 'medium',
+        editType: 'select',
+        payload: {
+          options: ['small', 'medium', 'large']
+        }
+      },
+      status: {
+        name: '状态',
+        value: 'default',
+        editType: 'select',
+        payload: {
+          options: ['default', 'success', 'warning', 'error']
+        }
+      },
+      align: {
+        name: '文本对齐',
+        value: 'left',
+        editType: 'select',
+        payload: {
+          options: ['left', 'center', 'right']
+        }
+      },
+      theme: {
+        name: '按钮布局',
+        value: 'row',
+        editType: 'select',
+        payload: {
+          options: ['column', 'row', 'normal']
+        }
+      },
+      allowInputOverLimit: {
+        name: '允许超限输入',
+        value: true,
+        editType: 'switch'
+      },
+      autoWidth: {
+        name: '自动宽度',
+        value: false,
+        editType: 'switch'
+      },
+      disabled: {
+        name: '禁用',
+        value: false,
+        editType: 'switch'
+      },
+      readOnly: {
+        name: '只读',
+        value: false,
+        editType: 'switch'
+      },
+      largeNumber: {
+        name: '大数模式',
+        value: false,
+        editType: 'switch'
+      }
+    },
+    lifetimes: ['onBlur', 'onChange', 'onEnter', 'onFocus', 'onKeydown', 'onKeypress', 'onKeyup', 'onValidate']
+  },
+  {
     type: 'Swiper',
     name: '轮播图',
     props: {
