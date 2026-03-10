@@ -114,19 +114,17 @@ interface RowContentProps {
   justify?: string;
   gutter?: number;
   style?: React.CSSProperties;
-  onActivate: (event: React.MouseEvent<HTMLElement>) => void;
 }
 
-const RowContent: React.FC<RowContentProps> = ({ children, align, justify, gutter, style, onActivate }) => (
-  <ActivateWrapper style={style} onActivate={onActivate}>
-    <Row
-      align={align as any}
-      justify={justify as any}
-      gutter={gutter}
-    >
-      {children}
-    </Row>
-  </ActivateWrapper>
+const RowContent: React.FC<RowContentProps> = ({ children, align, justify, gutter, style }) => (
+  <Row
+    align={align as any}
+    justify={justify as any}
+    gutter={gutter}
+    style={style}
+  >
+    {children}
+  </Row>
 );
 
 interface CardContentProps {
@@ -277,6 +275,37 @@ export default function CommonComponent(properties: CommonComponentProps) {
   const spaceSplitAlign = getStringProp('splitAlign') as any;
   const spaceSplitDashed = getBooleanProp('splitDashed');
 
+  const toGridNumber = (value: unknown): number | undefined => {
+    if (typeof value === 'number' && !Number.isNaN(value)) {
+      return value;
+    }
+
+    if (typeof value === 'string' && value.trim()) {
+      const parsed = Number(value);
+      if (!Number.isNaN(parsed)) {
+        return parsed;
+      }
+    }
+
+    return undefined;
+  };
+
+  const colSpan = (() => {
+    const resolved = toGridNumber(getProp('span'));
+    if (typeof resolved !== 'number') {
+      return 6;
+    }
+    return Math.max(1, Math.min(12, Math.round(resolved)));
+  })();
+
+  const colOffset = (() => {
+    const resolved = toGridNumber(getProp('offset'));
+    if (typeof resolved !== 'number') {
+      return 0;
+    }
+    return Math.max(0, Math.min(11, Math.round(resolved)));
+  })();
+
   if (isSlotNode(data)) {
     return (
       <DropArea data={data} onDropData={onDropData} emptyText="拖拽组件到此插槽" />
@@ -328,26 +357,27 @@ export default function CommonComponent(properties: CommonComponentProps) {
       );
       case 'Grid.Row':
         return (
-          <DropArea style={{width: '400px'}} data={data} onDropData={onDropData}>
+          <DropArea style={{ width: '100%' }} data={data} onDropData={onDropData}>
             <RowContent
               align={getStringProp('align')}
               justify={getStringProp('justify')}
               gutter={getNumberProp('gutter')}
               style={mergeStyle()}
-              onActivate={handleActivateSelf}
             />
           </DropArea>
         )
       case 'Grid.Col':
         return (
-          <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf}>
-            <Col span={getNumberProp('span')} offset={getNumberProp('offset')}>
-              <DropArea data={data} onDropData={onDropData}>
-              
-              </DropArea>
-            </Col>
-          </ActivateWrapper>
-          
+          <Col
+            span={colSpan}
+            offset={colOffset}
+            style={mergeStyle()}
+          >
+            <DropArea data={data} onDropData={onDropData}>
+
+            </DropArea>
+          </Col>
+
         )
       case 'Card':
         if (!hasCardSlotStructure) {

@@ -164,15 +164,13 @@ const ComponentConfigPanel: React.FC = () => {
           size='small'
           value={typeof draftValue === 'number' ? draftValue : undefined}
           onChange={(value) => {
+            const nextNumber = typeof value === 'number' && !Number.isNaN(value) ? value : undefined;
             setNumberDrafts((previous) => ({
               ...previous,
-              [propKey]: typeof value === 'number' ? value : undefined,
+              [propKey]: nextNumber,
             }));
-          }}
-          onBlur={() => {
-            const value = numberDrafts[propKey];
-            if (typeof value === 'number' && !Number.isNaN(value)) {
-              updateActiveNodeProp(propKey, value);
+            if (typeof nextNumber === 'number') {
+              updateActiveNodeProp(propKey, nextNumber);
             }
           }}
         />

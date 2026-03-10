@@ -136,7 +136,7 @@ const componentCatalog = [
     props: {
       span: {
         name: '占栅格数',
-        value: 4,
+        value: 6,
         editType: 'inputNumber',
       },
       offset: {

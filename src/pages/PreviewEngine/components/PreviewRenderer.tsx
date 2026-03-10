@@ -367,7 +367,7 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) 
     case 'Grid.Col':
       return (
         <div style={mergeStyle()}>
-          <Col span={getNumberProp(node, 'span')} offset={getNumberProp(node, 'offset')}>
+          <Col span={getNumberProp(node, 'span') ?? 6} offset={getNumberProp(node, 'offset')}>
             {renderChildren(node, onLifecycle)}
           </Col>
         </div>
