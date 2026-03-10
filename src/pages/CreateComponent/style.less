@@ -280,105 +280,6 @@
         overflow: auto;
       }
 
-      .flow-builtins-panel {
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-      }
-
-      .flow-builtins-header {
-        display: flex;
-        flex-direction: column;
-        gap: 0;
-      }
-
-      .flow-builtins-title {
-        font-size: 14px;
-        font-weight: 600;
-        color: #1f2329;
-      }
-
-      .flow-builtins-desc {
-        font-size: 12px;
-        color: #8b92a1;
-        line-height: 18px;
-      }
-
-      .flow-builtins-item {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 10px;
-        border: 1px solid #e6ebf5;
-        background: #fff;
-        border-radius: 8px;
-        padding: 9px 10px;
-        cursor: grab;
-        transition: all 0.18s ease;
-      }
-
-      .flow-builtins-item:hover {
-        box-shadow: 0 4px 12px rgba(31, 35, 41, 0.06);
-      }
-
-      .flow-builtins-item--event:hover {
-        border-color: #caecd9;
-      }
-
-      .flow-builtins-item--code:hover {
-        border-color: #ddd3ff;
-      }
-
-      .flow-builtins-item--request:hover {
-        border-color: #ffd7b3;
-      }
-
-      .flow-builtins-item__left {
-        min-width: 0;
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-      }
-
-      .flow-builtins-item__icon {
-        width: 26px;
-        height: 26px;
-        flex: 0 0 auto;
-        border-radius: 7px;
-        border: 1px solid #d4e2ff;
-        background: #eef4ff;
-        color: #0052d9;
-        font-size: 14px;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-      }
-
-      .flow-builtins-item__icon--event {
-        border-color: #caecd9;
-        background: #e8f7ef;
-        color: #0f8a58;
-      }
-
-      .flow-builtins-item__icon--code {
-        border-color: #ddd3ff;
-        background: #f1ecff;
-        color: #6f5af0;
-      }
-
-      .flow-builtins-item__icon--request {
-        border-color: #ffd7b3;
-        background: #fff3e8;
-        color: #eb6f0a;
-      }
-
-      .flow-builtins-item__text {
-        min-width: 0;
-        display: flex;
-        flex-direction: column;
-        gap: 2px;
-      }
-
       .right-panel-empty {
         display: flex;
         align-items: center;
@@ -514,50 +415,6 @@
         border-color: #0052d9;
         color: #0052d9;
       }
-
-      .flow-builtins-panel {
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-      }
-
-      .flow-builtins-title {
-        font-size: 12px;
-        color: #8b92a1;
-      }
-
-      .flow-builtins-item {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        border: 1px solid #e6ebf5;
-        background: #fff;
-        border-radius: 6px;
-        padding: 8px;
-        cursor: grab;
-      }
-
-      .flow-builtins-item__name {
-        font-size: 13px;
-        color: #1f2329;
-        line-height: 18px;
-      }
-
-      .flow-builtins-item__desc {
-        font-size: 11px;
-        color: #8b92a1;
-        line-height: 16px;
-      }
-
-      .flow-builtins-item__type {
-        font-size: 11px;
-        color: #0f8a58;
-        border: 1px solid #caecd9;
-        background: #e8f7ef;
-        border-radius: 999px;
-        padding: 0 8px;
-        line-height: 18px;
-      }
     }
 
     .component-body-nav-group {
@@ -612,6 +469,98 @@
       border-radius: 4px;
       padding: 8px;
       overflow: auto;
+    }
+
+    .flow-builtins-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .flow-builtins-header {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+    }
+
+    .flow-builtins-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: #1f2329;
+    }
+
+    .flow-builtins-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      border: 1px solid #e6ebf5;
+      background: #fff;
+      border-radius: 8px;
+      padding: 9px 10px;
+      cursor: grab;
+      transition: all 0.18s ease;
+    }
+
+    .flow-builtins-item:hover {
+      box-shadow: 0 4px 12px rgba(31, 35, 41, 0.06);
+    }
+
+    .flow-builtins-item--event:hover {
+      border-color: #caecd9;
+    }
+
+    .flow-builtins-item--code:hover {
+      border-color: #ddd3ff;
+    }
+
+    .flow-builtins-item--request:hover {
+      border-color: #ffd7b3;
+    }
+
+    .flow-builtins-item__left {
+      min-width: 0;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .flow-builtins-item__icon {
+      width: 26px;
+      height: 26px;
+      flex: 0 0 auto;
+      border-radius: 7px;
+      border: 1px solid #d4e2ff;
+      background: #eef4ff;
+      color: #0052d9;
+      font-size: 14px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .flow-builtins-item__icon--event {
+      border-color: #caecd9;
+      background: #e8f7ef;
+      color: #0f8a58;
+    }
+
+    .flow-builtins-item__icon--code {
+      border-color: #ddd3ff;
+      background: #f1ecff;
+      color: #6f5af0;
+    }
+
+    .flow-builtins-item__icon--request {
+      border-color: #ffd7b3;
+      background: #fff3e8;
+      color: #eb6f0a;
+    }
+
+    .flow-builtins-item__name {
+      font-size: 13px;
+      color: #1f2329;
+      line-height: 18px;
     }
 
     .right-panel-empty {

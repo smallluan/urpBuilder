@@ -1,8 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Button, Drawer, Input, InputNumber, Select, Switch, Textarea } from 'tdesign-react';
+import { ApiIcon, CodeIcon, UploadIcon } from 'tdesign-icons-react';
 import FlowBody from './FlowBody';
 import FlowAsideLeft from './components/FlowAsideLeft';
 import CodeEditorDialog, { type CodeEditorValue } from './components/CodeEditorDialog';
+import DragableWrapper from '../../components/DragableWrapper';
+import RightPanelHeader, { type RightPanelMode } from './components/RightPanelHeader';
 import { useCreateComponentStore } from './store';
 import './style.less';
 
@@ -81,6 +84,33 @@ const FlowLayout: React.FC = () => {
   const [codeDraft, setCodeDraft] = useState<CodeNodeFormState | null>(null);
   const [codeEditorVisible, setCodeEditorVisible] = useState(false);
   const [eventFilterDraft, setEventFilterDraft] = useState<EventFilterFormState | null>(null);
+  const [rightPanelMode, setRightPanelMode] = useState<RightPanelMode>('library');
+
+  const builtinNodes = [
+    {
+      nodeType: 'eventFilterNode',
+      label: '事件过滤节点',
+      theme: 'event',
+      icon: <ApiIcon />,
+    },
+    {
+      nodeType: 'codeNode',
+      label: '代码节点',
+      theme: 'code',
+      icon: <CodeIcon />,
+    },
+    {
+      nodeType: 'networkRequestNode',
+      label: '网络请求节点',
+      theme: 'request',
+      icon: <UploadIcon />,
+    },
+  ] as const;
+
+  const handleBuiltinDragStart = (event: React.DragEvent<HTMLDivElement>, data: Record<string, unknown>) => {
+    event.dataTransfer?.setData('drag-component-data', JSON.stringify(data));
+    event.dataTransfer.effectAllowed = 'copy';
+  };
 
   useEffect(() => {
     if (!activeFlowNode || activeFlowNode.type !== 'networkRequestNode') {
@@ -150,6 +180,12 @@ const FlowLayout: React.FC = () => {
   useEffect(() => {
     if (!activeFlowNode || activeFlowNode.type !== 'codeNode') {
       setCodeEditorVisible(false);
+    }
+  }, [activeFlowNode]);
+
+  useEffect(() => {
+    if (activeFlowNode) {
+      setRightPanelMode('config');
     }
   }, [activeFlowNode]);
 
@@ -291,11 +327,44 @@ const FlowLayout: React.FC = () => {
       </main>
 
       <aside className="aside-right">
-        <div className="right-panel-body flow-config-panel">
-          <div className="flow-config-panel__title">节点配置</div>
+        <RightPanelHeader
+          mode={rightPanelMode}
+          onChange={setRightPanelMode}
+          libraryLabel="内置节点"
+          configLabel="节点配置"
+        />
 
-          {activeFlowNode ? (
-            <div className="config-form">
+        <div className="right-panel-content">
+          {rightPanelMode === 'library' ? (
+            <div className="right-panel-body">
+              <div className="flow-builtins-panel">
+                <div className="flow-builtins-header">
+                  <div className="flow-builtins-title">内置节点</div>
+                </div>
+                {builtinNodes.map((item) => (
+                  <DragableWrapper
+                    key={item.nodeType}
+                    data={{ kind: 'builtin-node', nodeType: item.nodeType, label: item.label }}
+                    onDragStart={handleBuiltinDragStart}
+                  >
+                    <div className={`flow-builtins-item flow-builtins-item--${item.theme}`}>
+                      <span className="flow-builtins-item__left">
+                        <span className={`flow-builtins-item__icon flow-builtins-item__icon--${item.theme}`}>
+                          {item.icon}
+                        </span>
+                        <span className="flow-builtins-item__name">{item.label}</span>
+                      </span>
+                    </div>
+                  </DragableWrapper>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="right-panel-body flow-config-panel">
+              <div className="flow-config-panel__title">节点配置</div>
+
+              {activeFlowNode ? (
+                <div className="config-form">
               <div className="config-row">
                 <span className="config-label">节点类型</span>
                 <span className="config-value">
@@ -472,10 +541,12 @@ const FlowLayout: React.FC = () => {
                   </div>
                 </div>
               ) : null}
-            </div>
-          ) : (
-            <div className="right-panel-empty flow-config-panel__empty">
-              点击流程节点后，在此展示对应的基础配置。
+                </div>
+              ) : (
+                <div className="right-panel-empty flow-config-panel__empty">
+                  点击流程节点后，在此展示对应的基础配置。
+                </div>
+              )}
             </div>
           )}
         </div>

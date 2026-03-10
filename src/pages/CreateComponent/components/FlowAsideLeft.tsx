@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef } from 'react';
 import { Input, Tree } from 'tdesign-react';
 import type { TreeInstanceFunctions } from 'tdesign-react';
-import { SearchIcon, ApiIcon, CodeIcon, UploadIcon } from 'tdesign-icons-react';
+import { SearchIcon } from 'tdesign-icons-react';
 import DragableWrapper from '../../../components/DragableWrapper';
 import { useCreateComponentStore } from '../store';
 import type { UiTreeNode } from '../store/type';
@@ -34,11 +34,6 @@ const FlowAsideLeft: React.FC = () => {
     };
 
     event.dataTransfer?.setData('drag-component-data', JSON.stringify(payload));
-    event.dataTransfer.effectAllowed = 'copy';
-  };
-
-  const handleBuiltinDragStart = (event: React.DragEvent<HTMLDivElement>, data: Record<string, unknown>) => {
-    event.dataTransfer?.setData('drag-component-data', JSON.stringify(data));
     event.dataTransfer.effectAllowed = 'copy';
   };
 
@@ -84,27 +79,6 @@ const FlowAsideLeft: React.FC = () => {
     return () => setTreeInstance(null);
   }, [setTreeInstance]);
 
-  const builtinNodes = [
-    {
-      nodeType: 'eventFilterNode',
-      label: '事件过滤节点',
-      theme: 'event',
-      icon: <ApiIcon />,
-    },
-    {
-      nodeType: 'codeNode',
-      label: '代码节点',
-      theme: 'code',
-      icon: <CodeIcon />,
-    },
-    {
-      nodeType: 'networkRequestNode',
-      label: '网络请求节点',
-      theme: 'request',
-      icon: <UploadIcon />,
-    },
-  ] as const;
-
   return (
     <aside className="aside-left">
       <div className="structure-top">
@@ -128,32 +102,6 @@ const FlowAsideLeft: React.FC = () => {
               actived={activeNodeKey ? [activeNodeKey] : []}
               onClick={handleTreeClick}
             />
-          </div>
-        </div>
-      </div>
-
-      <div className="structure-bottom">
-        <div className="right-panel-body">
-          <div className="flow-builtins-panel">
-            <div className="flow-builtins-header">
-              <div className="flow-builtins-title">内置节点</div>
-            </div>
-            {builtinNodes.map((item) => (
-              <DragableWrapper
-                key={item.nodeType}
-                data={{ kind: 'builtin-node', nodeType: item.nodeType, label: item.label }}
-                onDragStart={handleBuiltinDragStart}
-              >
-                <div className={`flow-builtins-item flow-builtins-item--${item.theme}`}>
-                  <span className="flow-builtins-item__left">
-                    <span className={`flow-builtins-item__icon flow-builtins-item__icon--${item.theme}`}>
-                      {item.icon}
-                    </span>
-                    <span className="flow-builtins-item__name">{item.label}</span>
-                  </span>
-                </div>
-              </DragableWrapper>
-            ))}
           </div>
         </div>
       </div>
