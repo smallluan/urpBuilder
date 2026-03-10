@@ -8,6 +8,7 @@ import { useCreateComponentStore } from '../store';
 import type { UiTreeNode } from '../store/type';
 import NodeStyleDrawer from './NodeStyleDrawer';
 import { getNodeSlotKey, isSlotNode } from '../utils/slot';
+import componentCatalog from '../../../config/componentCatalog';
 
 interface RenderUiTreeNode extends Omit<UiTreeNode, 'label' | 'children'> {
   label: React.ReactNode;
@@ -75,6 +76,8 @@ const getNodeVisualKind = (node: UiTreeNode): NodeVisualKind => {
 
   return getTreeNodeDropTarget(node) ? 'container' : 'leaf';
 };
+
+const GRID_COL_COMPONENT_SCHEMA = componentCatalog.find((item) => item.type === 'Grid.Col');
 
 const ComponentAsideLeft: React.FC = () => {
   const uiPageData = useCreateComponentStore((state) => state.uiPageData);
@@ -255,6 +258,25 @@ const ComponentAsideLeft: React.FC = () => {
                     </Button>
                   )}
                 />
+                {node.type === 'Grid.Row' ? (
+                  <Button
+                    size="small"
+                    variant="text"
+                    theme="default"
+                    className="tree-node-context-action"
+                    onClick={() => {
+                      if (!GRID_COL_COMPONENT_SCHEMA) {
+                        return;
+                      }
+
+                      insertToUiPageData(node.key, cloneDeep(GRID_COL_COMPONENT_SCHEMA) as Record<string, unknown>);
+                      setActiveNode(node.key);
+                      closeContextMenu();
+                    }}
+                  >
+                    添加栅格列
+                  </Button>
+                ) : null}
                 <Button
                   size="small"
                   variant="base"

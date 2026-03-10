@@ -322,6 +322,122 @@ const componentCatalog = [
     lifetimes: ['onChange']
   },
   {
+    type: 'Calendar',
+    name: '日历',
+    props: {
+      theme: {
+        name: '风格',
+        value: 'full',
+        editType: 'select',
+        payload: {
+          options: ['full', 'card']
+        }
+      },
+      mode: {
+        name: '展示维度',
+        value: 'month',
+        editType: 'select',
+        payload: {
+          options: ['month', 'year']
+        }
+      },
+      firstDayOfWeek: {
+        name: '每周起始日',
+        value: 1,
+        editType: 'select',
+        payload: {
+          options: [1, 2, 3, 4, 5, 6, 7]
+        }
+      },
+      format: {
+        name: '日期格式',
+        value: 'YYYY-MM-DD',
+        editType: 'input'
+      },
+      fillWithZero: {
+        name: '日期补零',
+        value: true,
+        editType: 'switch'
+      },
+      isShowWeekendDefault: {
+        name: '默认显示周末',
+        value: true,
+        editType: 'switch'
+      },
+      controllerConfig: {
+        name: '显示右上角控制器',
+        value: true,
+        editType: 'switch'
+      },
+      preventCellContextmenu: {
+        name: '禁用单元格右键菜单',
+        value: false,
+        editType: 'switch'
+      },
+      value: {
+        name: '高亮日期(value)',
+        value: '',
+        editType: 'input'
+      }
+    },
+    lifetimes: ['onCellClick', 'onCellDoubleClick', 'onCellRightClick', 'onControllerChange', 'onMonthChange']
+  },
+  {
+    type: 'ColorPicker',
+    name: '颜色选择器',
+    props: {
+      controlled: {
+        name: '受控模式',
+        value: true,
+        editType: 'switch'
+      },
+      format: {
+        name: '色值格式',
+        value: 'RGB',
+        editType: 'select',
+        payload: {
+          options: ['HEX', 'HEX8', 'RGB', 'RGBA', 'HSL', 'HSLA', 'HSV', 'HSVA', 'CMYK', 'CSS']
+        }
+      },
+      value: {
+        name: '色值(value)',
+        value: '',
+        editType: 'input'
+      },
+      defaultValue: {
+        name: '默认色值(defaultValue)',
+        value: '',
+        editType: 'input'
+      },
+      clearable: {
+        name: '允许清空',
+        value: false,
+        editType: 'switch'
+      },
+      borderless: {
+        name: '无边框',
+        value: false,
+        editType: 'switch'
+      },
+      disabled: {
+        name: '禁用',
+        value: false,
+        editType: 'switch'
+      },
+      enableAlpha: {
+        name: '启用透明通道',
+        value: false,
+        editType: 'switch'
+      },
+      showPrimaryColorPreview: {
+        name: '显示主色预览',
+        value: true,
+        editType: 'switch'
+      }
+    },
+    lifetimes: ['onChange', 'onClear', 'onPaletteBarChange', 'onRecentColorsChange']
+  },
+  {
     type: 'Swiper',
     name: '轮播图',
     props: {

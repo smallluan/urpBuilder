@@ -1,5 +1,5 @@
 import React from 'react';
-import { Button, Space, Row, Col, Card, Divider, Typography, Image, Avatar, Switch, Swiper, Layout } from 'tdesign-react';
+import { Button, Space, Row, Col, Card, Divider, Typography, Image, Avatar, Switch, Swiper, Layout, Calendar, ColorPicker } from 'tdesign-react';
 import DropArea from '../../../components/DropArea';
 import type { UiTreeNode } from '../store/type';
 import { useCreateComponentStore } from '../store';
@@ -193,6 +193,20 @@ export default function CommonComponent(properties: CommonComponentProps) {
   const getBooleanProp = (propName: string) => {
     const value = getProp(propName);
     return typeof value === 'boolean' ? value : undefined;
+  };
+
+  const getCalendarValueProp = (propName: string) => {
+    const value = getProp(propName);
+    if (typeof value === 'string') {
+      const trimmed = value.trim();
+      return trimmed ? trimmed : undefined;
+    }
+
+    if (value instanceof Date) {
+      return value;
+    }
+
+    return undefined;
   };
 
   const getStyleProp = () => {
@@ -504,6 +518,42 @@ export default function CommonComponent(properties: CommonComponentProps) {
                 }}
               />
             </Space>
+          </ActivateWrapper>
+        );
+        }
+      case 'Calendar':
+        return (
+          <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf}>
+            <Calendar
+              theme={getStringProp('theme') as any}
+              mode={getStringProp('mode') as any}
+              firstDayOfWeek={getNumberProp('firstDayOfWeek')}
+              format={getStringProp('format')}
+              fillWithZero={getBooleanProp('fillWithZero')}
+              isShowWeekendDefault={getBooleanProp('isShowWeekendDefault')}
+              controllerConfig={getBooleanProp('controllerConfig')}
+              preventCellContextmenu={getBooleanProp('preventCellContextmenu')}
+              value={getCalendarValueProp('value') as any}
+              style={mergeStyle()}
+            />
+          </ActivateWrapper>
+        );
+      case 'ColorPicker':
+        {
+        const isControlled = getBooleanProp('controlled') !== false;
+        return (
+          <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf}>
+            <ColorPicker
+              format={getStringProp('format') as any}
+              value={isControlled ? (getStringProp('value') || undefined) : undefined}
+              defaultValue={isControlled ? undefined : (getStringProp('defaultValue') || undefined)}
+              clearable={getBooleanProp('clearable')}
+              borderless={getBooleanProp('borderless')}
+              disabled={getBooleanProp('disabled')}
+              enableAlpha={getBooleanProp('enableAlpha')}
+              showPrimaryColorPreview={getBooleanProp('showPrimaryColorPreview')}
+              style={mergeStyle()}
+            />
           </ActivateWrapper>
         );
         }

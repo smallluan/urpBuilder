@@ -1,5 +1,5 @@
 import React from 'react';
-import { Avatar, Button, Card, Col, Divider, Image, Row, Space, Switch, Swiper, Typography, Layout } from 'tdesign-react';
+import { Avatar, Button, Card, Col, Divider, Image, Row, Space, Switch, Swiper, Typography, Layout, Calendar, ColorPicker } from 'tdesign-react';
 import type { UiTreeNode } from '../../CreateComponent/store/type';
 import { getNodeSlotKey, isSlotNode } from '../../CreateComponent/utils/slot';
 
@@ -39,6 +39,20 @@ const getTextProp = (node: UiTreeNode, propName: string) => {
   if (typeof value === 'number' || typeof value === 'boolean') {
     return String(value);
   }
+  return undefined;
+};
+
+const getCalendarValueProp = (node: UiTreeNode, propName: string) => {
+  const value = getProp(node, propName);
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    return trimmed ? trimmed : undefined;
+  }
+
+  if (value instanceof Date) {
+    return value;
+  }
+
   return undefined;
 };
 
@@ -490,6 +504,51 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) 
               }}
             />
           </Space>
+        </div>
+      );
+      }
+    case 'Calendar':
+      return (
+        <div style={mergeStyle()}>
+          <Calendar
+            theme={getStringProp(node, 'theme') as any}
+            mode={getStringProp(node, 'mode') as any}
+            firstDayOfWeek={getNumberProp(node, 'firstDayOfWeek')}
+            format={getStringProp(node, 'format')}
+            fillWithZero={getBooleanProp(node, 'fillWithZero')}
+            isShowWeekendDefault={getBooleanProp(node, 'isShowWeekendDefault')}
+            controllerConfig={getBooleanProp(node, 'controllerConfig')}
+            preventCellContextmenu={getBooleanProp(node, 'preventCellContextmenu')}
+            value={getCalendarValueProp(node, 'value') as any}
+            onCellClick={(options) => emitInteractionLifecycle('onCellClick', options)}
+            onCellDoubleClick={(options) => emitInteractionLifecycle('onCellDoubleClick', options)}
+            onCellRightClick={(options) => emitInteractionLifecycle('onCellRightClick', options)}
+            onControllerChange={(options) => emitInteractionLifecycle('onControllerChange', options)}
+            onMonthChange={(options) => emitInteractionLifecycle('onMonthChange', options)}
+            style={mergeStyle()}
+          />
+        </div>
+      );
+    case 'ColorPicker':
+      {
+      const isControlled = getBooleanProp(node, 'controlled') !== false;
+      return (
+        <div style={mergeStyle()}>
+          <ColorPicker
+            format={getStringProp(node, 'format') as any}
+            value={isControlled ? (getStringProp(node, 'value') || undefined) : undefined}
+            defaultValue={isControlled ? undefined : (getStringProp(node, 'defaultValue') || undefined)}
+            clearable={getBooleanProp(node, 'clearable')}
+            borderless={getBooleanProp(node, 'borderless')}
+            disabled={getBooleanProp(node, 'disabled')}
+            enableAlpha={getBooleanProp(node, 'enableAlpha')}
+            showPrimaryColorPreview={getBooleanProp(node, 'showPrimaryColorPreview')}
+            onChange={(value, context) => emitInteractionLifecycle('onChange', { value, context })}
+            onClear={(context) => emitInteractionLifecycle('onClear', context)}
+            onPaletteBarChange={(context) => emitInteractionLifecycle('onPaletteBarChange', context)}
+            onRecentColorsChange={(value) => emitInteractionLifecycle('onRecentColorsChange', { value })}
+            style={mergeStyle()}
+          />
         </div>
       );
       }

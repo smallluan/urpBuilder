@@ -15,6 +15,8 @@ import {
   Minus,
   Heading,
   AlignLeft,
+  CalendarDays,
+  Pipette,
 } from 'lucide-react';
 import componentCatalog from '../../../config/componentCatalog';
 import DragableWrapper from '../../../components/DragableWrapper';
@@ -31,7 +33,7 @@ const getCategoryByType = (type: string): ComponentCategory => {
     return 'text';
   }
 
-  if (type === 'Image' || type === 'Avatar') {
+  if (type === 'Image' || type === 'Avatar' || type === 'Calendar' || type === 'ColorPicker') {
     return 'display';
   }
 
@@ -71,6 +73,8 @@ const getIconByType = (type: string) => {
     Card: RectangleHorizontal,
     Image: ImageIcon,
     Avatar: UserRound,
+    Calendar: CalendarDays,
+    ColorPicker: Pipette,
     Divider: Minus,
     'Typography.Title': Heading,
     'Typography.Paragraph': AlignLeft,
