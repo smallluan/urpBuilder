@@ -1,9 +1,11 @@
 import React, { useMemo, useState } from 'react';
-import { Radio, Button, Space, Drawer, Timeline, Tag } from 'tdesign-react';
+import { Radio, Button, Space, Drawer, Timeline, Tag, Dialog, Input } from 'tdesign-react';
 import { UploadIcon, ViewImageIcon, ArrowLeftIcon, ArrowRightIcon, HistoryIcon } from 'tdesign-icons-react';
 import { useCreateComponentStore } from '../store';
 import type { UiHistoryAction } from '../store/type';
 import { serializePreviewSnapshot } from '../../PreviewEngine/utils/snapshot';
+import { savePageDraft } from '../../../api/pageTemplate';
+import { emitApiAlert } from '../../../api/alertBus';
 
 type Props = {
   mode: 'component' | 'flow';
@@ -97,10 +99,17 @@ const HeaderControls: React.FC<Props> = ({ mode, onChange }) => {
   const uiTreeData = useCreateComponentStore((state) => state.uiPageData);
   const flowNodes = useCreateComponentStore((state) => state.flowNodes);
   const flowEdges = useCreateComponentStore((state) => state.flowEdges);
+  const screenSize = useCreateComponentStore((state) => state.screenSize);
+  const autoWidth = useCreateComponentStore((state) => state.autoWidth);
+  const selectedLayoutTemplateId = useCreateComponentStore((state) => state.selectedLayoutTemplateId);
   const undo = useCreateComponentStore((state) => state.undo);
   const redo = useCreateComponentStore((state) => state.redo);
   const jumpToHistory = useCreateComponentStore((state) => state.jumpToHistory);
   const [historyVisible, setHistoryVisible] = useState(false);
+  const [saveDialogVisible, setSaveDialogVisible] = useState(false);
+  const [componentName, setComponentName] = useState('');
+  const [componentId, setComponentId] = useState('');
+  const [saving, setSaving] = useState(false);
 
   const canUndo = history.pointer >= 0;
   const canRedo = history.pointer < history.actions.length - 1;
@@ -135,6 +144,66 @@ const HeaderControls: React.FC<Props> = ({ mode, onChange }) => {
     previewUrl.searchParams.set('snapshotKey', snapshotKey);
 
     window.open(previewUrl.toString(), '_blank', 'noopener,noreferrer');
+  };
+
+  const handleOpenSaveDialog = () => {
+    setSaveDialogVisible(true);
+  };
+
+  const handleCloseSaveDialog = () => {
+    if (saving) {
+      return;
+    }
+
+    setSaveDialogVisible(false);
+  };
+
+  const handleSave = async () => {
+    const pageName = componentName.trim();
+    const pageId = componentId.trim();
+
+    if (!pageName) {
+      emitApiAlert('保存失败', '请输入组件名称');
+      return;
+    }
+
+    if (!pageId) {
+      emitApiAlert('保存失败', '请输入组件 ID');
+      return;
+    }
+
+    if (!/^[A-Za-z0-9_-]+$/.test(pageId)) {
+      emitApiAlert('保存失败', '组件 ID 仅支持字母、数字、下划线和中划线');
+      return;
+    }
+
+    setSaving(true);
+
+    try {
+      await savePageDraft({
+        base: {
+          pageId,
+          pageName,
+          screenSize,
+          autoWidth,
+        },
+        template: {
+          uiTree: uiTreeData as unknown as Record<string, unknown>,
+          flowNodes: flowNodes as unknown as Array<Record<string, unknown>>,
+          flowEdges: flowEdges as unknown as Array<Record<string, unknown>>,
+          pageConfig: {
+            screenSize,
+            autoWidth,
+            selectedLayoutTemplateId,
+          },
+        },
+      });
+
+      emitApiAlert('保存成功', `组件 ${pageName} 已保存`, 'success');
+      setSaveDialogVisible(false);
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -178,11 +247,49 @@ const HeaderControls: React.FC<Props> = ({ mode, onChange }) => {
             >
               操作历史
             </Button>
-            <Button theme="primary" size="small" icon={<UploadIcon />}>保存</Button>
+            <Button theme="primary" size="small" icon={<UploadIcon />} onClick={handleOpenSaveDialog}>保存</Button>
             <Button theme="default" size="small" icon={<ViewImageIcon />} onClick={handlePreview}>预览</Button>
           </div>
         </Space>
       </div>
+
+      <Dialog
+        visible={saveDialogVisible}
+        header="保存组件"
+        confirmBtn={{
+          content: '确认保存',
+          loading: saving,
+        }}
+        cancelBtn={{
+          content: '取消',
+          disabled: saving,
+        }}
+        closeOnOverlayClick={false}
+        onConfirm={handleSave}
+        onClose={handleCloseSaveDialog}
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div>
+            <div style={{ marginBottom: 6 }}>组件名称</div>
+            <Input
+              value={componentName}
+              placeholder="请输入组件名称"
+              onChange={(value) => setComponentName(String(value ?? ''))}
+              maxlength={60}
+            />
+          </div>
+
+          <div>
+            <div style={{ marginBottom: 6 }}>组件 ID</div>
+            <Input
+              value={componentId}
+              placeholder="例如：user_profile_card"
+              onChange={(value) => setComponentId(String(value ?? '').trim())}
+              maxlength={64}
+            />
+          </div>
+        </div>
+      </Dialog>
 
       <Drawer
         visible={historyVisible}

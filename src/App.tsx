@@ -1,9 +1,13 @@
 import { RouterProvider } from 'react-router-dom';
 import router from './router';
+import ApiAlertHost from './api/ApiAlertHost';
 
 function App() {
   return (
-    <RouterProvider router={router} />
+    <>
+      <RouterProvider router={router} />
+      <ApiAlertHost />
+    </>
   );
 }
 
