@@ -99,6 +99,29 @@ const normalizeResponsePath = (value: unknown) => {
   return input || 'ctx.response';
 };
 
+const HOST_LIKE_ENDPOINT_PATTERN = /^(localhost|\d{1,3}(?:\.\d{1,3}){3}|[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)+)(:\d+)?(?:\/.*)?$/;
+
+const normalizeEndpoint = (value: unknown) => {
+  const input = String(value ?? '').trim();
+  if (!input) {
+    return '';
+  }
+
+  if (/^https?:\/\//i.test(input)) {
+    return input;
+  }
+
+  if (input.startsWith('//')) {
+    return `${window.location.protocol}${input}`;
+  }
+
+  if (HOST_LIKE_ENDPOINT_PATTERN.test(input)) {
+    return `http://${input}`;
+  }
+
+  return input;
+};
+
 const toHeaderRecord = (headers: Headers): Record<string, string> => {
   const record: Record<string, string> = {};
   headers.forEach((headerValue, headerName) => {
@@ -448,7 +471,7 @@ export class PreviewFlowRuntime {
   private async handleNetworkRequestNode(node: Node, input: RuntimeEvent): Promise<RuntimeEvent | null> {
     const data = (node.data ?? {}) as NetworkRequestNodeData;
     const method = normalizeMethod(data.method);
-    const endpoint = String(data.endpoint ?? '').trim();
+    const endpoint = normalizeEndpoint(data.endpoint);
     const timeoutMs = normalizeTimeoutMs(data.timeoutMs);
     const responsePath = normalizeResponsePath(data.responsePath);
     const onError = String(data.onError ?? 'throw').trim();
