@@ -22,6 +22,7 @@ import {
   Hash,
   List,
 } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import componentCatalog from '../../../config/componentCatalog';
 import DragableWrapper from '../../../components/DragableWrapper';
 
@@ -32,28 +33,66 @@ interface ComponentLibraryPanelProps {
 
 type ComponentCategory = 'layout' | 'text' | 'display' | 'action';
 
+interface CategoryMeta {
+  label: string;
+  Icon: LucideIcon;
+}
+
+const CATEGORY_META_MAP: Record<ComponentCategory, CategoryMeta> = {
+  action: {
+    label: '基础组件',
+    Icon: Boxes,
+  },
+  layout: {
+    label: '布局组件',
+    Icon: LayoutGrid,
+  },
+  display: {
+    label: '输入组件',
+    Icon: Hash,
+  },
+  text: {
+    label: '展示组件',
+    Icon: ImageIcon,
+  },
+};
+
+const CATEGORY_ORDER: ComponentCategory[] = ['action', 'layout', 'display', 'text'];
+
 const getCategoryByType = (type: string): ComponentCategory => {
   if (type.startsWith('Typography.')) {
     return 'text';
   }
 
   if (
-    type === 'Image'
-    || type === 'Avatar'
-    || type === 'Calendar'
+    type === 'Switch'
+    || type === 'InputNumber'
     || type === 'ColorPicker'
     || type === 'TimePicker'
     || type === 'TimeRangePicker'
-    || type === 'InputNumber'
   ) {
     return 'display';
   }
 
-  if (type === 'Button') {
-    return 'action';
+  if (
+    type === 'Image'
+    || type === 'Avatar'
+    || type === 'Calendar'
+    || type === 'Swiper'
+  ) {
+    return 'text';
   }
 
-  return 'layout';
+  if (
+    type === 'Space'
+    || type.startsWith('Grid.')
+    || type.startsWith('Layout.')
+    || type === 'Layout'
+  ) {
+    return 'layout';
+  }
+
+  return 'action';
 };
 
 const getCategoryIcon = (category: ComponentCategory) => {
@@ -120,6 +159,19 @@ const ComponentLibraryPanel: React.FC<ComponentLibraryPanelProps> = ({ selectedN
     return catalogWithoutAbstractNodes.filter((component) => String(component.name ?? '').includes(text));
   }, [keyword]);
 
+  const groupedCatalog = useMemo(() => {
+    return filteredCatalog.reduce<Record<ComponentCategory, typeof filteredCatalog>>((acc, component) => {
+      const category = getCategoryByType(String(component.type ?? ''));
+      acc[category].push(component);
+      return acc;
+    }, {
+      action: [],
+      layout: [],
+      display: [],
+      text: [],
+    });
+  }, [filteredCatalog]);
+
   return (
     <div className="right-panel-body">
       <div className="library-search-row">
@@ -133,27 +185,49 @@ const ComponentLibraryPanel: React.FC<ComponentLibraryPanelProps> = ({ selectedN
       </div>
 
       <div className="library-list">
-        {filteredCatalog.map((component) => (
-          <DragableWrapper onDragStart={handleOnDrapStart} key={component.type} data={component}>
-            {(() => {
-              const category = getCategoryByType(String(component.type ?? ''));
-              const IconComponent = getIconByType(String(component.type ?? ''));
+        {CATEGORY_ORDER.map((category) => {
+          const categoryComponents = groupedCatalog[category] ?? [];
+          if (categoryComponents.length === 0) {
+            return null;
+          }
 
-              return (
-            <div
-              className={`library-item ${selectedName === component.name ? 'is-active' : ''}`}
-              title={String(component.name)}
-              onClick={() => onSelect(component.name)}
-            >
-              <div className={`library-item-icon library-item-icon--${category}`}>
-                <IconComponent size={18} strokeWidth={2} />
+          const categoryMeta = CATEGORY_META_MAP[category];
+
+          return (
+            <div key={category} className="library-section">
+              <div className="library-section-head">
+                <div className="library-section-title">
+                  <categoryMeta.Icon size={14} strokeWidth={2} />
+                  <span>{categoryMeta.label}</span>
+                </div>
+                <span className="library-section-count">{categoryComponents.length}</span>
               </div>
-              <div className="library-item-name">{component.name}</div>
+
+              <div className="library-section-grid">
+                {categoryComponents.map((component) => {
+                  const itemCategory = getCategoryByType(String(component.type ?? ''));
+                  const IconComponent = getIconByType(String(component.type ?? ''));
+
+                  return (
+                    <DragableWrapper onDragStart={handleOnDrapStart} key={component.type} data={component}>
+                      <div
+                        className={`library-item ${selectedName === component.name ? 'is-active' : ''}`}
+                        title={String(component.name)}
+                        onClick={() => onSelect(component.name)}
+                      >
+                        <div className={`library-item-icon library-item-icon--${itemCategory}`}>
+                          <IconComponent size={16} strokeWidth={2} />
+                        </div>
+                        <div className="library-item-name">{component.name}</div>
+                        <div className="library-item-type">{component.type}</div>
+                      </div>
+                    </DragableWrapper>
+                  );
+                })}
+              </div>
             </div>
-              );
-            })()}
-          </DragableWrapper>
-        ))}
+          );
+        })}
 
         {filteredCatalog.length === 0 ? (
           <div className="library-empty">未找到匹配组件</div>

@@ -824,13 +824,60 @@
     }
 
     .library-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-top: 8px;
+      padding-bottom: 4px;
+    }
+
+    .library-section {
+      border: 1px solid #edf1f7;
+      border-radius: 10px;
+      background: #fbfcff;
+      padding: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .library-section-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .library-section-title {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      color: #374151;
+    }
+
+    .library-section-count {
+      min-width: 22px;
+      height: 20px;
+      border-radius: 999px;
+      border: 1px solid #d9e1f0;
+      background: #f3f6fc;
+      color: #6b7280;
+      font-size: 11px;
+      line-height: 18px;
+      text-align: center;
+      padding: 0 6px;
+      box-sizing: border-box;
+    }
+
+    .library-section-grid {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 8px;
-      margin-top: 6px;
     }
 
-    .library-list .dragable-wrapper {
+    .library-section-grid .dragable-wrapper {
       width: 100%;
     }
 
@@ -848,20 +895,21 @@
       flex-direction: column;
       align-items: center;
       justify-content: flex-start;
-      gap: 6px;
-      padding: 8px 6px;
+      gap: 4px;
+      padding: 9px 6px;
       border: 1px solid #e8ebf0;
       border-radius: 8px;
       cursor: pointer;
       user-select: none;
-      background: #fff;
+      background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
       transition: all 0.18s ease;
-      min-height: 74px;
+      min-height: 86px;
     }
 
     .library-item:hover {
       border-color: #cfd8ea;
-      background: #fafcff;
+      background: #f7faff;
+      box-shadow: 0 4px 12px rgba(31, 35, 41, 0.06);
     }
 
     .library-item.is-active {
@@ -875,8 +923,19 @@
       color: #1f2329;
       font-weight: 600;
       text-align: center;
-      line-height: 14px;
+      line-height: 16px;
       word-break: break-all;
+    }
+
+    .library-item-type {
+      max-width: 100%;
+      padding: 0 4px;
+      font-size: 11px;
+      color: #8b92a1;
+      line-height: 14px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
     .library-item-icon {
