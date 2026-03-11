@@ -4,6 +4,11 @@ import DropArea from '../../../components/DropArea';
 import type { UiTreeNode } from '../store/type';
 import { useCreateComponentStore } from '../store';
 import { getNodeSlotKey, isSlotNode } from '../utils/slot';
+import {
+  normalizeResponsiveConfig,
+  resolveBuilderViewportWidth,
+  resolveResponsiveColLayout,
+} from '../utils/gridResponsive';
 
 interface CommonComponentProps {
   type?: string;
@@ -192,6 +197,8 @@ const CardContent: React.FC<CardContentProps> = ({
 export default function CommonComponent(properties: CommonComponentProps) {
   const { type, data, onDropData } = properties;
   const setActiveNode = useCreateComponentStore((state) => state.setActiveNode);
+  const screenSize = useCreateComponentStore((state) => state.screenSize);
+  const autoWidth = useCreateComponentStore((state) => state.autoWidth);
   const { Header, Content, Aside, Footer } = Layout;
   const { ListItem, ListItemMeta } = List;
 
@@ -493,7 +500,7 @@ export default function CommonComponent(properties: CommonComponentProps) {
     if (typeof resolved !== 'number') {
       return 6;
     }
-    return Math.max(1, Math.min(12, Math.round(resolved)));
+    return Math.max(0, Math.min(12, Math.round(resolved)));
   })();
 
   const colOffset = (() => {
@@ -503,6 +510,10 @@ export default function CommonComponent(properties: CommonComponentProps) {
     }
     return Math.max(0, Math.min(11, Math.round(resolved)));
   })();
+
+  const responsiveConfig = normalizeResponsiveConfig(getProp('__responsiveCol'));
+  const builderViewportWidth = resolveBuilderViewportWidth(screenSize, autoWidth);
+  const responsiveColLayout = resolveResponsiveColLayout(colSpan, colOffset, responsiveConfig, builderViewportWidth);
 
   if (isSlotNode(data)) {
     return (
@@ -567,8 +578,8 @@ export default function CommonComponent(properties: CommonComponentProps) {
       case 'Grid.Col':
         return (
           <Col
-            span={colSpan}
-            offset={colOffset}
+            span={responsiveColLayout.span}
+            offset={responsiveColLayout.offset}
             style={mergeStyle()}
           >
             <DropArea data={data} onDropData={onDropData}>

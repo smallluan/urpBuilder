@@ -4,6 +4,7 @@ import ComponentBody from '../ComponentBody';
 import SCREEN_SIZES from '../screenSizes';
 import { useCreateComponentStore } from '../store';
 import { BUILT_IN_LAYOUT_TEMPLATES, type BuiltInLayoutTemplateId } from '../layoutTemplates';
+import { getBreakpointByWidth, resolveBuilderViewportWidth } from '../utils/gridResponsive';
 
 const { Text } = Typography;
 
@@ -21,6 +22,8 @@ const ComponentMainBody: React.FC = () => {
   const [layoutDialogVisible, setLayoutDialogVisible] = useState(false);
   const [replaceConfirmVisible, setReplaceConfirmVisible] = useState(false);
   const [pendingTemplateId, setPendingTemplateId] = useState<BuiltInLayoutTemplateId | null>(null);
+  const simulatorWidth = resolveBuilderViewportWidth(screenSize, autoWidth);
+  const simulatorBreakpoint = getBreakpointByWidth(simulatorWidth);
 
   useEffect(() => {
     const nextValue = screenSize === 'auto' ? String(autoWidth) : String(Number(screenSize));
@@ -100,9 +103,10 @@ const ComponentMainBody: React.FC = () => {
             onChange={(value) => setDraftInputValue(String(value ?? ''))}
             onBlur={(value) => handleInputBlur(String(value ?? ''))}
           />
+          <Text style={{ fontSize: '12px', color: '#8b92a1' }}>当前断点：{simulatorBreakpoint}</Text>
           </Space>
           <Button
-            size="small"
+            size="medium"
             theme="default"
             variant="outline"
             onClick={() => setLayoutDialogVisible(true)}

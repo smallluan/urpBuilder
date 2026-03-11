@@ -2,6 +2,7 @@ import React from 'react';
 import { Avatar, Button, Card, Col, Divider, Image, Row, Space, Switch, Swiper, Typography, Layout, Calendar, ColorPicker, TimePicker, TimeRangePicker, InputNumber, List } from 'tdesign-react';
 import type { UiTreeNode } from '../../CreateComponent/store/type';
 import { getNodeSlotKey, isSlotNode } from '../../CreateComponent/utils/slot';
+import { convertResponsiveConfigToTDesignProps, normalizeResponsiveConfig } from '../../CreateComponent/utils/gridResponsive';
 
 interface PreviewRendererProps {
   node: UiTreeNode;
@@ -45,6 +46,19 @@ const getProp = (node: UiTreeNode, propName: string) => {
 const getNumberProp = (node: UiTreeNode, propName: string) => {
   const value = getProp(node, propName);
   return typeof value === 'number' ? value : undefined;
+};
+
+const getGridNumber = (value: unknown) => {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value;
+  }
+
+  if (typeof value === 'string' && value.trim()) {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : undefined;
+  }
+
+  return undefined;
 };
 
 const getStringProp = (node: UiTreeNode, propName: string) => {
@@ -601,24 +615,28 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) 
     }
     case 'Grid.Row':
       return (
-        <div style={mergeStyle()}>
-          <Row
-            align={getStringProp(node, 'align') as any}
-            justify={getStringProp(node, 'justify') as any}
-            gutter={getNumberProp(node, 'gutter')}
-          >
-            {renderChildren(node, onLifecycle)}
-          </Row>
-        </div>
+        <Row
+          align={getStringProp(node, 'align') as any}
+          justify={getStringProp(node, 'justify') as any}
+          gutter={getNumberProp(node, 'gutter')}
+          style={mergeStyle()}
+        >
+          {renderChildren(node, onLifecycle)}
+        </Row>
       );
     case 'Grid.Col':
+      {
+      const baseSpan = getGridNumber(getProp(node, 'span')) ?? 6;
+      const baseOffset = getGridNumber(getProp(node, 'offset')) ?? 0;
+      const responsiveConfig = normalizeResponsiveConfig(getProp(node, '__responsiveCol'));
+      const responsiveColProps = convertResponsiveConfigToTDesignProps(baseSpan, baseOffset, responsiveConfig);
+
       return (
-        <div style={mergeStyle()}>
-          <Col span={getNumberProp(node, 'span') ?? 6} offset={getNumberProp(node, 'offset')}>
-            {renderChildren(node, onLifecycle)}
-          </Col>
-        </div>
+        <Col span={baseSpan} offset={baseOffset} {...responsiveColProps} style={mergeStyle()}>
+          {renderChildren(node, onLifecycle)}
+        </Col>
       );
+      }
     case 'List':
       {
       const customTemplateEnabled = getBooleanProp(node, 'customTemplateEnabled') === true;

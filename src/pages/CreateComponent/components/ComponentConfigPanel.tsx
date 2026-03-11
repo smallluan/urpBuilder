@@ -1,9 +1,18 @@
 import React, { useEffect, useState } from 'react';
-import { Button, Dialog, Empty, Input, InputNumber, Select, Space, Switch, Table, Typography } from 'tdesign-react';
+import { Button, Dialog, Empty, Input, InputNumber, Popup, Select, Slider, Space, Switch, Table, Tag, Typography } from 'tdesign-react';
+import { HelpCircleIcon } from 'tdesign-icons-react';
 import { useCreateComponentStore } from '../store';
 import NodeStyleDrawer from './NodeStyleDrawer';
 import { isSlotNode } from '../utils/slot';
 import CodeEditorDialog, { type CodeEditorValue } from './CodeEditorDialog';
+import {
+  GRID_BREAKPOINTS,
+  getBreakpointByWidth,
+  normalizeResponsiveConfig,
+  resolveBuilderViewportWidth,
+  type GridBreakpoint,
+  type GridResponsiveConfig,
+} from '../utils/gridResponsive';
 
 type EditType = 'switch' | 'input' | 'inputNumber' | 'select' | 'swiperImages' | 'jsonCode';
 
@@ -54,6 +63,35 @@ interface ComponentPropSchema {
     options?: Array<string | number>;
   };
 }
+
+const GRID_PRESET_OPTIONS = [
+  { label: '1/4', value: 3 },
+  { label: '1/3', value: 4 },
+  { label: '1/2', value: 6 },
+  { label: '2/3', value: 8 },
+  { label: '全宽', value: 12 },
+];
+
+const BREAKPOINT_LABEL_MAP: Record<GridBreakpoint, string> = {
+  xs: 'xs (<768)',
+  sm: 'sm (≥768)',
+  md: 'md (≥992)',
+  lg: 'lg (≥1200)',
+  xl: 'xl (≥1400)',
+  xxl: 'xxl (≥1880)',
+};
+
+const BREAKPOINT_DEVICE_MAP: Record<GridBreakpoint, string> = {
+  xs: '移动端',
+  sm: '大屏手机',
+  md: '平板',
+  lg: '笔记本',
+  xl: '桌面端',
+  xxl: '超宽屏',
+};
+
+const clampSpan = (value: number) => Math.max(0, Math.min(12, Math.round(value)));
+const clampOffset = (value: number) => Math.max(0, Math.min(11, Math.round(value)));
 
 const LIST_BINDABLE_PROP_OPTIONS: Record<string, Array<{ label: string; value: string }>> = {
   Image: [
@@ -130,6 +168,8 @@ const ComponentConfigPanel: React.FC = () => {
   const updateActiveNodeLabel = useCreateComponentStore((state) => state.updateActiveNodeLabel);
   const updateActiveNodeKey = useCreateComponentStore((state) => state.updateActiveNodeKey);
   const updateActiveNodeProp = useCreateComponentStore((state) => state.updateActiveNodeProp);
+  const screenSize = useCreateComponentStore((state) => state.screenSize);
+  const autoWidth = useCreateComponentStore((state) => state.autoWidth);
   const [labelDraft, setLabelDraft] = useState('');
   const [keyDraft, setKeyDraft] = useState('');
   const [keyError, setKeyError] = useState('');
@@ -139,6 +179,9 @@ const ComponentConfigPanel: React.FC = () => {
   const [numberDrafts, setNumberDrafts] = useState<Record<string, number | undefined>>({});
   const [jsonCodeDialogVisible, setJsonCodeDialogVisible] = useState(false);
   const [jsonCodeTargetPropKey, setJsonCodeTargetPropKey] = useState<string | null>(null);
+  const [gridResponsiveDialogVisible, setGridResponsiveDialogVisible] = useState(false);
+  const [gridResponsiveDraft, setGridResponsiveDraft] = useState<GridResponsiveConfig>({});
+  const [activeBreakpoint, setActiveBreakpoint] = useState<GridBreakpoint>('xs');
   const [jsonCodeValue, setJsonCodeValue] = useState<CodeEditorValue>({
     label: 'JSON示例数据',
     language: 'json',
@@ -195,6 +238,9 @@ const ComponentConfigPanel: React.FC = () => {
   const listBindingValue = (listBindingSchema?.value ?? {}) as { prop?: string; field?: string };
   const bindingPropValue = typeof listBindingValue.prop === 'string' ? listBindingValue.prop : '';
   const bindingFieldValue = typeof listBindingValue.field === 'string' ? listBindingValue.field : '';
+  const responsiveColSchema = propsMap.__responsiveCol;
+  const simulatorWidth = resolveBuilderViewportWidth(screenSize, autoWidth);
+  const simulatorBreakpoint = getBreakpointByWidth(simulatorWidth);
 
   useEffect(() => {
     if (!activeNode) {
@@ -403,6 +449,56 @@ const ComponentConfigPanel: React.FC = () => {
     setJsonCodeTargetPropKey(null);
   };
 
+  const openGridResponsiveDialog = () => {
+    setGridResponsiveDraft(normalizeResponsiveConfig(responsiveColSchema?.value));
+    setActiveBreakpoint('xs');
+    setGridResponsiveDialogVisible(true);
+  };
+
+  const updateBreakpointDraft = (breakpoint: GridBreakpoint, patch: { span?: number; offset?: number }) => {
+    setGridResponsiveDraft((previous) => {
+      const current = previous[breakpoint] ?? {};
+      const next = {
+        ...current,
+        ...patch,
+      };
+
+      const normalized: { span?: number; offset?: number } = {};
+      if (typeof next.span === 'number') {
+        normalized.span = clampSpan(next.span);
+      }
+      if (typeof next.offset === 'number') {
+        normalized.offset = clampOffset(next.offset);
+      }
+
+      return {
+        ...previous,
+        [breakpoint]: normalized,
+      };
+    });
+  };
+
+  const clearBreakpointDraft = (breakpoint: GridBreakpoint) => {
+    setGridResponsiveDraft((previous) => {
+      const next = { ...previous };
+      delete next[breakpoint];
+      return next;
+    });
+  };
+
+  const applyGridResponsiveDraft = () => {
+    updateActiveNodeProp('__responsiveCol', gridResponsiveDraft);
+    setGridResponsiveDialogVisible(false);
+  };
+
+  const resetGridResponsiveDraft = () => {
+    setGridResponsiveDraft({});
+  };
+
+  const activeBreakpointValue = gridResponsiveDraft[activeBreakpoint] ?? {};
+  const activeSpan = typeof activeBreakpointValue.span === 'number' ? activeBreakpointValue.span : 6;
+  const activeOffset = typeof activeBreakpointValue.offset === 'number' ? activeBreakpointValue.offset : 0;
+
   return (
     <div className="right-panel-body">
       <div className="config-form">
@@ -458,6 +554,15 @@ const ComponentConfigPanel: React.FC = () => {
             <div className="config-editor">{renderEditor(propKey, schema)}</div>
           </div>
         ))}
+
+        {activeNode.type === 'Grid.Col' ? (
+          <div className="config-row">
+            <span className="config-label">响应式占格</span>
+            <div className="config-editor" style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <Button size="small" variant="outline" onClick={openGridResponsiveDialog}>配置断点</Button>
+            </div>
+          </div>
+        ) : null}
 
         {isListCustomTemplateEnabled && isNodeInsideListTemplate && bindableProps.length > 0 ? (
           <>
@@ -635,6 +740,133 @@ const ComponentConfigPanel: React.FC = () => {
         }}
         onApply={applyJsonCodeDraft}
       />
+
+      <Dialog
+        visible={gridResponsiveDialogVisible}
+        width="760px"
+        header={(
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+            <span>Grid.Col 响应式配置</span>
+            <Popup
+              trigger="hover"
+              placement="right"
+              showArrow
+              content={(
+                <div style={{ maxWidth: 360, lineHeight: '20px' }}>
+                  编辑器中采用“断点独立命中”语义：每个断点未配置时，回退到基础 span/offset。<br />
+                  预览渲染时会自动转换为 TDesign 级联断点参数，保证渲染层兼容而不改变编辑体验。
+                </div>
+              )}
+            >
+              <span
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  color: '#8b92a1',
+                  cursor: 'help',
+                }}
+              >
+                <HelpCircleIcon size="16px" />
+              </span>
+            </Popup>
+          </div>
+        )}
+        className="grid-responsive-config-dialog"
+        closeOnOverlayClick={false}
+        confirmBtn="应用配置"
+        cancelBtn="取消"
+        onConfirm={applyGridResponsiveDraft}
+        onClose={() => setGridResponsiveDialogVisible(false)}
+      >
+        <div className="grid-responsive-config">
+          <div className="grid-responsive-config__top">
+            <div className="grid-responsive-config__meta">
+              <Tag variant="light">模拟器宽度：{simulatorWidth}px</Tag>
+              <Tag theme="primary" variant="light">当前命中：{simulatorBreakpoint}</Tag>
+            </div>
+
+            <div className="grid-responsive-config__breakpoint-wrap">
+              <span className="grid-responsive-config__breakpoint-label">断点</span>
+              <Select
+                className="grid-responsive-config__breakpoint-select"
+                value={activeBreakpoint}
+                options={GRID_BREAKPOINTS.map((breakpoint) => ({
+                  label: `${BREAKPOINT_LABEL_MAP[breakpoint]} · ${BREAKPOINT_DEVICE_MAP[breakpoint]}`,
+                  value: breakpoint,
+                }))}
+                onChange={(value) => setActiveBreakpoint(String(value ?? 'xs') as GridBreakpoint)}
+              />
+            </div>
+          </div>
+
+          <div className="grid-responsive-config__head">
+            <Typography.Text>{BREAKPOINT_LABEL_MAP[activeBreakpoint]}</Typography.Text>
+            <Space size={8}>
+              <Button size="small" variant="outline" onClick={() => clearBreakpointDraft(activeBreakpoint)}>清空当前断点</Button>
+              <Button size="small" variant="outline" onClick={resetGridResponsiveDraft}>重置全部</Button>
+            </Space>
+          </div>
+
+          <div className="grid-responsive-config__section">
+            <div className="grid-responsive-config__row">
+              <Typography.Text>占格数（span）</Typography.Text>
+              <Typography.Text>{activeSpan}</Typography.Text>
+            </div>
+            <div className="grid-responsive-config__sub-label">可选范围 0 - 12，0 表示不占据列宽</div>
+            <Slider
+              className="grid-responsive-config__slider"
+              min={0}
+              max={12}
+              step={1}
+              value={activeSpan}
+              onChange={(value) => updateBreakpointDraft(activeBreakpoint, { span: Number(value) })}
+            />
+            <Space size={8} style={{ marginTop: 8, flexWrap: 'wrap' }}>
+              {GRID_PRESET_OPTIONS.map((option) => (
+                <Button
+                  key={option.label}
+                  size="small"
+                  variant="outline"
+                  onClick={() => updateBreakpointDraft(activeBreakpoint, { span: option.value })}
+                >
+                  {option.label}
+                </Button>
+              ))}
+            </Space>
+          </div>
+
+          <div className="grid-responsive-config__section">
+            <div className="grid-responsive-config__row">
+              <Typography.Text>左侧偏移（offset）</Typography.Text>
+              <Typography.Text>{activeOffset}</Typography.Text>
+            </div>
+            <div className="grid-responsive-config__sub-label">可选范围 0 - 11，表示左侧空出格数</div>
+            <Slider
+              className="grid-responsive-config__slider"
+              min={0}
+              max={11}
+              step={1}
+              value={activeOffset}
+              onChange={(value) => updateBreakpointDraft(activeBreakpoint, { offset: Number(value) })}
+            />
+          </div>
+
+          <div className="grid-responsive-config__preview">
+            {Array.from({ length: 12 }).map((_, index) => {
+              const inOffset = index < activeOffset;
+              const inSpan = index >= activeOffset && index < activeOffset + activeSpan;
+              return (
+                <div
+                  key={`grid-cell-${index}`}
+                  className={`grid-responsive-config__cell${inSpan ? ' is-span' : ''}${inOffset ? ' is-offset' : ''}`}
+                >
+                  {index + 1}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </Dialog>
     </div>
   );
 };

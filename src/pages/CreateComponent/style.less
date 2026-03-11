@@ -957,6 +957,129 @@
   }
 }
 
+.grid-responsive-config-dialog {
+  .t-dialog__body {
+    overflow: visible;
+  }
+}
+
+.grid-responsive-config {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  width: 100%;
+  box-sizing: border-box;
+
+  &__top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  &__meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  &__breakpoint-select {
+    width: 220px;
+    max-width: 100%;
+  }
+
+  &__breakpoint-wrap {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    max-width: 100%;
+  }
+
+  &__breakpoint-label {
+    font-size: 12px;
+    color: #6b7280;
+    white-space: nowrap;
+  }
+
+  &__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  &__section {
+    border: 1px solid #eceef3;
+    border-radius: 8px;
+    padding: 12px;
+    background: #fafbfc;
+  }
+
+  &__row {
+    margin-bottom: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+  }
+
+  &__slider {
+    width: 100%;
+    overflow: visible;
+    padding: 6px 4px 10px;
+
+    .t-slider {
+      overflow: visible;
+    }
+
+    .t-slider__button {
+      box-shadow: 0 0 0 2px #fff;
+    }
+  }
+
+  &__sub-label {
+    margin-bottom: 4px;
+    font-size: 12px;
+    color: #8b92a1;
+  }
+
+  &__preview {
+    margin-top: 2px;
+    display: grid;
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    gap: 6px;
+    width: 100%;
+  }
+
+  &__cell {
+    height: 28px;
+    border-radius: 6px;
+    border: 1px solid #dfe3ea;
+    font-size: 11px;
+    color: #8b92a1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #fff;
+
+    &.is-offset {
+      border-color: #e9edf5;
+      background: #f6f7fa;
+      color: #b4bbc8;
+    }
+
+    &.is-span {
+      border-color: #bcd4ff;
+      background: #eaf2ff;
+      color: #2b5fcc;
+      font-weight: 500;
+    }
+  }
+}
+
 .history-drawer-meta {
   display: flex;
   justify-content: space-between;
