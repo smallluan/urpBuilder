@@ -333,6 +333,8 @@ export const useCreateComponentStore = create<CreateComponentStore>((set) => ({
   // ===== 视图环境 =====
   screenSize: 'auto',
   autoWidth: 1800,
+  currentPageId: '',
+  currentPageName: '',
 
   // ===== 流程图状态 =====
   flowNodes: [],
@@ -372,6 +374,11 @@ export const useCreateComponentStore = create<CreateComponentStore>((set) => ({
   setScreenSize: (screenSize) => set({ screenSize }),
   // 更新自适应模式下的自定义宽度
   setAutoWidth: (width) => set({ autoWidth: width }),
+  setCurrentPageMeta: ({ pageId, pageName }) =>
+    set((state) => ({
+      currentPageId: pageId ?? state.currentPageId,
+      currentPageName: pageName ?? state.currentPageName,
+    })),
   setFlowNodes: (flowNodes) =>
     set((state) => {
       const nextFlowNodes =

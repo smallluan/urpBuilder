@@ -30,6 +30,8 @@ export interface SavePageDraftPayload {
   template: PageTemplateContent;
 }
 
+export interface UpdatePageDraftPayload extends SavePageDraftPayload {}
+
 export interface PageDetail {
   base: PageBaseInfo;
   template: PageTemplateContent;

@@ -4,7 +4,7 @@ import { UploadIcon, ViewImageIcon, ArrowLeftIcon, ArrowRightIcon, HistoryIcon }
 import { useCreateComponentStore } from '../store';
 import type { UiHistoryAction } from '../store/type';
 import { serializePreviewSnapshot } from '../../PreviewEngine/utils/snapshot';
-import { savePageDraft } from '../../../api/pageTemplate';
+import { savePageDraft, updatePageDraft } from '../../../api/pageTemplate';
 import { emitApiAlert } from '../../../api/alertBus';
 
 type Props = {
@@ -101,6 +101,9 @@ const HeaderControls: React.FC<Props> = ({ mode, onChange }) => {
   const flowEdges = useCreateComponentStore((state) => state.flowEdges);
   const screenSize = useCreateComponentStore((state) => state.screenSize);
   const autoWidth = useCreateComponentStore((state) => state.autoWidth);
+  const currentPageId = useCreateComponentStore((state) => state.currentPageId);
+  const currentPageName = useCreateComponentStore((state) => state.currentPageName);
+  const setCurrentPageMeta = useCreateComponentStore((state) => state.setCurrentPageMeta);
   const selectedLayoutTemplateId = useCreateComponentStore((state) => state.selectedLayoutTemplateId);
   const undo = useCreateComponentStore((state) => state.undo);
   const redo = useCreateComponentStore((state) => state.redo);
@@ -113,6 +116,7 @@ const HeaderControls: React.FC<Props> = ({ mode, onChange }) => {
 
   const canUndo = history.pointer >= 0;
   const canRedo = history.pointer < history.actions.length - 1;
+  const isEditMode = Boolean(currentPageId);
 
   const displayTimelineItems = useMemo(
     () =>
@@ -147,6 +151,8 @@ const HeaderControls: React.FC<Props> = ({ mode, onChange }) => {
   };
 
   const handleOpenSaveDialog = () => {
+    setComponentName(currentPageName || '');
+    setComponentId(currentPageId || '');
     setSaveDialogVisible(true);
   };
 
@@ -180,7 +186,7 @@ const HeaderControls: React.FC<Props> = ({ mode, onChange }) => {
     setSaving(true);
 
     try {
-      await savePageDraft({
+      const payload = {
         base: {
           pageId,
           pageName,
@@ -197,8 +203,18 @@ const HeaderControls: React.FC<Props> = ({ mode, onChange }) => {
             selectedLayoutTemplateId,
           },
         },
-      });
+      };
 
+      if (isEditMode) {
+        await updatePageDraft(currentPageId, payload);
+      } else {
+        await savePageDraft(payload);
+      }
+
+      setCurrentPageMeta({
+        pageId,
+        pageName,
+      });
       emitApiAlert('保存成功', `组件 ${pageName} 已保存`, 'success');
       setSaveDialogVisible(false);
     } finally {
@@ -276,6 +292,7 @@ const HeaderControls: React.FC<Props> = ({ mode, onChange }) => {
               placeholder="请输入组件名称"
               onChange={(value) => setComponentName(String(value ?? ''))}
               maxlength={60}
+              clearable
             />
           </div>
 
@@ -286,6 +303,8 @@ const HeaderControls: React.FC<Props> = ({ mode, onChange }) => {
               placeholder="例如：user_profile_card"
               onChange={(value) => setComponentId(String(value ?? '').trim())}
               maxlength={64}
+              clearable
+              disabled={isEditMode}
             />
           </div>
         </div>

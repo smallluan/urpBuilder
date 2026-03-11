@@ -119,6 +119,8 @@ export interface UpdateNodeKeyResult {
 export interface CreateComponentStore {
   screenSize: ScreenSize;
   autoWidth: number;
+  currentPageId: string;
+  currentPageName: string;
   flowNodes: Node[];
   flowEdges: Edge[];
   flowActiveNodeId: string | null;
@@ -130,6 +132,7 @@ export interface CreateComponentStore {
   history: UiHistoryState;
   setScreenSize: (screenSize: ScreenSize) => void;
   setAutoWidth: (width: number) => void;
+  setCurrentPageMeta: (payload: { pageId?: string; pageName?: string }) => void;
   setFlowNodes: (nodes: StateAction<Node[]>) => void;
   setFlowEdges: (edges: StateAction<Edge[]>) => void;
   setFlowActiveNodeId: (nodeId: string | null) => void;

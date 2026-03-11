@@ -14,6 +14,7 @@ import type { BuiltInLayoutTemplateId } from './layoutTemplates';
 const CreateComponent: React.FC = () => {
   const [mode, setMode] = useState<'component' | 'flow'>('component');
   const loadedPageIdRef = useRef<string | null>(null);
+  const setCurrentPageMeta = useCreateComponentStore((state) => state.setCurrentPageMeta);
 
   useEffect(() => {
     const searchParams = new URLSearchParams(window.location.search);
@@ -28,6 +29,7 @@ const CreateComponent: React.FC = () => {
     }
 
     loadedPageIdRef.current = pageId;
+    setCurrentPageMeta({ pageId });
 
     const loadPageDetail = async () => {
       try {
@@ -41,6 +43,11 @@ const CreateComponent: React.FC = () => {
         }
 
         const pageConfig = template.pageConfig ?? {};
+
+        setCurrentPageMeta({
+          pageId: detail.base?.pageId ?? pageId,
+          pageName: detail.base?.pageName ?? '',
+        });
 
         useCreateComponentStore.setState({
           screenSize: (pageConfig.screenSize as string | number | undefined) ?? detail.base?.screenSize ?? 'auto',
@@ -67,7 +74,7 @@ const CreateComponent: React.FC = () => {
     };
 
     void loadPageDetail();
-  }, []);
+  }, [setCurrentPageMeta]);
 
   return (
     <div className="create-page">

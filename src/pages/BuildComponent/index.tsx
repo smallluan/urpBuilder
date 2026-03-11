@@ -17,14 +17,38 @@ interface ComponentTemplateRow {
   updatedAt: string;
 }
 
-const toDisplayDate = (value?: string) => {
+const toSafeText = (value: unknown) => {
+  if (typeof value === 'string') {
+    return value;
+  }
+
+  if (typeof value === 'number' || typeof value === 'boolean') {
+    return String(value);
+  }
+
+  if (value === null || value === undefined) {
+    return '-';
+  }
+
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return '-';
+  }
+};
+
+const toDisplayDate = (value?: unknown) => {
   if (!value) {
     return '-';
   }
 
+  if (typeof value !== 'string' && typeof value !== 'number') {
+    return toSafeText(value);
+  }
+
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) {
-    return value;
+    return toSafeText(value);
   }
 
   return date.toLocaleString('zh-CN', { hour12: false });
@@ -42,19 +66,20 @@ const BuildComponent: React.FC = () => {
     setLoading(true);
     try {
       const result = await getPageBaseList(params);
-      const nextList = result.data.list.map((item) => ({
-        id: item.pageId,
-        pageId: item.pageId,
-        pageName: item.pageName,
-        status: item.status,
-        currentVersion: item.currentVersion,
-        screenSize: item.screenSize === undefined ? '-' : String(item.screenSize),
-        autoWidth: item.autoWidth === undefined ? '-' : String(item.autoWidth),
+      const rawList = Array.isArray(result.data?.list) ? result.data.list : [];
+      const nextList = rawList.map((item) => ({
+        id: toSafeText(item.pageId),
+        pageId: toSafeText(item.pageId),
+        pageName: toSafeText(item.pageName),
+        status: (item.status === 'published' ? 'published' : 'draft') as ComponentTemplateRow['status'],
+        currentVersion: typeof item.currentVersion === 'number' ? item.currentVersion : Number(item.currentVersion) || 0,
+        screenSize: item.screenSize === undefined ? '-' : toSafeText(item.screenSize),
+        autoWidth: item.autoWidth === undefined ? '-' : toSafeText(item.autoWidth),
         updatedAt: toDisplayDate(item.updatedAt),
       }));
 
       setTableData(nextList);
-      setTotal(result.data.total || 0);
+      setTotal(typeof result.data?.total === 'number' ? result.data.total : Number(result.data?.total) || 0);
     } catch {
       setTableData([]);
       setTotal(0);
