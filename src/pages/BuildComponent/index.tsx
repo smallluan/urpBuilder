@@ -92,7 +92,7 @@ const BuildComponent: React.FC = () => {
   };
 
   const handleEdit = (row: ComponentTemplateRow) => {
-    const editUrl = `${window.location.origin}/create-component?pageId=${encodeURIComponent(row.pageId)}`;
+    const editUrl = `${window.location.origin}/create-component?id=${encodeURIComponent(row.pageId)}`;
     window.open(editUrl, '_blank');
   };
 

@@ -1,12 +1,73 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 // layout components handle their own asides
 import './style.less';
 import HeaderControls from './components/HeaderControls';
 import ComponentLayout from './ComponentLayout';
 import FlowLayout from './FlowLayout';
+import { getPageDetail } from '../../api/pageTemplate';
+import { emitApiAlert } from '../../api/alertBus';
+import { useCreateComponentStore } from './store';
+import type { Edge, Node } from '@xyflow/react';
+import type { UiTreeNode } from './store/type';
+import type { BuiltInLayoutTemplateId } from './layoutTemplates';
 
 const CreateComponent: React.FC = () => {
   const [mode, setMode] = useState<'component' | 'flow'>('component');
+  const loadedPageIdRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    const searchParams = new URLSearchParams(window.location.search);
+    const pageId = (searchParams.get('id') || searchParams.get('pageId') || '').trim();
+
+    if (!pageId) {
+      return;
+    }
+
+    if (loadedPageIdRef.current === pageId) {
+      return;
+    }
+
+    loadedPageIdRef.current = pageId;
+
+    const loadPageDetail = async () => {
+      try {
+        const response = await getPageDetail(pageId);
+        const detail = response.data;
+        const template = detail?.template;
+
+        if (!template) {
+          emitApiAlert('加载失败', '未获取到模板详情数据');
+          return;
+        }
+
+        const pageConfig = template.pageConfig ?? {};
+
+        useCreateComponentStore.setState({
+          screenSize: (pageConfig.screenSize as string | number | undefined) ?? detail.base?.screenSize ?? 'auto',
+          autoWidth:
+            typeof pageConfig.autoWidth === 'number'
+              ? pageConfig.autoWidth
+              : (detail.base?.autoWidth ?? 1800),
+          uiPageData: template.uiTree as unknown as UiTreeNode,
+          flowNodes: (template.flowNodes as unknown as Node[]) ?? [],
+          flowEdges: (template.flowEdges as unknown as Edge[]) ?? [],
+          selectedLayoutTemplateId:
+            (pageConfig.selectedLayoutTemplateId as BuiltInLayoutTemplateId | null | undefined) ?? null,
+          flowActiveNodeId: null,
+          activeNodeKey: null,
+          activeNode: null,
+          history: {
+            pointer: -1,
+            actions: [],
+          },
+        });
+      } catch {
+        emitApiAlert('加载失败', '组件详情请求失败，请稍后重试');
+      }
+    };
+
+    void loadPageDetail();
+  }, []);
 
   return (
     <div className="create-page">
