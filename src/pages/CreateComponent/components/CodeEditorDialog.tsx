@@ -91,6 +91,18 @@ const JS_GLOBAL_COMPLETIONS: Completion[] = [
     info: '可能是生命周期事件或上游 patch 事件。',
   },
   {
+    label: 'ctx.response',
+    type: 'property',
+    detail: '网络请求响应数据',
+    info: '当上游为网络请求节点时，按 responsePath 注入的响应数据。',
+  },
+  {
+    label: 'ctx.request',
+    type: 'property',
+    detail: '网络请求元信息',
+    info: '包含 method/endpoint/status/ok/durationMs 等请求结果信息。',
+  },
+  {
     label: 'ctx.upstreamNodeId',
     type: 'property',
     detail: '上游节点 id',

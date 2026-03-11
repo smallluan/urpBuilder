@@ -65,6 +65,19 @@ const COMPONENT_TRACE_COLOR = '#0052d9';
 const EVENT_FILTER_TRACE_COLOR = '#2ba471';
 const CODE_TRACE_COLOR = '#6f5af0';
 const NETWORK_REQUEST_TRACE_COLOR = '#eb6f0a';
+const DEFAULT_FLOW_LIFETIMES = ['onInit', 'onBeforeMount', 'onMounted', 'onBeforeUpdate', 'onUpdated', 'onBeforeUnmount', 'onUnmounted'];
+
+const resolveFlowLifetimes = (lifetimes: unknown): string[] => {
+  const list = Array.isArray(lifetimes)
+    ? lifetimes.map((item) => String(item).trim()).filter(Boolean)
+    : [];
+
+  if (list.length > 0) {
+    return Array.from(new Set(list));
+  }
+
+  return DEFAULT_FLOW_LIFETIMES;
+};
 
 const createFlowNodeId = (prefix: string) =>
   `${prefix}-${Date.now()}-${Math.round(Math.random() * 1000)}`;
@@ -563,7 +576,7 @@ const FlowCanvas: React.FC = () => {
           return;
         }
 
-        const lifetimes = Array.isArray(sourceData.lifetimes) ? sourceData.lifetimes : [];
+        const lifetimes = resolveFlowLifetimes(sourceData.lifetimes);
         const selectedLifetimes = lifetimes.length === 1 ? [lifetimes[0]] : [];
 
         nextNodes = currentNodes.map((item) => {
@@ -672,7 +685,7 @@ const FlowCanvas: React.FC = () => {
             label: payload.name || '组件节点',
             componentType: payload.componentType || 'Unknown',
             sourceKey: payload.sourceKey,
-            lifetimes: Array.isArray(payload.lifetimes) ? payload.lifetimes : [],
+            lifetimes: resolveFlowLifetimes(payload.lifetimes),
           },
         };
 
@@ -735,6 +748,12 @@ const FlowCanvas: React.FC = () => {
             label: payload.label || '网络请求节点',
             method: 'GET',
             endpoint: '/api/example',
+            timeoutMs: 5000,
+            responsePath: 'ctx.response',
+            bodyType: 'none',
+            body: '',
+            onError: 'throw',
+            mockEnabled: false,
           },
         };
 

@@ -4,6 +4,31 @@ import type { PreviewDataHub } from './dataHub';
 // 运行时事件：
 // - lifecycle：由组件节点触发的生命周期事件
 // - patch：代码节点产出的声明式属性更新
+// - request:success / request:error：网络请求节点产出的异步结果
+interface RuntimeRequestSuccess {
+  nodeId: string;
+  method: string;
+  endpoint: string;
+  status: number;
+  ok: boolean;
+  durationMs: number;
+  headers: Record<string, string>;
+  rawText: string;
+  data: unknown;
+  responsePath: string;
+}
+
+interface RuntimeRequestError {
+  nodeId: string;
+  method: string;
+  endpoint: string;
+  durationMs: number;
+  responsePath: string;
+  message: string;
+  errorName?: string;
+  fallbackData?: unknown;
+}
+
 type RuntimeEvent =
   | {
       kind: 'lifecycle';
@@ -15,6 +40,16 @@ type RuntimeEvent =
       kind: 'patch';
       patch: Record<string, unknown>;
       fromCodeNodeId: string;
+      payload?: unknown;
+    }
+  | {
+      kind: 'request:success';
+      request: RuntimeRequestSuccess;
+      payload?: unknown;
+    }
+  | {
+      kind: 'request:error';
+      request: RuntimeRequestError;
       payload?: unknown;
     };
 
@@ -30,8 +65,185 @@ interface CodeNodeData {
   code?: string;
 }
 
+interface NetworkRequestNodeData {
+  method?: string;
+  endpoint?: string;
+  timeoutMs?: number;
+  responsePath?: string;
+  bodyType?: string;
+  body?: string;
+  onError?: string;
+  mockEnabled?: boolean;
+}
+
 const isPlainObject = (value: unknown): value is Record<string, unknown> => {
   return !!value && typeof value === 'object' && !Array.isArray(value);
+};
+
+const normalizeMethod = (value: unknown) => {
+  const method = String(value ?? 'GET').trim().toUpperCase();
+  return method || 'GET';
+};
+
+const normalizeTimeoutMs = (value: unknown) => {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return 5000;
+  }
+
+  return Math.max(100, Math.round(parsed));
+};
+
+const normalizeResponsePath = (value: unknown) => {
+  const input = String(value ?? '').trim();
+  return input || 'ctx.response';
+};
+
+const toHeaderRecord = (headers: Headers): Record<string, string> => {
+  const record: Record<string, string> = {};
+  headers.forEach((headerValue, headerName) => {
+    record[headerName] = headerValue;
+  });
+
+  return record;
+};
+
+const tryParseJson = (value: string): unknown => {
+  try {
+    return JSON.parse(value);
+  } catch {
+    return value;
+  }
+};
+
+const setValueByPath = (target: Record<string, unknown>, path: string, value: unknown) => {
+  const normalizedPath = path
+    .trim()
+    .replace(/^ctx\./, '')
+    .split('.')
+    .map((segment) => segment.trim())
+    .filter(Boolean);
+
+  if (normalizedPath.length === 0) {
+    target.response = value;
+    return;
+  }
+
+  let cursor: Record<string, unknown> = target;
+
+  normalizedPath.forEach((segment, index) => {
+    const isLast = index === normalizedPath.length - 1;
+    if (isLast) {
+      cursor[segment] = value;
+      return;
+    }
+
+    const nextValue = cursor[segment];
+    if (!isPlainObject(nextValue)) {
+      cursor[segment] = {};
+    }
+
+    cursor = cursor[segment] as Record<string, unknown>;
+  });
+};
+
+const buildRequestInit = (
+  method: string,
+  bodyType: string,
+  bodyInput: string,
+): { init: RequestInit; fallbackData?: unknown } => {
+  const normalizedBodyType = String(bodyType ?? 'none').trim().toLowerCase();
+  const trimmedBody = String(bodyInput ?? '');
+  const upperMethod = method.toUpperCase();
+  const hasBody = upperMethod !== 'GET' && upperMethod !== 'HEAD' && normalizedBodyType !== 'none';
+
+  if (!hasBody) {
+    return {
+      init: { method: upperMethod },
+    };
+  }
+
+  if (normalizedBodyType === 'json') {
+    if (!trimmedBody.trim()) {
+      return {
+        init: {
+          method: upperMethod,
+          body: '{}',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        },
+        fallbackData: {},
+      };
+    }
+
+    const parsed = tryParseJson(trimmedBody);
+    return {
+      init: {
+        method: upperMethod,
+        body: JSON.stringify(parsed),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      },
+      fallbackData: parsed,
+    };
+  }
+
+  if (normalizedBodyType === 'x-www-form-urlencoded') {
+    const params = new URLSearchParams(trimmedBody);
+    return {
+      init: {
+        method: upperMethod,
+        body: params,
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
+        },
+      },
+      fallbackData: Object.fromEntries(params.entries()),
+    };
+  }
+
+  if (normalizedBodyType === 'form-data') {
+    const formData = new FormData();
+    trimmedBody
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .forEach((line) => {
+        const separatorIndex = line.indexOf('=');
+        if (separatorIndex <= 0) {
+          return;
+        }
+
+        const key = line.slice(0, separatorIndex).trim();
+        const value = line.slice(separatorIndex + 1).trim();
+        if (!key) {
+          return;
+        }
+
+        formData.append(key, value);
+      });
+
+    return {
+      init: {
+        method: upperMethod,
+        body: formData,
+      },
+      fallbackData: Object.fromEntries(formData.entries()),
+    };
+  }
+
+  return {
+    init: {
+      method: upperMethod,
+      body: trimmedBody,
+      headers: {
+        'Content-Type': 'text/plain;charset=UTF-8',
+      },
+    },
+    fallbackData: trimmedBody,
+  };
 };
 
 // 预览流程执行器：
@@ -93,13 +305,13 @@ export class PreviewFlowRuntime {
 
     // 同一个组件 key 对应的全部组件节点实例都要作为触发起点。
     componentNodeIds.forEach((nodeId) => {
-      this.propagate(nodeId, runtimeEvent);
+      void this.propagate(nodeId, runtimeEvent);
     });
   }
 
   // 宽度优先传播：事件沿有向边向下游传递。
   // 通过 visited + hopCount 防止环路导致无限传播。
-  private propagate(startNodeId: string, startEvent: RuntimeEvent) {
+  private async propagate(startNodeId: string, startEvent: RuntimeEvent) {
     const queue: Array<{ nodeId: string; event: RuntimeEvent }> = [{ nodeId: startNodeId, event: startEvent }];
     const visited = new Set<string>();
     let hopCount = 0;
@@ -114,34 +326,38 @@ export class PreviewFlowRuntime {
 
       const downstreamNodeIds = this.downstreamMap.get(current.nodeId) ?? [];
 
-      downstreamNodeIds.forEach((downstreamNodeId) => {
+      for (const downstreamNodeId of downstreamNodeIds) {
         const visitKey = `${current.nodeId}->${downstreamNodeId}-${current.event.kind}`;
         if (visited.has(visitKey)) {
-          return;
+          continue;
         }
         visited.add(visitKey);
 
         const nextNode = this.nodeMap.get(downstreamNodeId);
         if (!nextNode) {
-          return;
+          continue;
         }
 
-        const outputEvent = this.handleNode(nextNode, current.event, current.nodeId);
+        const outputEvent = await this.handleNode(nextNode, current.event, current.nodeId);
         if (!outputEvent) {
-          return;
+          continue;
         }
 
         queue.push({
           nodeId: downstreamNodeId,
           event: outputEvent,
         });
-      });
+      }
     }
   }
 
-  private handleNode(node: Node, input: RuntimeEvent, upstreamNodeId: string): RuntimeEvent | null {
+  private async handleNode(node: Node, input: RuntimeEvent, upstreamNodeId: string): Promise<RuntimeEvent | null> {
     if (node.type === 'eventFilterNode') {
       return this.handleEventFilterNode(node, input);
+    }
+
+    if (node.type === 'networkRequestNode') {
+      return this.handleNetworkRequestNode(node, input);
     }
 
     if (node.type === 'codeNode') {
@@ -167,6 +383,10 @@ export class PreviewFlowRuntime {
       ? data.selectedLifetimes.map((item) => String(item))
       : [];
 
+    if (selectedLifetimes.length === 0) {
+      return input;
+    }
+
     if (!selectedLifetimes.includes(input.lifetime)) {
       return null;
     }
@@ -174,7 +394,7 @@ export class PreviewFlowRuntime {
     return input;
   }
 
-  private handleCodeNode(node: Node, input: RuntimeEvent, upstreamNodeId: string): RuntimeEvent | null {
+  private async handleCodeNode(node: Node, input: RuntimeEvent, upstreamNodeId: string): Promise<RuntimeEvent | null> {
     const data = (node.data ?? {}) as CodeNodeData;
     const code = typeof data.code === 'string' ? data.code.trim() : '';
     if (!code) {
@@ -185,12 +405,24 @@ export class PreviewFlowRuntime {
       // 代码节点以字符串整体执行：
       // - dataHub：只读上下文（由 createCodeContext 提供）
       // - ctx：本次事件上下文
-      const executor = new Function('dataHub', 'ctx', `'use strict';\n${code}`);
-      const result = executor(this.dataHub.createCodeContext(), {
+      const ctx: Record<string, unknown> = {
         event: input,
         upstreamNodeId,
         currentNodeId: node.id,
-      });
+      };
+
+      if (input.kind === 'request:success') {
+        setValueByPath(ctx, input.request.responsePath, input.request.data);
+        ctx.request = input.request;
+      }
+
+      if (input.kind === 'request:error') {
+        setValueByPath(ctx, input.request.responsePath, input.request.fallbackData);
+        ctx.request = input.request;
+      }
+
+      const executor = new Function('dataHub', 'ctx', `'use strict';\nreturn (async () => {\n${code}\n})();`);
+      const result = await executor(this.dataHub.createCodeContext(), ctx);
 
       // 仅接受“对象”作为声明式 patch，其他返回值视为无效。
       if (!isPlainObject(result)) {
@@ -210,6 +442,134 @@ export class PreviewFlowRuntime {
         message: error instanceof Error ? error.message : String(error),
       });
       return null;
+    }
+  }
+
+  private async handleNetworkRequestNode(node: Node, input: RuntimeEvent): Promise<RuntimeEvent | null> {
+    const data = (node.data ?? {}) as NetworkRequestNodeData;
+    const method = normalizeMethod(data.method);
+    const endpoint = String(data.endpoint ?? '').trim();
+    const timeoutMs = normalizeTimeoutMs(data.timeoutMs);
+    const responsePath = normalizeResponsePath(data.responsePath);
+    const onError = String(data.onError ?? 'throw').trim();
+    const mockEnabled = Boolean(data.mockEnabled);
+
+    if (!endpoint) {
+      const message = '网络请求节点缺少 endpoint 配置';
+      this.dataHub.publish('runtime:error', {
+        nodeId: node.id,
+        message,
+      });
+
+      if (onError === 'continue') {
+        return {
+          kind: 'request:error',
+          request: {
+            nodeId: node.id,
+            method,
+            endpoint,
+            durationMs: 0,
+            responsePath,
+            message,
+          },
+          payload: input,
+        };
+      }
+
+      return null;
+    }
+
+    if (mockEnabled) {
+      const mockData = tryParseJson(String(data.body ?? ''));
+      return {
+        kind: 'request:success',
+        request: {
+          nodeId: node.id,
+          method,
+          endpoint,
+          status: 200,
+          ok: true,
+          durationMs: 0,
+          headers: {},
+          rawText: typeof mockData === 'string' ? mockData : JSON.stringify(mockData),
+          data: mockData,
+          responsePath,
+        },
+        payload: input,
+      };
+    }
+
+    const { init, fallbackData } = buildRequestInit(
+      method,
+      String(data.bodyType ?? 'none'),
+      String(data.body ?? ''),
+    );
+
+    const controller = new AbortController();
+    const timeoutId = window.setTimeout(() => {
+      controller.abort();
+    }, timeoutMs);
+    const startedAt = performance.now();
+
+    try {
+      const response = await fetch(endpoint, {
+        ...init,
+        signal: controller.signal,
+      });
+
+      const rawText = await response.text();
+      const parsedData = tryParseJson(rawText);
+      const durationMs = Math.round(performance.now() - startedAt);
+
+      const requestResult: RuntimeRequestSuccess = {
+        nodeId: node.id,
+        method,
+        endpoint,
+        status: response.status,
+        ok: response.ok,
+        durationMs,
+        headers: toHeaderRecord(response.headers),
+        rawText,
+        data: parsedData,
+        responsePath,
+      };
+
+      this.dataHub.publish('runtime:request', requestResult);
+
+      return {
+        kind: 'request:success',
+        request: requestResult,
+        payload: input,
+      };
+    } catch (error) {
+      const durationMs = Math.round(performance.now() - startedAt);
+      const requestError: RuntimeRequestError = {
+        nodeId: node.id,
+        method,
+        endpoint,
+        durationMs,
+        responsePath,
+        message: error instanceof Error ? error.message : String(error),
+        errorName: error instanceof Error ? error.name : undefined,
+        fallbackData: onError === 'useFallback' ? fallbackData : undefined,
+      };
+
+      this.dataHub.publish('runtime:error', {
+        nodeId: node.id,
+        message: requestError.message,
+      });
+
+      if (onError === 'continue' || onError === 'useFallback') {
+        return {
+          kind: 'request:error',
+          request: requestError,
+          payload: input,
+        };
+      }
+
+      return null;
+    } finally {
+      window.clearTimeout(timeoutId);
     }
   }
 

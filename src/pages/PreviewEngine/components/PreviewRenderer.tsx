@@ -20,6 +20,8 @@ interface ListRecord {
   [key: string]: unknown;
 }
 
+const CORE_LIFETIMES = ['onInit', 'onBeforeMount', 'onMounted', 'onBeforeUpdate', 'onUpdated', 'onBeforeUnmount', 'onUnmounted'];
+
 const LIST_DEFAULT_DATA: ListRecord[] = [
   {
     title: '列表项A',
@@ -382,31 +384,45 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) 
     (lifetime: string) => lifetimes.includes(lifetime),
     [lifetimes],
   );
+  const hasCoreLifetime = React.useCallback(
+    (lifetime: string) => {
+      if (hasLifetime(lifetime)) {
+        return true;
+      }
+
+      if (lifetimes.length > 0) {
+        return false;
+      }
+
+      return CORE_LIFETIMES.includes(lifetime);
+    },
+    [hasLifetime, lifetimes],
+  );
 
   React.useEffect(() => {
     if (!onLifecycle) {
       return;
     }
 
-    if (hasLifetime('onInit')) {
+    if (hasCoreLifetime('onInit')) {
       onLifecycle(node.key, 'onInit', { nodeType: node.type });
     }
-    if (hasLifetime('onBeforeMount')) {
+    if (hasCoreLifetime('onBeforeMount')) {
       onLifecycle(node.key, 'onBeforeMount', { nodeType: node.type });
     }
-    if (hasLifetime('onMounted')) {
+    if (hasCoreLifetime('onMounted')) {
       onLifecycle(node.key, 'onMounted', { nodeType: node.type });
     }
 
     return () => {
-      if (hasLifetime('onBeforeUnmount')) {
+      if (hasCoreLifetime('onBeforeUnmount')) {
         onLifecycle(node.key, 'onBeforeUnmount', { nodeType: node.type });
       }
-      if (hasLifetime('onUnmounted')) {
+      if (hasCoreLifetime('onUnmounted')) {
         onLifecycle(node.key, 'onUnmounted', { nodeType: node.type });
       }
     };
-  }, [hasLifetime, node.key, node.type, onLifecycle]);
+  }, [hasCoreLifetime, node.key, node.type, onLifecycle]);
 
   React.useEffect(() => {
     if (!onLifecycle) {
@@ -418,13 +434,13 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) 
       return;
     }
 
-    if (hasLifetime('onBeforeUpdate')) {
+    if (hasCoreLifetime('onBeforeUpdate')) {
       onLifecycle(node.key, 'onBeforeUpdate', { nodeType: node.type });
     }
-    if (hasLifetime('onUpdated')) {
+    if (hasCoreLifetime('onUpdated')) {
       onLifecycle(node.key, 'onUpdated', { nodeType: node.type });
     }
-  }, [hasLifetime, node.children, node.key, node.label, node.props, node.type, onLifecycle]);
+  }, [hasCoreLifetime, node.children, node.key, node.label, node.props, node.type, onLifecycle]);
 
   const visible = getBooleanProp(node, 'visible');
   if (visible === false) {
