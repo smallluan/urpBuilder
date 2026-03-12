@@ -1,19 +1,27 @@
 .preview-engine-page {
   width: 100%;
-  min-height: 100vh;
+  height: 100vh;
   background: #fff;
   margin: 0;
   padding: 0;
   box-sizing: border-box;
+  overflow: auto;
+  position: relative;
 }
 
 .preview-engine-canvas {
   width: 100%;
-  min-height: 100vh;
+  min-height: 100%;
   background: #fff;
   border: none;
   border-radius: 0;
   padding: 0;
   box-sizing: border-box;
   overflow: visible;
+}
+
+.preview-engine-page .preview-back-top {
+  position: absolute;
+  right: 24px;
+  bottom: 24px;
 }

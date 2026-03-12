@@ -1,5 +1,5 @@
 import React from 'react';
-import { Avatar, Button, Card, Col, Divider, Image, Row, Space, Switch, Swiper, Typography, Layout, Calendar, ColorPicker, TimePicker, TimeRangePicker, InputNumber, Slider, Steps, List, Link, Tabs } from 'tdesign-react';
+import { Avatar, Button, Card, Col, Divider, Image, Row, Space, Switch, Swiper, Typography, Layout, Calendar, ColorPicker, TimePicker, TimeRangePicker, InputNumber, Slider, Steps, List, Link, Tabs, BackTop } from 'tdesign-react';
 import type { UiTreeNode } from '../../CreateComponent/store/type';
 import { getNodeSlotKey, isSlotNode } from '../../CreateComponent/utils/slot';
 import { convertResponsiveConfigToTDesignProps, normalizeResponsiveConfig } from '../../CreateComponent/utils/gridResponsive';
@@ -283,6 +283,69 @@ const getStepsCurrentProp = (node: UiTreeNode, propName: string): string | numbe
 const getTabsListProp = (node: UiTreeNode) => normalizeTabsList(getProp(node, 'list'));
 const getTabsControlledValue = (node: UiTreeNode) => normalizeTabsValue(getProp(node, 'value'));
 const getTabsDefaultValue = (node: UiTreeNode) => normalizeTabsValue(getProp(node, 'defaultValue'));
+
+const getBackTopOffsetProp = (node: UiTreeNode, propName: string): [string | number, string | number] | undefined => {
+  const value = getProp(node, propName);
+
+  if (Array.isArray(value) && value.length >= 2) {
+    return [value[0] as string | number, value[1] as string | number];
+  }
+
+  if (typeof value === 'string') {
+    const chunks = value
+      .split(/,|，/)
+      .map((item) => item.trim())
+      .filter(Boolean);
+
+    if (chunks.length >= 2) {
+      return [chunks[0], chunks[1]];
+    }
+  }
+
+  return undefined;
+};
+
+const getBackTopVisibleHeightProp = (node: UiTreeNode, propName: string): string | number | undefined => {
+  const value = getProp(node, propName);
+
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value;
+  }
+
+  if (typeof value === 'string' && value.trim()) {
+    return value.trim();
+  }
+
+  return undefined;
+};
+
+const getBackTopTargetProp = (node: UiTreeNode, propName: string) => {
+  const target = getStringProp(node, propName);
+  return target || 'body';
+};
+
+const getBackTopContainerProp = () => {
+  return () => (document.querySelector('[data-preview-scroll-container="true"]') as HTMLElement | null) ?? document.body;
+};
+
+const getBackTopContentNode = (node: UiTreeNode) => {
+  const text = getTextProp(node, 'content');
+  const iconNode = renderNamedIcon(getStringProp(node, 'iconName'), {
+    size: getStringProp(node, 'size') === 'small' ? 16 : 20,
+    strokeWidth: 2,
+  });
+
+  if (!iconNode) {
+    return text || undefined;
+  }
+
+  return (
+    <span style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+      <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>{iconNode}</span>
+      {text ? <span>{text}</span> : null}
+    </span>
+  );
+};
 
 const getListDataSource = (node: UiTreeNode): ListRecord[] => {
   const value = getProp(node, 'dataSource');
@@ -661,6 +724,25 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) 
         </div>
       );
       }
+    case 'BackTop':
+      return (
+        <div style={mergeStyle()}>
+          <BackTop
+            className="preview-back-top"
+            content={getBackTopContentNode(node)}
+            duration={getFiniteNumberProp(node, 'duration')}
+            offset={getBackTopOffsetProp(node, 'offset') as any}
+            shape={getStringProp(node, 'shape') as any}
+            size={getStringProp(node, 'size') as any}
+            target={getBackTopTargetProp(node, 'target') as any}
+            container={getBackTopContainerProp() as any}
+            theme={getStringProp(node, 'theme') as any}
+            visibleHeight={getBackTopVisibleHeightProp(node, 'visibleHeight') as any}
+            style={mergeStyle()}
+            onClick={(context) => emitInteractionLifecycle('onClick', context)}
+          />
+        </div>
+      );
     case 'Icon':
       {
       const iconNode = renderNamedIcon(getStringProp(node, 'iconName'), {

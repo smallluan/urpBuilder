@@ -128,6 +128,67 @@ const componentCatalog = [
     lifetimes: ['onClick']
   },
   {
+    type: 'BackTop',
+    name: '返回顶部',
+    props: {
+      content: {
+        name: '内容',
+        value: '返回顶部',
+        editType: 'input',
+      },
+      iconName: {
+        name: '图标',
+        value: '',
+        editType: 'iconSelect',
+      },
+      duration: {
+        name: '回顶时长(ms)',
+        value: 200,
+        editType: 'inputNumber',
+      },
+      offset: {
+        name: '位置偏移(offset)',
+        value: '24px,80px',
+        editType: 'input',
+      },
+      shape: {
+        name: '形状',
+        value: 'square',
+        editType: 'select',
+        payload: {
+          options: ['circle', 'square'],
+        },
+      },
+      size: {
+        name: '尺寸',
+        value: 'medium',
+        editType: 'select',
+        payload: {
+          options: ['medium', 'small'],
+        },
+      },
+      theme: {
+        name: '主题',
+        value: 'light',
+        editType: 'select',
+        payload: {
+          options: ['light', 'primary', 'dark'],
+        },
+      },
+      target: {
+        name: '滚动目标(target)',
+        value: 'body',
+        editType: 'input',
+      },
+      visibleHeight: {
+        name: '出现阈值',
+        value: 0,
+        editType: 'input',
+      },
+    },
+    lifetimes: ['onClick'],
+  },
+  {
     type: 'Icon',
     name: '图标',
     props: {

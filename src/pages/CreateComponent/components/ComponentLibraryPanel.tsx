@@ -25,6 +25,7 @@ import {
   SlidersHorizontal,
   ListOrdered,
   Star,
+  ArrowUpToLine,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import componentCatalog from '../../../config/componentCatalog';
@@ -35,7 +36,7 @@ interface ComponentLibraryPanelProps {
   onSelect: (name: string) => void;
 }
 
-type ComponentCategory = 'layout' | 'text' | 'display' | 'action';
+type ComponentCategory = 'layout' | 'text' | 'display' | 'action' | 'navigation';
 
 interface CategoryMeta {
   label: string;
@@ -59,9 +60,13 @@ const CATEGORY_META_MAP: Record<ComponentCategory, CategoryMeta> = {
     label: '展示类',
     Icon: ImageIcon,
   },
+  navigation: {
+    label: '导航类',
+    Icon: ArrowUpToLine,
+  },
 };
 
-const CATEGORY_ORDER: ComponentCategory[] = ['action', 'layout', 'display', 'text'];
+const CATEGORY_ORDER: ComponentCategory[] = ['action', 'layout', 'display', 'text', 'navigation'];
 
 const getCategoryByType = (type: string): ComponentCategory => {
   if (type.startsWith('Typography.')) {
@@ -101,6 +106,10 @@ const getCategoryByType = (type: string): ComponentCategory => {
     return 'layout';
   }
 
+  if (type === 'BackTop') {
+    return 'navigation';
+  }
+
   return 'action';
 };
 
@@ -121,6 +130,10 @@ const getCategoryIcon = (category: ComponentCategory) => {
     return MousePointerClick;
   }
 
+  if (category === 'navigation') {
+    return ArrowUpToLine;
+  }
+
   return Boxes;
 };
 
@@ -128,6 +141,7 @@ const getIconByType = (type: string) => {
   const iconMap: Record<string, any> = {
     Button: MousePointerClick,
     Link: Link2,
+    BackTop: ArrowUpToLine,
     Icon: Star,
     Space: GripHorizontal,
     'Grid.Row': Rows3,
@@ -186,6 +200,7 @@ const ComponentLibraryPanel: React.FC<ComponentLibraryPanelProps> = ({ selectedN
       layout: [],
       display: [],
       text: [],
+      navigation: [],
     });
   }, [filteredCatalog]);
 

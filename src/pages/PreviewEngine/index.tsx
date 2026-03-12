@@ -64,7 +64,7 @@ const PreviewEngine: React.FC = () => {
   }, []);
 
   return (
-    <div className="preview-engine-page">
+    <div className="preview-engine-page" data-preview-scroll-container="true">
       <div className="preview-engine-canvas" data-preview-page>
         {(renderTree.children ?? []).map((child) => (
           <PreviewRenderer key={child.key} node={child} onLifecycle={handleLifecycle} />

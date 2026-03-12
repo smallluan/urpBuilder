@@ -1,5 +1,5 @@
 import React from 'react';
-import { Button, Space, Row, Col, Card, Divider, Typography, Image, Avatar, Switch, Swiper, Layout, Calendar, ColorPicker, TimePicker, TimeRangePicker, InputNumber, Slider, Steps, List, Link, Tabs } from 'tdesign-react';
+import { Button, Space, Row, Col, Card, Divider, Typography, Image, Avatar, Switch, Swiper, Layout, Calendar, ColorPicker, TimePicker, TimeRangePicker, InputNumber, Slider, Steps, List, Link, Tabs, BackTop } from 'tdesign-react';
 import DropArea from '../../../components/DropArea';
 import type { UiDropDataHandler, UiTreeNode } from '../store/type';
 import { useCreateComponentStore } from '../store';
@@ -523,6 +523,69 @@ export default function CommonComponent(properties: CommonComponentProps) {
   const getTabsControlledValue = () => normalizeTabsValue(getProp('value'));
   const getTabsDefaultValue = () => normalizeTabsValue(getProp('defaultValue'));
 
+  const getBackTopOffsetProp = (propName: string): [string | number, string | number] | undefined => {
+    const value = getProp(propName);
+
+    if (Array.isArray(value) && value.length >= 2) {
+      return [value[0] as string | number, value[1] as string | number];
+    }
+
+    if (typeof value === 'string') {
+      const chunks = value
+        .split(/,|，/)
+        .map((item) => item.trim())
+        .filter(Boolean);
+
+      if (chunks.length >= 2) {
+        return [chunks[0], chunks[1]];
+      }
+    }
+
+    return undefined;
+  };
+
+  const getBackTopVisibleHeightProp = (propName: string): string | number | undefined => {
+    const value = getProp(propName);
+
+    if (typeof value === 'number' && Number.isFinite(value)) {
+      return value;
+    }
+
+    if (typeof value === 'string' && value.trim()) {
+      return value.trim();
+    }
+
+    return undefined;
+  };
+
+  const getBackTopTargetProp = (propName: string) => {
+    const target = getStringProp(propName);
+    return target || 'body';
+  };
+
+  const getBackTopContainerProp = () => {
+    return () => (document.querySelector('[data-builder-scroll-container="true"]') as HTMLElement | null) ?? document.body;
+  };
+
+  const getBackTopContentNode = () => {
+    const text = getStringProp('content');
+    const iconNode = renderNamedIcon(getStringProp('iconName'), {
+      size: getStringProp('size') === 'small' ? 16 : 20,
+      strokeWidth: 2,
+    });
+
+    if (!iconNode) {
+      return text || undefined;
+    }
+
+    return (
+      <span style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+        <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>{iconNode}</span>
+        {text ? <span>{text}</span> : null}
+      </span>
+    );
+  };
+
   const handleActivateSelf = (event: React.MouseEvent<HTMLElement>) => {
     event.stopPropagation();
     if (!data?.key) {
@@ -652,6 +715,24 @@ export default function CommonComponent(properties: CommonComponentProps) {
         </ActivateWrapper>
       );
       }
+    case 'BackTop':
+      return (
+        <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf}>
+          <BackTop
+            className="builder-back-top"
+            content={getBackTopContentNode()}
+            duration={getFiniteNumberProp('duration')}
+            offset={getBackTopOffsetProp('offset') as any}
+            shape={getStringProp('shape') as any}
+            size={getStringProp('size') as any}
+            target={getBackTopTargetProp('target') as any}
+            container={getBackTopContainerProp() as any}
+            theme={getStringProp('theme') as any}
+            visibleHeight={getBackTopVisibleHeightProp('visibleHeight') as any}
+            style={mergeStyle()}
+          />
+        </ActivateWrapper>
+      );
     case 'Icon':
       {
       const iconNode = renderNamedIcon(getStringProp('iconName'), {

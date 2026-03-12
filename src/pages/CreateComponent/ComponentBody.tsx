@@ -55,13 +55,14 @@ const ComponentBody: React.FC = () => {
       transition: 'width 0.3s ease',
       boxSizing: 'content-box', // Ensure border doesn't eat into width if strict specific
       display: 'flex',
-      overflow: 'scroll'
+      overflow: 'auto',
+      position: 'relative'
     };
   }, [screenSize, autoWidth]);
 
   return (
     <div className="component-body">
-      <div className="simulator-container" style={simulatorStyle}>
+      <div className="simulator-container" data-builder-scroll-container="true" style={simulatorStyle}>
         <DropArea
           className="drop-area-root"
           style={{ flex: 1, height: '100%' }}
