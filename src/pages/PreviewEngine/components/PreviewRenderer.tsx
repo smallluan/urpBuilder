@@ -1023,15 +1023,17 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) 
         <div style={mergeStyle()}>
           <Swiper autoplay height={height} style={{ width: '100%' }}>
             {imageList.map((imageItem, index) => (
-              <div key={`${node.key}-swiper-${index}`} style={{ width: '100%', height: '100%' }}>
-                <Image
-                  src={imageItem.src}
-                  fallback={imageItem.fallback || undefined}
-                  lazy={imageItem.lazy}
-                  fit={imageItem.objectFit as any}
-                  style={{ width: '100%', height: '100%', objectPosition: imageItem.objectPosition }}
-                />
-              </div>
+              <Swiper.SwiperItem key={`${node.key}-swiper-${index}`}>
+                <div style={{ width: '100%', height: '100%' }}>
+                  <Image
+                    src={imageItem.src}
+                    fallback={imageItem.fallback || undefined}
+                    lazy={imageItem.lazy}
+                    fit={imageItem.objectFit as any}
+                    style={{ width: '100%', height: '100%', objectPosition: imageItem.objectPosition }}
+                  />
+                </div>
+              </Swiper.SwiperItem>
             ))}
           </Swiper>
         </div>
