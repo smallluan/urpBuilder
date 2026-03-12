@@ -110,6 +110,15 @@ const getCategoryByType = (type: string): ComponentCategory => {
     return 'navigation';
   }
 
+  if (
+    type === 'HeadMenu'
+    || type === 'Menu.Submenu'
+    || type === 'Menu.Item'
+    || type === 'Menu.Group'
+  ) {
+    return 'navigation';
+  }
+
   return 'action';
 };
 
@@ -142,6 +151,10 @@ const getIconByType = (type: string) => {
     Button: MousePointerClick,
     Link: Link2,
     BackTop: ArrowUpToLine,
+    HeadMenu: ListOrdered,
+    'Menu.Submenu': ListOrdered,
+    'Menu.Item': ListOrdered,
+    'Menu.Group': ListOrdered,
     Icon: Star,
     Space: GripHorizontal,
     'Grid.Row': Rows3,

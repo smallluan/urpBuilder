@@ -635,6 +635,131 @@ const componentCatalog = [
     lifetimes: ['onAdd', 'onChange', 'onDragSort', 'onRemove'],
   },
   {
+    type: 'HeadMenu',
+    name: '顶部菜单',
+    props: {
+      expandType: {
+        name: '展开方式',
+        value: 'normal',
+        editType: 'select',
+        payload: {
+          options: ['normal', 'popup'],
+        },
+      },
+      expanded: {
+        name: '展开项(expanded)',
+        value: '',
+        editType: 'input',
+      },
+      defaultExpanded: {
+        name: '默认展开(defaultExpanded)',
+        value: '',
+        editType: 'input',
+      },
+      theme: {
+        name: '主题',
+        value: 'light',
+        editType: 'select',
+        payload: {
+          options: ['light', 'dark'],
+        },
+      },
+      value: {
+        name: '激活项(value)',
+        value: '',
+        editType: 'input',
+      },
+      defaultValue: {
+        name: '默认激活(defaultValue)',
+        value: '',
+        editType: 'input',
+      },
+    },
+    lifetimes: ['onChange', 'onExpand'],
+  },
+  {
+    type: 'Menu.Submenu',
+    name: '子菜单',
+    props: {
+      title: {
+        name: '标题',
+        value: '子菜单',
+        editType: 'input',
+      },
+      content: {
+        name: '内容',
+        value: '',
+        editType: 'input',
+      },
+      value: {
+        name: '标识(value)',
+        value: '',
+        editType: 'input',
+      },
+      iconName: {
+        name: '图标',
+        value: '',
+        editType: 'iconSelect',
+      },
+      disabled: {
+        name: '禁用',
+        value: false,
+        editType: 'switch',
+      },
+    },
+  },
+  {
+    type: 'Menu.Item',
+    name: '菜单项',
+    props: {
+      content: {
+        name: '内容',
+        value: '菜单项',
+        editType: 'input',
+      },
+      value: {
+        name: '标识(value)',
+        value: '',
+        editType: 'input',
+      },
+      iconName: {
+        name: '图标',
+        value: '',
+        editType: 'iconSelect',
+      },
+      href: {
+        name: '跳转地址',
+        value: '',
+        editType: 'input',
+      },
+      target: {
+        name: '打开方式',
+        value: '_self',
+        editType: 'select',
+        payload: {
+          options: ['_self', '_blank', '_parent', '_top'],
+        },
+      },
+      disabled: {
+        name: '禁用',
+        value: false,
+        editType: 'switch',
+      },
+    },
+    lifetimes: ['onClick'],
+  },
+  {
+    type: 'Menu.Group',
+    name: '菜单分组',
+    props: {
+      title: {
+        name: '分组标题',
+        value: '分组标题',
+        editType: 'input',
+      },
+    },
+  },
+  {
     type: 'Card',
     name: '卡片',
     props: {

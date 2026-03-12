@@ -123,6 +123,87 @@ const createStepsItemNode = (index: number): UiTreeNode => ({
   children: [],
 });
 
+const createHeadMenuItemNode = (label: string, value: string): UiTreeNode => ({
+  key: uuidv4(),
+  label: '菜单项',
+  type: 'Menu.Item',
+  props: {
+    content: {
+      name: '内容',
+      value: label,
+      editType: 'input',
+    },
+    value: {
+      name: '标识(value)',
+      value,
+      editType: 'input',
+    },
+    iconName: {
+      name: '图标',
+      value: '',
+      editType: 'iconSelect',
+    },
+    href: {
+      name: '跳转地址',
+      value: '',
+      editType: 'input',
+    },
+    target: {
+      name: '打开方式',
+      value: '_self',
+      editType: 'select',
+      payload: {
+        options: ['_self', '_blank', '_parent', '_top'],
+      },
+    },
+    disabled: {
+      name: '禁用',
+      value: false,
+      editType: 'switch',
+    },
+  },
+  lifetimes: ['onClick'],
+  children: [],
+});
+
+const createHeadSubMenuNode = (): UiTreeNode => ({
+  key: uuidv4(),
+  label: '子菜单',
+  type: 'Menu.Submenu',
+  props: {
+    title: {
+      name: '标题',
+      value: '更多',
+      editType: 'input',
+    },
+    content: {
+      name: '内容',
+      value: '',
+      editType: 'input',
+    },
+    value: {
+      name: '标识(value)',
+      value: 'more',
+      editType: 'input',
+    },
+    iconName: {
+      name: '图标',
+      value: '',
+      editType: 'iconSelect',
+    },
+    disabled: {
+      name: '禁用',
+      value: false,
+      editType: 'switch',
+    },
+  },
+  lifetimes: [],
+  children: [
+    createHeadMenuItemNode('帮助中心', 'help'),
+    createHeadMenuItemNode('关于我们', 'about'),
+  ],
+});
+
 const buildInitialChildren = (type: string, props?: Record<string, unknown>): UiTreeNode[] => {
   if (type === 'Card') {
     return [
@@ -143,6 +224,14 @@ const buildInitialChildren = (type: string, props?: Record<string, unknown>): Ui
     const listSchema = (props?.list ?? null) as { value?: unknown } | null;
     const tabsList = normalizeTabsList(listSchema?.value);
     return tabsList.map((item) => createSlotNode(getTabsPanelSlotKey(item.value), `${item.label} 面板`));
+  }
+
+  if (type === 'HeadMenu') {
+    return [
+      createHeadMenuItemNode('首页', 'home'),
+      createHeadMenuItemNode('文档', 'docs'),
+      createHeadSubMenuNode(),
+    ];
   }
 
   return [];

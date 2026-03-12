@@ -1,5 +1,5 @@
 import React from 'react';
-import { Button, Space, Row, Col, Card, Divider, Typography, Image, Avatar, Switch, Swiper, Layout, Calendar, ColorPicker, TimePicker, TimeRangePicker, InputNumber, Slider, Steps, List, Link, Tabs, BackTop } from 'tdesign-react';
+import { Button, Space, Row, Col, Card, Divider, Typography, Image, Avatar, Switch, Swiper, Layout, Calendar, ColorPicker, TimePicker, TimeRangePicker, InputNumber, Slider, Steps, List, Link, Tabs, BackTop, Menu } from 'tdesign-react';
 import DropArea from '../../../components/DropArea';
 import type { UiDropDataHandler, UiTreeNode } from '../store/type';
 import { useCreateComponentStore } from '../store';
@@ -523,6 +523,68 @@ export default function CommonComponent(properties: CommonComponentProps) {
   const getTabsControlledValue = () => normalizeTabsValue(getProp('value'));
   const getTabsDefaultValue = () => normalizeTabsValue(getProp('defaultValue'));
 
+  const getMenuValueProp = (propName: string): string | number | undefined => {
+    const value = getProp(propName);
+    if (typeof value === 'number' && Number.isFinite(value)) {
+      return value;
+    }
+
+    if (typeof value === 'string') {
+      const text = value.trim();
+      if (!text) {
+        return undefined;
+      }
+
+      const parsed = Number(text);
+      return Number.isFinite(parsed) ? parsed : text;
+    }
+
+    return undefined;
+  };
+
+  const getMenuValueArrayProp = (propName: string): Array<string | number> | undefined => {
+    const value = getProp(propName);
+
+    if (Array.isArray(value)) {
+      const normalized = value
+        .map((item) => {
+          if (typeof item === 'number' && Number.isFinite(item)) {
+            return item;
+          }
+
+          if (typeof item === 'string') {
+            const text = item.trim();
+            if (!text) {
+              return undefined;
+            }
+
+            const parsed = Number(text);
+            return Number.isFinite(parsed) ? parsed : text;
+          }
+
+          return undefined;
+        })
+        .filter((item): item is string | number => typeof item !== 'undefined');
+
+      return normalized.length ? normalized : undefined;
+    }
+
+    if (typeof value === 'string') {
+      const normalized = value
+        .split(/\r?\n|,|，/)
+        .map((item) => item.trim())
+        .filter(Boolean)
+        .map((item) => {
+          const parsed = Number(item);
+          return Number.isFinite(parsed) ? parsed : item;
+        });
+
+      return normalized.length ? normalized : undefined;
+    }
+
+    return undefined;
+  };
+
   const getBackTopOffsetProp = (propName: string): [string | number, string | number] | undefined => {
     const value = getProp(propName);
 
@@ -669,6 +731,99 @@ export default function CommonComponent(properties: CommonComponentProps) {
   const cardBodySlotNode = getCardSlotNode('body');
   const hasCardSlotStructure = Boolean(cardHeaderSlotNode && cardBodySlotNode);
 
+  const renderBuilderMenuNodes = (nodes?: UiTreeNode[]): React.ReactNode => {
+    return (nodes ?? []).map((child) => {
+      const childType = typeof child.type === 'string' ? child.type.trim() : child.type;
+      const getChildProp = (propName: string) => {
+        const prop = child.props?.[propName] as { value?: unknown } | undefined;
+        return prop?.value;
+      };
+      const getChildStringProp = (propName: string) => {
+        const value = getChildProp(propName);
+        return typeof value === 'string' ? value : undefined;
+      };
+      const getChildTextProp = (propName: string) => {
+        const value = getChildProp(propName);
+        if (typeof value === 'string') {
+          return value;
+        }
+        if (typeof value === 'number' || typeof value === 'boolean') {
+          return String(value);
+        }
+        return undefined;
+      };
+      const getChildBooleanProp = (propName: string) => {
+        const value = getChildProp(propName);
+        return typeof value === 'boolean' ? value : undefined;
+      };
+
+      if (childType === 'Menu.Submenu') {
+        const iconNode = renderNamedIcon(getChildStringProp('iconName'));
+        const submenuValue = getChildStringProp('value')?.trim() || child.key;
+        return (
+          <Menu.SubMenu
+            key={child.key}
+            value={submenuValue}
+            title={getChildTextProp('title') || undefined}
+            content={getChildTextProp('content') || undefined}
+            icon={iconNode as any}
+            disabled={getChildBooleanProp('disabled')}
+          >
+            <DropArea
+              data={child}
+              onDropData={onDropData}
+              emptyText="拖拽菜单节点到子菜单"
+              compactWhenFilled
+              isTreeNode
+              selectable={false}
+            >
+              {renderBuilderMenuNodes(child.children)}
+            </DropArea>
+          </Menu.SubMenu>
+        );
+      }
+
+      if (childType === 'Menu.Group') {
+        return (
+          <Menu.MenuGroup key={child.key} title={getChildTextProp('title') || undefined}>
+            <DropArea
+              data={child}
+              onDropData={onDropData}
+              emptyText="拖拽菜单项到分组"
+              compactWhenFilled
+              isTreeNode
+              selectable={false}
+            >
+              {renderBuilderMenuNodes(child.children)}
+            </DropArea>
+          </Menu.MenuGroup>
+        );
+      }
+
+      if (childType === 'Menu.Item') {
+        const iconNode = renderNamedIcon(getChildStringProp('iconName'));
+        const itemValue = getChildStringProp('value')?.trim() || child.key;
+        return (
+          <Menu.MenuItem
+            key={child.key}
+            value={itemValue}
+            content={getChildTextProp('content') || undefined}
+            icon={iconNode as any}
+            href={getChildStringProp('href') || undefined}
+            target={getChildStringProp('target') as any}
+            disabled={getChildBooleanProp('disabled')}
+            onClick={(context) => {
+              context.e.stopPropagation();
+              setActiveNode(child.key);
+            }}
+          />
+        );
+      }
+
+      return null;
+    });
+  };
+
   switch(normalizedType) {
     case 'Button':
       {
@@ -733,6 +888,34 @@ export default function CommonComponent(properties: CommonComponentProps) {
           />
         </ActivateWrapper>
       );
+    case 'HeadMenu':
+      return (
+        <DropArea data={data} onDropData={onDropData} emptyText="拖拽菜单节点到顶部菜单" compactWhenFilled isTreeNode>
+          <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf}>
+            <Menu.HeadMenu
+              expandType={getStringProp('expandType') as any}
+              expanded={getMenuValueArrayProp('expanded') as any}
+              defaultExpanded={getMenuValueArrayProp('defaultExpanded') as any}
+              theme={getStringProp('theme') as any}
+              value={getMenuValueProp('value') as any}
+              defaultValue={getMenuValueProp('defaultValue') as any}
+              style={mergeStyle()}
+              onChange={() => {
+                // 搭建态仅展示，不在此处驱动运行时逻辑
+              }}
+              onExpand={() => {
+                // 搭建态仅展示，不在此处驱动运行时逻辑
+              }}
+            >
+              {renderBuilderMenuNodes(data?.children)}
+            </Menu.HeadMenu>
+          </ActivateWrapper>
+        </DropArea>
+      );
+    case 'Menu.Submenu':
+    case 'Menu.Item':
+    case 'Menu.Group':
+      return null;
     case 'Icon':
       {
       const iconNode = renderNamedIcon(getStringProp('iconName'), {

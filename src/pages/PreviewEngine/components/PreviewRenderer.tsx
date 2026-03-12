@@ -1,5 +1,5 @@
 import React from 'react';
-import { Avatar, Button, Card, Col, Divider, Image, Row, Space, Switch, Swiper, Typography, Layout, Calendar, ColorPicker, TimePicker, TimeRangePicker, InputNumber, Slider, Steps, List, Link, Tabs, BackTop } from 'tdesign-react';
+import { Avatar, Button, Card, Col, Divider, Image, Row, Space, Switch, Swiper, Typography, Layout, Calendar, ColorPicker, TimePicker, TimeRangePicker, InputNumber, Slider, Steps, List, Link, Tabs, BackTop, Menu } from 'tdesign-react';
 import type { UiTreeNode } from '../../CreateComponent/store/type';
 import { getNodeSlotKey, isSlotNode } from '../../CreateComponent/utils/slot';
 import { convertResponsiveConfigToTDesignProps, normalizeResponsiveConfig } from '../../CreateComponent/utils/gridResponsive';
@@ -283,6 +283,68 @@ const getStepsCurrentProp = (node: UiTreeNode, propName: string): string | numbe
 const getTabsListProp = (node: UiTreeNode) => normalizeTabsList(getProp(node, 'list'));
 const getTabsControlledValue = (node: UiTreeNode) => normalizeTabsValue(getProp(node, 'value'));
 const getTabsDefaultValue = (node: UiTreeNode) => normalizeTabsValue(getProp(node, 'defaultValue'));
+
+const getMenuValueProp = (node: UiTreeNode, propName: string): string | number | undefined => {
+  const value = getProp(node, propName);
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value;
+  }
+
+  if (typeof value === 'string') {
+    const text = value.trim();
+    if (!text) {
+      return undefined;
+    }
+
+    const parsed = Number(text);
+    return Number.isFinite(parsed) ? parsed : text;
+  }
+
+  return undefined;
+};
+
+const getMenuValueArrayProp = (node: UiTreeNode, propName: string): Array<string | number> | undefined => {
+  const value = getProp(node, propName);
+
+  if (Array.isArray(value)) {
+    const normalized = value
+      .map((item) => {
+        if (typeof item === 'number' && Number.isFinite(item)) {
+          return item;
+        }
+
+        if (typeof item === 'string') {
+          const text = item.trim();
+          if (!text) {
+            return undefined;
+          }
+
+          const parsed = Number(text);
+          return Number.isFinite(parsed) ? parsed : text;
+        }
+
+        return undefined;
+      })
+      .filter((item): item is string | number => typeof item !== 'undefined');
+
+    return normalized.length ? normalized : undefined;
+  }
+
+  if (typeof value === 'string') {
+    const normalized = value
+      .split(/\r?\n|,|，/)
+      .map((item) => item.trim())
+      .filter(Boolean)
+      .map((item) => {
+        const parsed = Number(item);
+        return Number.isFinite(parsed) ? parsed : item;
+      });
+
+    return normalized.length ? normalized : undefined;
+  }
+
+  return undefined;
+};
 
 const getBackTopOffsetProp = (node: UiTreeNode, propName: string): [string | number, string | number] | undefined => {
   const value = getProp(node, propName);
@@ -676,6 +738,87 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) 
     setTabsInnerValue(undefined);
   }, [node.key]);
 
+  const renderPreviewMenuNodes = (nodes?: UiTreeNode[]): React.ReactNode => {
+    return (nodes ?? []).map((child) => {
+      const childType = typeof child.type === 'string' ? child.type.trim() : child.type;
+      const getChildProp = (propName: string) => {
+        const prop = child.props?.[propName] as { value?: unknown } | undefined;
+        return prop?.value;
+      };
+      const getChildStringProp = (propName: string) => {
+        const value = getChildProp(propName);
+        return typeof value === 'string' ? value : undefined;
+      };
+      const getChildTextProp = (propName: string) => {
+        const value = getChildProp(propName);
+        if (typeof value === 'string') {
+          return value;
+        }
+        if (typeof value === 'number' || typeof value === 'boolean') {
+          return String(value);
+        }
+        return undefined;
+      };
+      const getChildBooleanProp = (propName: string) => {
+        const value = getChildProp(propName);
+        return typeof value === 'boolean' ? value : undefined;
+      };
+
+      if (childType === 'Menu.Submenu') {
+        const iconNode = renderNamedIcon(getChildStringProp('iconName'));
+        const submenuValue = getChildStringProp('value')?.trim() || child.key;
+        return (
+          <Menu.SubMenu
+            key={child.key}
+            value={submenuValue}
+            title={getChildTextProp('title') || undefined}
+            content={getChildTextProp('content') || undefined}
+            icon={iconNode as any}
+            disabled={getChildBooleanProp('disabled')}
+          >
+            {renderPreviewMenuNodes(child.children)}
+          </Menu.SubMenu>
+        );
+      }
+
+      if (childType === 'Menu.Group') {
+        return (
+          <Menu.MenuGroup key={child.key} title={getChildTextProp('title') || undefined}>
+            {renderPreviewMenuNodes(child.children)}
+          </Menu.MenuGroup>
+        );
+      }
+
+      if (childType === 'Menu.Item') {
+        const iconNode = renderNamedIcon(getChildStringProp('iconName'));
+        const itemValue = getChildStringProp('value')?.trim() || child.key;
+        return (
+          <Menu.MenuItem
+            key={child.key}
+            value={itemValue}
+            content={getChildTextProp('content') || undefined}
+            icon={iconNode as any}
+            href={getChildStringProp('href') || undefined}
+            target={getChildStringProp('target') as any}
+            disabled={getChildBooleanProp('disabled')}
+            onClick={(context) => {
+              if (!onLifecycle) {
+                return;
+              }
+
+              onLifecycle(child.key, 'onClick', {
+                nodeType: child.type,
+                ...context,
+              });
+            }}
+          />
+        );
+      }
+
+      return null;
+    });
+  };
+
   switch (type) {
     case 'Button': {
       const isBlockButton = getBooleanProp(node, 'block') === true;
@@ -743,6 +886,28 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) 
           />
         </div>
       );
+    case 'HeadMenu':
+      return (
+        <div style={mergeStyle()}>
+          <Menu.HeadMenu
+            expandType={getStringProp(node, 'expandType') as any}
+            expanded={getMenuValueArrayProp(node, 'expanded') as any}
+            defaultExpanded={getMenuValueArrayProp(node, 'defaultExpanded') as any}
+            theme={getStringProp(node, 'theme') as any}
+            value={getMenuValueProp(node, 'value') as any}
+            defaultValue={getMenuValueProp(node, 'defaultValue') as any}
+            style={mergeStyle()}
+            onChange={(value) => emitInteractionLifecycle('onChange', { value })}
+            onExpand={(value) => emitInteractionLifecycle('onExpand', { value })}
+          >
+            {renderPreviewMenuNodes(node.children)}
+          </Menu.HeadMenu>
+        </div>
+      );
+    case 'Menu.Submenu':
+    case 'Menu.Item':
+    case 'Menu.Group':
+      return null;
     case 'Icon':
       {
       const iconNode = renderNamedIcon(getStringProp(node, 'iconName'), {

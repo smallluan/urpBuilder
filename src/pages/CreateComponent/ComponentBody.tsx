@@ -18,12 +18,30 @@ const ComponentBody: React.FC = () => {
 
     const droppedType = typeof data.type === 'string' ? data.type.trim() : '';
     const parentType = typeof parent.type === 'string' ? parent.type.trim() : '';
+    const menuNodeTypes = new Set(['Menu.Submenu', 'Menu.Item', 'Menu.Group']);
+    const menuContainerTypes = new Set(['HeadMenu', 'Menu.Submenu', 'Menu.Group']);
 
     if (parentType === 'Steps' && droppedType !== 'Steps.Item') {
       return;
     }
 
     if (droppedType === 'Steps.Item' && parentType !== 'Steps') {
+      return;
+    }
+
+    if (parentType === 'HeadMenu' && !menuNodeTypes.has(droppedType)) {
+      return;
+    }
+
+    if (parentType === 'Menu.Submenu' && !menuNodeTypes.has(droppedType)) {
+      return;
+    }
+
+    if (parentType === 'Menu.Group' && droppedType !== 'Menu.Item') {
+      return;
+    }
+
+    if (menuNodeTypes.has(droppedType) && !menuContainerTypes.has(parentType)) {
       return;
     }
 
