@@ -15,8 +15,15 @@ import {
   type GridBreakpoint,
   type GridResponsiveConfig,
 } from '../utils/gridResponsive';
+import {
+  getIconOptionsByFilters,
+  ICON_INITIAL_FILTER_OPTIONS,
+  ICON_QUICK_FILTER_OPTIONS,
+  type IconInitialFilterKey,
+  type IconQuickFilterKey,
+} from '../../../constants/iconRegistry';
 
-type EditType = 'switch' | 'input' | 'inputNumber' | 'select' | 'swiperImages' | 'jsonCode';
+type EditType = 'switch' | 'input' | 'inputNumber' | 'select' | 'iconSelect' | 'swiperImages' | 'jsonCode';
 
 interface SwiperImageRow {
   id: string;
@@ -141,7 +148,7 @@ const LIST_ITEM_META_PROP_KEYS = new Set([
 
 const resolveEditType = (schema: ComponentPropSchema): EditType => {
   const type = (schema.editType ?? schema.editInput) as EditType | string | undefined;
-  if (type === 'switch' || type === 'input' || type === 'inputNumber' || type === 'select' || type === 'swiperImages' || type === 'jsonCode') {
+  if (type === 'switch' || type === 'input' || type === 'inputNumber' || type === 'select' || type === 'iconSelect' || type === 'swiperImages' || type === 'jsonCode') {
     return type;
   }
 
@@ -168,6 +175,8 @@ const ComponentConfigPanel: React.FC = () => {
   const [gridResponsiveDialogVisible, setGridResponsiveDialogVisible] = useState(false);
   const [gridResponsiveDraft, setGridResponsiveDraft] = useState<GridResponsiveConfig>({});
   const [activeBreakpoint, setActiveBreakpoint] = useState<GridBreakpoint>('xs');
+  const [iconQuickFilters, setIconQuickFilters] = useState<Record<string, IconQuickFilterKey>>({});
+  const [iconInitialFilters, setIconInitialFilters] = useState<Record<string, IconInitialFilterKey>>({});
   const [jsonCodeValue, setJsonCodeValue] = useState<CodeEditorValue>({
     label: 'JSON示例数据',
     language: 'json',
@@ -317,6 +326,51 @@ const ComponentConfigPanel: React.FC = () => {
           options={options}
           value={currentValue as string | number | undefined}
           onChange={(value) => updateActiveNodeProp(propKey, value)}
+        />
+      );
+    }
+
+    if (editType === 'iconSelect') {
+      const currentQuickFilter = iconQuickFilters[propKey] ?? 'all';
+      const currentInitialFilter = iconInitialFilters[propKey] ?? 'all';
+      const options = getIconOptionsByFilters(currentQuickFilter, currentInitialFilter);
+
+      return (
+        <Select
+          clearable
+          filterable
+          options={options}
+          value={typeof currentValue === 'string' && currentValue.trim() ? currentValue : undefined}
+          placeholder="先筛选，再搜索图标"
+          panelTopContent={(
+            <div style={{ display: 'grid', gap: 8, padding: '8px 8px 4px' }}>
+              <Select
+                size="small"
+                options={ICON_QUICK_FILTER_OPTIONS}
+                value={currentQuickFilter}
+                onChange={(value) => {
+                  const nextFilter = String(value ?? 'all') as IconQuickFilterKey;
+                  setIconQuickFilters((previous) => ({
+                    ...previous,
+                    [propKey]: nextFilter,
+                  }));
+                }}
+              />
+              <Select
+                size="small"
+                options={ICON_INITIAL_FILTER_OPTIONS}
+                value={currentInitialFilter}
+                onChange={(value) => {
+                  const nextFilter = String(value ?? 'all') as IconInitialFilterKey;
+                  setIconInitialFilters((previous) => ({
+                    ...previous,
+                    [propKey]: nextFilter,
+                  }));
+                }}
+              />
+            </div>
+          )}
+          onChange={(value) => updateActiveNodeProp(propKey, String(value ?? ''))}
         />
       );
     }

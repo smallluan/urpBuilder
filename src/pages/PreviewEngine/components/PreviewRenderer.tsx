@@ -5,6 +5,7 @@ import { getNodeSlotKey, isSlotNode } from '../../CreateComponent/utils/slot';
 import { convertResponsiveConfigToTDesignProps, normalizeResponsiveConfig } from '../../CreateComponent/utils/gridResponsive';
 import type { ComponentLifecycleHandler, ListRecord, SwiperImageItem } from '../../../types/component';
 import { CORE_LIFETIMES, LIST_PREVIEW_DATA } from '../../../constants/componentBuilder';
+import { renderNamedIcon } from '../../../constants/iconRegistry';
 
 interface PreviewRendererProps {
   node: UiTreeNode;
@@ -605,6 +606,8 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) 
   switch (type) {
     case 'Button': {
       const isBlockButton = getBooleanProp(node, 'block') === true;
+      const prefixIcon = renderNamedIcon(getStringProp(node, 'prefixIconName'));
+      const suffixIcon = renderNamedIcon(getStringProp(node, 'suffixIconName'));
       return (
         <div style={mergeStyle(isBlockButton ? { width: '100%' } : undefined)}>
           <Button
@@ -612,6 +615,8 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) 
             shape={getStringProp(node, 'shape') as any}
             size={getStringProp(node, 'size') as any}
             variant={getStringProp(node, 'variant') as any}
+            icon={prefixIcon as any}
+            suffix={suffixIcon as any}
             block={isBlockButton}
             style={mergeStyle(isBlockButton ? { width: '100%', display: 'flex' } : undefined)}
             onClick={() => emitInteractionLifecycle('onClick')}
@@ -622,6 +627,9 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) 
       );
     }
     case 'Link':
+      {
+      const prefixIcon = renderNamedIcon(getStringProp(node, 'prefixIconName'));
+      const suffixIcon = renderNamedIcon(getStringProp(node, 'suffixIconName'));
       return (
         <div style={mergeStyle()}>
           <Link
@@ -631,6 +639,8 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) 
             theme={getStringProp(node, 'theme') as any}
             size={getStringProp(node, 'size') as any}
             hover={getStringProp(node, 'hover') as any}
+            prefixIcon={prefixIcon as any}
+            suffixIcon={suffixIcon as any}
             underline={getBooleanProp(node, 'underline')}
             disabled={getBooleanProp(node, 'disabled')}
             onClick={(event) => {
@@ -640,6 +650,20 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) 
           />
         </div>
       );
+      }
+    case 'Icon':
+      {
+      const iconNode = renderNamedIcon(getStringProp(node, 'iconName'), {
+        size: getNumberProp(node, 'size') ?? 16,
+        strokeWidth: getNumberProp(node, 'strokeWidth') ?? 2,
+      });
+
+      return (
+        <div style={mergeStyle()}>
+          {iconNode}
+        </div>
+      );
+      }
     case 'Space': {
       const direction = getStringProp(node, 'direction') as 'horizontal' | 'vertical' | undefined;
       const isSpaceSplitEnabled = getBooleanProp(node, 'splitEnabled') === true;

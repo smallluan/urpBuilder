@@ -40,6 +40,16 @@ const componentCatalog = [
         value: '确定',
         editType: 'input'
       },
+      prefixIconName: {
+        name: '前置图标',
+        value: '',
+        editType: 'iconSelect'
+      },
+      suffixIconName: {
+        name: '后置图标',
+        value: '',
+        editType: 'iconSelect'
+      },
       block: {
         name: '块级元素',
         value: false,
@@ -94,6 +104,16 @@ const componentCatalog = [
           options: ['color', 'underline']
         }
       },
+      prefixIconName: {
+        name: '前置图标',
+        value: '',
+        editType: 'iconSelect'
+      },
+      suffixIconName: {
+        name: '后置图标',
+        value: '',
+        editType: 'iconSelect'
+      },
       underline: {
         name: '常显下划线',
         value: false,
@@ -106,6 +126,27 @@ const componentCatalog = [
       }
     },
     lifetimes: ['onClick']
+  },
+  {
+    type: 'Icon',
+    name: '图标',
+    props: {
+      iconName: {
+        name: '图标名称',
+        value: 'CircleHelp',
+        editType: 'iconSelect'
+      },
+      size: {
+        name: '图标尺寸',
+        value: 16,
+        editType: 'inputNumber'
+      },
+      strokeWidth: {
+        name: '线条粗细',
+        value: 2,
+        editType: 'inputNumber'
+      }
+    }
   },
   {
     type: 'Space',

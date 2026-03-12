@@ -11,6 +11,7 @@ import {
 } from '../utils/gridResponsive';
 import type { ListRecord, SwiperImageItem } from '../../../types/component';
 import { LIST_PREVIEW_DATA } from '../../../constants/componentBuilder';
+import { renderNamedIcon } from '../../../constants/iconRegistry';
 
 interface CommonComponentProps {
   type?: string;
@@ -594,6 +595,9 @@ export default function CommonComponent(properties: CommonComponentProps) {
 
   switch(normalizedType) {
     case 'Button':
+      {
+      const prefixIcon = renderNamedIcon(getStringProp('prefixIconName'));
+      const suffixIcon = renderNamedIcon(getStringProp('suffixIconName'));
       return (
         <ActivateWrapper style={mergeStyle(isBlockButton ? { width: '100%' } : undefined)} onActivate={handleActivateSelf}>
           <Button
@@ -601,6 +605,8 @@ export default function CommonComponent(properties: CommonComponentProps) {
             shape={getStringProp('shape') as any}
             size={getStringProp('size') as any}
             variant={getStringProp('variant') as any}
+            icon={prefixIcon as any}
+            suffix={suffixIcon as any}
             block={isBlockButton}
             style={mergeStyle(isBlockButton ? { width: '100%', display: 'flex' } : undefined)}
           >
@@ -608,7 +614,11 @@ export default function CommonComponent(properties: CommonComponentProps) {
           </Button>
         </ActivateWrapper>
       );
+      }
     case 'Link':
+      {
+      const prefixIcon = renderNamedIcon(getStringProp('prefixIconName'));
+      const suffixIcon = renderNamedIcon(getStringProp('suffixIconName'));
       return (
         <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf}>
           <Link
@@ -618,6 +628,8 @@ export default function CommonComponent(properties: CommonComponentProps) {
             theme={getStringProp('theme') as any}
             size={getStringProp('size') as any}
             hover={getStringProp('hover') as any}
+            prefixIcon={prefixIcon as any}
+            suffixIcon={suffixIcon as any}
             underline={getBooleanProp('underline')}
             disabled={getBooleanProp('disabled')}
             onClick={(event) => {
@@ -626,6 +638,20 @@ export default function CommonComponent(properties: CommonComponentProps) {
           />
         </ActivateWrapper>
       );
+      }
+    case 'Icon':
+      {
+      const iconNode = renderNamedIcon(getStringProp('iconName'), {
+        size: getNumberProp('size') ?? 16,
+        strokeWidth: getNumberProp('strokeWidth') ?? 2,
+      });
+
+      return (
+        <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf}>
+          {iconNode}
+        </ActivateWrapper>
+      );
+      }
     case 'Space':
       return (
         <DropArea data={data} onDropData={onDropData}>

@@ -3,6 +3,7 @@ import type { ListRecord } from '../types/component';
 export const LIST_TEMPLATE_ALLOWED_TYPES = new Set([
   'Image',
   'Avatar',
+  'Icon',
   'Button',
   'Link',
   'Typography.Title',

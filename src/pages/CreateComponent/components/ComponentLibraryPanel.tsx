@@ -24,6 +24,7 @@ import {
   Link2,
   SlidersHorizontal,
   ListOrdered,
+  Star,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import componentCatalog from '../../../config/componentCatalog';
@@ -84,6 +85,7 @@ const getCategoryByType = (type: string): ComponentCategory => {
     type === 'Image'
     || type === 'Avatar'
     || type === 'Calendar'
+    || type === 'Icon'
     || type === 'Swiper'
   ) {
     return 'text';
@@ -125,6 +127,7 @@ const getIconByType = (type: string) => {
   const iconMap: Record<string, any> = {
     Button: MousePointerClick,
     Link: Link2,
+    Icon: Star,
     Space: GripHorizontal,
     'Grid.Row': Rows3,
     'Grid.Col': Columns3,
