@@ -14,6 +14,7 @@ import {
 } from '../../../utils/createComponentTree';
 import { buildNodesByLayoutTemplate } from '../layoutTemplates';
 import type { BuiltInLayoutTemplateId } from '../layoutTemplates';
+import { normalizeTabsList, syncTabsSlotNodes } from '../utils/tabs';
 
 const HISTORY_MAX_ACTIONS = 200;
 const COMPONENT_KEY_PATTERN = /^[A-Za-z0-9_-]+$/;
@@ -590,6 +591,11 @@ export const useCreateComponentStore = create<CreateComponentStore>((set) => ({
               : child
           )),
         }));
+      }
+
+      if (currentNode.type === 'Tabs' && propKey === 'list') {
+        const tabsList = normalizeTabsList(value);
+        nextTree = updateNodeByKey(nextTree, state.activeNodeKey, (target) => syncTabsSlotNodes(target, tabsList));
       }
 
       // 属性改动走细粒度历史，便于精确撤销。

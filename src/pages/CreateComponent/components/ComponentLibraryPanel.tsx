@@ -84,6 +84,7 @@ const getCategoryByType = (type: string): ComponentCategory => {
     || type === 'Avatar'
     || type === 'Calendar'
     || type === 'List'
+    || type === 'Tabs'
     || type === 'Steps'
     || type === 'Steps.Item'
     || type === 'Swiper'
@@ -140,6 +141,7 @@ const getIconByType = (type: string) => {
     TimeRangePicker: Timer,
     InputNumber: Hash,
     Slider: SlidersHorizontal,
+    Tabs: ListOrdered,
     Steps: ListOrdered,
     'Steps.Item': ListOrdered,
     List,

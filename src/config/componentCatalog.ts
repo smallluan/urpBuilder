@@ -481,6 +481,99 @@ const componentCatalog = [
     }
   },
   {
+    type: 'Tabs',
+    name: '选项卡',
+    props: {
+      list: {
+        name: '面板配置',
+        value: [
+          {
+            value: 'tab-1',
+            label: '选项卡1',
+            disabled: false,
+            draggable: true,
+            removable: false,
+            lazy: false,
+            destroyOnHide: true,
+          },
+          {
+            value: 'tab-2',
+            label: '选项卡2',
+            disabled: false,
+            draggable: true,
+            removable: false,
+            lazy: false,
+            destroyOnHide: true,
+          },
+        ],
+        editType: 'tabsConfig',
+      },
+      action: {
+        name: '右侧操作文案',
+        value: '',
+        editType: 'input',
+      },
+      addable: {
+        name: '允许新增',
+        value: false,
+        editType: 'switch',
+      },
+      disabled: {
+        name: '禁用',
+        value: false,
+        editType: 'switch',
+      },
+      dragSort: {
+        name: '启用拖拽排序',
+        value: false,
+        editType: 'switch',
+      },
+      placement: {
+        name: '位置',
+        value: 'top',
+        editType: 'select',
+        payload: {
+          options: ['left', 'top', 'bottom', 'right'],
+        },
+      },
+      scrollPosition: {
+        name: '滚动停留位置',
+        value: 'auto',
+        editType: 'select',
+        payload: {
+          options: ['auto', 'start', 'center', 'end'],
+        },
+      },
+      size: {
+        name: '尺寸',
+        value: 'medium',
+        editType: 'select',
+        payload: {
+          options: ['medium', 'large'],
+        },
+      },
+      theme: {
+        name: '风格',
+        value: 'normal',
+        editType: 'select',
+        payload: {
+          options: ['normal', 'card'],
+        },
+      },
+      value: {
+        name: '当前值(value)',
+        value: '',
+        editType: 'input',
+      },
+      defaultValue: {
+        name: '默认值(defaultValue)',
+        value: 'tab-1',
+        editType: 'input',
+      },
+    },
+    lifetimes: ['onAdd', 'onChange', 'onDragSort', 'onRemove'],
+  },
+  {
     type: 'Card',
     name: '卡片',
     props: {

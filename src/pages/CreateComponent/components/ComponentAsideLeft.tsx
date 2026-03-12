@@ -11,6 +11,7 @@ import { getNodeSlotKey, isSlotNode } from '../utils/slot';
 import componentCatalog from '../../../config/componentCatalog';
 import { LIST_TEMPLATE_ALLOWED_TYPES } from '../../../constants/componentBuilder';
 import { findNodePathByKey } from '../utils/tree';
+import { getTabsPanelSlotKey, normalizeTabsList, normalizeTabsValue } from '../utils/tabs';
 
 interface RenderUiTreeNode extends Omit<UiTreeNode, 'label' | 'children'> {
   label: React.ReactNode;
@@ -61,6 +62,22 @@ const getCardPreferredSlotNode = (node: UiTreeNode) => {
   return bodySlot ?? slotChildren[0];
 };
 
+const getTabsPreferredSlotNode = (node: UiTreeNode) => {
+  const tabsList = normalizeTabsList((node.props?.list as { value?: unknown } | undefined)?.value);
+  const controlledValue = normalizeTabsValue((node.props?.value as { value?: unknown } | undefined)?.value);
+  const defaultValue = normalizeTabsValue((node.props?.defaultValue as { value?: unknown } | undefined)?.value);
+  const targetValue = controlledValue ?? defaultValue ?? tabsList[0]?.value;
+  const targetSlotKey = targetValue ? getTabsPanelSlotKey(targetValue) : '';
+  const slotChildren = (node.children ?? []).filter((child) => isSlotNode(child));
+
+  if (!targetSlotKey) {
+    return slotChildren[0];
+  }
+
+  const matched = slotChildren.find((child) => getNodeSlotKey(child) === targetSlotKey);
+  return matched ?? slotChildren[0];
+};
+
 const getTreeNodeDropTarget = (node: UiTreeNode, root: UiTreeNode): TreeNodeDropTarget | null => {
   if (isSlotNode(node)) {
     return {
@@ -83,6 +100,18 @@ const getTreeNodeDropTarget = (node: UiTreeNode, root: UiTreeNode): TreeNodeDrop
 
   if (node.type === 'Card') {
     const preferredSlotNode = getCardPreferredSlotNode(node);
+    if (!preferredSlotNode) {
+      return null;
+    }
+
+    return {
+      parentKey: preferredSlotNode.key,
+      slotKey: getNodeSlotKey(preferredSlotNode),
+    };
+  }
+
+  if (node.type === 'Tabs') {
+    const preferredSlotNode = getTabsPreferredSlotNode(node);
     if (!preferredSlotNode) {
       return null;
     }

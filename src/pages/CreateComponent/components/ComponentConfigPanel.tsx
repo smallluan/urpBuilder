@@ -22,8 +22,9 @@ import {
   type IconInitialFilterKey,
   type IconQuickFilterKey,
 } from '../../../constants/iconRegistry';
+import { createDefaultTabsList, normalizeTabsList } from '../utils/tabs';
 
-type EditType = 'switch' | 'input' | 'inputNumber' | 'select' | 'iconSelect' | 'swiperImages' | 'jsonCode';
+type EditType = 'switch' | 'input' | 'inputNumber' | 'select' | 'iconSelect' | 'swiperImages' | 'tabsConfig' | 'jsonCode';
 
 interface SwiperImageRow {
   id: string;
@@ -32,6 +33,17 @@ interface SwiperImageRow {
   lazy: boolean;
   objectFit: string;
   objectPosition: string;
+}
+
+interface TabsRow {
+  id: string;
+  value: string;
+  label: string;
+  disabled: boolean;
+  draggable: boolean;
+  removable: boolean;
+  lazy: boolean;
+  destroyOnHide: boolean;
 }
 
 const SWIPER_FIT_OPTIONS = ['contain', 'cover', 'fill', 'none', 'scale-down'].map((item) => ({
@@ -61,6 +73,30 @@ const normalizeSwiperImageRows = (value: unknown): SwiperImageRow[] => {
   return value
     .filter((item) => !!item && typeof item === 'object')
     .map((item) => createSwiperImageRow(item as Partial<SwiperImageRow>));
+};
+
+const createTabsRow = (seed?: Partial<TabsRow>): TabsRow => ({
+  id: `tabs-row-${Date.now()}-${Math.round(Math.random() * 10000)}`,
+  value: String(seed?.value ?? ''),
+  label: String(seed?.label ?? ''),
+  disabled: Boolean(seed?.disabled),
+  draggable: typeof seed?.draggable === 'boolean' ? seed.draggable : true,
+  removable: Boolean(seed?.removable),
+  lazy: Boolean(seed?.lazy),
+  destroyOnHide: typeof seed?.destroyOnHide === 'boolean' ? seed.destroyOnHide : true,
+});
+
+const normalizeTabsRows = (value: unknown): TabsRow[] => {
+  const list = normalizeTabsList(value);
+  return list.map((item) => createTabsRow({
+    value: String(item.value),
+    label: item.label,
+    disabled: item.disabled,
+    draggable: item.draggable,
+    removable: item.removable,
+    lazy: item.lazy,
+    destroyOnHide: item.destroyOnHide,
+  }));
 };
 
 interface ComponentPropSchema {
@@ -148,7 +184,7 @@ const LIST_ITEM_META_PROP_KEYS = new Set([
 
 const resolveEditType = (schema: ComponentPropSchema): EditType => {
   const type = (schema.editType ?? schema.editInput) as EditType | string | undefined;
-  if (type === 'switch' || type === 'input' || type === 'inputNumber' || type === 'select' || type === 'iconSelect' || type === 'swiperImages' || type === 'jsonCode') {
+  if (type === 'switch' || type === 'input' || type === 'inputNumber' || type === 'select' || type === 'iconSelect' || type === 'swiperImages' || type === 'tabsConfig' || type === 'jsonCode') {
     return type;
   }
 
@@ -168,6 +204,9 @@ const ComponentConfigPanel: React.FC = () => {
   const [keyError, setKeyError] = useState('');
   const [swiperDialogVisible, setSwiperDialogVisible] = useState(false);
   const [swiperImageDraft, setSwiperImageDraft] = useState<SwiperImageRow[]>([]);
+  const [tabsDialogVisible, setTabsDialogVisible] = useState(false);
+  const [tabsDraft, setTabsDraft] = useState<TabsRow[]>([]);
+  const [tabsTargetPropKey, setTabsTargetPropKey] = useState<string | null>(null);
   const [inputDrafts, setInputDrafts] = useState<Record<string, string>>({});
   const [numberDrafts, setNumberDrafts] = useState<Record<string, number | undefined>>({});
   const [jsonCodeDialogVisible, setJsonCodeDialogVisible] = useState(false);
@@ -391,6 +430,23 @@ const ComponentConfigPanel: React.FC = () => {
       );
     }
 
+    if (editType === 'tabsConfig') {
+      return (
+        <Button
+          size="small"
+          variant="outline"
+          onClick={() => {
+            const rows = normalizeTabsRows(currentValue);
+            setTabsDraft(rows.length ? rows : normalizeTabsRows(createDefaultTabsList()));
+            setTabsTargetPropKey(propKey);
+            setTabsDialogVisible(true);
+          }}
+        >
+          配置选项卡
+        </Button>
+      );
+    }
+
     if (editType === 'jsonCode') {
       const toJsonCode = (value: unknown) => {
         if (typeof value === 'string') {
@@ -487,6 +543,62 @@ const ComponentConfigPanel: React.FC = () => {
 
     setJsonCodeDialogVisible(false);
     setJsonCodeTargetPropKey(null);
+  };
+
+  const applyTabsDraft = () => {
+    const normalizedRows = tabsDraft
+      .map((item, index) => {
+        const value = item.value.trim();
+        const label = item.label.trim();
+        if (!value) {
+          return null;
+        }
+
+        return {
+          value,
+          label: label || `选项卡${index + 1}`,
+          disabled: item.disabled,
+          draggable: item.draggable,
+          removable: item.removable,
+          lazy: item.lazy,
+          destroyOnHide: item.destroyOnHide,
+        };
+      })
+      .filter((item): item is {
+        value: string;
+        label: string;
+        disabled: boolean;
+        draggable: boolean;
+        removable: boolean;
+        lazy: boolean;
+        destroyOnHide: boolean;
+      } => !!item);
+
+    const dedupedRows = normalizedRows.reduce<typeof normalizedRows>((acc, item) => {
+      if (!acc.some((existing) => existing.value === item.value)) {
+        acc.push(item);
+      }
+      return acc;
+    }, []);
+
+    const nextList = dedupedRows.length
+      ? dedupedRows
+      : createDefaultTabsList().map((item) => ({
+          value: String(item.value),
+          label: item.label,
+          disabled: Boolean(item.disabled),
+          draggable: typeof item.draggable === 'boolean' ? item.draggable : true,
+          removable: Boolean(item.removable),
+          lazy: Boolean(item.lazy),
+          destroyOnHide: typeof item.destroyOnHide === 'boolean' ? item.destroyOnHide : true,
+        }));
+
+    if (tabsTargetPropKey) {
+      updateActiveNodeProp(tabsTargetPropKey, nextList);
+    }
+
+    setTabsDialogVisible(false);
+    setTabsTargetPropKey(null);
   };
 
   const openGridResponsiveDialog = () => {
@@ -765,6 +877,173 @@ const ComponentConfigPanel: React.FC = () => {
                     删除
                   </Button>
                 </Space>
+              ),
+            },
+          ]}
+        />
+      </Dialog>
+
+      <Dialog
+        visible={tabsDialogVisible}
+        width="980px"
+        header="配置选项卡"
+        closeOnOverlayClick={false}
+        confirmBtn="应用"
+        cancelBtn="取消"
+        onConfirm={applyTabsDraft}
+        onClose={() => {
+          setTabsDialogVisible(false);
+          setTabsTargetPropKey(null);
+        }}
+      >
+        <div style={{ marginBottom: 12 }}>
+          <Button
+            size="small"
+            variant="outline"
+            onClick={() => {
+              const nextIndex = tabsDraft.length + 1;
+              setTabsDraft((previous) => ([
+                ...previous,
+                createTabsRow({
+                  value: `tab-${nextIndex}`,
+                  label: `选项卡${nextIndex}`,
+                }),
+              ]));
+            }}
+          >
+            增加一行
+          </Button>
+        </div>
+
+        <Table
+          rowKey="id"
+          data={tabsDraft}
+          columns={[
+            {
+              colKey: 'value',
+              title: 'value(唯一标识)',
+              width: 180,
+              cell: ({ row }: { row: TabsRow }) => (
+                <Input
+                  clearable
+                  value={row.value}
+                  onChange={(value) =>
+                    setTabsDraft((previous) =>
+                      previous.map((item) => (item.id === row.id ? { ...item, value: String(value ?? '') } : item)),
+                    )
+                  }
+                />
+              ),
+            },
+            {
+              colKey: 'label',
+              title: 'label(标题)',
+              width: 180,
+              cell: ({ row }: { row: TabsRow }) => (
+                <Input
+                  clearable
+                  value={row.label}
+                  onChange={(value) =>
+                    setTabsDraft((previous) =>
+                      previous.map((item) => (item.id === row.id ? { ...item, label: String(value ?? '') } : item)),
+                    )
+                  }
+                />
+              ),
+            },
+            {
+              colKey: 'disabled',
+              title: '禁用',
+              width: 78,
+              cell: ({ row }: { row: TabsRow }) => (
+                <Switch
+                  size="small"
+                  value={row.disabled}
+                  onChange={(value) =>
+                    setTabsDraft((previous) =>
+                      previous.map((item) => (item.id === row.id ? { ...item, disabled: Boolean(value) } : item)),
+                    )
+                  }
+                />
+              ),
+            },
+            {
+              colKey: 'draggable',
+              title: '可拖拽',
+              width: 88,
+              cell: ({ row }: { row: TabsRow }) => (
+                <Switch
+                  size="small"
+                  value={row.draggable}
+                  onChange={(value) =>
+                    setTabsDraft((previous) =>
+                      previous.map((item) => (item.id === row.id ? { ...item, draggable: Boolean(value) } : item)),
+                    )
+                  }
+                />
+              ),
+            },
+            {
+              colKey: 'removable',
+              title: '可移除',
+              width: 88,
+              cell: ({ row }: { row: TabsRow }) => (
+                <Switch
+                  size="small"
+                  value={row.removable}
+                  onChange={(value) =>
+                    setTabsDraft((previous) =>
+                      previous.map((item) => (item.id === row.id ? { ...item, removable: Boolean(value) } : item)),
+                    )
+                  }
+                />
+              ),
+            },
+            {
+              colKey: 'lazy',
+              title: '懒加载',
+              width: 78,
+              cell: ({ row }: { row: TabsRow }) => (
+                <Switch
+                  size="small"
+                  value={row.lazy}
+                  onChange={(value) =>
+                    setTabsDraft((previous) =>
+                      previous.map((item) => (item.id === row.id ? { ...item, lazy: Boolean(value) } : item)),
+                    )
+                  }
+                />
+              ),
+            },
+            {
+              colKey: 'destroyOnHide',
+              title: '隐藏销毁',
+              width: 94,
+              cell: ({ row }: { row: TabsRow }) => (
+                <Switch
+                  size="small"
+                  value={row.destroyOnHide}
+                  onChange={(value) =>
+                    setTabsDraft((previous) =>
+                      previous.map((item) => (item.id === row.id ? { ...item, destroyOnHide: Boolean(value) } : item)),
+                    )
+                  }
+                />
+              ),
+            },
+            {
+              colKey: 'action',
+              title: '操作',
+              width: 78,
+              cell: ({ row }: { row: TabsRow }) => (
+                <Button
+                  size="small"
+                  variant="text"
+                  theme="danger"
+                  onClick={() => setTabsDraft((previous) => previous.filter((item) => item.id !== row.id))}
+                >
+                  删除
+                </Button>
               ),
             },
           ]}

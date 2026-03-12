@@ -1,6 +1,7 @@
 import { v4 as uuidv4 } from 'uuid';
 import type { UiTreeNode } from '../pages/CreateComponent/store/type';
 import { createSlotNode } from '../pages/CreateComponent/utils/slot';
+import { getTabsPanelSlotKey, normalizeTabsList } from '../pages/CreateComponent/utils/tabs';
 
 const createTypographyTitleNode = (): UiTreeNode => ({
   key: uuidv4(),
@@ -122,7 +123,7 @@ const createStepsItemNode = (index: number): UiTreeNode => ({
   children: [],
 });
 
-const buildInitialChildren = (type: string): UiTreeNode[] => {
+const buildInitialChildren = (type: string, props?: Record<string, unknown>): UiTreeNode[] => {
   if (type === 'Card') {
     return [
       createSlotNode('header', '头部插槽', [createTypographyTitleNode()]),
@@ -136,6 +137,12 @@ const buildInitialChildren = (type: string): UiTreeNode[] => {
 
   if (type === 'Steps') {
     return [createStepsItemNode(0), createStepsItemNode(1), createStepsItemNode(2)];
+  }
+
+  if (type === 'Tabs') {
+    const listSchema = (props?.list ?? null) as { value?: unknown } | null;
+    const tabsList = normalizeTabsList(listSchema?.value);
+    return tabsList.map((item) => createSlotNode(getTabsPanelSlotKey(item.value), `${item.label} 面板`));
   }
 
   return [];
@@ -158,7 +165,7 @@ export const toUiTreeNode = (componentData: Record<string, unknown>): UiTreeNode
     type,
     props,
     lifetimes,
-    children: buildInitialChildren(type),
+    children: buildInitialChildren(type, props),
   };
 };
 

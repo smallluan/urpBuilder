@@ -1,9 +1,10 @@
 import React from 'react';
-import { Button, Space, Row, Col, Card, Divider, Typography, Image, Avatar, Switch, Swiper, Layout, Calendar, ColorPicker, TimePicker, TimeRangePicker, InputNumber, Slider, Steps, List, Link } from 'tdesign-react';
+import { Button, Space, Row, Col, Card, Divider, Typography, Image, Avatar, Switch, Swiper, Layout, Calendar, ColorPicker, TimePicker, TimeRangePicker, InputNumber, Slider, Steps, List, Link, Tabs } from 'tdesign-react';
 import DropArea from '../../../components/DropArea';
 import type { UiDropDataHandler, UiTreeNode } from '../store/type';
 import { useCreateComponentStore } from '../store';
 import { getNodeSlotKey, isSlotNode } from '../utils/slot';
+import { getTabsPanelSlotKey, getTabsSlotNodeByValue, normalizeTabsList, normalizeTabsValue } from '../utils/tabs';
 import {
   normalizeResponsiveConfig,
   resolveBuilderViewportWidth,
@@ -173,6 +174,7 @@ const CardContent: React.FC<CardContentProps> = ({
 export default function CommonComponent(properties: CommonComponentProps) {
   const { type, data, onDropData } = properties;
   const normalizedType = typeof type === 'string' ? type.trim() : type;
+  const [tabsInnerValue, setTabsInnerValue] = React.useState<string | number | undefined>(undefined);
   const setActiveNode = useCreateComponentStore((state) => state.setActiveNode);
   const screenSize = useCreateComponentStore((state) => state.screenSize);
   const autoWidth = useCreateComponentStore((state) => state.autoWidth);
@@ -514,6 +516,13 @@ export default function CommonComponent(properties: CommonComponentProps) {
     return undefined;
   };
 
+  const getTabsListProp = () => {
+    return normalizeTabsList(getProp('list'));
+  };
+
+  const getTabsControlledValue = () => normalizeTabsValue(getProp('value'));
+  const getTabsDefaultValue = () => normalizeTabsValue(getProp('defaultValue'));
+
   const handleActivateSelf = (event: React.MouseEvent<HTMLElement>) => {
     event.stopPropagation();
     if (!data?.key) {
@@ -522,6 +531,10 @@ export default function CommonComponent(properties: CommonComponentProps) {
 
     setActiveNode(data.key);
   };
+
+  React.useEffect(() => {
+    setTabsInnerValue(undefined);
+  }, [data?.key]);
 
   const inlineStyle = getStyleProp();
   const mergeStyle = (baseStyle?: React.CSSProperties): React.CSSProperties | undefined => {
@@ -1148,6 +1161,62 @@ export default function CommonComponent(properties: CommonComponentProps) {
         }
       case 'Steps.Item':
         return null;
+      case 'Tabs': {
+        const tabsList = getTabsListProp();
+        const controlledValue = getTabsControlledValue();
+        const defaultValue = getTabsDefaultValue();
+        const firstValue = tabsList[0]?.value;
+        const activeTabValue =
+          controlledValue
+          ?? tabsInnerValue
+          ?? defaultValue
+          ?? firstValue;
+
+        const tabsPanels = tabsList.map((item) => {
+          const slotNode = getTabsSlotNodeByValue(data, item.value);
+          const slotKey = getTabsPanelSlotKey(item.value);
+
+          return {
+            value: item.value,
+            label: item.label,
+            disabled: item.disabled,
+            draggable: item.draggable,
+            removable: item.removable,
+            lazy: item.lazy,
+            destroyOnHide: item.destroyOnHide,
+            panel: (
+              <DropArea
+                data={slotNode}
+                onDropData={onDropData}
+                dropSlotKey={slotKey}
+                selectable={false}
+                compactWhenFilled
+                emptyText={`拖拽组件到「${item.label}」面板`}
+              />
+            ),
+          };
+        });
+
+        return (
+          <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf}>
+            <Tabs
+              action={getStringProp('action') || undefined}
+              addable={getBooleanProp('addable')}
+              disabled={getBooleanProp('disabled')}
+              dragSort={getBooleanProp('dragSort')}
+              list={tabsPanels as any}
+              placement={getStringProp('placement') as any}
+              scrollPosition={getStringProp('scrollPosition') as any}
+              size={getStringProp('size') as any}
+              theme={getStringProp('theme') as any}
+              value={activeTabValue as any}
+              onChange={(value) => {
+                setTabsInnerValue(value as string | number);
+              }}
+            />
+          </ActivateWrapper>
+        );
+      }
       case 'Swiper': {
         const imageList = getSwiperImages();
         const height = getNumberProp('height') ?? 240;

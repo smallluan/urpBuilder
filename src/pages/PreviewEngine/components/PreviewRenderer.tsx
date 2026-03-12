@@ -1,11 +1,12 @@
 import React from 'react';
-import { Avatar, Button, Card, Col, Divider, Image, Row, Space, Switch, Swiper, Typography, Layout, Calendar, ColorPicker, TimePicker, TimeRangePicker, InputNumber, Slider, Steps, List, Link } from 'tdesign-react';
+import { Avatar, Button, Card, Col, Divider, Image, Row, Space, Switch, Swiper, Typography, Layout, Calendar, ColorPicker, TimePicker, TimeRangePicker, InputNumber, Slider, Steps, List, Link, Tabs } from 'tdesign-react';
 import type { UiTreeNode } from '../../CreateComponent/store/type';
 import { getNodeSlotKey, isSlotNode } from '../../CreateComponent/utils/slot';
 import { convertResponsiveConfigToTDesignProps, normalizeResponsiveConfig } from '../../CreateComponent/utils/gridResponsive';
 import type { ComponentLifecycleHandler, ListRecord, SwiperImageItem } from '../../../types/component';
 import { CORE_LIFETIMES, LIST_PREVIEW_DATA } from '../../../constants/componentBuilder';
 import { renderNamedIcon } from '../../../constants/iconRegistry';
+import { getTabsSlotNodeByValue, normalizeTabsList, normalizeTabsValue } from '../../CreateComponent/utils/tabs';
 
 interface PreviewRendererProps {
   node: UiTreeNode;
@@ -279,6 +280,10 @@ const getStepsCurrentProp = (node: UiTreeNode, propName: string): string | numbe
   return undefined;
 };
 
+const getTabsListProp = (node: UiTreeNode) => normalizeTabsList(getProp(node, 'list'));
+const getTabsControlledValue = (node: UiTreeNode) => normalizeTabsValue(getProp(node, 'value'));
+const getTabsDefaultValue = (node: UiTreeNode) => normalizeTabsValue(getProp(node, 'defaultValue'));
+
 const getListDataSource = (node: UiTreeNode): ListRecord[] => {
   const value = getProp(node, 'dataSource');
   if (Array.isArray(value)) {
@@ -454,6 +459,7 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) 
   const lastControlledSwitchValueRef = React.useRef<boolean | undefined>(undefined);
   const suppressNextControlledPropEventRef = React.useRef(false);
   const expectedControlledSwitchValueRef = React.useRef<boolean | undefined>(undefined);
+  const [tabsInnerValue, setTabsInnerValue] = React.useState<string | number | undefined>(undefined);
   const hasLifetime = React.useCallback(
     (lifetime: string) => lifetimes.includes(lifetime),
     [lifetimes],
@@ -603,6 +609,10 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) 
     switchDefaultValue,
   ]);
 
+  React.useEffect(() => {
+    setTabsInnerValue(undefined);
+  }, [node.key]);
+
   switch (type) {
     case 'Button': {
       const isBlockButton = getBooleanProp(node, 'block') === true;
@@ -664,6 +674,56 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) 
         </div>
       );
       }
+    case 'Tabs': {
+      const tabsList = getTabsListProp(node);
+      const controlledValue = getTabsControlledValue(node);
+      const defaultValue = getTabsDefaultValue(node);
+      const firstValue = tabsList[0]?.value;
+      const activeTabValue =
+        controlledValue
+        ?? tabsInnerValue
+        ?? defaultValue
+        ?? firstValue;
+
+      const tabsPanels = tabsList.map((item) => {
+        const slotNode = getTabsSlotNodeByValue(node, item.value);
+
+        return {
+          value: item.value,
+          label: item.label,
+          disabled: item.disabled,
+          draggable: item.draggable,
+          removable: item.removable,
+          lazy: item.lazy,
+          destroyOnHide: item.destroyOnHide,
+          panel: slotNode ? renderChildList(slotNode.children ?? [], onLifecycle) : null,
+        };
+      });
+
+      return (
+        <div style={mergeStyle()}>
+          <Tabs
+            action={getStringProp(node, 'action') || undefined}
+            addable={getBooleanProp(node, 'addable')}
+            disabled={getBooleanProp(node, 'disabled')}
+            dragSort={getBooleanProp(node, 'dragSort')}
+            list={tabsPanels as any}
+            placement={getStringProp(node, 'placement') as any}
+            scrollPosition={getStringProp(node, 'scrollPosition') as any}
+            size={getStringProp(node, 'size') as any}
+            theme={getStringProp(node, 'theme') as any}
+            value={activeTabValue as any}
+            onAdd={(context) => emitInteractionLifecycle('onAdd', context)}
+            onDragSort={(context) => emitInteractionLifecycle('onDragSort', context)}
+            onRemove={(context) => emitInteractionLifecycle('onRemove', context)}
+            onChange={(value) => {
+              setTabsInnerValue(value as string | number);
+              emitInteractionLifecycle('onChange', { value });
+            }}
+          />
+        </div>
+      );
+    }
     case 'Space': {
       const direction = getStringProp(node, 'direction') as 'horizontal' | 'vertical' | undefined;
       const isSpaceSplitEnabled = getBooleanProp(node, 'splitEnabled') === true;
