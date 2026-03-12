@@ -1,19 +1,7 @@
 import React from 'react';
 import { Handle, Position, type NodeProps } from '@xyflow/react';
 import NodeActionButtons from './NodeActionButtons';
-
-export interface EventFilterNodeData {
-  label?: string;
-  upstreamNodeId?: string;
-  upstreamLabel?: string;
-  availableLifetimes?: string[];
-  selectedLifetimes?: string[];
-  flipX?: boolean;
-  flipY?: boolean;
-  onDeleteNode?: (nodeId: string) => void;
-  onFlipHorizontal?: (nodeId: string) => void;
-  onFlipVertical?: (nodeId: string) => void;
-}
+import type { EventFilterNodeData } from '../../../types/flow';
 
 const EventFilterNode: React.FC<NodeProps> = ({ id, data, selected }) => {
   const nodeData = (data ?? {}) as EventFilterNodeData;

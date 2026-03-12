@@ -9,6 +9,8 @@ import type { UiTreeNode } from '../store/type';
 import NodeStyleDrawer from './NodeStyleDrawer';
 import { getNodeSlotKey, isSlotNode } from '../utils/slot';
 import componentCatalog from '../../../config/componentCatalog';
+import { LIST_TEMPLATE_ALLOWED_TYPES } from '../../../constants/componentBuilder';
+import { findNodePathByKey } from '../utils/tree';
 
 interface RenderUiTreeNode extends Omit<UiTreeNode, 'label' | 'children'> {
   label: React.ReactNode;
@@ -31,41 +33,12 @@ const ABSTRACT_NODE_TYPES = new Set([
   'List.Item',
 ]);
 
-const LIST_TEMPLATE_ALLOWED_TYPES = new Set([
-  'Image',
-  'Avatar',
-  'Button',
-  'Typography.Title',
-  'Typography.Paragraph',
-  'Typography.Text',
-]);
-
 type NodeVisualKind = 'slot' | 'container' | 'leaf' | 'abstract';
 
 interface TreeNodeDropTarget {
   parentKey: string;
   slotKey?: string;
 }
-
-const findNodePathByKey = (node: UiTreeNode, targetKey: string, path: UiTreeNode[] = []): UiTreeNode[] | null => {
-  const nextPath = [...path, node];
-  if (node.key === targetKey) {
-    return nextPath;
-  }
-
-  if (!node.children?.length) {
-    return null;
-  }
-
-  for (const child of node.children) {
-    const found = findNodePathByKey(child, targetKey, nextPath);
-    if (found) {
-      return found;
-    }
-  }
-
-  return null;
-};
 
 const isListItemTemplateDroppable = (node: UiTreeNode, root: UiTreeNode) => {
   if (node.type !== 'List.Item') {

@@ -3,40 +3,13 @@ import { Avatar, Button, Card, Col, Divider, Image, Row, Space, Switch, Swiper, 
 import type { UiTreeNode } from '../../CreateComponent/store/type';
 import { getNodeSlotKey, isSlotNode } from '../../CreateComponent/utils/slot';
 import { convertResponsiveConfigToTDesignProps, normalizeResponsiveConfig } from '../../CreateComponent/utils/gridResponsive';
+import type { ComponentLifecycleHandler, ListRecord, SwiperImageItem } from '../../../types/component';
+import { CORE_LIFETIMES, LIST_PREVIEW_DATA } from '../../../constants/componentBuilder';
 
 interface PreviewRendererProps {
   node: UiTreeNode;
-  onLifecycle?: (componentKey: string, lifetime: string, payload?: unknown) => void;
+  onLifecycle?: ComponentLifecycleHandler;
 }
-
-interface SwiperImageItem {
-  src: string;
-  fallback: string;
-  lazy: boolean;
-  objectFit: string;
-  objectPosition: string;
-}
-
-interface ListRecord {
-  [key: string]: unknown;
-}
-
-const CORE_LIFETIMES = ['onInit', 'onBeforeMount', 'onMounted', 'onBeforeUpdate', 'onUpdated', 'onBeforeUnmount', 'onUnmounted'];
-
-const LIST_DEFAULT_DATA: ListRecord[] = [
-  {
-    title: '列表项A',
-    description: '这是第一条示例数据',
-    image: 'https://tdesign.gtimg.com/demo/demo-image-1.png',
-    actionText: '查看',
-  },
-  {
-    title: '列表项B',
-    description: '这是第二条示例数据',
-    image: 'https://tdesign.gtimg.com/demo/demo-image-2.png',
-    actionText: '编辑',
-  },
-];
 
 const getProp = (node: UiTreeNode, propName: string) => {
   const prop = node?.props?.[propName] as { value?: unknown } | undefined;
@@ -223,7 +196,7 @@ const getListDataSource = (node: UiTreeNode): ListRecord[] => {
   const value = getProp(node, 'dataSource');
   if (Array.isArray(value)) {
     const arrayValue = value.filter((item) => !!item && typeof item === 'object') as ListRecord[];
-    return arrayValue.length ? arrayValue : LIST_DEFAULT_DATA;
+    return arrayValue.length ? arrayValue : LIST_PREVIEW_DATA;
   }
 
   if (typeof value === 'string' && value.trim()) {
@@ -231,14 +204,14 @@ const getListDataSource = (node: UiTreeNode): ListRecord[] => {
       const parsed = JSON.parse(value);
       if (Array.isArray(parsed)) {
         const arrayValue = parsed.filter((item) => !!item && typeof item === 'object') as ListRecord[];
-        return arrayValue.length ? arrayValue : LIST_DEFAULT_DATA;
+        return arrayValue.length ? arrayValue : LIST_PREVIEW_DATA;
       }
     } catch {
-      return LIST_DEFAULT_DATA;
+      return LIST_PREVIEW_DATA;
     }
   }
 
-  return LIST_DEFAULT_DATA;
+  return LIST_PREVIEW_DATA;
 };
 
 const getListFieldValue = (record: ListRecord, fieldPath?: string): string | undefined => {
@@ -350,7 +323,7 @@ const getSlotChildren = (node: UiTreeNode, slotKey: 'header' | 'body') => {
 
 const renderChildList = (
   children: UiTreeNode[],
-  onLifecycle?: (componentKey: string, lifetime: string, payload?: unknown) => void,
+  onLifecycle?: ComponentLifecycleHandler,
 ) => {
   return children.map((child) => (
     <PreviewRenderer
@@ -363,7 +336,7 @@ const renderChildList = (
 
 const renderChildren = (
   node?: UiTreeNode,
-  onLifecycle?: (componentKey: string, lifetime: string, payload?: unknown) => void,
+  onLifecycle?: ComponentLifecycleHandler,
 ) => {
   return node?.children?.map((child) => (
     <PreviewRenderer

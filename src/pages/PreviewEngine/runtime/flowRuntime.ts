@@ -1,80 +1,12 @@
 import type { Edge, Node } from '@xyflow/react';
 import type { PreviewDataHub } from './dataHub';
-
-// 运行时事件：
-// - lifecycle：由组件节点触发的生命周期事件
-// - patch：代码节点产出的声明式属性更新
-// - request:success / request:error：网络请求节点产出的异步结果
-interface RuntimeRequestSuccess {
-  nodeId: string;
-  method: string;
-  endpoint: string;
-  status: number;
-  ok: boolean;
-  durationMs: number;
-  headers: Record<string, string>;
-  rawText: string;
-  data: unknown;
-  responsePath: string;
-}
-
-interface RuntimeRequestError {
-  nodeId: string;
-  method: string;
-  endpoint: string;
-  durationMs: number;
-  responsePath: string;
-  message: string;
-  errorName?: string;
-  fallbackData?: unknown;
-}
-
-type RuntimeEvent =
-  | {
-      kind: 'lifecycle';
-      lifetime: string;
-      componentKey: string;
-      payload?: unknown;
-    }
-  | {
-      kind: 'patch';
-      patch: Record<string, unknown>;
-      fromCodeNodeId: string;
-      payload?: unknown;
-    }
-  | {
-      kind: 'request:success';
-      request: RuntimeRequestSuccess;
-      payload?: unknown;
-    }
-  | {
-      kind: 'request:error';
-      request: RuntimeRequestError;
-      payload?: unknown;
-    };
-
-interface ComponentFlowNodeData {
-  sourceKey?: string;
-}
-
-interface EventFilterNodeData {
-  selectedLifetimes?: string[];
-}
-
-interface CodeNodeData {
-  code?: string;
-}
-
-interface NetworkRequestNodeData {
-  method?: string;
-  endpoint?: string;
-  timeoutMs?: number;
-  responsePath?: string;
-  bodyType?: string;
-  body?: string;
-  onError?: string;
-  mockEnabled?: boolean;
-}
+import type {
+  CodeNodeData,
+  ComponentFlowNodeData,
+  EventFilterNodeData,
+  NetworkRequestNodeData,
+} from '../../../types/flow';
+import type { RuntimeEvent, RuntimeRequestError, RuntimeRequestSuccess } from '../../../types/flowRuntime';
 
 const isPlainObject = (value: unknown): value is Record<string, unknown> => {
   return !!value && typeof value === 'object' && !Array.isArray(value);

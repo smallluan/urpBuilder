@@ -1,17 +1,7 @@
 import React from 'react';
 import { Handle, Position, type NodeProps } from '@xyflow/react';
 import NodeActionButtons from './NodeActionButtons';
-
-export interface NetworkRequestNodeData {
-  label?: string;
-  method?: string;
-  endpoint?: string;
-  flipX?: boolean;
-  flipY?: boolean;
-  onDeleteNode?: (nodeId: string) => void;
-  onFlipHorizontal?: (nodeId: string) => void;
-  onFlipVertical?: (nodeId: string) => void;
-}
+import type { NetworkRequestNodeData } from '../../../types/flow';
 
 const NetworkRequestNode: React.FC<NodeProps> = ({ id, data, selected }) => {
   const nodeData = (data ?? {}) as NetworkRequestNodeData;

@@ -1,17 +1,7 @@
 import React from 'react';
 import { Handle, Position, type NodeProps } from '@xyflow/react';
 import NodeActionButtons from './NodeActionButtons';
-
-export interface ComponentFlowNodeData {
-  label?: string;
-  componentType?: string;
-  sourceKey?: string;
-  flipX?: boolean;
-  flipY?: boolean;
-  onDeleteNode?: (nodeId: string) => void;
-  onFlipHorizontal?: (nodeId: string) => void;
-  onFlipVertical?: (nodeId: string) => void;
-}
+import type { ComponentFlowNodeData } from '../../../types/flow';
 
 const ComponentFlowNode: React.FC<NodeProps> = ({ id, data, selected }) => {
   const nodeData = (data ?? {}) as ComponentFlowNodeData;

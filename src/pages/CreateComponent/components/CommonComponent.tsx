@@ -1,7 +1,7 @@
 import React from 'react';
 import { Button, Space, Row, Col, Card, Divider, Typography, Image, Avatar, Switch, Swiper, Layout, Calendar, ColorPicker, TimePicker, TimeRangePicker, InputNumber, List } from 'tdesign-react';
 import DropArea from '../../../components/DropArea';
-import type { UiTreeNode } from '../store/type';
+import type { UiDropDataHandler, UiTreeNode } from '../store/type';
 import { useCreateComponentStore } from '../store';
 import { getNodeSlotKey, isSlotNode } from '../utils/slot';
 import {
@@ -9,39 +9,14 @@ import {
   resolveBuilderViewportWidth,
   resolveResponsiveColLayout,
 } from '../utils/gridResponsive';
+import type { ListRecord, SwiperImageItem } from '../../../types/component';
+import { LIST_PREVIEW_DATA } from '../../../constants/componentBuilder';
 
 interface CommonComponentProps {
   type?: string;
   data?: UiTreeNode;
-  onDropData?: (dropData: unknown, parent: UiTreeNode | undefined, options?: { slotKey?: string }) => void;
+  onDropData?: UiDropDataHandler;
 }
-
-interface SwiperImageItem {
-  src: string;
-  fallback: string;
-  lazy: boolean;
-  objectFit: string;
-  objectPosition: string;
-}
-
-interface ListRecord {
-  [key: string]: unknown;
-}
-
-const LIST_PREVIEW_DATA: ListRecord[] = [
-  {
-    title: '列表项A',
-    description: '这是第一条示例数据',
-    image: 'https://tdesign.gtimg.com/demo/demo-image-1.png',
-    actionText: '查看',
-  },
-  {
-    title: '列表项B',
-    description: '这是第二条示例数据',
-    image: 'https://tdesign.gtimg.com/demo/demo-image-2.png',
-    actionText: '编辑',
-  },
-];
 
 interface ActivateWrapperProps {
   children: React.ReactNode;

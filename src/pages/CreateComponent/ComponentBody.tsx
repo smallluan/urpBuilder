@@ -1,36 +1,8 @@
 import React, { useMemo } from 'react';
 import { useCreateComponentStore } from './store';
 import DropArea from '../../components/DropArea';
-import type { UiTreeNode } from './store/type';
-
-const LIST_TEMPLATE_ALLOWED_TYPES = new Set([
-  'Image',
-  'Avatar',
-  'Button',
-  'Typography.Title',
-  'Typography.Paragraph',
-  'Typography.Text',
-]);
-
-const findNodePathByKey = (node: UiTreeNode, targetKey: string, path: UiTreeNode[] = []): UiTreeNode[] | null => {
-  const nextPath = [...path, node];
-  if (node.key === targetKey) {
-    return nextPath;
-  }
-
-  if (!node.children?.length) {
-    return null;
-  }
-
-  for (const child of node.children) {
-    const found = findNodePathByKey(child, targetKey, nextPath);
-    if (found) {
-      return found;
-    }
-  }
-
-  return null;
-};
+import { LIST_TEMPLATE_ALLOWED_TYPES } from '../../constants/componentBuilder';
+import { findNodePathByKey } from './utils/tree';
 
 const ComponentBody: React.FC = () => {
   const screenSize = useCreateComponentStore((state) => state.screenSize);

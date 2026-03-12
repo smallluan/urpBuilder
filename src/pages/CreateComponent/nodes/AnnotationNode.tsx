@@ -1,16 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import type { NodeProps } from '@xyflow/react';
 import NodeActionButtons from './NodeActionButtons';
-
-export interface AnnotationNodeData {
-  text?: string;
-  onChange?: (nodeId: string, text: string) => void;
-  flipX?: boolean;
-  flipY?: boolean;
-  onDeleteNode?: (nodeId: string) => void;
-  onFlipHorizontal?: (nodeId: string) => void;
-  onFlipVertical?: (nodeId: string) => void;
-}
+import type { AnnotationNodeData } from '../../../types/flow';
 
 const AnnotationNode: React.FC<NodeProps> = ({ id, data, selected }) => {
   const nodeData = (data ?? {}) as AnnotationNodeData;

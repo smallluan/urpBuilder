@@ -14,6 +14,16 @@ export interface UiTreeNode {
   children?: UiTreeNode[];
 }
 
+export interface DropDataOptions {
+  slotKey?: string;
+}
+
+export type UiDropDataHandler = (
+  dropData: unknown,
+  parent: UiTreeNode | undefined,
+  options?: DropDataOptions,
+) => void;
+
 export interface UiTreeInstance {
   appendTo: (value: string | number, newData: UiTreeNode | UiTreeNode[]) => void;
   getItem: (value: string | number) => { data: UiTreeNode } | undefined;

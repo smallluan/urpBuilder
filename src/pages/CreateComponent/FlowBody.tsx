@@ -22,51 +22,21 @@ import '@xyflow/react/dist/style.css';
 import { flowNodeTypes } from './nodes';
 import AnnotatedEdge, { type AnnotatedEdgeData } from './edges/AnnotatedEdge';
 import { useCreateComponentStore } from './store';
+import type {
+  AnnotationNodeData,
+  ComponentFlowNodeData,
+  EventFilterNodeData,
+  FlowComponentDragPayload,
+} from '../../types/flow';
+import { CORE_LIFETIMES } from '../../constants/componentBuilder';
 
 const FLOW_DRAG_DATA_KEY = 'drag-component-data';
-
-interface FlowComponentDragPayload {
-  kind?: string;
-  name?: string;
-  componentType?: string;
-  sourceKey?: string;
-  lifetimes?: string[];
-  nodeType?: string;
-  label?: string;
-}
-
-interface ComponentNodeData {
-  label?: string;
-  componentType?: string;
-  sourceKey?: string;
-  lifetimes?: string[];
-}
-
-interface EventFilterNodeData {
-  label?: string;
-  upstreamNodeId?: string;
-  upstreamLabel?: string;
-  availableLifetimes?: string[];
-  selectedLifetimes?: string[];
-}
-
-interface AnnotationNodeData {
-  text?: string;
-  onChange?: (nodeId: string, text: string) => void;
-  flipX?: boolean;
-  flipY?: boolean;
-  onDeleteNode?: (nodeId: string) => void;
-  onFlipHorizontal?: (nodeId: string) => void;
-  onFlipVertical?: (nodeId: string) => void;
-}
 
 const DEFAULT_EDGE_COLOR = '#9aa5b5';
 const COMPONENT_TRACE_COLOR = '#0052d9';
 const EVENT_FILTER_TRACE_COLOR = '#2ba471';
 const CODE_TRACE_COLOR = '#6f5af0';
 const NETWORK_REQUEST_TRACE_COLOR = '#eb6f0a';
-const DEFAULT_FLOW_LIFETIMES = ['onInit', 'onBeforeMount', 'onMounted', 'onBeforeUpdate', 'onUpdated', 'onBeforeUnmount', 'onUnmounted'];
-
 const resolveFlowLifetimes = (lifetimes: unknown): string[] => {
   const list = Array.isArray(lifetimes)
     ? lifetimes.map((item) => String(item).trim()).filter(Boolean)
@@ -76,7 +46,7 @@ const resolveFlowLifetimes = (lifetimes: unknown): string[] => {
     return Array.from(new Set(list));
   }
 
-  return DEFAULT_FLOW_LIFETIMES;
+  return CORE_LIFETIMES;
 };
 
 const createFlowNodeId = (prefix: string) =>
@@ -202,14 +172,14 @@ const FlowCanvas: React.FC = () => {
     const seedNodeIds = new Set<string>([activeNode.id]);
 
     if (activeNode.type === 'componentNode') {
-      const activeSourceKey = (activeNode.data as ComponentNodeData | undefined)?.sourceKey;
+      const activeSourceKey = (activeNode.data as ComponentFlowNodeData | undefined)?.sourceKey;
       if (activeSourceKey) {
         nodes.forEach((item) => {
           if (item.type !== 'componentNode') {
             return;
           }
 
-          const sourceKey = (item.data as ComponentNodeData | undefined)?.sourceKey;
+          const sourceKey = (item.data as ComponentFlowNodeData | undefined)?.sourceKey;
           if (sourceKey === activeSourceKey) {
             seedNodeIds.add(item.id);
           }
@@ -556,7 +526,7 @@ const FlowCanvas: React.FC = () => {
       let nextNodes = currentNodes;
 
       if (sourceNode?.type === 'componentNode' && targetNode?.type === 'eventFilterNode') {
-        const sourceData = (sourceNode.data ?? {}) as ComponentNodeData;
+        const sourceData = (sourceNode.data ?? {}) as ComponentFlowNodeData;
         const sourceKey = sourceData.sourceKey ?? '';
 
         const existingUpstreamSourceIds = currentEdges
@@ -567,7 +537,7 @@ const FlowCanvas: React.FC = () => {
           .map((sourceId) => currentNodes.find((node) => node.id === sourceId))
           .filter((node): node is Node => !!node && node.type === 'componentNode')
           .some((node) => {
-            const upstreamData = (node.data ?? {}) as ComponentNodeData;
+            const upstreamData = (node.data ?? {}) as ComponentFlowNodeData;
             return (upstreamData.sourceKey ?? '') !== sourceKey;
           });
 

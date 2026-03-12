@@ -3,7 +3,7 @@ import type { DragEvent } from 'react';
 import { AddCircleIcon } from 'tdesign-icons-react';
 import './index.less';
 import CommonComponent from '../../pages/CreateComponent/components/CommonComponent';
-import type { UiTreeNode } from '../../pages/CreateComponent/store/type';
+import type { UiDropDataHandler, UiTreeNode } from '../../pages/CreateComponent/store/type';
 import { useCreateComponentStore } from '../../pages/CreateComponent/store';
 
 interface DropAreaProps {
@@ -13,7 +13,7 @@ interface DropAreaProps {
   disabled?: boolean;
   emptyText?: string;
   data?: UiTreeNode;
-  onDropData?: (dropData: unknown, parent: UiTreeNode | undefined, options?: { slotKey?: string }) => void;
+  onDropData?: UiDropDataHandler;
   dropSlotKey?: string;
   selectable?: boolean;
   compactWhenFilled?: boolean;
@@ -25,7 +25,7 @@ const DROP_DATA_KEY = 'drag-component-data';
 const RenderNode: React.FC<{
   data?: UiTreeNode;
   emptyText: string;
-  onDropData?: (dropData: unknown, parent: UiTreeNode | undefined, options?: { slotKey?: string }) => void;
+  onDropData?: UiDropDataHandler;
 }> = ({ data, emptyText, onDropData }) => {
   if (data?.children?.length) {
     return (
@@ -47,7 +47,7 @@ const RenderNode: React.FC<{
 
 const renderNodeList = (
   data: UiTreeNode | undefined,
-  onDropData?: (dropData: unknown, parent: UiTreeNode | undefined, options?: { slotKey?: string }) => void,
+  onDropData?: UiDropDataHandler,
 ) =>
   data?.children?.map((child) => (
     <CommonComponent key={child.key} type={child.type} data={child} onDropData={onDropData} />

@@ -6,6 +6,7 @@ import DragableWrapper from '../../../components/DragableWrapper';
 import { useCreateComponentStore } from '../store';
 import type { UiTreeNode } from '../store/type';
 import { isSlotNode } from '../utils/slot';
+import type { FlowComponentDragPayload } from '../../../types/flow';
 
 interface RenderUiTreeNode extends Omit<UiTreeNode, 'label' | 'children'> {
   label: React.ReactNode;
@@ -25,7 +26,7 @@ const FlowAsideLeft: React.FC = () => {
       return;
     }
 
-    const payload = {
+    const payload: FlowComponentDragPayload = {
       kind: 'component-node',
       name: String(node.label ?? '节点'),
       componentType: String(node.type ?? 'Unknown'),

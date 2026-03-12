@@ -7,54 +7,16 @@ import CodeEditorDialog, { type CodeEditorValue } from './components/CodeEditorD
 import DragableWrapper from '../../components/DragableWrapper';
 import RightPanelHeader, { type RightPanelMode } from './components/RightPanelHeader';
 import { useCreateComponentStore } from './store';
+import {
+  BODY_TYPE_OPTIONS,
+  CODE_LANGUAGE_OPTIONS,
+  ERROR_OPTIONS,
+  METHOD_OPTIONS,
+} from '../../constants/flowBuilder';
+import type { EventFilterFormState, NetworkRequestFormState } from '../../types/flow';
 import './style.less';
 
-interface NetworkRequestFormState {
-  label: string;
-  method: string;
-  endpoint: string;
-  timeoutMs: number;
-  responsePath: string;
-  bodyType: string;
-  body: string;
-  onError: string;
-  mockEnabled: boolean;
-}
-
 interface CodeNodeFormState extends CodeEditorValue {}
-
-interface EventFilterFormState {
-  label: string;
-  upstreamLabel: string;
-  availableLifetimes: string[];
-  selectedLifetimes: string[];
-}
-
-const METHOD_OPTIONS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'].map((item) => ({
-  label: item,
-  value: item,
-}));
-
-const BODY_TYPE_OPTIONS = [
-  { label: 'none', value: 'none' },
-  { label: 'json', value: 'json' },
-  { label: 'form-data', value: 'form-data' },
-  { label: 'x-www-form-urlencoded', value: 'x-www-form-urlencoded' },
-  { label: 'raw', value: 'raw' },
-];
-
-const ERROR_OPTIONS = [
-  { label: 'throw', value: 'throw' },
-  { label: 'continue', value: 'continue' },
-  { label: 'useFallback', value: 'useFallback' },
-];
-
-const CODE_LANGUAGE_OPTIONS = [
-  { label: 'javascript', value: 'javascript' },
-  { label: 'typescript', value: 'typescript' },
-  { label: 'json', value: 'json' },
-  { label: 'css', value: 'css' },
-];
 
 const FlowLayout: React.FC = () => {
   const flowNodes = useCreateComponentStore((state) => state.flowNodes);

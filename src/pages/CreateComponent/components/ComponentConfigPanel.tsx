@@ -2,9 +2,11 @@ import React, { useEffect, useState } from 'react';
 import { Button, Dialog, Empty, Input, InputNumber, Popup, Select, Slider, Space, Switch, Table, Tag, Typography } from 'tdesign-react';
 import { HelpCircleIcon } from 'tdesign-icons-react';
 import { useCreateComponentStore } from '../store';
+import type { UiTreeNode } from '../store/type';
 import NodeStyleDrawer from './NodeStyleDrawer';
 import { isSlotNode } from '../utils/slot';
 import CodeEditorDialog, { type CodeEditorValue } from './CodeEditorDialog';
+import { findNodePathByKey } from '../utils/tree';
 import {
   GRID_BREAKPOINTS,
   getBreakpointByWidth,
@@ -133,26 +135,6 @@ const LIST_ITEM_META_PROP_KEYS = new Set([
   'actionSize',
 ]);
 
-const findNodePathByKey = (node: any, targetKey: string, path: any[] = []): any[] | null => {
-  const nextPath = [...path, node];
-  if (node.key === targetKey) {
-    return nextPath;
-  }
-
-  if (!node.children?.length) {
-    return null;
-  }
-
-  for (const child of node.children) {
-    const found = findNodePathByKey(child, targetKey, nextPath);
-    if (found) {
-      return found;
-    }
-  }
-
-  return null;
-};
-
 const resolveEditType = (schema: ComponentPropSchema): EditType => {
   const type = (schema.editType ?? schema.editInput) as EditType | string | undefined;
   if (type === 'switch' || type === 'input' || type === 'inputNumber' || type === 'select' || type === 'swiperImages' || type === 'jsonCode') {
@@ -197,8 +179,8 @@ const ComponentConfigPanel: React.FC = () => {
     : undefined;
 
   const activePath = activeNode?.key ? findNodePathByKey(uiPageData, activeNode.key) : null;
-  const listItemAncestor = activePath?.slice().reverse().find((node) => node.type === 'List.Item');
-  const listAncestor = activePath?.slice().reverse().find((node) => node.type === 'List');
+  const listItemAncestor = activePath?.slice().reverse().find((node: UiTreeNode) => node.type === 'List.Item');
+  const listAncestor = activePath?.slice().reverse().find((node: UiTreeNode) => node.type === 'List');
   const isListCustomTemplateEnabled = Boolean(
     (listAncestor?.props?.customTemplateEnabled as { value?: unknown } | undefined)?.value,
   );
