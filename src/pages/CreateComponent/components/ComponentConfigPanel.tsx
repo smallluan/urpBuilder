@@ -174,7 +174,7 @@ const ComponentConfigPanel: React.FC = () => {
 
   const propsMap = (activeNode?.props ?? {}) as Record<string, ComponentPropSchema>;
   const styleValue = (propsMap.__style?.value ?? {}) as Record<string, unknown>;
-  const switchControlled = activeNode?.type === 'Switch'
+  const switchControlled = (activeNode?.type === 'Switch' || activeNode?.type === 'Slider')
     ? Boolean((propsMap.controlled?.value ?? true))
     : undefined;
 
@@ -190,7 +190,7 @@ const ComponentConfigPanel: React.FC = () => {
       return false;
     }
 
-    if (activeNode?.type === 'Switch') {
+    if (activeNode?.type === 'Switch' || activeNode?.type === 'Slider') {
       if (propKey === 'value' && switchControlled === false) {
         return false;
       }

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Button, Space, Row, Col, Card, Divider, Typography, Image, Avatar, Switch, Swiper, Layout, Calendar, ColorPicker, TimePicker, TimeRangePicker, InputNumber, List } from 'tdesign-react';
+import { Button, Space, Row, Col, Card, Divider, Typography, Image, Avatar, Switch, Swiper, Layout, Calendar, ColorPicker, TimePicker, TimeRangePicker, InputNumber, Slider, List } from 'tdesign-react';
 import DropArea from '../../../components/DropArea';
 import type { UiDropDataHandler, UiTreeNode } from '../store/type';
 import { useCreateComponentStore } from '../store';
@@ -421,6 +421,73 @@ export default function CommonComponent(properties: CommonComponentProps) {
     if (typeof value === 'string' && value.trim()) {
       const parsed = Number(value);
       return Number.isFinite(parsed) ? parsed : undefined;
+    }
+
+    return undefined;
+  };
+
+  const getSliderValueProp = (propName: string): number | [number, number] | undefined => {
+    const value = getProp(propName);
+    const parseNumber = (input: unknown) => {
+      if (typeof input === 'number' && Number.isFinite(input)) {
+        return input;
+      }
+
+      if (typeof input === 'string' && input.trim()) {
+        const parsed = Number(input);
+        return Number.isFinite(parsed) ? parsed : undefined;
+      }
+
+      return undefined;
+    };
+
+    const parseArrayValue = (list: unknown[]) => {
+      const numbers = list.map((item) => parseNumber(item)).filter((item): item is number => typeof item === 'number');
+      if (numbers.length >= 2) {
+        return [numbers[0], numbers[1]] as [number, number];
+      }
+
+      if (numbers.length === 1) {
+        return [numbers[0], numbers[0]] as [number, number];
+      }
+
+      return undefined;
+    };
+
+    if (Array.isArray(value)) {
+      return parseArrayValue(value);
+    }
+
+    const numberValue = parseNumber(value);
+    if (typeof numberValue === 'number') {
+      return numberValue;
+    }
+
+    if (typeof value === 'string') {
+      const text = value.trim();
+      if (!text) {
+        return undefined;
+      }
+
+      if (text.startsWith('[') && text.endsWith(']')) {
+        try {
+          const parsed = JSON.parse(text);
+          if (Array.isArray(parsed)) {
+            return parseArrayValue(parsed);
+          }
+        } catch {
+          return undefined;
+        }
+      }
+
+      const chunks = text
+        .split(/,|，|\s+/)
+        .map((item) => item.trim())
+        .filter(Boolean);
+
+      if (chunks.length >= 2) {
+        return parseArrayValue(chunks);
+      }
     }
 
     return undefined;
@@ -898,6 +965,45 @@ export default function CommonComponent(properties: CommonComponentProps) {
               disabled={getBooleanProp('disabled')}
               readOnly={getBooleanProp('readOnly')}
               largeNumber={getBooleanProp('largeNumber')}
+              style={mergeStyle()}
+            />
+          </ActivateWrapper>
+        );
+        }
+      case 'Slider':
+        {
+        const isControlled = getBooleanProp('controlled') !== false;
+        const isRange = getBooleanProp('range') === true;
+        const min = getFiniteNumberProp('min') ?? 0;
+        const max = getFiniteNumberProp('max') ?? 100;
+        const rawValue = getSliderValueProp('value');
+        const rawDefaultValue = getSliderValueProp('defaultValue');
+
+        const value = isRange
+          ? (Array.isArray(rawValue) ? rawValue : (typeof rawValue === 'number' ? [rawValue, rawValue] : [min, min]))
+          : (Array.isArray(rawValue) ? rawValue[0] : (typeof rawValue === 'number' ? rawValue : min));
+
+        const defaultValue = isRange
+          ? (Array.isArray(rawDefaultValue) ? rawDefaultValue : (typeof rawDefaultValue === 'number' ? [rawDefaultValue, rawDefaultValue] : [min, min]))
+          : (Array.isArray(rawDefaultValue) ? rawDefaultValue[0] : (typeof rawDefaultValue === 'number' ? rawDefaultValue : min));
+
+        const sliderValueProps = isControlled
+          ? { value: value as any }
+          : { defaultValue: defaultValue as any };
+
+        return (
+          <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf}>
+            <Slider
+              {...sliderValueProps}
+              layout={getStringProp('layout') as any}
+              min={min}
+              max={max}
+              step={getFiniteNumberProp('step')}
+              range={isRange}
+              disabled={getBooleanProp('disabled')}
+              onChange={() => {
+                // 搭建态仅展示，不在此处驱动运行时逻辑
+              }}
               style={mergeStyle()}
             />
           </ActivateWrapper>

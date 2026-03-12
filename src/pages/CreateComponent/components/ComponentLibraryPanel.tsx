@@ -21,6 +21,7 @@ import {
   Timer,
   Hash,
   List,
+  SlidersHorizontal,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import componentCatalog from '../../../config/componentCatalog';
@@ -67,6 +68,7 @@ const getCategoryByType = (type: string): ComponentCategory => {
   if (
     type === 'Switch'
     || type === 'InputNumber'
+    || type === 'Slider'
     || type === 'ColorPicker'
     || type === 'TimePicker'
     || type === 'TimeRangePicker'
@@ -129,6 +131,7 @@ const getIconByType = (type: string) => {
     TimePicker: Clock3,
     TimeRangePicker: Timer,
     InputNumber: Hash,
+    Slider: SlidersHorizontal,
     List,
     Divider: Minus,
     'Typography.Title': Heading,

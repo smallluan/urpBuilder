@@ -1,5 +1,5 @@
 import React from 'react';
-import { Avatar, Button, Card, Col, Divider, Image, Row, Space, Switch, Swiper, Typography, Layout, Calendar, ColorPicker, TimePicker, TimeRangePicker, InputNumber, List } from 'tdesign-react';
+import { Avatar, Button, Card, Col, Divider, Image, Row, Space, Switch, Swiper, Typography, Layout, Calendar, ColorPicker, TimePicker, TimeRangePicker, InputNumber, Slider, List } from 'tdesign-react';
 import type { UiTreeNode } from '../../CreateComponent/store/type';
 import { getNodeSlotKey, isSlotNode } from '../../CreateComponent/utils/slot';
 import { convertResponsiveConfigToTDesignProps, normalizeResponsiveConfig } from '../../CreateComponent/utils/gridResponsive';
@@ -187,6 +187,73 @@ const getFiniteNumberProp = (node: UiTreeNode, propName: string) => {
   if (typeof value === 'string' && value.trim()) {
     const parsed = Number(value);
     return Number.isFinite(parsed) ? parsed : undefined;
+  }
+
+  return undefined;
+};
+
+const getSliderValueProp = (node: UiTreeNode, propName: string): number | [number, number] | undefined => {
+  const value = getProp(node, propName);
+  const parseNumber = (input: unknown) => {
+    if (typeof input === 'number' && Number.isFinite(input)) {
+      return input;
+    }
+
+    if (typeof input === 'string' && input.trim()) {
+      const parsed = Number(input);
+      return Number.isFinite(parsed) ? parsed : undefined;
+    }
+
+    return undefined;
+  };
+
+  const parseArrayValue = (list: unknown[]) => {
+    const numbers = list.map((item) => parseNumber(item)).filter((item): item is number => typeof item === 'number');
+    if (numbers.length >= 2) {
+      return [numbers[0], numbers[1]] as [number, number];
+    }
+
+    if (numbers.length === 1) {
+      return [numbers[0], numbers[0]] as [number, number];
+    }
+
+    return undefined;
+  };
+
+  if (Array.isArray(value)) {
+    return parseArrayValue(value);
+  }
+
+  const numberValue = parseNumber(value);
+  if (typeof numberValue === 'number') {
+    return numberValue;
+  }
+
+  if (typeof value === 'string') {
+    const text = value.trim();
+    if (!text) {
+      return undefined;
+    }
+
+    if (text.startsWith('[') && text.endsWith(']')) {
+      try {
+        const parsed = JSON.parse(text);
+        if (Array.isArray(parsed)) {
+          return parseArrayValue(parsed);
+        }
+      } catch {
+        return undefined;
+      }
+    }
+
+    const chunks = text
+      .split(/,|，|\s+/)
+      .map((item) => item.trim())
+      .filter(Boolean);
+
+    if (chunks.length >= 2) {
+      return parseArrayValue(chunks);
+    }
   }
 
   return undefined;
@@ -447,7 +514,11 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) 
 
   const emitInteractionLifecycle = React.useCallback(
     (lifetime: string, payload?: unknown) => {
-      if (!onLifecycle || !hasLifetime(lifetime)) {
+      const canEmitInteraction =
+        hasLifetime(lifetime)
+        || (type === 'Slider' && lifetime === 'onChange' && lifetimes.length === 0);
+
+      if (!onLifecycle || !canEmitInteraction) {
         return;
       }
 
@@ -456,7 +527,7 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) 
         ...(payload && typeof payload === 'object' ? payload : {}),
       });
     },
-    [hasLifetime, node.key, node.type, onLifecycle],
+    [hasLifetime, lifetimes.length, node.key, node.type, onLifecycle, type],
   );
 
   React.useEffect(() => {
@@ -979,6 +1050,43 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) 
             onKeypress={(value, context) => emitInteractionLifecycle('onKeypress', { value, context })}
             onKeyup={(value, context) => emitInteractionLifecycle('onKeyup', { value, context })}
             onValidate={(context) => emitInteractionLifecycle('onValidate', context)}
+            style={mergeStyle()}
+          />
+        </div>
+      );
+      }
+    case 'Slider':
+      {
+      const isControlled = getBooleanProp(node, 'controlled') !== false;
+      const isRange = getBooleanProp(node, 'range') === true;
+      const min = getFiniteNumberProp(node, 'min') ?? 0;
+      const max = getFiniteNumberProp(node, 'max') ?? 100;
+      const rawValue = getSliderValueProp(node, 'value');
+      const rawDefaultValue = getSliderValueProp(node, 'defaultValue');
+
+      const value = isRange
+        ? (Array.isArray(rawValue) ? rawValue : (typeof rawValue === 'number' ? [rawValue, rawValue] : [min, min]))
+        : (Array.isArray(rawValue) ? rawValue[0] : (typeof rawValue === 'number' ? rawValue : min));
+
+      const defaultValue = isRange
+        ? (Array.isArray(rawDefaultValue) ? rawDefaultValue : (typeof rawDefaultValue === 'number' ? [rawDefaultValue, rawDefaultValue] : [min, min]))
+        : (Array.isArray(rawDefaultValue) ? rawDefaultValue[0] : (typeof rawDefaultValue === 'number' ? rawDefaultValue : min));
+
+      const sliderValueProps = isControlled
+        ? { value: value as any }
+        : { defaultValue: defaultValue as any };
+
+      return (
+        <div style={mergeStyle()}>
+          <Slider
+            {...sliderValueProps}
+            layout={getStringProp(node, 'layout') as any}
+            min={min}
+            max={max}
+            step={getFiniteNumberProp(node, 'step')}
+            range={isRange}
+            disabled={getBooleanProp(node, 'disabled')}
+            onChange={(nextValue) => emitInteractionLifecycle('onChange', { value: nextValue })}
             style={mergeStyle()}
           />
         </div>

@@ -829,6 +829,61 @@ const componentCatalog = [
     lifetimes: ['onBlur', 'onChange', 'onEnter', 'onFocus', 'onKeydown', 'onKeypress', 'onKeyup', 'onValidate']
   },
   {
+    type: 'Slider',
+    name: '滑块',
+    props: {
+      controlled: {
+        name: '受控模式',
+        value: true,
+        editType: 'switch'
+      },
+      value: {
+        name: '值(value)',
+        value: '50',
+        editType: 'input'
+      },
+      defaultValue: {
+        name: '默认值(defaultValue)',
+        value: '50',
+        editType: 'input'
+      },
+      layout: {
+        name: '布局方向',
+        value: 'horizontal',
+        editType: 'select',
+        payload: {
+          options: ['horizontal', 'vertical']
+        }
+      },
+      min: {
+        name: '最小值(min)',
+        value: '0',
+        editType: 'input'
+      },
+      max: {
+        name: '最大值(max)',
+        value: '100',
+        editType: 'input'
+      },
+      step: {
+        name: '步长(step)',
+        value: '1',
+        editType: 'input'
+      },
+      range: {
+        name: '双游标(range)',
+        value: false,
+        editType: 'switch'
+      },
+      disabled: {
+        name: '禁用',
+        value: false,
+        editType: 'switch'
+      }
+    },
+    lifetimes: ['onChange']
+  },
+  {
     type: 'Swiper',
     name: '轮播图',
     props: {

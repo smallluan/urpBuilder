@@ -37,13 +37,22 @@ const COMPONENT_TRACE_COLOR = '#0052d9';
 const EVENT_FILTER_TRACE_COLOR = '#2ba471';
 const CODE_TRACE_COLOR = '#6f5af0';
 const NETWORK_REQUEST_TRACE_COLOR = '#eb6f0a';
-const resolveFlowLifetimes = (lifetimes: unknown): string[] => {
+const COMPONENT_FALLBACK_LIFETIMES: Record<string, string[]> = {
+  Slider: ['onChange'],
+};
+
+const resolveFlowLifetimes = (lifetimes: unknown, componentType?: string): string[] => {
   const list = Array.isArray(lifetimes)
     ? lifetimes.map((item) => String(item).trim()).filter(Boolean)
     : [];
 
   if (list.length > 0) {
     return Array.from(new Set(list));
+  }
+
+  const fallbackByType = componentType ? COMPONENT_FALLBACK_LIFETIMES[componentType] : undefined;
+  if (fallbackByType?.length) {
+    return fallbackByType;
   }
 
   return CORE_LIFETIMES;
@@ -546,7 +555,7 @@ const FlowCanvas: React.FC = () => {
           return;
         }
 
-        const lifetimes = resolveFlowLifetimes(sourceData.lifetimes);
+        const lifetimes = resolveFlowLifetimes(sourceData.lifetimes, sourceData.componentType);
         const selectedLifetimes = lifetimes.length === 1 ? [lifetimes[0]] : [];
 
         nextNodes = currentNodes.map((item) => {
@@ -655,7 +664,7 @@ const FlowCanvas: React.FC = () => {
             label: payload.name || '组件节点',
             componentType: payload.componentType || 'Unknown',
             sourceKey: payload.sourceKey,
-            lifetimes: resolveFlowLifetimes(payload.lifetimes),
+            lifetimes: resolveFlowLifetimes(payload.lifetimes, payload.componentType),
           },
         };
 
