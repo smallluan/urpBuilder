@@ -108,6 +108,10 @@ const LIST_BINDABLE_PROP_OPTIONS: Record<string, Array<{ label: string; value: s
   Button: [
     { label: 'content', value: 'content' },
   ],
+  Link: [
+    { label: 'content', value: 'content' },
+    { label: 'href', value: 'href' },
+  ],
   'Typography.Title': [
     { label: 'content', value: 'content' },
   ],

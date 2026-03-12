@@ -1,5 +1,5 @@
 import React from 'react';
-import { Button, Space, Row, Col, Card, Divider, Typography, Image, Avatar, Switch, Swiper, Layout, Calendar, ColorPicker, TimePicker, TimeRangePicker, InputNumber, Slider, Steps, List } from 'tdesign-react';
+import { Button, Space, Row, Col, Card, Divider, Typography, Image, Avatar, Switch, Swiper, Layout, Calendar, ColorPicker, TimePicker, TimeRangePicker, InputNumber, Slider, Steps, List, Link } from 'tdesign-react';
 import DropArea from '../../../components/DropArea';
 import type { UiDropDataHandler, UiTreeNode } from '../store/type';
 import { useCreateComponentStore } from '../store';
@@ -606,6 +606,24 @@ export default function CommonComponent(properties: CommonComponentProps) {
           >
             {getStringProp('content')}
           </Button>
+        </ActivateWrapper>
+      );
+    case 'Link':
+      return (
+        <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf}>
+          <Link
+            content={getStringProp('content')}
+            href={getStringProp('href') || undefined}
+            target={getStringProp('target') || undefined}
+            theme={getStringProp('theme') as any}
+            size={getStringProp('size') as any}
+            hover={getStringProp('hover') as any}
+            underline={getBooleanProp('underline')}
+            disabled={getBooleanProp('disabled')}
+            onClick={(event) => {
+              event.preventDefault();
+            }}
+          />
         </ActivateWrapper>
       );
     case 'Space':

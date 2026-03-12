@@ -21,6 +21,7 @@ import {
   Timer,
   Hash,
   List,
+  Link2,
   SlidersHorizontal,
   ListOrdered,
 } from 'lucide-react';
@@ -123,6 +124,7 @@ const getCategoryIcon = (category: ComponentCategory) => {
 const getIconByType = (type: string) => {
   const iconMap: Record<string, any> = {
     Button: MousePointerClick,
+    Link: Link2,
     Space: GripHorizontal,
     'Grid.Row': Rows3,
     'Grid.Col': Columns3,

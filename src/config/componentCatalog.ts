@@ -49,6 +49,65 @@ const componentCatalog = [
     lifetimes: ['onClick']
   },
   {
+    type: 'Link',
+    name: '链接',
+    props: {
+      content: {
+        name: '链接文本',
+        value: '点击查看',
+        editType: 'input'
+      },
+      href: {
+        name: '跳转地址',
+        value: '',
+        editType: 'input'
+      },
+      target: {
+        name: '打开方式',
+        value: '_self',
+        editType: 'select',
+        payload: {
+          options: ['_self', '_blank', '_parent', '_top']
+        }
+      },
+      theme: {
+        name: '主题',
+        value: 'default',
+        editType: 'select',
+        payload: {
+          options: ['default', 'primary', 'danger', 'warning', 'success']
+        }
+      },
+      size: {
+        name: '尺寸',
+        value: 'medium',
+        editType: 'select',
+        payload: {
+          options: ['small', 'medium', 'large']
+        }
+      },
+      hover: {
+        name: '悬浮态',
+        value: 'underline',
+        editType: 'select',
+        payload: {
+          options: ['color', 'underline']
+        }
+      },
+      underline: {
+        name: '常显下划线',
+        value: false,
+        editType: 'switch'
+      },
+      disabled: {
+        name: '禁用',
+        value: false,
+        editType: 'switch'
+      }
+    },
+    lifetimes: ['onClick']
+  },
+  {
     type: 'Space',
     name: '间隔',
     props: {

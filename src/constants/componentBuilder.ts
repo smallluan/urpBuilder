@@ -4,6 +4,7 @@ export const LIST_TEMPLATE_ALLOWED_TYPES = new Set([
   'Image',
   'Avatar',
   'Button',
+  'Link',
   'Typography.Title',
   'Typography.Paragraph',
   'Typography.Text',

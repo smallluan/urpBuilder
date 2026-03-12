@@ -1,5 +1,5 @@
 import React from 'react';
-import { Avatar, Button, Card, Col, Divider, Image, Row, Space, Switch, Swiper, Typography, Layout, Calendar, ColorPicker, TimePicker, TimeRangePicker, InputNumber, Slider, Steps, List } from 'tdesign-react';
+import { Avatar, Button, Card, Col, Divider, Image, Row, Space, Switch, Swiper, Typography, Layout, Calendar, ColorPicker, TimePicker, TimeRangePicker, InputNumber, Slider, Steps, List, Link } from 'tdesign-react';
 import type { UiTreeNode } from '../../CreateComponent/store/type';
 import { getNodeSlotKey, isSlotNode } from '../../CreateComponent/utils/slot';
 import { convertResponsiveConfigToTDesignProps, normalizeResponsiveConfig } from '../../CreateComponent/utils/gridResponsive';
@@ -621,6 +621,25 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) 
         </div>
       );
     }
+    case 'Link':
+      return (
+        <div style={mergeStyle()}>
+          <Link
+            content={getTextProp(node, 'content')}
+            href={getStringProp(node, 'href') || undefined}
+            target={getStringProp(node, 'target') || undefined}
+            theme={getStringProp(node, 'theme') as any}
+            size={getStringProp(node, 'size') as any}
+            hover={getStringProp(node, 'hover') as any}
+            underline={getBooleanProp(node, 'underline')}
+            disabled={getBooleanProp(node, 'disabled')}
+            onClick={(event) => {
+              event.preventDefault();
+              emitInteractionLifecycle('onClick');
+            }}
+          />
+        </div>
+      );
     case 'Space': {
       const direction = getStringProp(node, 'direction') as 'horizontal' | 'vertical' | undefined;
       const isSpaceSplitEnabled = getBooleanProp(node, 'splitEnabled') === true;
