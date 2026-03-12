@@ -56,7 +56,7 @@ const CATEGORY_META_MAP: Record<ComponentCategory, CategoryMeta> = {
     Icon: Hash,
   },
   text: {
-    label: '展示组件',
+    label: '展示类',
     Icon: ImageIcon,
   },
 };
@@ -72,8 +72,6 @@ const getCategoryByType = (type: string): ComponentCategory => {
     type === 'Switch'
     || type === 'InputNumber'
     || type === 'Slider'
-    || type === 'Steps'
-    || type === 'Steps.Item'
     || type === 'ColorPicker'
     || type === 'TimePicker'
     || type === 'TimeRangePicker'
@@ -85,7 +83,9 @@ const getCategoryByType = (type: string): ComponentCategory => {
     type === 'Image'
     || type === 'Avatar'
     || type === 'Calendar'
-    || type === 'Icon'
+    || type === 'List'
+    || type === 'Steps'
+    || type === 'Steps.Item'
     || type === 'Swiper'
   ) {
     return 'text';
