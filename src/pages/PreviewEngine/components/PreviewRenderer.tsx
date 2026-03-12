@@ -346,6 +346,54 @@ const getMenuValueArrayProp = (node: UiTreeNode, propName: string): Array<string
   return undefined;
 };
 
+const getMenuWidthProp = (node: UiTreeNode, propName: string): string | number | Array<string | number> | undefined => {
+  const value = getProp(node, propName);
+
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value;
+  }
+
+  if (Array.isArray(value)) {
+    const normalized = value
+      .map((item) => {
+        if (typeof item === 'number' && Number.isFinite(item)) {
+          return item;
+        }
+
+        if (typeof item === 'string') {
+          const text = item.trim();
+          return text || undefined;
+        }
+
+        return undefined;
+      })
+      .filter((item): item is string | number => typeof item !== 'undefined');
+
+    return normalized.length ? normalized : undefined;
+  }
+
+  if (typeof value === 'string') {
+    const text = value.trim();
+    if (!text) {
+      return undefined;
+    }
+
+    const chunks = text
+      .split(/,|，/)
+      .map((item) => item.trim())
+      .filter(Boolean);
+
+    if (chunks.length >= 2) {
+      return chunks.slice(0, 2);
+    }
+
+    const parsed = Number(text);
+    return Number.isFinite(parsed) ? parsed : text;
+  }
+
+  return undefined;
+};
+
 const getBackTopOffsetProp = (node: UiTreeNode, propName: string): [string | number, string | number] | undefined => {
   const value = getProp(node, propName);
 
@@ -884,6 +932,27 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) 
             style={mergeStyle()}
             onClick={(context) => emitInteractionLifecycle('onClick', context)}
           />
+        </div>
+      );
+    case 'Menu':
+      return (
+        <div style={mergeStyle()}>
+          <Menu
+            collapsed={getBooleanProp(node, 'collapsed')}
+            expandMutex={getBooleanProp(node, 'expandMutex')}
+            expandType={getStringProp(node, 'expandType') as any}
+            expanded={getMenuValueArrayProp(node, 'expanded') as any}
+            defaultExpanded={getMenuValueArrayProp(node, 'defaultExpanded') as any}
+            theme={getStringProp(node, 'theme') as any}
+            value={getMenuValueProp(node, 'value') as any}
+            defaultValue={getMenuValueProp(node, 'defaultValue') as any}
+            width={getMenuWidthProp(node, 'width') as any}
+            style={mergeStyle()}
+            onChange={(value) => emitInteractionLifecycle('onChange', { value })}
+            onExpand={(value) => emitInteractionLifecycle('onExpand', { value })}
+          >
+            {renderPreviewMenuNodes(node.children)}
+          </Menu>
         </div>
       );
     case 'HeadMenu':

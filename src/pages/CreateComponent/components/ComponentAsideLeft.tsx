@@ -22,6 +22,9 @@ const DROP_DATA_KEY = 'drag-component-data';
 const CONTAINER_NODE_TYPES = new Set([
   'Space',
   'Steps',
+  'Menu',
+  'HeadMenu',
+  'Menu.Submenu',
   'Grid.Row',
   'Grid.Col',
   'Layout',
@@ -30,6 +33,9 @@ const CONTAINER_NODE_TYPES = new Set([
   'Layout.Aside',
   'Layout.Footer',
 ]);
+
+const MENU_NODE_TYPES = new Set(['Menu.Submenu', 'Menu.Item']);
+const MENU_CONTAINER_TYPES = new Set(['Menu', 'HeadMenu', 'Menu.Submenu']);
 
 const ABSTRACT_NODE_TYPES = new Set([
   'List.Item',
@@ -276,6 +282,22 @@ const ComponentAsideLeft: React.FC = () => {
       }
 
       if (droppedType === 'Steps.Item' && currentNodeType !== 'Steps') {
+        return;
+      }
+
+      if ((currentNodeType === 'Menu' || currentNodeType === 'HeadMenu') && !MENU_NODE_TYPES.has(droppedType)) {
+        return;
+      }
+
+      if (currentNodeType === 'Menu.Submenu' && !MENU_NODE_TYPES.has(droppedType)) {
+        return;
+      }
+
+      if (droppedType === 'Menu.Group') {
+        return;
+      }
+
+      if (MENU_NODE_TYPES.has(droppedType) && !MENU_CONTAINER_TYPES.has(currentNodeType)) {
         return;
       }
 

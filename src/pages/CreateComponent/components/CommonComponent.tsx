@@ -585,6 +585,54 @@ export default function CommonComponent(properties: CommonComponentProps) {
     return undefined;
   };
 
+  const getMenuWidthProp = (propName: string): string | number | Array<string | number> | undefined => {
+    const value = getProp(propName);
+
+    if (typeof value === 'number' && Number.isFinite(value)) {
+      return value;
+    }
+
+    if (Array.isArray(value)) {
+      const normalized = value
+        .map((item) => {
+          if (typeof item === 'number' && Number.isFinite(item)) {
+            return item;
+          }
+
+          if (typeof item === 'string') {
+            const text = item.trim();
+            return text || undefined;
+          }
+
+          return undefined;
+        })
+        .filter((item): item is string | number => typeof item !== 'undefined');
+
+      return normalized.length ? normalized : undefined;
+    }
+
+    if (typeof value === 'string') {
+      const text = value.trim();
+      if (!text) {
+        return undefined;
+      }
+
+      const chunks = text
+        .split(/,|，/)
+        .map((item) => item.trim())
+        .filter(Boolean);
+
+      if (chunks.length >= 2) {
+        return chunks.slice(0, 2);
+      }
+
+      const parsed = Number(text);
+      return Number.isFinite(parsed) ? parsed : text;
+    }
+
+    return undefined;
+  };
+
   const getBackTopOffsetProp = (propName: string): [string | number, string | number] | undefined => {
     const value = getProp(propName);
 
@@ -769,16 +817,7 @@ export default function CommonComponent(properties: CommonComponentProps) {
             icon={iconNode as any}
             disabled={getChildBooleanProp('disabled')}
           >
-            <DropArea
-              data={child}
-              onDropData={onDropData}
-              emptyText="拖拽菜单节点到子菜单"
-              compactWhenFilled
-              isTreeNode
-              selectable={false}
-            >
-              {renderBuilderMenuNodes(child.children)}
-            </DropArea>
+            {renderBuilderMenuNodes(child.children)}
           </Menu.SubMenu>
         );
       }
@@ -786,16 +825,7 @@ export default function CommonComponent(properties: CommonComponentProps) {
       if (childType === 'Menu.Group') {
         return (
           <Menu.MenuGroup key={child.key} title={getChildTextProp('title') || undefined}>
-            <DropArea
-              data={child}
-              onDropData={onDropData}
-              emptyText="拖拽菜单项到分组"
-              compactWhenFilled
-              isTreeNode
-              selectable={false}
-            >
-              {renderBuilderMenuNodes(child.children)}
-            </DropArea>
+            {renderBuilderMenuNodes(child.children)}
           </Menu.MenuGroup>
         );
       }
@@ -890,27 +920,25 @@ export default function CommonComponent(properties: CommonComponentProps) {
       );
     case 'HeadMenu':
       return (
-        <DropArea data={data} onDropData={onDropData} emptyText="拖拽菜单节点到顶部菜单" compactWhenFilled isTreeNode>
-          <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf}>
-            <Menu.HeadMenu
-              expandType={getStringProp('expandType') as any}
-              expanded={getMenuValueArrayProp('expanded') as any}
-              defaultExpanded={getMenuValueArrayProp('defaultExpanded') as any}
-              theme={getStringProp('theme') as any}
-              value={getMenuValueProp('value') as any}
-              defaultValue={getMenuValueProp('defaultValue') as any}
-              style={mergeStyle()}
-              onChange={() => {
-                // 搭建态仅展示，不在此处驱动运行时逻辑
-              }}
-              onExpand={() => {
-                // 搭建态仅展示，不在此处驱动运行时逻辑
-              }}
-            >
-              {renderBuilderMenuNodes(data?.children)}
-            </Menu.HeadMenu>
-          </ActivateWrapper>
-        </DropArea>
+        <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf}>
+          <Menu.HeadMenu
+            expandType={getStringProp('expandType') as any}
+            expanded={getMenuValueArrayProp('expanded') as any}
+            defaultExpanded={getMenuValueArrayProp('defaultExpanded') as any}
+            theme={getStringProp('theme') as any}
+            value={getMenuValueProp('value') as any}
+            defaultValue={getMenuValueProp('defaultValue') as any}
+            style={mergeStyle()}
+            onChange={() => {
+              // 搭建态仅展示，不在此处驱动运行时逻辑
+            }}
+            onExpand={() => {
+              // 搭建态仅展示，不在此处驱动运行时逻辑
+            }}
+          >
+            {renderBuilderMenuNodes(data?.children)}
+          </Menu.HeadMenu>
+        </ActivateWrapper>
       );
     case 'Menu.Submenu':
     case 'Menu.Item':
@@ -958,6 +986,31 @@ export default function CommonComponent(properties: CommonComponentProps) {
             />
           </DropArea>
         )
+      case 'Menu':
+        return (
+          <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf}>
+            <Menu
+              collapsed={getBooleanProp('collapsed')}
+              expandMutex={getBooleanProp('expandMutex')}
+              expandType={getStringProp('expandType') as any}
+              expanded={getMenuValueArrayProp('expanded') as any}
+              defaultExpanded={getMenuValueArrayProp('defaultExpanded') as any}
+              theme={getStringProp('theme') as any}
+              value={getMenuValueProp('value') as any}
+              defaultValue={getMenuValueProp('defaultValue') as any}
+              width={getMenuWidthProp('width') as any}
+              style={mergeStyle()}
+              onChange={() => {
+                // 搭建态仅展示，不在此处驱动运行时逻辑
+              }}
+              onExpand={() => {
+                // 搭建态仅展示，不在此处驱动运行时逻辑
+              }}
+            >
+              {renderBuilderMenuNodes(data?.children)}
+            </Menu>
+          </ActivateWrapper>
+        );
       case 'Grid.Col':
         return (
           <Col

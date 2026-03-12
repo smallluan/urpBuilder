@@ -678,6 +678,64 @@ const componentCatalog = [
     lifetimes: ['onChange', 'onExpand'],
   },
   {
+    type: 'Menu',
+    name: '侧边菜单',
+    props: {
+      collapsed: {
+        name: '收起(collapsed)',
+        value: false,
+        editType: 'switch',
+      },
+      expandMutex: {
+        name: '同级互斥展开',
+        value: false,
+        editType: 'switch',
+      },
+      expandType: {
+        name: '展开方式',
+        value: 'normal',
+        editType: 'select',
+        payload: {
+          options: ['normal', 'popup'],
+        },
+      },
+      expanded: {
+        name: '展开项(expanded)',
+        value: '',
+        editType: 'input',
+      },
+      defaultExpanded: {
+        name: '默认展开(defaultExpanded)',
+        value: '',
+        editType: 'input',
+      },
+      theme: {
+        name: '主题',
+        value: 'light',
+        editType: 'select',
+        payload: {
+          options: ['light', 'dark'],
+        },
+      },
+      value: {
+        name: '激活项(value)',
+        value: '',
+        editType: 'input',
+      },
+      defaultValue: {
+        name: '默认激活(defaultValue)',
+        value: '',
+        editType: 'input',
+      },
+      width: {
+        name: '宽度(width)',
+        value: '232px',
+        editType: 'input',
+      },
+    },
+    lifetimes: ['onChange', 'onExpand'],
+  },
+  {
     type: 'Menu.Submenu',
     name: '子菜单',
     props: {

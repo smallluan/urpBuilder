@@ -204,6 +204,14 @@ const createHeadSubMenuNode = (): UiTreeNode => ({
   ],
 });
 
+const createDefaultMenuChildren = (): UiTreeNode[] => {
+  return [
+    createHeadMenuItemNode('首页', 'home'),
+    createHeadMenuItemNode('文档', 'docs'),
+    createHeadSubMenuNode(),
+  ];
+};
+
 const buildInitialChildren = (type: string, props?: Record<string, unknown>): UiTreeNode[] => {
   if (type === 'Card') {
     return [
@@ -227,11 +235,11 @@ const buildInitialChildren = (type: string, props?: Record<string, unknown>): Ui
   }
 
   if (type === 'HeadMenu') {
-    return [
-      createHeadMenuItemNode('首页', 'home'),
-      createHeadMenuItemNode('文档', 'docs'),
-      createHeadSubMenuNode(),
-    ];
+    return createDefaultMenuChildren();
+  }
+
+  if (type === 'Menu') {
+    return createDefaultMenuChildren();
   }
 
   return [];

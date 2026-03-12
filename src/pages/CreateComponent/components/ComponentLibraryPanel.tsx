@@ -111,7 +111,8 @@ const getCategoryByType = (type: string): ComponentCategory => {
   }
 
   if (
-    type === 'HeadMenu'
+    type === 'Menu'
+    || type === 'HeadMenu'
     || type === 'Menu.Submenu'
     || type === 'Menu.Item'
     || type === 'Menu.Group'
@@ -151,6 +152,7 @@ const getIconByType = (type: string) => {
     Button: MousePointerClick,
     Link: Link2,
     BackTop: ArrowUpToLine,
+    Menu: ListOrdered,
     HeadMenu: ListOrdered,
     'Menu.Submenu': ListOrdered,
     'Menu.Item': ListOrdered,
