@@ -1,5 +1,5 @@
 import React from 'react';
-import { Avatar, Button, Card, Col, Divider, Image, Row, Space, Switch, Swiper, Typography, Layout, Calendar, ColorPicker, TimePicker, TimeRangePicker, InputNumber, Slider, Steps, List, Link, Tabs, BackTop, Menu } from 'tdesign-react';
+import { Avatar, Button, Card, Col, Divider, Image, Row, Space, Switch, Swiper, Typography, Layout, Calendar, ColorPicker, TimePicker, TimeRangePicker, InputNumber, Slider, Steps, List, Link, Tabs, BackTop, Menu, Drawer } from 'tdesign-react';
 import type { UiTreeNode } from '../../CreateComponent/store/type';
 import { getNodeSlotKey, isSlotNode } from '../../CreateComponent/utils/slot';
 import { convertResponsiveConfigToTDesignProps, normalizeResponsiveConfig } from '../../CreateComponent/utils/gridResponsive';
@@ -457,6 +457,35 @@ const getBackTopContentNode = (node: UiTreeNode) => {
   );
 };
 
+const getDrawerHeaderProp = (node: UiTreeNode): string | boolean => {
+  const showHeader = getBooleanProp(node, 'showHeader') !== false;
+  if (!showHeader) {
+    return false;
+  }
+
+  const headerText = getStringProp(node, 'header')?.trim();
+  return headerText || true;
+};
+
+const getDrawerFooterProp = (node: UiTreeNode): boolean => {
+  return getBooleanProp(node, 'footer') !== false;
+};
+
+const getDrawerSizeDraggableProp = (node: UiTreeNode): boolean | { min: number; max: number } | undefined => {
+  const enabled = getBooleanProp(node, 'sizeDraggable') === true;
+  if (!enabled) {
+    return undefined;
+  }
+
+  const min = getNumberProp(node, 'sizeDragMin');
+  const max = getNumberProp(node, 'sizeDragMax');
+  if (typeof min === 'number' && typeof max === 'number' && min > 0 && max >= min) {
+    return { min, max };
+  }
+
+  return true;
+};
+
 const getListDataSource = (node: UiTreeNode): ListRecord[] => {
   const value = getProp(node, 'dataSource');
   if (Array.isArray(value)) {
@@ -621,6 +650,7 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) 
     return null;
   }
 
+  const isDrawerNode = type === 'Drawer';
   const isSwitchNode = type === 'Switch';
   const isSwitchControlled = isSwitchNode ? getBooleanProp(node, 'controlled') !== false : false;
   const controlledSwitchValue = isSwitchNode ? Boolean(getBooleanProp(node, 'value')) : false;
@@ -696,9 +726,10 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) 
   }, [hasCoreLifetime, node.children, node.key, node.label, node.props, node.type, onLifecycle]);
 
   const visible = getBooleanProp(node, 'visible');
-  if (visible === false) {
-    return null;
-  }
+  const controlledDrawerVisible = isDrawerNode ? visible === true : false;
+  const [drawerInnerVisible, setDrawerInnerVisible] = React.useState<boolean>(controlledDrawerVisible);
+  const lastDrawerVisiblePropRef = React.useRef<boolean>(controlledDrawerVisible);
+  const lastDrawerNodeKeyRef = React.useRef<string>(node.key);
 
   const mergeStyle = (baseStyle?: React.CSSProperties): React.CSSProperties | undefined => {
     if (!baseStyle && !inlineStyle) {
@@ -785,6 +816,43 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) 
   React.useEffect(() => {
     setTabsInnerValue(undefined);
   }, [node.key]);
+
+  React.useEffect(() => {
+    if (!isDrawerNode) {
+      setDrawerInnerVisible(false);
+      lastDrawerVisiblePropRef.current = false;
+      lastDrawerNodeKeyRef.current = node.key;
+      return;
+    }
+
+    if (lastDrawerNodeKeyRef.current !== node.key) {
+      lastDrawerNodeKeyRef.current = node.key;
+      lastDrawerVisiblePropRef.current = controlledDrawerVisible;
+      setDrawerInnerVisible(controlledDrawerVisible);
+      return;
+    }
+
+    if (lastDrawerVisiblePropRef.current === controlledDrawerVisible) {
+      return;
+    }
+
+    lastDrawerVisiblePropRef.current = controlledDrawerVisible;
+    setDrawerInnerVisible(controlledDrawerVisible);
+  }, [controlledDrawerVisible, isDrawerNode, node.key]);
+
+  const syncDrawerVisible = React.useCallback((nextVisible: boolean) => {
+    if (!isDrawerNode) {
+      return;
+    }
+
+    setDrawerInnerVisible(nextVisible);
+    lastDrawerVisiblePropRef.current = nextVisible;
+    window.dataHub?.applyComponentPatch(node.key, { visible: nextVisible });
+  }, [isDrawerNode, node.key]);
+
+  if (visible === false && !isDrawerNode) {
+    return null;
+  }
 
   const renderPreviewMenuNodes = (nodes?: UiTreeNode[]): React.ReactNode => {
     return (nodes ?? []).map((child) => {
@@ -934,6 +1002,63 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) 
           />
         </div>
       );
+    case 'Drawer': {
+      const hasDrawerChildren = (node.children?.length ?? 0) > 0;
+      const drawerBodyText = getStringProp(node, 'body')?.trim();
+      return (
+        <div style={mergeStyle()}>
+          <Drawer
+            className={getStringProp(node, 'className') || undefined}
+            attach="body"
+            body={!hasDrawerChildren ? (drawerBodyText || undefined) : undefined}
+            cancelBtn={getStringProp(node, 'cancelBtn') || undefined}
+            closeBtn={getBooleanProp(node, 'closeBtn') !== false}
+            closeOnEscKeydown={getBooleanProp(node, 'closeOnEscKeydown') !== false}
+            closeOnOverlayClick={getBooleanProp(node, 'closeOnOverlayClick') !== false}
+            confirmBtn={getStringProp(node, 'confirmBtn') || undefined}
+            destroyOnClose={getBooleanProp(node, 'destroyOnClose') === true}
+            footer={getDrawerFooterProp(node)}
+            header={getDrawerHeaderProp(node) as any}
+            lazy={getBooleanProp(node, 'lazy') !== false}
+            placement={getStringProp(node, 'placement') as any}
+            preventScrollThrough={getBooleanProp(node, 'preventScrollThrough') !== false}
+            showInAttachedElement={getBooleanProp(node, 'showInAttachedElement') === true}
+            showOverlay={getBooleanProp(node, 'showOverlay') !== false}
+            size={getStringProp(node, 'size') || undefined}
+            sizeDraggable={getDrawerSizeDraggableProp(node) as any}
+            visible={drawerInnerVisible}
+            zIndex={getNumberProp(node, 'zIndex')}
+            style={mergeStyle()}
+            onBeforeOpen={() => emitInteractionLifecycle('onBeforeOpen')}
+            onBeforeClose={() => emitInteractionLifecycle('onBeforeClose')}
+            onCancel={(context) => {
+              syncDrawerVisible(false);
+              emitInteractionLifecycle('onCancel', context);
+            }}
+            onClose={(context) => {
+              syncDrawerVisible(false);
+              emitInteractionLifecycle('onClose', context);
+            }}
+            onCloseBtnClick={(context) => {
+              syncDrawerVisible(false);
+              emitInteractionLifecycle('onCloseBtnClick', context);
+            }}
+            onConfirm={(context) => emitInteractionLifecycle('onConfirm', context)}
+            onEscKeydown={(context) => {
+              syncDrawerVisible(false);
+              emitInteractionLifecycle('onEscKeydown', context);
+            }}
+            onOverlayClick={(context) => {
+              syncDrawerVisible(false);
+              emitInteractionLifecycle('onOverlayClick', context);
+            }}
+            onSizeDragEnd={(context) => emitInteractionLifecycle('onSizeDragEnd', context)}
+          >
+            {renderChildList(node.children ?? [], onLifecycle)}
+          </Drawer>
+        </div>
+      );
+    }
     case 'Menu':
       return (
         <div style={mergeStyle()}>

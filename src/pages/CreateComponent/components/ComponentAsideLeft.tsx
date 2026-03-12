@@ -22,6 +22,7 @@ const DROP_DATA_KEY = 'drag-component-data';
 const CONTAINER_NODE_TYPES = new Set([
   'Space',
   'Steps',
+  'Drawer',
   'Menu',
   'HeadMenu',
   'Menu.Submenu',

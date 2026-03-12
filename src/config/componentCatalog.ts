@@ -189,6 +189,136 @@ const componentCatalog = [
     lifetimes: ['onClick'],
   },
   {
+    type: 'Drawer',
+    name: '抽屉',
+    props: {
+      className: {
+        name: '类名(className)',
+        value: '',
+        editType: 'input',
+      },
+      body: {
+        name: '内容(body)',
+        value: '抽屉内容',
+        editType: 'input',
+      },
+      showHeader: {
+        name: '显示头部',
+        value: true,
+        editType: 'switch',
+      },
+      header: {
+        name: '头部内容(header)',
+        value: '抽屉标题',
+        editType: 'input',
+      },
+      footer: {
+        name: '显示底部操作栏',
+        value: true,
+        editType: 'switch',
+      },
+      confirmBtn: {
+        name: '确认按钮文本',
+        value: '确认',
+        editType: 'input',
+      },
+      cancelBtn: {
+        name: '取消按钮文本',
+        value: '取消',
+        editType: 'input',
+      },
+      closeBtn: {
+        name: '显示关闭按钮',
+        value: true,
+        editType: 'switch',
+      },
+      closeOnEscKeydown: {
+        name: 'ESC 关闭',
+        value: true,
+        editType: 'switch',
+      },
+      closeOnOverlayClick: {
+        name: '点击蒙层关闭',
+        value: true,
+        editType: 'switch',
+      },
+      destroyOnClose: {
+        name: '关闭销毁',
+        value: false,
+        editType: 'switch',
+      },
+      lazy: {
+        name: '懒加载(lazy)',
+        value: true,
+        editType: 'switch',
+      },
+      placement: {
+        name: '方向(placement)',
+        value: 'right',
+        editType: 'select',
+        payload: {
+          options: ['left', 'right', 'top', 'bottom'],
+        },
+      },
+      preventScrollThrough: {
+        name: '防止滚动穿透',
+        value: true,
+        editType: 'switch',
+      },
+      showInAttachedElement: {
+        name: '仅挂载元素内显示',
+        value: false,
+        editType: 'switch',
+      },
+      showOverlay: {
+        name: '显示遮罩层',
+        value: true,
+        editType: 'switch',
+      },
+      size: {
+        name: '尺寸(size)',
+        value: 'small',
+        editType: 'input',
+      },
+      sizeDraggable: {
+        name: '拖拽调整尺寸',
+        value: false,
+        editType: 'switch',
+      },
+      sizeDragMin: {
+        name: '拖拽最小尺寸',
+        value: 240,
+        editType: 'inputNumber',
+      },
+      sizeDragMax: {
+        name: '拖拽最大尺寸',
+        value: 720,
+        editType: 'inputNumber',
+      },
+      visible: {
+        name: '可见(visible)',
+        value: false,
+        editType: 'switch',
+      },
+      zIndex: {
+        name: '层级(zIndex)',
+        value: 1500,
+        editType: 'inputNumber',
+      },
+    },
+    lifetimes: [
+      'onBeforeOpen',
+      'onBeforeClose',
+      'onCancel',
+      'onClose',
+      'onCloseBtnClick',
+      'onConfirm',
+      'onEscKeydown',
+      'onOverlayClick',
+      'onSizeDragEnd',
+    ],
+  },
+  {
     type: 'Icon',
     name: '图标',
     props: {

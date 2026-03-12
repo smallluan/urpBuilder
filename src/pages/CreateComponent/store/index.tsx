@@ -15,9 +15,11 @@ import {
 import { buildNodesByLayoutTemplate } from '../layoutTemplates';
 import type { BuiltInLayoutTemplateId } from '../layoutTemplates';
 import { normalizeTabsList, syncTabsSlotNodes } from '../utils/tabs';
+import { findNodePathByKey } from '../utils/tree';
 
 const HISTORY_MAX_ACTIONS = 200;
 const COMPONENT_KEY_PATTERN = /^[A-Za-z0-9_-]+$/;
+const DEBUG_VISIBLE_NODE_TYPES = new Set(['Drawer']);
 
 // 历史记录中的 add/remove 只保存 nodeRef（key），实际节点快照放在内存池，
 // 避免 history 里反复存大对象导致体积膨胀。
@@ -243,6 +245,74 @@ const resolveActiveNode = (uiPageData: UiTreeNode, activeNodeKey: string | null)
   return findNodeByKey(uiPageData, activeNodeKey);
 };
 
+const syncDebugVisibleByActiveNode = (
+  uiPageData: UiTreeNode,
+  prevActiveNodeKey: string | null,
+  nextActiveNodeKey: string | null,
+) => {
+  let nextTree = uiPageData;
+
+  const collectDebugVisibleKeys = (targetKey: string | null) => {
+    if (!targetKey) {
+      return new Set<string>();
+    }
+
+    const path = findNodePathByKey(nextTree, targetKey) ?? [];
+    return new Set(
+      path
+        .filter((item) => !!item.type && DEBUG_VISIBLE_NODE_TYPES.has(item.type))
+        .map((item) => item.key),
+    );
+  };
+
+  const applyVisible = (targetKey: string | null, expectedVisible: boolean) => {
+    if (!targetKey) {
+      return;
+    }
+
+    const targetNode = findNodeByKey(nextTree, targetKey);
+    if (!targetNode || !targetNode.type || !DEBUG_VISIBLE_NODE_TYPES.has(targetNode.type)) {
+      return;
+    }
+
+    const currentVisible = (targetNode.props?.visible as { value?: unknown } | undefined)?.value;
+    if (currentVisible === expectedVisible) {
+      return;
+    }
+
+    nextTree = updateNodeByKey(nextTree, targetKey, (target) => {
+      const currentProps = (target.props ?? {}) as Record<string, unknown>;
+      const currentVisibleProp = (currentProps.visible ?? {}) as Record<string, unknown>;
+
+      return {
+        ...target,
+        props: {
+          ...currentProps,
+          visible: {
+            ...currentVisibleProp,
+            value: expectedVisible,
+          },
+        },
+      };
+    });
+  };
+
+  const previousVisibleKeys = collectDebugVisibleKeys(prevActiveNodeKey);
+  const nextVisibleKeys = collectDebugVisibleKeys(nextActiveNodeKey);
+
+  previousVisibleKeys.forEach((key) => {
+    if (!nextVisibleKeys.has(key)) {
+      applyVisible(key, false);
+    }
+  });
+
+  nextVisibleKeys.forEach((key) => {
+    applyVisible(key, true);
+  });
+
+  return nextTree;
+};
+
 const resolveLayoutTemplateId = (uiPageData: UiTreeNode) => {
   const layoutMeta = (uiPageData.props?.__layoutTemplate as { value?: unknown } | undefined)?.value;
   if (
@@ -408,18 +478,22 @@ export const useCreateComponentStore = create<CreateComponentStore>((set) => ({
   setActiveNode: (nodeKey) =>
     set((state) => {
       const nextActiveNodeKey = nodeKey ?? null;
+      const nextTree = syncDebugVisibleByActiveNode(state.uiPageData, state.activeNodeKey, nextActiveNodeKey);
       return {
+        uiPageData: nextTree,
         activeNodeKey: nextActiveNodeKey,
-        activeNode: resolveActiveNode(state.uiPageData, nextActiveNodeKey),
+        activeNode: resolveActiveNode(nextTree, nextActiveNodeKey),
       };
     }),
   // 切换当前激活节点：重复点击同一节点则取消激活
   toggleActiveNode: (nodeKey) =>
     set((state) => {
       const nextActiveNodeKey = state.activeNodeKey === nodeKey ? null : nodeKey ?? null;
+      const nextTree = syncDebugVisibleByActiveNode(state.uiPageData, state.activeNodeKey, nextActiveNodeKey);
       return {
+        uiPageData: nextTree,
         activeNodeKey: nextActiveNodeKey,
-        activeNode: resolveActiveNode(state.uiPageData, nextActiveNodeKey),
+        activeNode: resolveActiveNode(nextTree, nextActiveNodeKey),
       };
     }),
   updateActiveNodeLabel: (label) =>

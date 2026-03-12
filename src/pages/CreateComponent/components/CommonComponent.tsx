@@ -1,5 +1,5 @@
 import React from 'react';
-import { Button, Space, Row, Col, Card, Divider, Typography, Image, Avatar, Switch, Swiper, Layout, Calendar, ColorPicker, TimePicker, TimeRangePicker, InputNumber, Slider, Steps, List, Link, Tabs, BackTop, Menu } from 'tdesign-react';
+import { Button, Space, Row, Col, Card, Divider, Typography, Image, Avatar, Switch, Swiper, Layout, Calendar, ColorPicker, TimePicker, TimeRangePicker, InputNumber, Slider, Steps, List, Link, Tabs, BackTop, Menu, Drawer } from 'tdesign-react';
 import DropArea from '../../../components/DropArea';
 import type { UiDropDataHandler, UiTreeNode } from '../store/type';
 import { useCreateComponentStore } from '../store';
@@ -696,6 +696,41 @@ export default function CommonComponent(properties: CommonComponentProps) {
     );
   };
 
+  const getBuilderDrawerAttach = () => {
+    return () => (
+      document.querySelector('[data-builder-scroll-container="true"]') as HTMLElement | null
+    ) ?? document.body;
+  };
+
+  const getDrawerHeaderProp = (): string | boolean => {
+    const showHeader = getBooleanProp('showHeader') !== false;
+    if (!showHeader) {
+      return false;
+    }
+
+    const headerText = getStringProp('header')?.trim();
+    return headerText || true;
+  };
+
+  const getDrawerFooterProp = (): boolean => {
+    return getBooleanProp('footer') !== false;
+  };
+
+  const getDrawerSizeDraggableProp = (): boolean | { min: number; max: number } | undefined => {
+    const enabled = getBooleanProp('sizeDraggable') === true;
+    if (!enabled) {
+      return undefined;
+    }
+
+    const min = getNumberProp('sizeDragMin');
+    const max = getNumberProp('sizeDragMax');
+    if (typeof min === 'number' && typeof max === 'number' && min > 0 && max >= min) {
+      return { min, max };
+    }
+
+    return true;
+  };
+
   const handleActivateSelf = (event: React.MouseEvent<HTMLElement>) => {
     event.stopPropagation();
     if (!data?.key) {
@@ -918,6 +953,56 @@ export default function CommonComponent(properties: CommonComponentProps) {
           />
         </ActivateWrapper>
       );
+    case 'Drawer': {
+      const hasDrawerChildren = (data?.children?.length ?? 0) > 0;
+      const drawerBodyText = getStringProp('body')?.trim();
+      const drawerVisible = getBooleanProp('visible') === true;
+      return (
+        <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf}>
+          <div style={{ position: 'relative' }}>
+            <Drawer
+              className={getStringProp('className') || undefined}
+              attach={getBuilderDrawerAttach() as any}
+              body={!hasDrawerChildren ? (drawerBodyText || undefined) : undefined}
+              cancelBtn={getStringProp('cancelBtn') || undefined}
+              closeBtn={getBooleanProp('closeBtn') !== false}
+              closeOnEscKeydown={getBooleanProp('closeOnEscKeydown') !== false}
+              closeOnOverlayClick={getBooleanProp('closeOnOverlayClick') !== false}
+              confirmBtn={getStringProp('confirmBtn') || undefined}
+              destroyOnClose={getBooleanProp('destroyOnClose') === true}
+              footer={getDrawerFooterProp()}
+              header={getDrawerHeaderProp() as any}
+              lazy={getBooleanProp('lazy') !== false}
+              placement={getStringProp('placement') as any}
+              preventScrollThrough={getBooleanProp('preventScrollThrough') !== false}
+              showInAttachedElement
+              showOverlay={getBooleanProp('showOverlay') !== false}
+              size={getStringProp('size') || undefined}
+              sizeDraggable={getDrawerSizeDraggableProp() as any}
+              visible={drawerVisible}
+              zIndex={getNumberProp('zIndex')}
+              style={mergeStyle()}
+              onClose={() => {
+                // 搭建态仅展示，不在此处驱动运行时逻辑
+              }}
+              onConfirm={() => {
+                // 搭建态仅展示，不在此处驱动运行时逻辑
+              }}
+              onCancel={() => {
+                // 搭建态仅展示，不在此处驱动运行时逻辑
+              }}
+            >
+              <DropArea
+                data={data}
+                onDropData={onDropData}
+                emptyText="拖拽组件到抽屉内容"
+                compactWhenFilled
+              />
+            </Drawer>
+          </div>
+        </ActivateWrapper>
+      );
+    }
     case 'HeadMenu':
       return (
         <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf}>

@@ -152,6 +152,7 @@ const getIconByType = (type: string) => {
     Button: MousePointerClick,
     Link: Link2,
     BackTop: ArrowUpToLine,
+    Drawer: RectangleHorizontal,
     Menu: ListOrdered,
     HeadMenu: ListOrdered,
     'Menu.Submenu': ListOrdered,
