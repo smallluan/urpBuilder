@@ -293,6 +293,94 @@ const componentCatalog = [
     }
   },
   {
+    type: 'Steps',
+    name: '步骤条',
+    props: {
+      controlled: {
+        name: '受控模式',
+        value: true,
+        editType: 'switch'
+      },
+      current: {
+        name: '当前步骤(current)',
+        value: '0',
+        editType: 'input'
+      },
+      defaultCurrent: {
+        name: '默认步骤(defaultCurrent)',
+        value: '0',
+        editType: 'input'
+      },
+      layout: {
+        name: '布局方向',
+        value: 'horizontal',
+        editType: 'select',
+        payload: {
+          options: ['horizontal', 'vertical']
+        }
+      },
+      readOnly: {
+        name: '只读',
+        value: false,
+        editType: 'switch'
+      },
+      separator: {
+        name: '分隔符',
+        value: 'line',
+        editType: 'select',
+        payload: {
+          options: ['line', 'dashed', 'arrow']
+        }
+      },
+      sequence: {
+        name: '步骤顺序',
+        value: 'positive',
+        editType: 'select',
+        payload: {
+          options: ['positive', 'reverse']
+        }
+      },
+      theme: {
+        name: '风格',
+        value: 'default',
+        editType: 'select',
+        payload: {
+          options: ['default', 'dot']
+        }
+      }
+    },
+    lifetimes: ['onChange']
+  },
+  {
+    type: 'Steps.Item',
+    name: '步骤项',
+    props: {
+      title: {
+        name: '标题',
+        value: '步骤项',
+        editType: 'input'
+      },
+      content: {
+        name: '描述',
+        value: '',
+        editType: 'input'
+      },
+      status: {
+        name: '状态',
+        value: 'default',
+        editType: 'select',
+        payload: {
+          options: ['default', 'process', 'finish', 'error']
+        }
+      },
+      value: {
+        name: '标识(value)',
+        value: '',
+        editType: 'input'
+      }
+    }
+  },
+  {
     type: 'Card',
     name: '卡片',
     props: {

@@ -20,6 +20,7 @@ interface RenderUiTreeNode extends Omit<UiTreeNode, 'label' | 'children'> {
 const DROP_DATA_KEY = 'drag-component-data';
 const CONTAINER_NODE_TYPES = new Set([
   'Space',
+  'Steps',
   'Grid.Row',
   'Grid.Col',
   'Layout',
@@ -226,13 +227,27 @@ const ComponentAsideLeft: React.FC = () => {
         return;
       }
 
-      if (node.type === 'List.Item') {
+      const currentNodeType = typeof node.type === 'string' ? node.type.trim() : '';
+
+      if (currentNodeType === 'List.Item') {
         const droppedType = typeof (parsedData as { type?: unknown }).type === 'string'
-          ? String((parsedData as { type?: unknown }).type)
+          ? String((parsedData as { type?: unknown }).type).trim()
           : '';
         if (!LIST_TEMPLATE_ALLOWED_TYPES.has(droppedType)) {
           return;
         }
+      }
+
+      const droppedType = typeof (parsedData as { type?: unknown }).type === 'string'
+        ? String((parsedData as { type?: unknown }).type).trim()
+        : '';
+
+      if (currentNodeType === 'Steps' && droppedType !== 'Steps.Item') {
+        return;
+      }
+
+      if (droppedType === 'Steps.Item' && currentNodeType !== 'Steps') {
+        return;
       }
 
       insertToUiPageData(dropTarget.parentKey, parsedData as Record<string, unknown>, dropTarget.slotKey);

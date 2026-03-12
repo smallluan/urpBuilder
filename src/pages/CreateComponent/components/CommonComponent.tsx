@@ -1,5 +1,5 @@
 import React from 'react';
-import { Button, Space, Row, Col, Card, Divider, Typography, Image, Avatar, Switch, Swiper, Layout, Calendar, ColorPicker, TimePicker, TimeRangePicker, InputNumber, Slider, List } from 'tdesign-react';
+import { Button, Space, Row, Col, Card, Divider, Typography, Image, Avatar, Switch, Swiper, Layout, Calendar, ColorPicker, TimePicker, TimeRangePicker, InputNumber, Slider, Steps, List } from 'tdesign-react';
 import DropArea from '../../../components/DropArea';
 import type { UiDropDataHandler, UiTreeNode } from '../store/type';
 import { useCreateComponentStore } from '../store';
@@ -171,6 +171,7 @@ const CardContent: React.FC<CardContentProps> = ({
 
 export default function CommonComponent(properties: CommonComponentProps) {
   const { type, data, onDropData } = properties;
+  const normalizedType = typeof type === 'string' ? type.trim() : type;
   const setActiveNode = useCreateComponentStore((state) => state.setActiveNode);
   const screenSize = useCreateComponentStore((state) => state.screenSize);
   const autoWidth = useCreateComponentStore((state) => state.autoWidth);
@@ -493,6 +494,25 @@ export default function CommonComponent(properties: CommonComponentProps) {
     return undefined;
   };
 
+  const getStepsCurrentProp = (propName: string): string | number | undefined => {
+    const value = getProp(propName);
+    if (typeof value === 'number' && Number.isFinite(value)) {
+      return value;
+    }
+
+    if (typeof value === 'string') {
+      const text = value.trim();
+      if (!text) {
+        return undefined;
+      }
+
+      const parsed = Number(text);
+      return Number.isFinite(parsed) ? parsed : text;
+    }
+
+    return undefined;
+  };
+
   const handleActivateSelf = (event: React.MouseEvent<HTMLElement>) => {
     event.stopPropagation();
     if (!data?.key) {
@@ -572,7 +592,7 @@ export default function CommonComponent(properties: CommonComponentProps) {
   const cardBodySlotNode = getCardSlotNode('body');
   const hasCardSlotStructure = Boolean(cardHeaderSlotNode && cardBodySlotNode);
 
-  switch(type) {
+  switch(normalizedType) {
     case 'Button':
       return (
         <ActivateWrapper style={mergeStyle(isBlockButton ? { width: '100%' } : undefined)} onActivate={handleActivateSelf}>
@@ -1009,6 +1029,81 @@ export default function CommonComponent(properties: CommonComponentProps) {
           </ActivateWrapper>
         );
         }
+      case 'Steps':
+        {
+        const isControlled = getBooleanProp('controlled') !== false;
+        const current = getStepsCurrentProp('current');
+        const defaultCurrent = getStepsCurrentProp('defaultCurrent');
+        const stepItems = (data?.children ?? [])
+          .filter((child) => (typeof child.type === 'string' ? child.type.trim() : child.type) === 'Steps.Item')
+          .map((child) => {
+            const getStepProp = (propName: string) => {
+              const prop = child.props?.[propName] as { value?: unknown } | undefined;
+              return prop?.value;
+            };
+
+            const title = getStepProp('title');
+            const content = getStepProp('content');
+            const status = getStepProp('status');
+            const value = getStepProp('value');
+            const normalizedStatus =
+              status === 'default' || status === 'process' || status === 'finish' || status === 'error'
+                ? status
+                : undefined;
+            const normalizedValue =
+              typeof value === 'number'
+                ? value
+                : (typeof value === 'string'
+                  ? (value.trim() ? value.trim() : undefined)
+                  : undefined);
+
+            return {
+              key: child.key,
+              title: typeof title === 'string' ? title : '',
+              content: typeof content === 'string' ? content : '',
+              status: normalizedStatus,
+              value: normalizedValue,
+            };
+          });
+
+        const stepsValueProps = isControlled
+          ? { current: current ?? 0 }
+          : { defaultCurrent: defaultCurrent ?? 0 };
+
+        const stepsLayout = getStringProp('layout') as 'horizontal' | 'vertical' | undefined;
+        const fallbackMinHeight = stepsLayout === 'vertical' ? 160 : 88;
+
+        return (
+          <DropArea data={data} onDropData={onDropData} emptyText="拖拽步骤项到步骤条" compactWhenFilled isTreeNode>
+            <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf}>
+              <Steps
+                {...stepsValueProps}
+                layout={stepsLayout as any}
+                readOnly={getBooleanProp('readOnly')}
+                separator={getStringProp('separator') as any}
+                sequence={getStringProp('sequence') as any}
+                theme={getStringProp('theme') as any}
+                onChange={() => {
+                  // 搭建态仅展示，不在此处驱动运行时逻辑
+                }}
+                style={mergeStyle({ minHeight: fallbackMinHeight })}
+              >
+                {stepItems.map((item) => (
+                  <Steps.StepItem
+                    key={item.key}
+                    title={item.title}
+                    content={item.content}
+                    status={item.status as any}
+                    value={item.value as any}
+                  />
+                ))}
+              </Steps>
+            </ActivateWrapper>
+          </DropArea>
+        );
+        }
+      case 'Steps.Item':
+        return null;
       case 'Swiper': {
         const imageList = getSwiperImages();
         const height = getNumberProp('height') ?? 240;

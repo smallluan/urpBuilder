@@ -16,8 +16,18 @@ const ComponentBody: React.FC = () => {
       return;
     }
 
-    if (parent.type === 'List.Item') {
-      const droppedType = typeof data.type === 'string' ? data.type : '';
+    const droppedType = typeof data.type === 'string' ? data.type.trim() : '';
+    const parentType = typeof parent.type === 'string' ? parent.type.trim() : '';
+
+    if (parentType === 'Steps' && droppedType !== 'Steps.Item') {
+      return;
+    }
+
+    if (droppedType === 'Steps.Item' && parentType !== 'Steps') {
+      return;
+    }
+
+    if (parentType === 'List.Item') {
       const parentPath = findNodePathByKey(uiPageData, String(parent.key));
       const listAncestor = parentPath?.slice().reverse().find((item) => item.type === 'List');
       const customModeEnabled =

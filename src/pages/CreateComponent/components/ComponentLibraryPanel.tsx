@@ -22,6 +22,7 @@ import {
   Hash,
   List,
   SlidersHorizontal,
+  ListOrdered,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import componentCatalog from '../../../config/componentCatalog';
@@ -69,6 +70,8 @@ const getCategoryByType = (type: string): ComponentCategory => {
     type === 'Switch'
     || type === 'InputNumber'
     || type === 'Slider'
+    || type === 'Steps'
+    || type === 'Steps.Item'
     || type === 'ColorPicker'
     || type === 'TimePicker'
     || type === 'TimeRangePicker'
@@ -132,6 +135,8 @@ const getIconByType = (type: string) => {
     TimeRangePicker: Timer,
     InputNumber: Hash,
     Slider: SlidersHorizontal,
+    Steps: ListOrdered,
+    'Steps.Item': ListOrdered,
     List,
     Divider: Minus,
     'Typography.Title': Heading,
@@ -153,7 +158,9 @@ const ComponentLibraryPanel: React.FC<ComponentLibraryPanelProps> = ({ selectedN
 
   const filteredCatalog = useMemo(() => {
     const text = keyword.trim();
-    const catalogWithoutAbstractNodes = componentCatalog.filter((component) => component.type !== 'List.Item');
+    const catalogWithoutAbstractNodes = componentCatalog.filter(
+      (component) => component.type !== 'List.Item',
+    );
 
     if (!text) {
       return catalogWithoutAbstractNodes;

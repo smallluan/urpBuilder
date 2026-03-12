@@ -89,6 +89,39 @@ const createListItemTemplateNode = (): UiTreeNode => ({
   children: [],
 });
 
+const createStepsItemNode = (index: number): UiTreeNode => ({
+  key: uuidv4(),
+  label: '步骤项',
+  type: 'Steps.Item',
+  props: {
+    title: {
+      name: '标题',
+      value: `步骤${index + 1}`,
+      editType: 'input',
+    },
+    content: {
+      name: '描述',
+      value: `这是步骤${index + 1}的说明`,
+      editType: 'input',
+    },
+    status: {
+      name: '状态',
+      value: 'default',
+      editType: 'select',
+      payload: {
+        options: ['default', 'process', 'finish', 'error'],
+      },
+    },
+    value: {
+      name: '标识(value)',
+      value: '',
+      editType: 'input',
+    },
+  },
+  lifetimes: [],
+  children: [],
+});
+
 const buildInitialChildren = (type: string): UiTreeNode[] => {
   if (type === 'Card') {
     return [
@@ -99,6 +132,10 @@ const buildInitialChildren = (type: string): UiTreeNode[] => {
 
   if (type === 'List') {
     return [createListItemTemplateNode()];
+  }
+
+  if (type === 'Steps') {
+    return [createStepsItemNode(0), createStepsItemNode(1), createStepsItemNode(2)];
   }
 
   return [];

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Avatar, Button, Card, Col, Divider, Image, Row, Space, Switch, Swiper, Typography, Layout, Calendar, ColorPicker, TimePicker, TimeRangePicker, InputNumber, Slider, List } from 'tdesign-react';
+import { Avatar, Button, Card, Col, Divider, Image, Row, Space, Switch, Swiper, Typography, Layout, Calendar, ColorPicker, TimePicker, TimeRangePicker, InputNumber, Slider, Steps, List } from 'tdesign-react';
 import type { UiTreeNode } from '../../CreateComponent/store/type';
 import { getNodeSlotKey, isSlotNode } from '../../CreateComponent/utils/slot';
 import { convertResponsiveConfigToTDesignProps, normalizeResponsiveConfig } from '../../CreateComponent/utils/gridResponsive';
@@ -259,6 +259,25 @@ const getSliderValueProp = (node: UiTreeNode, propName: string): number | [numbe
   return undefined;
 };
 
+const getStepsCurrentProp = (node: UiTreeNode, propName: string): string | number | undefined => {
+  const value = getProp(node, propName);
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value;
+  }
+
+  if (typeof value === 'string') {
+    const text = value.trim();
+    if (!text) {
+      return undefined;
+    }
+
+    const parsed = Number(text);
+    return Number.isFinite(parsed) ? parsed : text;
+  }
+
+  return undefined;
+};
+
 const getListDataSource = (node: UiTreeNode): ListRecord[] => {
   const value = getProp(node, 'dataSource');
   if (Array.isArray(value)) {
@@ -416,7 +435,7 @@ const renderChildren = (
 
 const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) => {
   const inlineStyle = getStyleProp(node);
-  const type = node.type;
+  const type = typeof node.type === 'string' ? node.type.trim() : node.type;
   const { Header, Content, Aside, Footer } = Layout;
   const { ListItem, ListItemMeta } = List;
   if (isSlotNode(node)) {
@@ -1092,6 +1111,83 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) 
         </div>
       );
       }
+    case 'Steps':
+      {
+      const isControlled = getBooleanProp(node, 'controlled') !== false;
+      const current = getStepsCurrentProp(node, 'current');
+      const defaultCurrent = getStepsCurrentProp(node, 'defaultCurrent');
+      const stepItems = (node.children ?? [])
+        .filter((child) => (typeof child.type === 'string' ? child.type.trim() : child.type) === 'Steps.Item')
+        .map((child) => {
+          const getStepProp = (propName: string) => {
+            const prop = child.props?.[propName] as { value?: unknown } | undefined;
+            return prop?.value;
+          };
+
+          const title = getStepProp('title');
+          const content = getStepProp('content');
+          const status = getStepProp('status');
+          const value = getStepProp('value');
+          const normalizedStatus =
+            status === 'default' || status === 'process' || status === 'finish' || status === 'error'
+              ? status
+              : undefined;
+          const normalizedValue =
+            typeof value === 'number'
+              ? value
+              : (typeof value === 'string'
+                ? (value.trim() ? value.trim() : undefined)
+                : undefined);
+
+          return {
+            key: child.key,
+            title: typeof title === 'string' ? title : '',
+            content: typeof content === 'string' ? content : '',
+            status: normalizedStatus,
+            value: normalizedValue,
+          };
+        });
+
+      const stepsValueProps = isControlled
+        ? { current: current ?? 0 }
+        : { defaultCurrent: defaultCurrent ?? 0 };
+
+      const stepsLayout = getStringProp(node, 'layout') as 'horizontal' | 'vertical' | undefined;
+      const fallbackMinHeight = stepsLayout === 'vertical' ? 160 : 88;
+
+      return (
+        <div style={mergeStyle()}>
+          <Steps
+            {...stepsValueProps}
+            layout={stepsLayout as any}
+            readOnly={getBooleanProp(node, 'readOnly')}
+            separator={getStringProp(node, 'separator') as any}
+            sequence={getStringProp(node, 'sequence') as any}
+            theme={getStringProp(node, 'theme') as any}
+            onChange={(currentValue, previousValue, context) =>
+              emitInteractionLifecycle('onChange', {
+                current: currentValue,
+                previous: previousValue,
+                context,
+              })
+            }
+            style={mergeStyle({ minHeight: fallbackMinHeight })}
+          >
+            {stepItems.map((item) => (
+              <Steps.StepItem
+                key={item.key}
+                title={item.title}
+                content={item.content}
+                status={item.status as any}
+                value={item.value as any}
+              />
+            ))}
+          </Steps>
+        </div>
+      );
+      }
+    case 'Steps.Item':
+      return null;
     case 'Swiper': {
       const imageList = getSwiperImages(node);
       const height = getNumberProp(node, 'height') ?? 240;
