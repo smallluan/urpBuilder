@@ -88,6 +88,7 @@ const getCategoryByType = (type: string): ComponentCategory => {
     type === 'Image'
     || type === 'Avatar'
     || type === 'Calendar'
+    || type === 'Progress'
     || type === 'List'
     || type === 'Tabs'
     || type === 'Steps'
@@ -153,6 +154,7 @@ const getIconByType = (type: string) => {
     Link: Link2,
     BackTop: ArrowUpToLine,
     Drawer: RectangleHorizontal,
+    Progress: SlidersHorizontal,
     Menu: ListOrdered,
     HeadMenu: ListOrdered,
     'Menu.Submenu': ListOrdered,

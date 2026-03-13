@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Button, Dialog, Empty, Input, InputNumber, Popup, Select, Slider, Space, Switch, Table, Tag, Typography } from 'tdesign-react';
+import { Button, ColorPicker, Dialog, Empty, Input, InputNumber, Popup, Select, Slider, Space, Switch, Table, Tag, Typography } from 'tdesign-react';
 import { HelpCircleIcon } from 'tdesign-icons-react';
 import { useCreateComponentStore } from '../store';
 import type { UiTreeNode } from '../store/type';
@@ -105,9 +105,13 @@ interface ComponentPropSchema {
   editType?: EditType | string;
   editInput?: EditType | string;
   payload?: {
-    options?: Array<string | number>;
+    options?: Array<string | number | { label: string; value: string | number }>;
+    min?: number;
+    max?: number;
   };
 }
+
+const PROGRESS_COLOR_PROP_KEYS = new Set(['color', 'trackColor']);
 
 const GRID_PRESET_OPTIONS = [
   { label: '1/4', value: 3 },
@@ -242,6 +246,10 @@ const ComponentConfigPanel: React.FC = () => {
       return false;
     }
 
+    if (activeNode?.type === 'Progress' && PROGRESS_COLOR_PROP_KEYS.has(propKey)) {
+      return false;
+    }
+
     if (activeNode?.type === 'Switch' || activeNode?.type === 'Slider' || activeNode?.type === 'Steps') {
       if (propKey === 'value' && switchControlled === false) {
         return false;
@@ -336,18 +344,33 @@ const ComponentConfigPanel: React.FC = () => {
 
     if (editType === 'inputNumber') {
       const draftValue = numberDrafts[propKey];
+      const min = typeof schema.payload?.min === 'number' ? schema.payload.min : undefined;
+      const max = typeof schema.payload?.max === 'number' ? schema.payload.max : undefined;
       return (
         <InputNumber
           size='small'
+          min={min}
+          max={max}
           value={typeof draftValue === 'number' ? draftValue : undefined}
           onChange={(value) => {
             const nextNumber = typeof value === 'number' && !Number.isNaN(value) ? value : undefined;
+            const normalizedNumber = typeof nextNumber === 'number'
+              ? (
+                typeof min === 'number' && typeof max === 'number'
+                  ? Math.min(max, Math.max(min, nextNumber))
+                  : typeof min === 'number'
+                    ? Math.max(min, nextNumber)
+                    : typeof max === 'number'
+                      ? Math.min(max, nextNumber)
+                      : nextNumber
+              )
+              : undefined;
             setNumberDrafts((previous) => ({
               ...previous,
-              [propKey]: nextNumber,
+              [propKey]: normalizedNumber,
             }));
-            if (typeof nextNumber === 'number') {
-              updateActiveNodeProp(propKey, nextNumber);
+            if (typeof normalizedNumber === 'number') {
+              updateActiveNodeProp(propKey, normalizedNumber);
             }
           }}
         />
@@ -355,10 +378,20 @@ const ComponentConfigPanel: React.FC = () => {
     }
 
     if (editType === 'select') {
-      const options = (schema.payload?.options ?? []).map((item) => ({
-        label: String(item),
-        value: item,
-      }));
+      const options = (schema.payload?.options ?? []).map((item) => {
+        if (item && typeof item === 'object' && 'label' in item && 'value' in item) {
+          const option = item as { label: string; value: string | number };
+          return {
+            label: String(option.label),
+            value: option.value,
+          };
+        }
+
+        return {
+          label: String(item),
+          value: item,
+        };
+      });
 
       return (
         <Select
@@ -706,6 +739,29 @@ const ComponentConfigPanel: React.FC = () => {
             <div className="config-editor">{renderEditor(propKey, schema)}</div>
           </div>
         ))}
+
+        {activeNode.type === 'Progress' ? (
+          <>
+            <div className="config-row">
+              <span className="config-label">颜色</span>
+              <div className="config-editor">
+                <ColorPicker
+                  value={String(propsMap.color?.value ?? '')}
+                  onChange={(value) => updateActiveNodeProp('color', String(value ?? ''))}
+                />
+              </div>
+            </div>
+            <div className="config-row">
+              <span className="config-label">轨道颜色</span>
+              <div className="config-editor">
+                <ColorPicker
+                  value={String(propsMap.trackColor?.value ?? '')}
+                  onChange={(value) => updateActiveNodeProp('trackColor', String(value ?? ''))}
+                />
+              </div>
+            </div>
+          </>
+        ) : null}
 
         {activeNode.type === 'Grid.Col' ? (
           <div className="config-row">

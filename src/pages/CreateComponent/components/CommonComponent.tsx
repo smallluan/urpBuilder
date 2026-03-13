@@ -1,5 +1,5 @@
 import React from 'react';
-import { Button, Space, Row, Col, Card, Divider, Typography, Image, Avatar, Switch, Swiper, Layout, Calendar, ColorPicker, TimePicker, TimeRangePicker, InputNumber, Slider, Steps, List, Link, Tabs, BackTop, Menu, Drawer } from 'tdesign-react';
+import { Button, Space, Row, Col, Card, Divider, Typography, Image, Avatar, Switch, Swiper, Layout, Calendar, ColorPicker, TimePicker, TimeRangePicker, InputNumber, Slider, Steps, List, Link, Tabs, BackTop, Menu, Drawer, Progress } from 'tdesign-react';
 import DropArea from '../../../components/DropArea';
 import type { UiDropDataHandler, UiTreeNode } from '../store/type';
 import { useCreateComponentStore } from '../store';
@@ -731,6 +731,95 @@ export default function CommonComponent(properties: CommonComponentProps) {
     return true;
   };
 
+  const getProgressColorProp = (propName: string): string | string[] | Record<string, string> | undefined => {
+    const value = getProp(propName);
+
+    if (typeof value === 'string') {
+      const text = value.trim();
+      if (!text) {
+        return undefined;
+      }
+
+      if ((text.startsWith('{') && text.endsWith('}')) || (text.startsWith('[') && text.endsWith(']'))) {
+        try {
+          const parsed = JSON.parse(text);
+          if (Array.isArray(parsed)) {
+            const list = parsed.map((item) => String(item).trim()).filter(Boolean);
+            return list.length ? list : undefined;
+          }
+
+          if (parsed && typeof parsed === 'object') {
+            const entries = Object.entries(parsed as Record<string, unknown>)
+              .map(([key, item]) => [key, String(item).trim()] as const)
+              .filter(([, item]) => !!item);
+            return entries.length ? Object.fromEntries(entries) : undefined;
+          }
+        } catch {
+          return text;
+        }
+      }
+
+      const splitList = text.split(/,|，/).map((item) => item.trim()).filter(Boolean);
+      if (splitList.length >= 2) {
+        return splitList;
+      }
+
+      return text;
+    }
+
+    if (Array.isArray(value)) {
+      const list = value.map((item) => String(item).trim()).filter(Boolean);
+      return list.length ? list : undefined;
+    }
+
+    if (value && typeof value === 'object') {
+      const entries = Object.entries(value as Record<string, unknown>)
+        .map(([key, item]) => [key, String(item).trim()] as const)
+        .filter(([, item]) => !!item);
+      return entries.length ? Object.fromEntries(entries) : undefined;
+    }
+
+    return undefined;
+  };
+
+  const getProgressLabelProp = (): string | boolean => {
+    if (getBooleanProp('showLabel') === false) {
+      return false;
+    }
+
+    const text = getStringProp('labelText')?.trim();
+    return text || true;
+  };
+
+  const getProgressSizeProp = (propName: string): string | number | undefined => {
+    const value = getProp(propName);
+
+    if (typeof value === 'number' && Number.isFinite(value)) {
+      return value;
+    }
+
+    if (typeof value === 'string') {
+      const text = value.trim();
+      if (!text) {
+        return undefined;
+      }
+
+      const parsed = Number(text);
+      return Number.isFinite(parsed) ? parsed : text;
+    }
+
+    return undefined;
+  };
+
+  const getProgressStatusProp = (): string | undefined => {
+    const status = getStringProp('status')?.trim();
+    if (!status || status === 'default') {
+      return undefined;
+    }
+
+    return status;
+  };
+
   const handleActivateSelf = (event: React.MouseEvent<HTMLElement>) => {
     event.stopPropagation();
     if (!data?.key) {
@@ -949,6 +1038,23 @@ export default function CommonComponent(properties: CommonComponentProps) {
             container={getBackTopContainerProp() as any}
             theme={getStringProp('theme') as any}
             visibleHeight={getBackTopVisibleHeightProp('visibleHeight') as any}
+            style={mergeStyle()}
+          />
+        </ActivateWrapper>
+      );
+    case 'Progress':
+      return (
+        <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf}>
+          <Progress
+            className={getStringProp('className') || undefined}
+            color={getProgressColorProp('color') as any}
+            label={getProgressLabelProp() as any}
+            percentage={getFiniteNumberProp('percentage') ?? 0}
+            size={getProgressSizeProp('size') as any}
+            status={getProgressStatusProp() as any}
+            strokeWidth={getProgressSizeProp('strokeWidth') as any}
+            theme={getStringProp('theme') as any}
+            trackColor={getStringProp('trackColor') || undefined}
             style={mergeStyle()}
           />
         </ActivateWrapper>

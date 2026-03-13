@@ -1,5 +1,5 @@
 import React from 'react';
-import { Avatar, Button, Card, Col, Divider, Image, Row, Space, Switch, Swiper, Typography, Layout, Calendar, ColorPicker, TimePicker, TimeRangePicker, InputNumber, Slider, Steps, List, Link, Tabs, BackTop, Menu, Drawer } from 'tdesign-react';
+import { Avatar, Button, Card, Col, Divider, Image, Row, Space, Switch, Swiper, Typography, Layout, Calendar, ColorPicker, TimePicker, TimeRangePicker, InputNumber, Slider, Steps, List, Link, Tabs, BackTop, Menu, Drawer, Progress } from 'tdesign-react';
 import type { UiTreeNode } from '../../CreateComponent/store/type';
 import { getNodeSlotKey, isSlotNode } from '../../CreateComponent/utils/slot';
 import { convertResponsiveConfigToTDesignProps, normalizeResponsiveConfig } from '../../CreateComponent/utils/gridResponsive';
@@ -484,6 +484,95 @@ const getDrawerSizeDraggableProp = (node: UiTreeNode): boolean | { min: number; 
   }
 
   return true;
+};
+
+const getProgressColorProp = (node: UiTreeNode, propName: string): string | string[] | Record<string, string> | undefined => {
+  const value = getProp(node, propName);
+
+  if (typeof value === 'string') {
+    const text = value.trim();
+    if (!text) {
+      return undefined;
+    }
+
+    if ((text.startsWith('{') && text.endsWith('}')) || (text.startsWith('[') && text.endsWith(']'))) {
+      try {
+        const parsed = JSON.parse(text);
+        if (Array.isArray(parsed)) {
+          const list = parsed.map((item) => String(item).trim()).filter(Boolean);
+          return list.length ? list : undefined;
+        }
+
+        if (parsed && typeof parsed === 'object') {
+          const entries = Object.entries(parsed as Record<string, unknown>)
+            .map(([key, item]) => [key, String(item).trim()] as const)
+            .filter(([, item]) => !!item);
+          return entries.length ? Object.fromEntries(entries) : undefined;
+        }
+      } catch {
+        return text;
+      }
+    }
+
+    const splitList = text.split(/,|，/).map((item) => item.trim()).filter(Boolean);
+    if (splitList.length >= 2) {
+      return splitList;
+    }
+
+    return text;
+  }
+
+  if (Array.isArray(value)) {
+    const list = value.map((item) => String(item).trim()).filter(Boolean);
+    return list.length ? list : undefined;
+  }
+
+  if (value && typeof value === 'object') {
+    const entries = Object.entries(value as Record<string, unknown>)
+      .map(([key, item]) => [key, String(item).trim()] as const)
+      .filter(([, item]) => !!item);
+    return entries.length ? Object.fromEntries(entries) : undefined;
+  }
+
+  return undefined;
+};
+
+const getProgressLabelProp = (node: UiTreeNode): string | boolean => {
+  if (getBooleanProp(node, 'showLabel') === false) {
+    return false;
+  }
+
+  const text = getStringProp(node, 'labelText')?.trim();
+  return text || true;
+};
+
+const getProgressSizeProp = (node: UiTreeNode, propName: string): string | number | undefined => {
+  const value = getProp(node, propName);
+
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value;
+  }
+
+  if (typeof value === 'string') {
+    const text = value.trim();
+    if (!text) {
+      return undefined;
+    }
+
+    const parsed = Number(text);
+    return Number.isFinite(parsed) ? parsed : text;
+  }
+
+  return undefined;
+};
+
+const getProgressStatusProp = (node: UiTreeNode): string | undefined => {
+  const status = getStringProp(node, 'status')?.trim();
+  if (!status || status === 'default') {
+    return undefined;
+  }
+
+  return status;
 };
 
 const getListDataSource = (node: UiTreeNode): ListRecord[] => {
@@ -999,6 +1088,23 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) 
             visibleHeight={getBackTopVisibleHeightProp(node, 'visibleHeight') as any}
             style={mergeStyle()}
             onClick={(context) => emitInteractionLifecycle('onClick', context)}
+          />
+        </div>
+      );
+    case 'Progress':
+      return (
+        <div style={mergeStyle()}>
+          <Progress
+            className={getStringProp(node, 'className') || undefined}
+            color={getProgressColorProp(node, 'color') as any}
+            label={getProgressLabelProp(node) as any}
+            percentage={getFiniteNumberProp(node, 'percentage') ?? 0}
+            size={getProgressSizeProp(node, 'size') as any}
+            status={getProgressStatusProp(node) as any}
+            strokeWidth={getProgressSizeProp(node, 'strokeWidth') as any}
+            theme={getStringProp(node, 'theme') as any}
+            trackColor={getStringProp(node, 'trackColor') || undefined}
+            style={mergeStyle()}
           />
         </div>
       );

@@ -319,6 +319,87 @@ const componentCatalog = [
     ],
   },
   {
+    type: 'Progress',
+    name: '进度条',
+    props: {
+      color: {
+        name: '颜色',
+        value: '',
+        editType: 'input',
+      },
+      showLabel: {
+        name: '显示标签',
+        value: true,
+        editType: 'switch',
+      },
+      labelText: {
+        name: '标签文本',
+        value: '',
+        editType: 'input',
+      },
+      percentage: {
+        name: '百分比',
+        value: 0,
+        editType: 'inputNumber',
+        payload: {
+          min: 0,
+          max: 100,
+        },
+      },
+      size: {
+        name: '尺寸',
+        value: 'medium',
+        editType: 'select',
+        payload: {
+          options: [
+            { label: '小', value: 'small' },
+            { label: '中', value: 'medium' },
+            { label: '大', value: 'large' },
+          ],
+        },
+      },
+      status: {
+        name: '状态',
+        value: 'default',
+        editType: 'select',
+        payload: {
+          options: [
+            { label: '默认', value: 'default' },
+            { label: '成功', value: 'success' },
+            { label: '错误', value: 'error' },
+            { label: '警告', value: 'warning' },
+            { label: '激活', value: 'active' },
+          ],
+        },
+      },
+      strokeWidth: {
+        name: '线宽',
+        value: undefined,
+        editType: 'inputNumber',
+        payload: {
+          min: 0,
+        },
+      },
+      theme: {
+        name: '风格',
+        value: 'line',
+        editType: 'select',
+        payload: {
+          options: [
+            { label: '线形', value: 'line' },
+            { label: '饱满', value: 'plump' },
+            { label: '环形', value: 'circle' },
+          ],
+        },
+      },
+      trackColor: {
+        name: '轨道颜色',
+        value: '',
+        editType: 'input',
+      },
+    },
+  },
+  {
     type: 'Icon',
     name: '图标',
     props: {
