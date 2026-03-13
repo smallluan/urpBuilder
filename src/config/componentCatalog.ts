@@ -2218,4 +2218,27 @@ const componentCatalog = [
   }
 ];
 
-export default componentCatalog;
+const visibleInjectedComponentCatalog = componentCatalog.map((item) => {
+  const current = item as { props?: Record<string, unknown> };
+  const props = current.props && typeof current.props === 'object'
+    ? current.props
+    : {};
+
+  if ('visible' in props) {
+    return item;
+  }
+
+  return {
+    ...item,
+    props: {
+      ...props,
+      visible: {
+        name: '可见(visible)',
+        value: true,
+        editType: 'switch',
+      },
+    },
+  };
+});
+
+export default visibleInjectedComponentCatalog;

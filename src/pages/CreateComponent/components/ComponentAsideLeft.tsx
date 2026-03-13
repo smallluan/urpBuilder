@@ -323,6 +323,7 @@ const ComponentAsideLeft: React.FC = () => {
       const isDroppable = !!dropTarget;
       const isDragOver = dragOverNodeKey === node.key;
       const title = String(node.label ?? '未命名节点');
+      const isHidden = ((node.props?.visible as { value?: unknown } | undefined)?.value) === false;
 
       const icon = nodeVisualKind === 'slot'
         ? <GripHorizontal size={12} strokeWidth={2} />
@@ -413,6 +414,7 @@ const ComponentAsideLeft: React.FC = () => {
                   <span className={`tree-node-item__icon tree-node-item__icon--${nodeVisualKind}`}>{icon}</span>
                   <span className="tree-node-item__title">{title}</span>
                   {isAbstractNode ? <span className="tree-node-item__badge">抽象</span> : null}
+                  {isHidden ? <span className="tree-node-item__badge tree-node-item__badge--hidden">隐藏</span> : null}
                 </span>
               </div>
             </div>

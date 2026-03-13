@@ -187,6 +187,7 @@ const LIST_ITEM_META_PROP_KEYS = new Set([
 ]);
 
 const COMMON_PROP_PRIORITY_MAP = new Map<string, number>([
+  ['visible', 9],
   ['className', 10],
   ['name', 11],
   ['type', 12],

@@ -1094,6 +1094,10 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) 
         return typeof value === 'boolean' ? value : undefined;
       };
 
+      if (getChildBooleanProp('visible') === false) {
+        return null;
+      }
+
       if (childType === 'Menu.Submenu') {
         const iconNode = renderNamedIcon(getChildStringProp('iconName'));
         const submenuValue = getChildStringProp('value')?.trim() || child.key;
@@ -2126,6 +2130,10 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) 
       const defaultCurrent = getStepsCurrentProp(node, 'defaultCurrent');
       const stepItems = (node.children ?? [])
         .filter((child) => (typeof child.type === 'string' ? child.type.trim() : child.type) === 'Steps.Item')
+        .filter((child) => {
+          const visibleProp = (child.props?.visible as { value?: unknown } | undefined)?.value;
+          return visibleProp !== false;
+        })
         .map((child) => {
           const getStepProp = (propName: string) => {
             const prop = child.props?.[propName] as { value?: unknown } | undefined;

@@ -94,9 +94,14 @@ export class PreviewDataHub {
       return false;
     }
 
+    const normalizedPatch = { ...(patch as Record<string, unknown>) };
+    if (!('visible' in normalizedPatch) && 'isible' in normalizedPatch) {
+      normalizedPatch.visible = normalizedPatch.isible;
+    }
+
     const propsMap = (targetNode.props ?? {}) as Record<string, unknown>;
     let hasChanged = false;
-    Object.entries(patch).forEach(([propKey, nextValue]) => {
+    Object.entries(normalizedPatch).forEach(([propKey, nextValue]) => {
       const currentSchema = (propsMap[propKey] ?? {}) as Record<string, unknown>;
       const previousValue = (currentSchema as { value?: unknown }).value;
       if (Object.is(previousValue, nextValue)) {
@@ -118,7 +123,7 @@ export class PreviewDataHub {
     targetNode.props = propsMap;
     this.publish('component:patched', {
       componentKey,
-      patch: cloneDeep(patch),
+      patch: cloneDeep(normalizedPatch),
     });
 
     return true;

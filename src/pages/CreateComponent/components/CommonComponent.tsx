@@ -1027,6 +1027,12 @@ export default function CommonComponent(properties: CommonComponentProps) {
   const cardHeaderSlotNode = getCardSlotNode('header');
   const cardBodySlotNode = getCardSlotNode('body');
   const hasCardSlotStructure = Boolean(cardHeaderSlotNode && cardBodySlotNode);
+  const visible = getBooleanProp('visible');
+  const isDrawerNode = normalizedType === 'Drawer';
+
+  if (visible === false && !isDrawerNode) {
+    return null;
+  }
 
   const renderBuilderMenuNodes = (nodes?: UiTreeNode[]): React.ReactNode => {
     return (nodes ?? []).map((child) => {
@@ -1053,6 +1059,10 @@ export default function CommonComponent(properties: CommonComponentProps) {
         const value = getChildProp(propName);
         return typeof value === 'boolean' ? value : undefined;
       };
+
+      if (getChildBooleanProp('visible') === false) {
+        return null;
+      }
 
       if (childType === 'Menu.Submenu') {
         const iconNode = renderNamedIcon(getChildStringProp('iconName'));
@@ -1929,6 +1939,10 @@ export default function CommonComponent(properties: CommonComponentProps) {
         const defaultCurrent = getStepsCurrentProp('defaultCurrent');
         const stepItems = (data?.children ?? [])
           .filter((child) => (typeof child.type === 'string' ? child.type.trim() : child.type) === 'Steps.Item')
+          .filter((child) => {
+            const visibleProp = (child.props?.visible as { value?: unknown } | undefined)?.value;
+            return visibleProp !== false;
+          })
           .map((child) => {
             const getStepProp = (propName: string) => {
               const prop = child.props?.[propName] as { value?: unknown } | undefined;
