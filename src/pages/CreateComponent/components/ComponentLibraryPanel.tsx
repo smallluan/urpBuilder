@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Input } from 'tdesign-react';
+import { Input, Popup } from 'tdesign-react';
 import { SearchIcon } from 'tdesign-icons-react';
 import {
   LayoutGrid,
@@ -29,6 +29,7 @@ import {
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import componentCatalog from '../../../config/componentCatalog';
+import { componentLibraryEntries, groupedComponentTypes, type ComponentLibraryCategory, type ComponentLibraryEntry, type ComponentLibraryGroupEntry } from '../../../config/componentLibrary';
 import DragableWrapper from '../../../components/DragableWrapper';
 
 interface ComponentLibraryPanelProps {
@@ -36,14 +37,14 @@ interface ComponentLibraryPanelProps {
   onSelect: (name: string) => void;
 }
 
-type ComponentCategory = 'layout' | 'text' | 'display' | 'action' | 'navigation';
+type ComponentSchema = (typeof componentCatalog)[number];
 
 interface CategoryMeta {
   label: string;
   Icon: LucideIcon;
 }
 
-const CATEGORY_META_MAP: Record<ComponentCategory, CategoryMeta> = {
+const CATEGORY_META_MAP: Record<ComponentLibraryCategory, CategoryMeta> = {
   action: {
     label: '基础组件',
     Icon: Boxes,
@@ -66,9 +67,11 @@ const CATEGORY_META_MAP: Record<ComponentCategory, CategoryMeta> = {
   },
 };
 
-const CATEGORY_ORDER: ComponentCategory[] = ['action', 'layout', 'display', 'text', 'navigation'];
+const CATEGORY_ORDER: ComponentLibraryCategory[] = ['action', 'layout', 'display', 'text', 'navigation'];
 
-const getCategoryByType = (type: string): ComponentCategory => {
+const HIDDEN_COMPONENT_TYPES = new Set(['List.Item']);
+
+const getCategoryByType = (type: string): ComponentLibraryCategory => {
   if (type.startsWith('Typography.')) {
     return 'text';
   }
@@ -125,7 +128,7 @@ const getCategoryByType = (type: string): ComponentCategory => {
   return 'action';
 };
 
-const getCategoryIcon = (category: ComponentCategory) => {
+const getCategoryIcon = (category: ComponentLibraryCategory) => {
   if (category === 'layout') {
     return LayoutGrid;
   }
@@ -188,8 +191,55 @@ const getIconByType = (type: string) => {
   return iconMap[type] ?? getCategoryIcon(getCategoryByType(type));
 };
 
+const matchText = (segments: Array<string | undefined>, keyword: string) => {
+  const normalizedKeyword = keyword.trim().toLowerCase();
+  if (!normalizedKeyword) {
+    return true;
+  }
+
+  return segments.some((segment) => String(segment ?? '').toLowerCase().includes(normalizedKeyword));
+};
+
+const getSchemaSearchTexts = (schema?: ComponentSchema) => {
+  if (!schema) {
+    return [];
+  }
+
+  return [String(schema.name ?? ''), String(schema.type ?? '')];
+};
+
+const isGroupEntrySelected = (
+  entry: ComponentLibraryGroupEntry,
+  selectedName: string | null,
+  schemaMap: Map<string, ComponentSchema>,
+) => {
+  if (!selectedName) {
+    return false;
+  }
+
+  return entry.children.some((child) => schemaMap.get(child.type)?.name === selectedName);
+};
+
+const getPopupNodeKindLabel = (type: string): string => {
+  const normalizedType = type.trim();
+
+  if (
+    normalizedType === 'Menu.Submenu'
+    || normalizedType === 'Menu.Item'
+    || normalizedType === 'Menu.Group'
+    || normalizedType === 'Steps.Item'
+    || normalizedType.startsWith('Layout.')
+    || normalizedType === 'Grid.Col'
+  ) {
+    return '结构';
+  }
+
+  return '容器';
+};
+
 const ComponentLibraryPanel: React.FC<ComponentLibraryPanelProps> = ({ selectedName, onSelect }) => {
   const [keyword, setKeyword] = useState('');
+  const [openedGroupKey, setOpenedGroupKey] = useState<string | null>(null);
 
   // 拖拽组件开始时，将组件的结构化数据携带
   const handleOnDrapStart = (e: React.DragEvent<HTMLDivElement>, data: any) => {
@@ -197,23 +247,88 @@ const ComponentLibraryPanel: React.FC<ComponentLibraryPanelProps> = ({ selectedN
     e.dataTransfer.effectAllowed = 'copy';
   };
 
-  const filteredCatalog = useMemo(() => {
-    const text = keyword.trim();
-    const catalogWithoutAbstractNodes = componentCatalog.filter(
-      (component) => component.type !== 'List.Item',
+  const schemaMap = useMemo(() => {
+    return new Map<string, ComponentSchema>(
+      componentCatalog.map((component) => [String(component.type ?? ''), component]),
     );
+  }, []);
 
+  const libraryEntries = useMemo(() => {
+    const plainEntries: ComponentLibraryEntry[] = componentCatalog
+      .filter((component) => {
+        const type = String(component.type ?? '');
+        return !HIDDEN_COMPONENT_TYPES.has(type) && !groupedComponentTypes.has(type);
+      })
+      .map((component) => ({
+        key: String(component.type ?? ''),
+        kind: 'item' as const,
+        name: String(component.name ?? component.type ?? ''),
+        type: String(component.type ?? ''),
+        category: getCategoryByType(String(component.type ?? '')),
+      }));
+
+    return [...componentLibraryEntries, ...plainEntries];
+  }, []);
+
+  const filteredEntries = useMemo(() => {
+    const text = keyword.trim();
     if (!text) {
-      return catalogWithoutAbstractNodes;
+      return libraryEntries;
     }
 
-    return catalogWithoutAbstractNodes.filter((component) => String(component.name ?? '').includes(text));
-  }, [keyword]);
+    return libraryEntries.reduce<ComponentLibraryEntry[]>((acc, entry) => {
+      if (entry.kind === 'item') {
+        const schema = schemaMap.get(entry.type);
+        const matched = matchText([
+          entry.name,
+          entry.type,
+          ...getSchemaSearchTexts(schema),
+          ...(entry.keywords ?? []),
+        ], text);
+
+        if (matched) {
+          acc.push(entry);
+        }
+
+        return acc;
+      }
+
+      const groupMatched = matchText([
+        entry.name,
+        entry.helperText,
+        entry.iconType,
+        ...(entry.keywords ?? []),
+      ], text);
+
+      if (groupMatched) {
+        acc.push(entry);
+        return acc;
+      }
+
+      const matchedChildren = entry.children.filter((child) => {
+        const schema = schemaMap.get(child.type);
+        return matchText([
+          child.type,
+          child.helperText,
+          ...getSchemaSearchTexts(schema),
+          ...(child.keywords ?? []),
+        ], text);
+      });
+
+      if (matchedChildren.length > 0) {
+        acc.push({
+          ...entry,
+          children: matchedChildren,
+        });
+      }
+
+      return acc;
+    }, []);
+  }, [keyword, libraryEntries, schemaMap]);
 
   const groupedCatalog = useMemo(() => {
-    return filteredCatalog.reduce<Record<ComponentCategory, typeof filteredCatalog>>((acc, component) => {
-      const category = getCategoryByType(String(component.type ?? ''));
-      acc[category].push(component);
+    return filteredEntries.reduce<Record<ComponentLibraryCategory, ComponentLibraryEntry[]>>((acc, entry) => {
+      acc[entry.category].push(entry);
       return acc;
     }, {
       action: [],
@@ -222,7 +337,73 @@ const ComponentLibraryPanel: React.FC<ComponentLibraryPanelProps> = ({ selectedN
       text: [],
       navigation: [],
     });
-  }, [filteredCatalog]);
+  }, [filteredEntries]);
+
+  const renderLibraryItemCard = (schema: ComponentSchema, isActive: boolean, helperText?: string) => {
+    const itemCategory = getCategoryByType(String(schema.type ?? ''));
+    const IconComponent = getIconByType(String(schema.type ?? ''));
+
+    return (
+      <div
+        className={`library-item ${isActive ? 'is-active' : ''}`}
+        title={String(schema.name)}
+        onClick={() => onSelect(String(schema.name))}
+      >
+        <div className={`library-item-icon library-item-icon--${itemCategory}`}>
+          <IconComponent size={16} strokeWidth={2} />
+        </div>
+        <div className="library-item-name">{schema.name}</div>
+        <div className="library-item-type">{helperText || schema.type}</div>
+      </div>
+    );
+  };
+
+  const renderGroupPopupContent = (entry: ComponentLibraryGroupEntry) => {
+    return (
+      <div className="library-group-popup">
+        <div className="library-group-popup__header">
+          <div className="library-group-popup__title">{entry.name}</div>
+          <div className="library-group-popup__caption">拖拽下列子组件到画布</div>
+        </div>
+        <div className="library-group-popup__list">
+          {entry.children.map((child) => {
+            const schema = schemaMap.get(child.type);
+            if (!schema) {
+              return null;
+            }
+
+            const IconComponent = getIconByType(String(schema.type ?? ''));
+            const itemCategory = getCategoryByType(String(schema.type ?? ''));
+
+            return (
+              <DragableWrapper onDragStart={handleOnDrapStart} key={child.type} data={schema}>
+                <div
+                  className={`library-popup-item ${selectedName === schema.name ? 'is-active' : ''}`}
+                  title={String(schema.name)}
+                  onClick={() => {
+                    onSelect(String(schema.name));
+                    setOpenedGroupKey(null);
+                  }}
+                >
+                  <div className={`library-item-icon library-item-icon--${itemCategory}`}>
+                    <IconComponent size={16} strokeWidth={2} />
+                  </div>
+                  <div className="library-popup-item__content">
+                    <div className="library-popup-item__name">{schema.name}</div>
+                    <div className="library-popup-item__desc">{child.helperText || schema.type}</div>
+                  </div>
+                  <div className="library-popup-item__meta">
+                    <span className="library-popup-item__type">{schema.type}</span>
+                    <span className="library-popup-item__kind">{getPopupNodeKindLabel(schema.type)}</span>
+                  </div>
+                </div>
+              </DragableWrapper>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div className="right-panel-body">
@@ -238,8 +419,8 @@ const ComponentLibraryPanel: React.FC<ComponentLibraryPanelProps> = ({ selectedN
 
       <div className="library-list">
         {CATEGORY_ORDER.map((category) => {
-          const categoryComponents = groupedCatalog[category] ?? [];
-          if (categoryComponents.length === 0) {
+          const categoryEntries = groupedCatalog[category] ?? [];
+          if (categoryEntries.length === 0) {
             return null;
           }
 
@@ -252,27 +433,54 @@ const ComponentLibraryPanel: React.FC<ComponentLibraryPanelProps> = ({ selectedN
                   <categoryMeta.Icon size={14} strokeWidth={2} />
                   <span>{categoryMeta.label}</span>
                 </div>
-                <span className="library-section-count">{categoryComponents.length}</span>
+                <span className="library-section-count">{categoryEntries.length}</span>
               </div>
 
               <div className="library-section-grid">
-                {categoryComponents.map((component) => {
-                  const itemCategory = getCategoryByType(String(component.type ?? ''));
-                  const IconComponent = getIconByType(String(component.type ?? ''));
+                {categoryEntries.map((entry) => {
+                  if (entry.kind === 'group') {
+                    const IconComponent = getIconByType(entry.iconType || entry.key);
+                    const isActive = isGroupEntrySelected(entry, selectedName, schemaMap);
+
+                    return (
+                      <div className="library-group-trigger" key={entry.key}>
+                        <Popup
+                          destroyOnClose={false}
+                          placement="left-top"
+                          showArrow={false}
+                          trigger="click"
+                          visible={openedGroupKey === entry.key}
+                          onVisibleChange={(visible) => {
+                            setOpenedGroupKey(visible ? entry.key : null);
+                          }}
+                          content={renderGroupPopupContent(entry)}
+                        >
+                          <div
+                            className={`library-item library-item--group ${isActive ? 'is-active' : ''}${openedGroupKey === entry.key ? ' is-open' : ''}`}
+                            title={`${entry.name}（点击后选择子组件）`}
+                          >
+                            <span className="library-item-group-marker" aria-hidden="true">
+                              <MousePointerClick size={12} strokeWidth={2.2} />
+                            </span>
+                            <div className={`library-item-icon library-item-icon--${entry.category}`}>
+                              <IconComponent size={16} strokeWidth={2} />
+                            </div>
+                            <div className="library-item-name">{entry.name}</div>
+                            <div className="library-item-type">{entry.helperText || '点击后选择子组件'}</div>
+                          </div>
+                        </Popup>
+                      </div>
+                    );
+                  }
+
+                  const schema = schemaMap.get(entry.type);
+                  if (!schema) {
+                    return null;
+                  }
 
                   return (
-                    <DragableWrapper onDragStart={handleOnDrapStart} key={component.type} data={component}>
-                      <div
-                        className={`library-item ${selectedName === component.name ? 'is-active' : ''}`}
-                        title={String(component.name)}
-                        onClick={() => onSelect(component.name)}
-                      >
-                        <div className={`library-item-icon library-item-icon--${itemCategory}`}>
-                          <IconComponent size={16} strokeWidth={2} />
-                        </div>
-                        <div className="library-item-name">{component.name}</div>
-                        <div className="library-item-type">{component.type}</div>
-                      </div>
+                    <DragableWrapper onDragStart={handleOnDrapStart} key={entry.key} data={schema}>
+                      {renderLibraryItemCard(schema, selectedName === schema.name)}
                     </DragableWrapper>
                   );
                 })}
@@ -281,7 +489,7 @@ const ComponentLibraryPanel: React.FC<ComponentLibraryPanelProps> = ({ selectedN
           );
         })}
 
-        {filteredCatalog.length === 0 ? (
+        {filteredEntries.length === 0 ? (
           <div className="library-empty">未找到匹配组件</div>
         ) : null}
       </div>

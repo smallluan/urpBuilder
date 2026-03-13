@@ -19,11 +19,12 @@ const ComponentAsideRight: React.FC = () => {
     <aside className="aside-right">
       <RightPanelHeader mode={mode} onChange={setMode} />
       <div className="right-panel-content">
-        {mode === 'library' ? (
+        <div className={`right-panel-view ${mode === 'library' ? '' : ' right-panel-view--hidden'}`}>
           <ComponentLibraryPanel selectedName={selectedName} onSelect={setSelectedName} />
-        ) : (
+        </div>
+        <div className={`right-panel-view ${mode === 'config' ? '' : ' right-panel-view--hidden'}`}>
           <ComponentConfigPanel />
-        )}
+        </div>
       </div>
     </aside>
   );

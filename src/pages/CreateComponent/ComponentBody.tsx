@@ -94,6 +94,7 @@ const ComponentBody: React.FC = () => {
           style={{ flex: 1, height: '100%' }}
           data={uiPageData}
           onDropData={handleDropData}
+          selectable={false}
         />
       </div>
     </div>
