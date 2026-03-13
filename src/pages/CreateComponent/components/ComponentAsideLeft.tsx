@@ -1,9 +1,9 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import cloneDeep from 'lodash/cloneDeep';
-import { Button, Input, Popup, Tree } from 'tdesign-react';
+import { Button, Input, Tree } from 'tdesign-react';
 import type { TreeInstanceFunctions } from 'tdesign-react';
 import { SearchIcon } from 'tdesign-icons-react';
-import { GripHorizontal, LayoutGrid, Minus } from 'lucide-react';
+import { GripHorizontal, LayoutGrid, Minus, Palette, PlusSquare, Trash2 } from 'lucide-react';
 import { useCreateComponentStore } from '../store';
 import type { UiTreeNode } from '../store/type';
 import NodeStyleDrawer from './NodeStyleDrawer';
@@ -160,10 +160,15 @@ const ComponentAsideLeft: React.FC = () => {
   const [contextMenuState, setContextMenuState] = useState<{
     visible: boolean;
     nodeKey: string | null;
+    x: number;
+    y: number;
   }>({
     visible: false,
     nodeKey: null,
+    x: 0,
+    y: 0,
   });
+  const contextMenuRef = useRef<HTMLDivElement | null>(null);
 
   const closeContextMenu = () => {
     setContextMenuState((previous) => {
@@ -174,26 +179,6 @@ const ComponentAsideLeft: React.FC = () => {
       return {
         ...previous,
         visible: false,
-      };
-    });
-  };
-
-  const handlePopupVisibleChange = (visible: boolean, nodeKey: string) => {
-    if (visible) {
-      setContextMenuState({
-        visible: true,
-        nodeKey,
-      });
-      return;
-    }
-
-    setContextMenuState((previous) => {
-      if (!previous.visible || previous.nodeKey !== nodeKey) {
-        return previous;
-      }
-
-      return {
-        visible: false,
         nodeKey: null,
       };
     });
@@ -203,9 +188,19 @@ const ComponentAsideLeft: React.FC = () => {
     event.preventDefault();
     event.stopPropagation();
     setActiveNode(nodeKey);
+
+    const menuWidth = 190;
+    const menuHeight = 132;
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    const x = Math.max(8, Math.min(event.clientX, viewportWidth - menuWidth - 8));
+    const y = Math.max(8, Math.min(event.clientY, viewportHeight - menuHeight - 8));
+
     setContextMenuState({
       visible: true,
       nodeKey,
+      x,
+      y,
     });
   };
 
@@ -338,94 +333,42 @@ const ComponentAsideLeft: React.FC = () => {
       return {
         ...node,
         label: (
-          <Popup
-            visible={contextMenuState.visible && contextMenuState.nodeKey === node.key}
-            trigger="context-menu"
-            placement="right-top"
-            destroyOnClose={false}
-            showArrow={false}
-            onVisibleChange={(visible) => handlePopupVisibleChange(visible, node.key)}
-            content={
-              <div className="tree-node-context-popup-content" onMouseDown={(event) => event.stopPropagation()}>
-                <NodeStyleDrawer
-                  targetKey={node.key}
-                  value={(node.props?.__style as { value?: Record<string, unknown> } | undefined)?.value}
-                  onChange={(nextStyle) => {
-                    setActiveNode(node.key);
-                    updateActiveNodeProp('__style', nextStyle);
-                  }}
-                  triggerRenderer={(openDrawer) => (
-                    <Button
-                      size="small"
-                      variant="text"
-                      theme="default"
-                      className="tree-node-context-action"
-                      onClick={() => {
-                        setActiveNode(node.key);
-                        closeContextMenu();
-                        openDrawer();
-                      }}
-                    >
-                      样式配置
-                    </Button>
-                  )}
-                />
-                {node.type === 'Grid.Row' ? (
-                  <Button
-                    size="small"
-                    variant="text"
-                    theme="default"
-                    className="tree-node-context-action"
-                    onClick={() => {
-                      if (!GRID_COL_COMPONENT_SCHEMA) {
-                        return;
-                      }
-
-                      insertToUiPageData(node.key, cloneDeep(GRID_COL_COMPONENT_SCHEMA) as Record<string, unknown>);
-                      setActiveNode(node.key);
-                      closeContextMenu();
-                    }}
-                  >
-                    添加栅格列
-                  </Button>
-                ) : null}
-                <Button
-                  size="small"
-                  variant="base"
-                  theme="default"
-                  className="tree-node-context-action"
-                  disabled={node.key === uiPageData.key || isSlotNode(node)}
-                  onClick={() => handleDeleteNode(node.key)}
-                >
-                  删除该节点
-                </Button>
-              </div>
-            }
+          <div
+            className={`tree-node-label${isDroppable ? ' tree-node-label--droppable' : ''}${isDragOver ? ' tree-node-label--drag-over' : ''}`}
+            onContextMenu={(event) => handleNodeContextMenu(event, node.key)}
+            onDragOver={(event) => handleTreeNodeDragOver(event, node)}
+            onDragLeave={(event) => handleTreeNodeDragLeave(event, node)}
+            onDrop={(event) => handleTreeNodeDrop(event, node)}
           >
-            <div
-              className={`tree-node-label${isDroppable ? ' tree-node-label--droppable' : ''}${isDragOver ? ' tree-node-label--drag-over' : ''}`}
-              onContextMenu={(event) => handleNodeContextMenu(event, node.key)}
-              onDragOver={(event) => handleTreeNodeDragOver(event, node)}
-              onDragLeave={(event) => handleTreeNodeDragLeave(event, node)}
-              onDrop={(event) => handleTreeNodeDrop(event, node)}
-            >
-              <div className="tree-node-item">
-                <span className="tree-node-item__left">
-                  <span className={`tree-node-item__icon tree-node-item__icon--${nodeVisualKind}`}>{icon}</span>
-                  <span className="tree-node-item__title">{title}</span>
-                  {isAbstractNode ? <span className="tree-node-item__badge">抽象</span> : null}
-                  {isHidden ? <span className="tree-node-item__badge tree-node-item__badge--hidden">隐藏</span> : null}
-                </span>
-              </div>
+            <div className="tree-node-item">
+              <span className="tree-node-item__left">
+                <span className={`tree-node-item__icon tree-node-item__icon--${nodeVisualKind}`}>{icon}</span>
+                <span className="tree-node-item__title">{title}</span>
+                {isAbstractNode ? <span className="tree-node-item__badge">抽象</span> : null}
+                {isHidden ? <span className="tree-node-item__badge tree-node-item__badge--hidden">隐藏</span> : null}
+              </span>
             </div>
-          </Popup>
+          </div>
         ),
         children,
       };
     };
 
     return transformNode(cloned);
-  }, [contextMenuState.nodeKey, contextMenuState.visible, dragOverNodeKey, uiPageData]);
+  }, [dragOverNodeKey, uiPageData]);
+
+  const contextMenuNode = useMemo(() => {
+    if (!contextMenuState.nodeKey) {
+      return null;
+    }
+
+    const path = findNodePathByKey(uiPageData, contextMenuState.nodeKey);
+    if (!path?.length) {
+      return null;
+    }
+
+    return path[path.length - 1];
+  }, [contextMenuState.nodeKey, uiPageData]);
 
   const treeData = useMemo(() => [uiPageDataWithWrappedLabel], [uiPageDataWithWrappedLabel]);
   const treeRef = useRef<TreeInstanceFunctions<any>>(null);
@@ -442,6 +385,34 @@ const ComponentAsideLeft: React.FC = () => {
     setTreeInstance(treeRef.current);
     return () => setTreeInstance(null);
   }, [setTreeInstance]);
+
+  useEffect(() => {
+    if (!contextMenuState.visible) {
+      return;
+    }
+
+    const handleWindowMouseDown = (event: MouseEvent) => {
+      if (contextMenuRef.current?.contains(event.target as Node)) {
+        return;
+      }
+      closeContextMenu();
+    };
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        closeContextMenu();
+      }
+    };
+
+    window.addEventListener('mousedown', handleWindowMouseDown);
+    window.addEventListener('keydown', handleEscape);
+    window.addEventListener('resize', closeContextMenu);
+    return () => {
+      window.removeEventListener('mousedown', handleWindowMouseDown);
+      window.removeEventListener('keydown', handleEscape);
+      window.removeEventListener('resize', closeContextMenu);
+    };
+  }, [contextMenuState.visible]);
 
   return (
     <aside className="aside-left">
@@ -464,6 +435,73 @@ const ComponentAsideLeft: React.FC = () => {
               onDragLeave={() => setDragOverNodeKey(null)}
             />
           </div>
+
+          {contextMenuState.visible && contextMenuNode ? (
+            <div
+              ref={contextMenuRef}
+              className="tree-node-context-menu"
+              style={{ left: contextMenuState.x, top: contextMenuState.y }}
+              onMouseDown={(event) => event.stopPropagation()}
+            >
+              <NodeStyleDrawer
+                targetKey={contextMenuNode.key}
+                value={(contextMenuNode.props?.__style as { value?: Record<string, unknown> } | undefined)?.value}
+                onChange={(nextStyle) => {
+                  setActiveNode(contextMenuNode.key);
+                  updateActiveNodeProp('__style', nextStyle);
+                }}
+                triggerRenderer={(openDrawer) => (
+                  <Button
+                    size="small"
+                    variant="text"
+                    theme="default"
+                    className="tree-node-context-action"
+                    icon={<Palette size={14} />}
+                    onClick={() => {
+                      setActiveNode(contextMenuNode.key);
+                      closeContextMenu();
+                      openDrawer();
+                    }}
+                  >
+                    样式配置
+                  </Button>
+                )}
+              />
+
+              {contextMenuNode.type === 'Grid.Row' ? (
+                <Button
+                  size="small"
+                  variant="text"
+                  theme="default"
+                  className="tree-node-context-action"
+                  icon={<PlusSquare size={14} />}
+                  onClick={() => {
+                    if (!GRID_COL_COMPONENT_SCHEMA) {
+                      return;
+                    }
+
+                    insertToUiPageData(contextMenuNode.key, cloneDeep(GRID_COL_COMPONENT_SCHEMA) as Record<string, unknown>);
+                    setActiveNode(contextMenuNode.key);
+                    closeContextMenu();
+                  }}
+                >
+                  添加栅格列
+                </Button>
+              ) : null}
+
+              <Button
+                size="small"
+                variant="text"
+                theme="danger"
+                className="tree-node-context-action tree-node-context-action--danger"
+                icon={<Trash2 size={14} />}
+                disabled={contextMenuNode.key === uiPageData.key || isSlotNode(contextMenuNode)}
+                onClick={() => handleDeleteNode(contextMenuNode.key)}
+              >
+                删除该节点
+              </Button>
+            </div>
+          ) : null}
         </div>
       </div>
     </aside>

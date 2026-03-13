@@ -24,10 +24,17 @@ interface ActivateWrapperProps {
   children: React.ReactNode;
   style?: React.CSSProperties;
   onActivate: (event: React.MouseEvent<HTMLElement>) => void;
+  nodeKey?: string;
+  active?: boolean;
 }
 
-const ActivateWrapper: React.FC<ActivateWrapperProps> = ({ children, style, onActivate }) => (
-  <div style={style} onClick={onActivate}>
+const ActivateWrapper: React.FC<ActivateWrapperProps> = ({ children, style, onActivate, nodeKey, active }) => (
+  <div
+    style={style}
+    onClick={onActivate}
+    data-builder-node-key={nodeKey || undefined}
+    className={`builder-node-anchor${active ? ' builder-node-anchor--active' : ''}`}
+  >
     {children}
   </div>
 );
@@ -45,6 +52,8 @@ interface SpaceContentProps {
   spaceSplitContent?: string;
   style?: React.CSSProperties;
   onActivate: (event: React.MouseEvent<HTMLElement>) => void;
+  nodeKey?: string;
+  active?: boolean;
 }
 
 const SpaceContent: React.FC<SpaceContentProps> = ({
@@ -60,12 +69,14 @@ const SpaceContent: React.FC<SpaceContentProps> = ({
   spaceSplitContent,
   style,
   onActivate,
+  nodeKey,
+  active,
 }) => {
   const childrenList = React.Children.toArray(children);
 
   if (!isSpaceSplitEnabled || childrenList.length <= 1) {
     return (
-      <ActivateWrapper style={style} onActivate={onActivate}>
+      <ActivateWrapper style={style} onActivate={onActivate} nodeKey={nodeKey} active={active}>
         <Space
           align={align as any}
           direction={direction as any}
@@ -96,7 +107,7 @@ const SpaceContent: React.FC<SpaceContentProps> = ({
   });
 
   return (
-    <ActivateWrapper style={style} onActivate={onActivate}>
+    <ActivateWrapper style={style} onActivate={onActivate} nodeKey={nodeKey} active={active}>
       <Space
         align={align as any}
         direction={direction as any}
@@ -140,6 +151,8 @@ interface CardContentProps {
   hoverShadow?: boolean;
   style?: React.CSSProperties;
   onActivate: (event: React.MouseEvent<HTMLElement>) => void;
+  nodeKey?: string;
+  active?: boolean;
 }
 
 const CardContent: React.FC<CardContentProps> = ({
@@ -154,8 +167,10 @@ const CardContent: React.FC<CardContentProps> = ({
   hoverShadow,
   style,
   onActivate,
+  nodeKey,
+  active,
 }) => (
-  <ActivateWrapper style={style} onActivate={onActivate}>
+  <ActivateWrapper style={style} onActivate={onActivate} nodeKey={nodeKey} active={active}>
     <Card
       header={header}
       title={title}
@@ -176,6 +191,7 @@ export default function CommonComponent(properties: CommonComponentProps) {
   const normalizedType = typeof type === 'string' ? type.trim() : type;
   const [tabsInnerValue, setTabsInnerValue] = React.useState<string | number | undefined>(undefined);
   const setActiveNode = useCreateComponentStore((state) => state.setActiveNode);
+  const activeNodeKey = useCreateComponentStore((state) => state.activeNodeKey);
   const screenSize = useCreateComponentStore((state) => state.screenSize);
   const autoWidth = useCreateComponentStore((state) => state.autoWidth);
   const { Header, Content, Aside, Footer } = Layout;
@@ -959,6 +975,7 @@ export default function CommonComponent(properties: CommonComponentProps) {
   }, [data?.key]);
 
   const inlineStyle = getStyleProp();
+  const isNodeActive = !!data?.key && activeNodeKey === data.key;
   const mergeStyle = (baseStyle?: React.CSSProperties): React.CSSProperties | undefined => {
     if (!baseStyle && !inlineStyle) {
       return undefined;
@@ -1119,7 +1136,7 @@ export default function CommonComponent(properties: CommonComponentProps) {
       const prefixIcon = renderNamedIcon(getStringProp('prefixIconName'));
       const suffixIcon = renderNamedIcon(getStringProp('suffixIconName'));
       return (
-        <ActivateWrapper style={mergeStyle(isBlockButton ? { width: '100%' } : undefined)} onActivate={handleActivateSelf}>
+        <ActivateWrapper style={mergeStyle(isBlockButton ? { width: '100%' } : undefined)} onActivate={handleActivateSelf} nodeKey={data?.key} active={isNodeActive}>
           <Button
             theme={getStringProp('theme') as any}
             shape={getStringProp('shape') as any}
@@ -1140,7 +1157,7 @@ export default function CommonComponent(properties: CommonComponentProps) {
       const prefixIcon = renderNamedIcon(getStringProp('prefixIconName'));
       const suffixIcon = renderNamedIcon(getStringProp('suffixIconName'));
       return (
-        <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf}>
+        <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf} nodeKey={data?.key} active={isNodeActive}>
           <Link
             content={getStringProp('content')}
             href={getStringProp('href') || undefined}
@@ -1161,7 +1178,7 @@ export default function CommonComponent(properties: CommonComponentProps) {
       }
     case 'BackTop':
       return (
-        <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf}>
+        <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf} nodeKey={data?.key} active={isNodeActive}>
           <BackTop
             className="builder-back-top"
             content={getBackTopContentNode()}
@@ -1179,7 +1196,7 @@ export default function CommonComponent(properties: CommonComponentProps) {
       );
     case 'Progress':
       return (
-        <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf}>
+        <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf} nodeKey={data?.key} active={isNodeActive}>
           <Progress
             className={getStringProp('className') || undefined}
             color={getProgressColorProp('color') as any}
@@ -1197,7 +1214,7 @@ export default function CommonComponent(properties: CommonComponentProps) {
     case 'Upload': {
       const hasTriggerChildren = (data?.children?.length ?? 0) > 0;
       return (
-        <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf}>
+        <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf} nodeKey={data?.key} active={isNodeActive}>
           <Upload
             className={getStringProp('className') || undefined}
             abridgeName={getUploadAbridgeNameProp('abridgeName') as any}
@@ -1245,7 +1262,7 @@ export default function CommonComponent(properties: CommonComponentProps) {
       const drawerBodyText = getStringProp('body')?.trim();
       const drawerVisible = getBooleanProp('visible') === true;
       return (
-        <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf}>
+        <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf} nodeKey={data?.key} active={isNodeActive}>
           <div style={{ position: 'relative' }}>
             <Drawer
               className={getStringProp('className') || undefined}
@@ -1292,7 +1309,7 @@ export default function CommonComponent(properties: CommonComponentProps) {
     }
     case 'HeadMenu':
       return (
-        <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf}>
+        <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf} nodeKey={data?.key} active={isNodeActive}>
           <Menu.HeadMenu
             expandType={getStringProp('expandType') as any}
             expanded={getMenuValueArrayProp('expanded') as any}
@@ -1324,7 +1341,7 @@ export default function CommonComponent(properties: CommonComponentProps) {
       });
 
       return (
-        <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf}>
+        <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf} nodeKey={data?.key} active={isNodeActive}>
           {iconNode}
         </ActivateWrapper>
       );
@@ -1344,6 +1361,8 @@ export default function CommonComponent(properties: CommonComponentProps) {
             spaceSplitContent={spaceSplitContent}
             style={mergeStyle()}
             onActivate={handleActivateSelf}
+            nodeKey={data?.key}
+            active={isNodeActive}
           />
         </DropArea>
       );
@@ -1360,7 +1379,7 @@ export default function CommonComponent(properties: CommonComponentProps) {
         )
       case 'Menu':
         return (
-          <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf}>
+          <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf} nodeKey={data?.key} active={isNodeActive}>
             <Menu
               collapsed={getBooleanProp('collapsed')}
               expandMutex={getBooleanProp('expandMutex')}
@@ -1447,7 +1466,7 @@ export default function CommonComponent(properties: CommonComponentProps) {
 
         if (customTemplateEnabled) {
           return (
-            <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf}>
+            <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf} nodeKey={data?.key} active={isNodeActive}>
               <List
                 layout={getStringProp('layout') as any}
                 size={getStringProp('size') as any}
@@ -1483,7 +1502,7 @@ export default function CommonComponent(properties: CommonComponentProps) {
         }
 
         return (
-          <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf}>
+          <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf} nodeKey={data?.key} active={isNodeActive}>
             <List
               layout={getStringProp('layout') as any}
               size={getStringProp('size') as any}
@@ -1535,6 +1554,8 @@ export default function CommonComponent(properties: CommonComponentProps) {
                 hoverShadow={getBooleanProp('hoverShadow')}
                 style={mergeStyle()}
                 onActivate={handleActivateSelf}
+                nodeKey={data?.key}
+                active={isNodeActive}
               />
             </DropArea>
           );
@@ -1551,6 +1572,8 @@ export default function CommonComponent(properties: CommonComponentProps) {
             hoverShadow={getBooleanProp('hoverShadow')}
             style={mergeStyle()}
             onActivate={handleActivateSelf}
+            nodeKey={data?.key}
+            active={isNodeActive}
             header={(
               <DropArea
                 data={cardHeaderSlotNode}
@@ -1574,7 +1597,7 @@ export default function CommonComponent(properties: CommonComponentProps) {
         );
       case 'Image':
         return (
-          <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf}>
+          <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf} nodeKey={data?.key} active={isNodeActive}>
             <Image
               src={getStringProp('src')}
               alt={getStringProp('alt')}
@@ -1586,7 +1609,7 @@ export default function CommonComponent(properties: CommonComponentProps) {
         );
       case 'Avatar':
         return (
-          <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf}>
+          <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf} nodeKey={data?.key} active={isNodeActive}>
             <Avatar
               image={getStringProp('image')}
               alt={getStringProp('alt')}
@@ -1604,7 +1627,7 @@ export default function CommonComponent(properties: CommonComponentProps) {
         const controlledValue = Boolean(getBooleanProp('value'));
         const defaultValue = Boolean(getBooleanProp('defaultValue'));
         return (
-          <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf}>
+          <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf} nodeKey={data?.key} active={isNodeActive}>
             <Space align="center" size={8}>
               <Switch
                 size={getStringProp('size') as any}
@@ -1620,7 +1643,7 @@ export default function CommonComponent(properties: CommonComponentProps) {
         }
       case 'Calendar':
         return (
-          <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf}>
+          <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf} nodeKey={data?.key} active={isNodeActive}>
             <Calendar
               theme={getStringProp('theme') as any}
               mode={getStringProp('mode') as any}
@@ -1639,7 +1662,7 @@ export default function CommonComponent(properties: CommonComponentProps) {
         {
         const isControlled = getBooleanProp('controlled') !== false;
         return (
-          <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf}>
+          <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf} nodeKey={data?.key} active={isNodeActive}>
             <ColorPicker
               format={getStringProp('format') as any}
               value={isControlled ? (getStringProp('value') || undefined) : undefined}
@@ -1658,7 +1681,7 @@ export default function CommonComponent(properties: CommonComponentProps) {
         {
         const isControlled = getBooleanProp('controlled') !== false;
         return (
-          <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf}>
+          <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf} nodeKey={data?.key} active={isNodeActive}>
             <TimePicker
               format={getStringProp('format') || 'HH:mm:ss'}
               value={isControlled ? (getStringProp('value') || undefined) : undefined}
@@ -1689,7 +1712,7 @@ export default function CommonComponent(properties: CommonComponentProps) {
           : undefined;
 
         return (
-          <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf}>
+          <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf} nodeKey={data?.key} active={isNodeActive}>
             <TimeRangePicker
               format={getStringProp('format') || 'HH:mm:ss'}
               value={isControlled ? (value as any) : undefined}
@@ -1717,7 +1740,7 @@ export default function CommonComponent(properties: CommonComponentProps) {
           : { defaultValue: getStringProp('defaultValue') || undefined };
 
         return (
-          <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf}>
+          <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf} nodeKey={data?.key} active={isNodeActive}>
             <Input
               {...inputValueProps}
               className={getStringProp('className') || undefined}
@@ -1845,7 +1868,7 @@ export default function CommonComponent(properties: CommonComponentProps) {
         const mergedTextareaStyle = textareaStyle ? { ...mergeStyle(), ...textareaStyle } : mergeStyle();
 
         return (
-          <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf}>
+          <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf} nodeKey={data?.key} active={isNodeActive}>
             <Textarea
               {...textareaValueProps}
               className={getStringProp('className') || undefined}
@@ -1870,7 +1893,7 @@ export default function CommonComponent(properties: CommonComponentProps) {
         {
         const isControlled = getBooleanProp('controlled') !== false;
         return (
-          <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf}>
+          <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf} nodeKey={data?.key} active={isNodeActive}>
             <InputNumber
               value={isControlled ? getInputNumberValueProp('value') as any : undefined}
               defaultValue={isControlled ? undefined : getInputNumberValueProp('defaultValue') as any}
@@ -1915,7 +1938,7 @@ export default function CommonComponent(properties: CommonComponentProps) {
           : { defaultValue: defaultValue as any };
 
         return (
-          <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf}>
+          <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf} nodeKey={data?.key} active={isNodeActive}>
             <Slider
               {...sliderValueProps}
               layout={getStringProp('layout') as any}
@@ -1982,7 +2005,7 @@ export default function CommonComponent(properties: CommonComponentProps) {
 
         return (
           <DropArea data={data} onDropData={onDropData} emptyText="拖拽步骤项到步骤条" compactWhenFilled isTreeNode>
-            <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf}>
+            <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf} nodeKey={data?.key} active={isNodeActive}>
               <Steps
                 {...stepsValueProps}
                 layout={stepsLayout as any}
@@ -2048,7 +2071,7 @@ export default function CommonComponent(properties: CommonComponentProps) {
         });
 
         return (
-          <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf}>
+          <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf} nodeKey={data?.key} active={isNodeActive}>
             <Tabs
               action={getStringProp('action') || undefined}
               addable={getBooleanProp('addable')}
@@ -2076,7 +2099,7 @@ export default function CommonComponent(properties: CommonComponentProps) {
         }
 
         return (
-          <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf}>
+          <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf} nodeKey={data?.key} active={isNodeActive}>
             <Swiper autoplay height={height} style={{ width: '100%' }}>
               {imageList.map((imageItem, index) => (
                 <Swiper.SwiperItem key={`${data?.key ?? 'swiper'}-${index}`}>
@@ -2097,7 +2120,7 @@ export default function CommonComponent(properties: CommonComponentProps) {
       }
       case 'Divider':
         return (
-          <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf}>
+          <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf} nodeKey={data?.key} active={isNodeActive}>
             <Divider
               align={getStringProp('align') as any}
               dashed={getBooleanProp('dashed')}
@@ -2109,7 +2132,7 @@ export default function CommonComponent(properties: CommonComponentProps) {
         );
       case 'Typography.Title':
         return (
-          <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf}>
+          <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf} nodeKey={data?.key} active={isNodeActive}>
             <Typography.Title level={getStringProp('level') as any} style={mergeStyle()}>
               {getStringProp('content')}
             </Typography.Title>
@@ -2117,7 +2140,7 @@ export default function CommonComponent(properties: CommonComponentProps) {
         );
       case 'Typography.Paragraph':
         return (
-          <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf}>
+          <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf} nodeKey={data?.key} active={isNodeActive}>
             <Typography.Paragraph style={mergeStyle()}>
               {getStringProp('content')}
             </Typography.Paragraph>
@@ -2125,7 +2148,7 @@ export default function CommonComponent(properties: CommonComponentProps) {
         );
       case 'Typography.Text':
         return (
-          <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf}>
+          <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf} nodeKey={data?.key} active={isNodeActive}>
             <Typography.Text
               theme={getStringProp('theme') as any}
               strong={getBooleanProp('strong')}

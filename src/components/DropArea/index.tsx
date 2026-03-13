@@ -121,8 +121,10 @@ export default function DropArea({
   const dropAreaClassName = useMemo(() => {
     const dragOverClass = isDragOver ? ' drop-area-active' : '';
     const selectedClass = isNodeActive ? ' drop-area-selected' : '';
+    const anchorClass = ' builder-node-anchor';
+    const anchorActiveClass = isNodeActive ? ' builder-node-anchor--active' : '';
     const filledClass = compactWhenFilled && (data?.children?.length ?? 0) > 0 ? ' drop-area--filled' : '';
-    return `drop-area${dragOverClass}${selectedClass}${filledClass}${className ? ` ${className}` : ''}`;
+    return `drop-area${dragOverClass}${selectedClass}${anchorClass}${anchorActiveClass}${filledClass}${className ? ` ${className}` : ''}`;
   }, [className, compactWhenFilled, data?.children?.length, isDragOver, isNodeActive]);
 
   const handleClick = (event: React.MouseEvent<HTMLDivElement>) => {
@@ -148,6 +150,7 @@ export default function DropArea({
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
       onClick={handleClick}
+      data-builder-node-key={data?.key || undefined}
       data-active={isNodeActive ? 'true' : 'false'}
       className={dropAreaClassName}
       style={style}
