@@ -1656,6 +1656,274 @@ const componentCatalog = [
     lifetimes: ['onBlur', 'onChange', 'onFocus', 'onInput', 'onPick']
   },
   {
+    type: 'Input',
+    name: '输入框',
+    props: {
+      className: {
+        name: '类名(className)',
+        value: '',
+        editType: 'input'
+      },
+      style: {
+        name: '内联样式(style)',
+        value: '',
+        editType: 'jsonCode'
+      },
+      controlled: {
+        name: '受控模式',
+        value: true,
+        editType: 'switch'
+      },
+      align: {
+        name: '文本位置',
+        value: 'left',
+        editType: 'select',
+        payload: {
+          options: ['left', 'center', 'right']
+        }
+      },
+      allowInputOverMax: {
+        name: '超长继续输入',
+        value: false,
+        editType: 'switch'
+      },
+      autoWidth: {
+        name: '宽度自适应',
+        value: false,
+        editType: 'switch'
+      },
+      autocomplete: {
+        name: '自动填充(autocomplete)',
+        value: '',
+        editType: 'input'
+      },
+      autofocus: {
+        name: '自动聚焦',
+        value: false,
+        editType: 'switch'
+      },
+      borderless: {
+        name: '无边框',
+        value: false,
+        editType: 'switch'
+      },
+      value: {
+        name: '值(value)',
+        value: '',
+        editType: 'input'
+      },
+      defaultValue: {
+        name: '默认值(defaultValue)',
+        value: '',
+        editType: 'input'
+      },
+      placeholder: {
+        name: '占位文本',
+        value: '请输入内容',
+        editType: 'input'
+      },
+      size: {
+        name: '尺寸',
+        value: 'medium',
+        editType: 'select',
+        payload: {
+          options: ['small', 'medium', 'large']
+        }
+      },
+      status: {
+        name: '状态',
+        value: 'default',
+        editType: 'select',
+        payload: {
+          options: ['default', 'success', 'warning', 'error']
+        }
+      },
+      clearable: {
+        name: '可清空',
+        value: false,
+        editType: 'switch'
+      },
+      disabled: {
+        name: '禁用',
+        value: false,
+        editType: 'switch'
+      },
+      readonly: {
+        name: '只读',
+        value: false,
+        editType: 'switch'
+      },
+      maxcharacter: {
+        name: '最大字符数(maxcharacter)',
+        value: undefined,
+        editType: 'inputNumber',
+        payload: {
+          min: 0
+        }
+      },
+      maxlength: {
+        name: '最大长度(maxlength)',
+        value: undefined,
+        editType: 'inputNumber',
+        payload: {
+          min: 0
+        }
+      },
+      name: {
+        name: '名称(name)',
+        value: '',
+        editType: 'input'
+      },
+      showClearIconOnEmpty: {
+        name: '空值也显示清空按钮',
+        value: false,
+        editType: 'switch'
+      },
+      showLimitNumber: {
+        name: '显示字数统计',
+        value: false,
+        editType: 'switch'
+      },
+      spellCheck: {
+        name: '拼写检查',
+        value: false,
+        editType: 'switch'
+      },
+      tips: {
+        name: '提示文案(tips)',
+        value: '',
+        editType: 'input'
+      },
+      type: {
+        name: '类型(type)',
+        value: 'text',
+        editType: 'select',
+        payload: {
+          options: ['text', 'number', 'url', 'tel', 'password', 'search', 'submit', 'hidden']
+        }
+      }
+    },
+    lifetimes: [
+      'onBlur',
+      'onChange',
+      'onClear',
+      'onClick',
+      'onCompositionend',
+      'onCompositionstart',
+      'onEnter',
+      'onFocus',
+      'onKeydown',
+      'onKeypress',
+      'onKeyup',
+      'onMouseenter',
+      'onMouseleave',
+      'onPaste',
+      'onValidate',
+      'onWheel'
+    ]
+  },
+  {
+    type: 'Textarea',
+    name: '多行文本框',
+    props: {
+      className: {
+        name: '类名(className)',
+        value: '',
+        editType: 'input'
+      },
+      controlled: {
+        name: '受控模式',
+        value: true,
+        editType: 'switch'
+      },
+      allowInputOverMax: {
+        name: '超长继续输入',
+        value: false,
+        editType: 'switch'
+      },
+      autofocus: {
+        name: '自动聚焦',
+        value: false,
+        editType: 'switch'
+      },
+      autosize: {
+        name: '自动高度(autosize)',
+        value: false,
+        editType: 'jsonCode'
+      },
+      count: {
+        name: '计数器(count)',
+        value: false,
+        editType: 'switch'
+      },
+      value: {
+        name: '值(value)',
+        value: '',
+        editType: 'input'
+      },
+      defaultValue: {
+        name: '默认值(defaultValue)',
+        value: '',
+        editType: 'input'
+      },
+      placeholder: {
+        name: '占位文本',
+        value: '请输入内容',
+        editType: 'input'
+      },
+      status: {
+        name: '状态(status)',
+        value: 'default',
+        editType: 'select',
+        payload: {
+          options: ['default', 'success', 'warning', 'error']
+        }
+      },
+      disabled: {
+        name: '禁用',
+        value: false,
+        editType: 'switch'
+      },
+      readOnly: {
+        name: '只读(readOnly)',
+        value: false,
+        editType: 'switch'
+      },
+      readonly: {
+        name: '只读(兼容 readonly)',
+        value: false,
+        editType: 'switch'
+      },
+      maxcharacter: {
+        name: '最大字符数(maxcharacter)',
+        value: undefined,
+        editType: 'inputNumber',
+        payload: {
+          min: 0
+        }
+      },
+      maxlength: {
+        name: '最大长度(maxlength)',
+        value: undefined,
+        editType: 'inputNumber',
+        payload: {
+          min: 0
+        }
+      },
+      name: {
+        name: '名称(name)',
+        value: '',
+        editType: 'input'
+      },
+      tips: {
+        name: '提示文案(tips)',
+        value: '',
+        editType: 'input'
+      }
+    },
+    lifetimes: ['onBlur', 'onChange', 'onFocus', 'onKeydown', 'onKeypress', 'onKeyup']
+  },
+  {
     type: 'InputNumber',
     name: '数字输入框',
     props: {

@@ -186,6 +186,56 @@ const LIST_ITEM_META_PROP_KEYS = new Set([
   'actionSize',
 ]);
 
+const COMMON_PROP_PRIORITY_MAP = new Map<string, number>([
+  ['className', 10],
+  ['name', 11],
+  ['type', 12],
+  ['placeholder', 13],
+  ['size', 14],
+  ['status', 15],
+  ['disabled', 16],
+  ['readonly', 17],
+  ['readOnly', 17],
+  ['clearable', 18],
+  ['borderless', 19],
+]);
+
+const getCommonPropPriority = (propKey: string): number | undefined => {
+  if (propKey === 'controlled') {
+    return 0;
+  }
+
+  if (propKey === 'value') {
+    return 1;
+  }
+
+  if (propKey === 'defaultValue') {
+    return 2;
+  }
+
+  return COMMON_PROP_PRIORITY_MAP.get(propKey);
+};
+
+const getEditTypeSortRank = (editType: EditType) => {
+  if (editType === 'input') {
+    return 1;
+  }
+
+  if (editType === 'select') {
+    return 2;
+  }
+
+  if (editType === 'inputNumber') {
+    return 3;
+  }
+
+  if (editType === 'switch') {
+    return 9;
+  }
+
+  return 4;
+};
+
 const resolveEditType = (schema: ComponentPropSchema): EditType => {
   const type = (schema.editType ?? schema.editInput) as EditType | string | undefined;
   if (type === 'switch' || type === 'input' || type === 'inputNumber' || type === 'select' || type === 'iconSelect' || type === 'swiperImages' || type === 'tabsConfig' || type === 'jsonCode') {
@@ -274,6 +324,38 @@ const ComponentConfigPanel: React.FC = () => {
     return true;
   });
 
+  const sortedEditableProps = React.useMemo(() => {
+    return editableProps
+      .map(([propKey, schema], originalIndex) => ({
+        propKey,
+        schema,
+        originalIndex,
+        editType: resolveEditType(schema),
+      }))
+      .sort((a, b) => {
+        const aCommonPriority = getCommonPropPriority(a.propKey);
+        const bCommonPriority = getCommonPropPriority(b.propKey);
+        const aIsCommon = typeof aCommonPriority === 'number';
+        const bIsCommon = typeof bCommonPriority === 'number';
+
+        if (aIsCommon !== bIsCommon) {
+          return aIsCommon ? -1 : 1;
+        }
+
+        if (aIsCommon && bIsCommon) {
+          return (aCommonPriority as number) - (bCommonPriority as number);
+        }
+
+        const rankDiff = getEditTypeSortRank(a.editType) - getEditTypeSortRank(b.editType);
+        if (rankDiff !== 0) {
+          return rankDiff;
+        }
+
+        return a.originalIndex - b.originalIndex;
+      })
+      .map((item) => [item.propKey, item.schema] as const);
+  }, [editableProps]);
+
   const isNodeInsideListTemplate = Boolean(listItemAncestor && activeNode && activeNode.type !== 'List.Item');
   const bindableProps = activeNode?.type ? (LIST_BINDABLE_PROP_OPTIONS[activeNode.type] ?? []) : [];
   const listBindingSchema = propsMap.__listBinding;
@@ -299,7 +381,7 @@ const ComponentConfigPanel: React.FC = () => {
     const nextInputDrafts: Record<string, string> = {};
     const nextNumberDrafts: Record<string, number | undefined> = {};
 
-    editableProps.forEach(([propKey, schema]) => {
+    sortedEditableProps.forEach(([propKey, schema]) => {
       const editType = resolveEditType(schema);
       if (editType === 'input') {
         nextInputDrafts[propKey] = typeof schema.value === 'string' ? schema.value : String(schema.value ?? '');
@@ -524,17 +606,29 @@ const ComponentConfigPanel: React.FC = () => {
       );
     }
 
+    const draftValue = inputDrafts[propKey] ?? (typeof currentValue === 'string' ? currentValue : String(currentValue ?? ''));
+
     return (
       <Input
         clearable
-        value={inputDrafts[propKey] ?? (typeof currentValue === 'string' ? currentValue : String(currentValue ?? ''))}
+        value={draftValue}
         onChange={(value) => {
           setInputDrafts((previous) => ({
             ...previous,
             [propKey]: String(value ?? ''),
           }));
         }}
-        onBlur={() => updateActiveNodeProp(propKey, inputDrafts[propKey] ?? '')}
+        onBlur={(value, context) => {
+          const fallbackValue = context?.e?.target && 'value' in context.e.target
+            ? String((context.e.target as { value?: unknown }).value ?? '')
+            : draftValue;
+          const nextValue = typeof value === 'string' ? value : fallbackValue;
+          setInputDrafts((previous) => ({
+            ...previous,
+            [propKey]: String(nextValue ?? ''),
+          }));
+          updateActiveNodeProp(propKey, String(nextValue ?? ''));
+        }}
       />
     );
   };
@@ -733,7 +827,7 @@ const ComponentConfigPanel: React.FC = () => {
           </div>
         </div>
 
-        {editableProps.map(([propKey, schema]) => (
+        {sortedEditableProps.map(([propKey, schema]) => (
           <div key={propKey} className="config-row">
             <span className="config-label">{schema.name ?? propKey}</span>
             <div className="config-editor">{renderEditor(propKey, schema)}</div>

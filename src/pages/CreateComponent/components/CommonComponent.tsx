@@ -1,5 +1,5 @@
 import React from 'react';
-import { Button, Space, Row, Col, Card, Divider, Typography, Image, Avatar, Switch, Swiper, Layout, Calendar, ColorPicker, TimePicker, TimeRangePicker, InputNumber, Slider, Steps, List, Link, Tabs, BackTop, Menu, Drawer, Progress, Upload } from 'tdesign-react';
+import { Button, Space, Row, Col, Card, Divider, Typography, Image, Avatar, Switch, Swiper, Layout, Calendar, ColorPicker, TimePicker, TimeRangePicker, InputNumber, Slider, Steps, List, Link, Tabs, BackTop, Menu, Drawer, Progress, Upload, Input, Textarea } from 'tdesign-react';
 import DropArea from '../../../components/DropArea';
 import type { UiDropDataHandler, UiTreeNode } from '../store/type';
 import { useCreateComponentStore } from '../store';
@@ -1695,6 +1695,163 @@ export default function CommonComponent(properties: CommonComponentProps) {
               disabled={getBooleanProp('disabled')}
               hideDisabledTime={getBooleanProp('hideDisabledTime')}
               style={mergeStyle()}
+            />
+          </ActivateWrapper>
+        );
+        }
+      case 'Input':
+        {
+        const isControlled = getBooleanProp('controlled') !== false;
+        const inputValueProps = isControlled
+          ? { value: getStringProp('value') || undefined }
+          : { defaultValue: getStringProp('defaultValue') || undefined };
+
+        return (
+          <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf}>
+            <Input
+              {...inputValueProps}
+              className={getStringProp('className') || undefined}
+              align={getStringProp('align') as any}
+              allowInputOverMax={getBooleanProp('allowInputOverMax')}
+              autoWidth={getBooleanProp('autoWidth')}
+              autocomplete={getStringProp('autocomplete') || undefined}
+              autofocus={getBooleanProp('autofocus')}
+              borderless={getBooleanProp('borderless')}
+              placeholder={getStringProp('placeholder') || undefined}
+              size={getStringProp('size') as any}
+              status={getStringProp('status') as any}
+              clearable={getBooleanProp('clearable')}
+              disabled={getBooleanProp('disabled')}
+              readonly={getBooleanProp('readOnly') ?? getBooleanProp('readonly')}
+              maxcharacter={getFiniteNumberProp('maxcharacter') as any}
+              maxlength={getFiniteNumberProp('maxlength') as any}
+              name={getStringProp('name') || undefined}
+              showClearIconOnEmpty={getBooleanProp('showClearIconOnEmpty')}
+              showLimitNumber={getBooleanProp('showLimitNumber')}
+              spellCheck={getBooleanProp('spellCheck')}
+              tips={getStringProp('tips') || undefined}
+              type={getStringProp('type') as any}
+              style={mergeStyle()}
+            />
+          </ActivateWrapper>
+        );
+        }
+      case 'Textarea':
+        {
+        const isControlled = getBooleanProp('controlled') !== false;
+        const getTextareaStyleProp = () => {
+          const value = getProp('style');
+
+          if (value && typeof value === 'object' && !Array.isArray(value)) {
+            return value as React.CSSProperties;
+          }
+
+          if (typeof value === 'string') {
+            const text = value.trim();
+            if (!text) {
+              return undefined;
+            }
+
+            try {
+              const parsed = JSON.parse(text);
+              if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+                return parsed as React.CSSProperties;
+              }
+            } catch {
+              return undefined;
+            }
+          }
+
+          return undefined;
+        };
+
+        const getTextareaAutosizeProp = () => {
+          const value = getProp('autosize');
+
+          if (typeof value === 'boolean') {
+            return value;
+          }
+
+          if (value && typeof value === 'object' && !Array.isArray(value)) {
+            const record = value as Record<string, unknown>;
+            const minRows = typeof record.minRows === 'number' && Number.isFinite(record.minRows)
+              ? record.minRows
+              : undefined;
+            const maxRows = typeof record.maxRows === 'number' && Number.isFinite(record.maxRows)
+              ? record.maxRows
+              : undefined;
+
+            if (typeof minRows === 'number' || typeof maxRows === 'number') {
+              return { minRows, maxRows };
+            }
+
+            return undefined;
+          }
+
+          if (typeof value === 'string') {
+            const text = value.trim();
+            if (!text) {
+              return undefined;
+            }
+
+            if (text === 'true') {
+              return true;
+            }
+
+            if (text === 'false') {
+              return false;
+            }
+
+            try {
+              const parsed = JSON.parse(text);
+              if (typeof parsed === 'boolean') {
+                return parsed;
+              }
+              if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+                const record = parsed as Record<string, unknown>;
+                const minRows = typeof record.minRows === 'number' && Number.isFinite(record.minRows)
+                  ? record.minRows
+                  : undefined;
+                const maxRows = typeof record.maxRows === 'number' && Number.isFinite(record.maxRows)
+                  ? record.maxRows
+                  : undefined;
+
+                if (typeof minRows === 'number' || typeof maxRows === 'number') {
+                  return { minRows, maxRows };
+                }
+              }
+            } catch {
+              return undefined;
+            }
+          }
+
+          return undefined;
+        };
+
+        const textareaValueProps = isControlled
+          ? { value: getStringProp('value') || undefined }
+          : { defaultValue: getStringProp('defaultValue') || undefined };
+        const textareaStyle = getTextareaStyleProp();
+        const mergedTextareaStyle = textareaStyle ? { ...mergeStyle(), ...textareaStyle } : mergeStyle();
+
+        return (
+          <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf}>
+            <Textarea
+              {...textareaValueProps}
+              className={getStringProp('className') || undefined}
+              allowInputOverMax={getBooleanProp('allowInputOverMax')}
+              autofocus={getBooleanProp('autofocus')}
+              count={getBooleanProp('count')}
+              placeholder={getStringProp('placeholder') || undefined}
+              status={getStringProp('status') as any}
+              disabled={getBooleanProp('disabled')}
+              readonly={getBooleanProp('readOnly') ?? getBooleanProp('readonly')}
+              maxcharacter={getFiniteNumberProp('maxcharacter') as any}
+              maxlength={getFiniteNumberProp('maxlength') as any}
+              name={getStringProp('name') || undefined}
+              tips={getStringProp('tips') || undefined}
+              autosize={getTextareaAutosizeProp()}
+              style={mergedTextareaStyle}
             />
           </ActivateWrapper>
         );

@@ -78,6 +78,8 @@ const getCategoryByType = (type: string): ComponentLibraryCategory => {
 
   if (
     type === 'Switch'
+    || type === 'Input'
+    || type === 'Textarea'
     || type === 'InputNumber'
     || type === 'Slider'
     || type === 'Upload'
@@ -176,6 +178,8 @@ const getIconByType = (type: string) => {
     ColorPicker: Pipette,
     TimePicker: Clock3,
     TimeRangePicker: Timer,
+    Input: Type,
+    Textarea: AlignLeft,
     InputNumber: Hash,
     Slider: SlidersHorizontal,
     Tabs: ListOrdered,

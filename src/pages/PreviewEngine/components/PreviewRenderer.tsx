@@ -1,5 +1,5 @@
 import React from 'react';
-import { Avatar, Button, Card, Col, Divider, Image, Row, Space, Switch, Swiper, Typography, Layout, Calendar, ColorPicker, TimePicker, TimeRangePicker, InputNumber, Slider, Steps, List, Link, Tabs, BackTop, Menu, Drawer, Progress, Upload } from 'tdesign-react';
+import { Avatar, Button, Card, Col, Divider, Image, Row, Space, Switch, Swiper, Typography, Layout, Calendar, ColorPicker, TimePicker, TimeRangePicker, InputNumber, Slider, Steps, List, Link, Tabs, BackTop, Menu, Drawer, Progress, Upload, Input, Textarea } from 'tdesign-react';
 import type { UiTreeNode } from '../../CreateComponent/store/type';
 import { getNodeSlotKey, isSlotNode } from '../../CreateComponent/utils/slot';
 import { convertResponsiveConfigToTDesignProps, normalizeResponsiveConfig } from '../../CreateComponent/utils/gridResponsive';
@@ -1863,6 +1863,185 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) 
             onInput={(context) => emitInteractionLifecycle('onInput', context)}
             onPick={(nextValue, context) => emitInteractionLifecycle('onPick', { value: nextValue, context })}
             style={mergeStyle()}
+          />
+        </div>
+      );
+      }
+    case 'Input':
+      {
+      const isControlled = getBooleanProp(node, 'controlled') !== false;
+      const inputValueProps = isControlled
+        ? { value: getStringProp(node, 'value') || undefined }
+        : { defaultValue: getStringProp(node, 'defaultValue') || undefined };
+
+      return (
+        <div style={mergeStyle()}>
+          <Input
+            {...inputValueProps}
+            className={getStringProp(node, 'className') || undefined}
+            align={getStringProp(node, 'align') as any}
+            allowInputOverMax={getBooleanProp(node, 'allowInputOverMax')}
+            autoWidth={getBooleanProp(node, 'autoWidth')}
+            autocomplete={getStringProp(node, 'autocomplete') || undefined}
+            autofocus={getBooleanProp(node, 'autofocus')}
+            borderless={getBooleanProp(node, 'borderless')}
+            placeholder={getStringProp(node, 'placeholder') || undefined}
+            size={getStringProp(node, 'size') as any}
+            status={getStringProp(node, 'status') as any}
+            clearable={getBooleanProp(node, 'clearable')}
+            disabled={getBooleanProp(node, 'disabled')}
+            readonly={getBooleanProp(node, 'readOnly') ?? getBooleanProp(node, 'readonly')}
+            maxcharacter={getFiniteNumberProp(node, 'maxcharacter') as any}
+            maxlength={getFiniteNumberProp(node, 'maxlength') as any}
+            name={getStringProp(node, 'name') || undefined}
+            showClearIconOnEmpty={getBooleanProp(node, 'showClearIconOnEmpty')}
+            showLimitNumber={getBooleanProp(node, 'showLimitNumber')}
+            spellCheck={getBooleanProp(node, 'spellCheck')}
+            tips={getStringProp(node, 'tips') || undefined}
+            type={getStringProp(node, 'type') as any}
+            onBlur={(value, context) => emitInteractionLifecycle('onBlur', { value, context })}
+            onChange={(value, context) => emitInteractionLifecycle('onChange', { value, context })}
+            onClear={(context) => emitInteractionLifecycle('onClear', context)}
+            onClick={(context) => emitInteractionLifecycle('onClick', context)}
+            onCompositionend={(value, context) => emitInteractionLifecycle('onCompositionend', { value, context })}
+            onCompositionstart={(value, context) => emitInteractionLifecycle('onCompositionstart', { value, context })}
+            onEnter={(value, context) => emitInteractionLifecycle('onEnter', { value, context })}
+            onFocus={(value, context) => emitInteractionLifecycle('onFocus', { value, context })}
+            onKeydown={(value, context) => emitInteractionLifecycle('onKeydown', { value, context })}
+            onKeypress={(value, context) => emitInteractionLifecycle('onKeypress', { value, context })}
+            onKeyup={(value, context) => emitInteractionLifecycle('onKeyup', { value, context })}
+            onMouseenter={(context) => emitInteractionLifecycle('onMouseenter', context)}
+            onMouseleave={(context) => emitInteractionLifecycle('onMouseleave', context)}
+            onPaste={(context) => emitInteractionLifecycle('onPaste', context)}
+            onValidate={(context) => emitInteractionLifecycle('onValidate', context)}
+            onWheel={(context) => emitInteractionLifecycle('onWheel', context)}
+            style={mergeStyle()}
+          />
+        </div>
+      );
+      }
+    case 'Textarea':
+      {
+      const isControlled = getBooleanProp(node, 'controlled') !== false;
+      const getTextareaStyleProp = () => {
+        const value = getProp(node, 'style');
+
+        if (value && typeof value === 'object' && !Array.isArray(value)) {
+          return value as React.CSSProperties;
+        }
+
+        if (typeof value === 'string') {
+          const text = value.trim();
+          if (!text) {
+            return undefined;
+          }
+
+          try {
+            const parsed = JSON.parse(text);
+            if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+              return parsed as React.CSSProperties;
+            }
+          } catch {
+            return undefined;
+          }
+        }
+
+        return undefined;
+      };
+
+      const getTextareaAutosizeProp = () => {
+        const value = getProp(node, 'autosize');
+
+        if (typeof value === 'boolean') {
+          return value;
+        }
+
+        if (value && typeof value === 'object' && !Array.isArray(value)) {
+          const record = value as Record<string, unknown>;
+          const minRows = typeof record.minRows === 'number' && Number.isFinite(record.minRows)
+            ? record.minRows
+            : undefined;
+          const maxRows = typeof record.maxRows === 'number' && Number.isFinite(record.maxRows)
+            ? record.maxRows
+            : undefined;
+
+          if (typeof minRows === 'number' || typeof maxRows === 'number') {
+            return { minRows, maxRows };
+          }
+
+          return undefined;
+        }
+
+        if (typeof value === 'string') {
+          const text = value.trim();
+          if (!text) {
+            return undefined;
+          }
+
+          if (text === 'true') {
+            return true;
+          }
+
+          if (text === 'false') {
+            return false;
+          }
+
+          try {
+            const parsed = JSON.parse(text);
+            if (typeof parsed === 'boolean') {
+              return parsed;
+            }
+            if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+              const record = parsed as Record<string, unknown>;
+              const minRows = typeof record.minRows === 'number' && Number.isFinite(record.minRows)
+                ? record.minRows
+                : undefined;
+              const maxRows = typeof record.maxRows === 'number' && Number.isFinite(record.maxRows)
+                ? record.maxRows
+                : undefined;
+
+              if (typeof minRows === 'number' || typeof maxRows === 'number') {
+                return { minRows, maxRows };
+              }
+            }
+          } catch {
+            return undefined;
+          }
+        }
+
+        return undefined;
+      };
+
+      const textareaValueProps = isControlled
+        ? { value: getStringProp(node, 'value') || undefined }
+        : { defaultValue: getStringProp(node, 'defaultValue') || undefined };
+      const textareaStyle = getTextareaStyleProp();
+      const mergedTextareaStyle = textareaStyle ? { ...mergeStyle(), ...textareaStyle } : mergeStyle();
+
+      return (
+        <div style={mergeStyle()}>
+          <Textarea
+            {...textareaValueProps}
+            className={getStringProp(node, 'className') || undefined}
+            allowInputOverMax={getBooleanProp(node, 'allowInputOverMax')}
+            autofocus={getBooleanProp(node, 'autofocus')}
+            count={getBooleanProp(node, 'count')}
+            placeholder={getStringProp(node, 'placeholder') || undefined}
+            status={getStringProp(node, 'status') as any}
+            disabled={getBooleanProp(node, 'disabled')}
+            readonly={getBooleanProp(node, 'readOnly') ?? getBooleanProp(node, 'readonly')}
+            maxcharacter={getFiniteNumberProp(node, 'maxcharacter') as any}
+            maxlength={getFiniteNumberProp(node, 'maxlength') as any}
+            name={getStringProp(node, 'name') || undefined}
+            tips={getStringProp(node, 'tips') || undefined}
+            autosize={getTextareaAutosizeProp()}
+            onBlur={(value, context) => emitInteractionLifecycle('onBlur', { value, context })}
+            onChange={(value, context) => emitInteractionLifecycle('onChange', { value, context })}
+            onFocus={(value, context) => emitInteractionLifecycle('onFocus', { value, context })}
+            onKeydown={(value, context) => emitInteractionLifecycle('onKeydown', { value, context })}
+            onKeypress={(value, context) => emitInteractionLifecycle('onKeypress', { value, context })}
+            onKeyup={(value, context) => emitInteractionLifecycle('onKeyup', { value, context })}
+            style={mergedTextareaStyle}
           />
         </div>
       );
