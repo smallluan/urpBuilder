@@ -1,5 +1,5 @@
 import React from 'react';
-import { Button, Space, Row, Col, Card, Divider, Typography, Image, Avatar, Switch, Swiper, Layout, Calendar, ColorPicker, TimePicker, TimeRangePicker, InputNumber, Slider, Steps, List, Link, Tabs, BackTop, Menu, Drawer, Progress } from 'tdesign-react';
+import { Button, Space, Row, Col, Card, Divider, Typography, Image, Avatar, Switch, Swiper, Layout, Calendar, ColorPicker, TimePicker, TimeRangePicker, InputNumber, Slider, Steps, List, Link, Tabs, BackTop, Menu, Drawer, Progress, Upload } from 'tdesign-react';
 import DropArea from '../../../components/DropArea';
 import type { UiDropDataHandler, UiTreeNode } from '../store/type';
 import { useCreateComponentStore } from '../store';
@@ -820,6 +820,131 @@ export default function CommonComponent(properties: CommonComponentProps) {
     return status;
   };
 
+  const getUploadAbridgeNameProp = (propName: string): [number, number] | undefined => {
+    const value = getProp(propName);
+
+    const normalize = (input: unknown[]) => {
+      const numbers = input
+        .map((item) => Number(item))
+        .filter((item) => Number.isFinite(item) && item >= 0)
+        .map((item) => Math.round(item));
+
+      if (numbers.length >= 2) {
+        return [numbers[0], numbers[1]] as [number, number];
+      }
+
+      return undefined;
+    };
+
+    if (Array.isArray(value)) {
+      return normalize(value);
+    }
+
+    if (typeof value === 'string') {
+      const text = value.trim();
+      if (!text) {
+        return undefined;
+      }
+
+      try {
+        const parsed = JSON.parse(text);
+        if (Array.isArray(parsed)) {
+          return normalize(parsed);
+        }
+      } catch {
+        const chunks = text.split(/,|，/).map((item) => item.trim()).filter(Boolean);
+        return normalize(chunks);
+      }
+    }
+
+    return undefined;
+  };
+
+  const getUploadFileListProp = (propName: string): Array<Record<string, unknown>> | undefined => {
+    const value = getProp(propName);
+
+    if (Array.isArray(value)) {
+      return value.filter((item) => !!item && typeof item === 'object') as Array<Record<string, unknown>>;
+    }
+
+    if (typeof value === 'string' && value.trim()) {
+      try {
+        const parsed = JSON.parse(value);
+        if (Array.isArray(parsed)) {
+          return parsed.filter((item) => !!item && typeof item === 'object') as Array<Record<string, unknown>>;
+        }
+      } catch {
+        return undefined;
+      }
+    }
+
+    return undefined;
+  };
+
+  const getUploadObjectProp = (propName: string): Record<string, unknown> | undefined => {
+    const value = getProp(propName);
+
+    if (value && typeof value === 'object' && !Array.isArray(value)) {
+      return value as Record<string, unknown>;
+    }
+
+    if (typeof value === 'string' && value.trim()) {
+      try {
+        const parsed = JSON.parse(value);
+        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+          return parsed as Record<string, unknown>;
+        }
+      } catch {
+        return undefined;
+      }
+    }
+
+    return undefined;
+  };
+
+  const getUploadSizeLimitProp = (propName: string): number | Record<string, unknown> | undefined => {
+    const value = getProp(propName);
+
+    if (typeof value === 'number' && Number.isFinite(value)) {
+      return value;
+    }
+
+    if (value && typeof value === 'object' && !Array.isArray(value)) {
+      return value as Record<string, unknown>;
+    }
+
+    if (typeof value === 'string' && value.trim()) {
+      const text = value.trim();
+      const parsedNumber = Number(text);
+      if (Number.isFinite(parsedNumber)) {
+        return parsedNumber;
+      }
+
+      try {
+        const parsed = JSON.parse(text);
+        if (typeof parsed === 'number' && Number.isFinite(parsed)) {
+          return parsed;
+        }
+        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+          return parsed as Record<string, unknown>;
+        }
+      } catch {
+        return undefined;
+      }
+    }
+
+    return undefined;
+  };
+
+  const getUploadStatusProp = (propName: string): string | undefined => {
+    const value = getStringProp(propName)?.trim();
+    if (!value || value === 'default') {
+      return undefined;
+    }
+
+    return value;
+  };
+
   const handleActivateSelf = (event: React.MouseEvent<HTMLElement>) => {
     event.stopPropagation();
     if (!data?.key) {
@@ -1059,6 +1184,52 @@ export default function CommonComponent(properties: CommonComponentProps) {
           />
         </ActivateWrapper>
       );
+    case 'Upload': {
+      const hasTriggerChildren = (data?.children?.length ?? 0) > 0;
+      return (
+        <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf}>
+          <Upload
+            className={getStringProp('className') || undefined}
+            abridgeName={getUploadAbridgeNameProp('abridgeName') as any}
+            accept={getStringProp('accept') || undefined}
+            action={getStringProp('action') || undefined}
+            allowUploadDuplicateFile={getBooleanProp('allowUploadDuplicateFile')}
+            autoUpload={getBooleanProp('autoUpload') !== false}
+            data={getUploadObjectProp('data') as any}
+            disabled={getBooleanProp('disabled')}
+            draggable={getBooleanProp('draggable')}
+            files={getUploadFileListProp('files') as any}
+            defaultFiles={getUploadFileListProp('defaultFiles') as any}
+            headers={getUploadObjectProp('headers') as any}
+            max={getFiniteNumberProp('max')}
+            method={getStringProp('method') as any}
+            mockProgressDuration={getFiniteNumberProp('mockProgressDuration')}
+            multiple={getBooleanProp('multiple')}
+            name={getStringProp('name') || undefined}
+            placeholder={getStringProp('placeholder') || undefined}
+            showImageFileName={getBooleanProp('showImageFileName')}
+            showThumbnail={getBooleanProp('showThumbnail')}
+            showUploadProgress={getBooleanProp('showUploadProgress')}
+            sizeLimit={getUploadSizeLimitProp('sizeLimit') as any}
+            status={getUploadStatusProp('status') as any}
+            theme={getStringProp('theme') as any}
+            tips={getStringProp('tips') || undefined}
+            uploadAllFilesInOneRequest={getBooleanProp('uploadAllFilesInOneRequest')}
+            uploadPastedFiles={getBooleanProp('uploadPastedFiles')}
+            useMockProgress={getBooleanProp('useMockProgress')}
+            withCredentials={getBooleanProp('withCredentials')}
+            style={mergeStyle()}
+          >
+            <DropArea
+              data={data}
+              onDropData={onDropData}
+              emptyText="拖拽组件到上传触发区"
+              compactWhenFilled={hasTriggerChildren}
+            />
+          </Upload>
+        </ActivateWrapper>
+      );
+    }
     case 'Drawer': {
       const hasDrawerChildren = (data?.children?.length ?? 0) > 0;
       const drawerBodyText = getStringProp('body')?.trim();

@@ -23,6 +23,7 @@ const CONTAINER_NODE_TYPES = new Set([
   'Space',
   'Steps',
   'Drawer',
+  'Upload',
   'Menu',
   'HeadMenu',
   'Menu.Submenu',

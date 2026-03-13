@@ -400,6 +400,201 @@ const componentCatalog = [
     },
   },
   {
+    type: 'Upload',
+    name: '上传',
+    props: {
+      className: {
+        name: '类名',
+        value: '',
+        editType: 'input',
+      },
+      accept: {
+        name: '接受类型',
+        value: '',
+        editType: 'input',
+      },
+      action: {
+        name: '上传接口',
+        value: '',
+        editType: 'input',
+      },
+      allowUploadDuplicateFile: {
+        name: '允许同名文件',
+        value: false,
+        editType: 'switch',
+      },
+      autoUpload: {
+        name: '自动上传',
+        value: true,
+        editType: 'switch',
+      },
+      disabled: {
+        name: '禁用',
+        value: false,
+        editType: 'switch',
+      },
+      draggable: {
+        name: '启用拖拽',
+        value: false,
+        editType: 'switch',
+      },
+      multiple: {
+        name: '多文件',
+        value: false,
+        editType: 'switch',
+      },
+      max: {
+        name: '最大数量',
+        value: 0,
+        editType: 'inputNumber',
+        payload: {
+          min: 0,
+        },
+      },
+      method: {
+        name: '请求方法',
+        value: 'POST',
+        editType: 'select',
+        payload: {
+          options: ['POST', 'GET', 'PUT', 'OPTIONS', 'PATCH'],
+        },
+      },
+      name: {
+        name: '文件字段名',
+        value: 'file',
+        editType: 'input',
+      },
+      placeholder: {
+        name: '占位文本',
+        value: '请选择文件',
+        editType: 'input',
+      },
+      showImageFileName: {
+        name: '显示图片文件名',
+        value: true,
+        editType: 'switch',
+      },
+      showThumbnail: {
+        name: '显示缩略图',
+        value: false,
+        editType: 'switch',
+      },
+      showUploadProgress: {
+        name: '显示上传进度',
+        value: true,
+        editType: 'switch',
+      },
+      status: {
+        name: '提示状态',
+        value: 'default',
+        editType: 'select',
+        payload: {
+          options: [
+            { label: '默认', value: 'default' },
+            { label: '成功', value: 'success' },
+            { label: '警告', value: 'warning' },
+            { label: '错误', value: 'error' },
+          ],
+        },
+      },
+      theme: {
+        name: '风格',
+        value: 'file',
+        editType: 'select',
+        payload: {
+          options: [
+            { label: '自定义', value: 'custom' },
+            { label: '文件', value: 'file' },
+            { label: '文件输入框', value: 'file-input' },
+            { label: '文件流', value: 'file-flow' },
+            { label: '图片', value: 'image' },
+            { label: '图片流', value: 'image-flow' },
+          ],
+        },
+      },
+      tips: {
+        name: '提示文本',
+        value: '',
+        editType: 'input',
+      },
+      uploadAllFilesInOneRequest: {
+        name: '单请求上传全部',
+        value: false,
+        editType: 'switch',
+      },
+      uploadPastedFiles: {
+        name: '允许粘贴上传',
+        value: true,
+        editType: 'switch',
+      },
+      useMockProgress: {
+        name: '启用模拟进度',
+        value: true,
+        editType: 'switch',
+      },
+      mockProgressDuration: {
+        name: '模拟进度间隔(ms)',
+        value: 300,
+        editType: 'inputNumber',
+        payload: {
+          min: 0,
+        },
+      },
+      withCredentials: {
+        name: '携带凭据',
+        value: false,
+        editType: 'switch',
+      },
+      abridgeName: {
+        name: '文件名缩略规则',
+        value: '',
+        editType: 'input',
+      },
+      files: {
+        name: '已上传文件列表',
+        value: '[]',
+        editType: 'jsonCode',
+      },
+      defaultFiles: {
+        name: '默认文件列表',
+        value: '[]',
+        editType: 'jsonCode',
+      },
+      headers: {
+        name: '请求头',
+        value: '{}',
+        editType: 'jsonCode',
+      },
+      data: {
+        name: '附加请求参数',
+        value: '{}',
+        editType: 'jsonCode',
+      },
+      sizeLimit: {
+        name: '大小限制',
+        value: '',
+        editType: 'input',
+      },
+    },
+    lifetimes: [
+      'onCancelUpload',
+      'onChange',
+      'onDragenter',
+      'onDragleave',
+      'onDrop',
+      'onFail',
+      'onOneFileFail',
+      'onOneFileSuccess',
+      'onPreview',
+      'onProgress',
+      'onRemove',
+      'onSelectChange',
+      'onSuccess',
+      'onValidate',
+      'onWaitingUploadFilesChange',
+    ],
+  },
+  {
     type: 'Icon',
     name: '图标',
     props: {

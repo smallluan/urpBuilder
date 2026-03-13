@@ -1,5 +1,5 @@
 import React from 'react';
-import { Avatar, Button, Card, Col, Divider, Image, Row, Space, Switch, Swiper, Typography, Layout, Calendar, ColorPicker, TimePicker, TimeRangePicker, InputNumber, Slider, Steps, List, Link, Tabs, BackTop, Menu, Drawer, Progress } from 'tdesign-react';
+import { Avatar, Button, Card, Col, Divider, Image, Row, Space, Switch, Swiper, Typography, Layout, Calendar, ColorPicker, TimePicker, TimeRangePicker, InputNumber, Slider, Steps, List, Link, Tabs, BackTop, Menu, Drawer, Progress, Upload } from 'tdesign-react';
 import type { UiTreeNode } from '../../CreateComponent/store/type';
 import { getNodeSlotKey, isSlotNode } from '../../CreateComponent/utils/slot';
 import { convertResponsiveConfigToTDesignProps, normalizeResponsiveConfig } from '../../CreateComponent/utils/gridResponsive';
@@ -575,6 +575,131 @@ const getProgressStatusProp = (node: UiTreeNode): string | undefined => {
   return status;
 };
 
+const getUploadAbridgeNameProp = (node: UiTreeNode, propName: string): [number, number] | undefined => {
+  const value = getProp(node, propName);
+
+  const normalize = (input: unknown[]) => {
+    const numbers = input
+      .map((item) => Number(item))
+      .filter((item) => Number.isFinite(item) && item >= 0)
+      .map((item) => Math.round(item));
+
+    if (numbers.length >= 2) {
+      return [numbers[0], numbers[1]] as [number, number];
+    }
+
+    return undefined;
+  };
+
+  if (Array.isArray(value)) {
+    return normalize(value);
+  }
+
+  if (typeof value === 'string') {
+    const text = value.trim();
+    if (!text) {
+      return undefined;
+    }
+
+    try {
+      const parsed = JSON.parse(text);
+      if (Array.isArray(parsed)) {
+        return normalize(parsed);
+      }
+    } catch {
+      const chunks = text.split(/,|，/).map((item) => item.trim()).filter(Boolean);
+      return normalize(chunks);
+    }
+  }
+
+  return undefined;
+};
+
+const getUploadFileListProp = (node: UiTreeNode, propName: string): Array<Record<string, unknown>> | undefined => {
+  const value = getProp(node, propName);
+
+  if (Array.isArray(value)) {
+    return value.filter((item) => !!item && typeof item === 'object') as Array<Record<string, unknown>>;
+  }
+
+  if (typeof value === 'string' && value.trim()) {
+    try {
+      const parsed = JSON.parse(value);
+      if (Array.isArray(parsed)) {
+        return parsed.filter((item) => !!item && typeof item === 'object') as Array<Record<string, unknown>>;
+      }
+    } catch {
+      return undefined;
+    }
+  }
+
+  return undefined;
+};
+
+const getUploadObjectProp = (node: UiTreeNode, propName: string): Record<string, unknown> | undefined => {
+  const value = getProp(node, propName);
+
+  if (value && typeof value === 'object' && !Array.isArray(value)) {
+    return value as Record<string, unknown>;
+  }
+
+  if (typeof value === 'string' && value.trim()) {
+    try {
+      const parsed = JSON.parse(value);
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+        return parsed as Record<string, unknown>;
+      }
+    } catch {
+      return undefined;
+    }
+  }
+
+  return undefined;
+};
+
+const getUploadSizeLimitProp = (node: UiTreeNode, propName: string): number | Record<string, unknown> | undefined => {
+  const value = getProp(node, propName);
+
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value;
+  }
+
+  if (value && typeof value === 'object' && !Array.isArray(value)) {
+    return value as Record<string, unknown>;
+  }
+
+  if (typeof value === 'string' && value.trim()) {
+    const text = value.trim();
+    const parsedNumber = Number(text);
+    if (Number.isFinite(parsedNumber)) {
+      return parsedNumber;
+    }
+
+    try {
+      const parsed = JSON.parse(text);
+      if (typeof parsed === 'number' && Number.isFinite(parsed)) {
+        return parsed;
+      }
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+        return parsed as Record<string, unknown>;
+      }
+    } catch {
+      return undefined;
+    }
+  }
+
+  return undefined;
+};
+
+const getUploadStatusProp = (node: UiTreeNode, propName: string): string | undefined => {
+  const value = getStringProp(node, propName)?.trim();
+  if (!value || value === 'default') {
+    return undefined;
+  }
+
+  return value;
+};
+
 const getListDataSource = (node: UiTreeNode): ListRecord[] => {
   const value = getProp(node, 'dataSource');
   if (Array.isArray(value)) {
@@ -1106,6 +1231,60 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) 
             trackColor={getStringProp(node, 'trackColor') || undefined}
             style={mergeStyle()}
           />
+        </div>
+      );
+    case 'Upload':
+      return (
+        <div style={mergeStyle()}>
+          <Upload
+            className={getStringProp(node, 'className') || undefined}
+            abridgeName={getUploadAbridgeNameProp(node, 'abridgeName') as any}
+            accept={getStringProp(node, 'accept') || undefined}
+            action={getStringProp(node, 'action') || undefined}
+            allowUploadDuplicateFile={getBooleanProp(node, 'allowUploadDuplicateFile')}
+            autoUpload={getBooleanProp(node, 'autoUpload') !== false}
+            data={getUploadObjectProp(node, 'data') as any}
+            disabled={getBooleanProp(node, 'disabled')}
+            draggable={getBooleanProp(node, 'draggable')}
+            files={getUploadFileListProp(node, 'files') as any}
+            defaultFiles={getUploadFileListProp(node, 'defaultFiles') as any}
+            headers={getUploadObjectProp(node, 'headers') as any}
+            max={getFiniteNumberProp(node, 'max')}
+            method={getStringProp(node, 'method') as any}
+            mockProgressDuration={getFiniteNumberProp(node, 'mockProgressDuration')}
+            multiple={getBooleanProp(node, 'multiple')}
+            name={getStringProp(node, 'name') || undefined}
+            placeholder={getStringProp(node, 'placeholder') || undefined}
+            showImageFileName={getBooleanProp(node, 'showImageFileName')}
+            showThumbnail={getBooleanProp(node, 'showThumbnail')}
+            showUploadProgress={getBooleanProp(node, 'showUploadProgress')}
+            sizeLimit={getUploadSizeLimitProp(node, 'sizeLimit') as any}
+            status={getUploadStatusProp(node, 'status') as any}
+            theme={getStringProp(node, 'theme') as any}
+            tips={getStringProp(node, 'tips') || undefined}
+            uploadAllFilesInOneRequest={getBooleanProp(node, 'uploadAllFilesInOneRequest')}
+            uploadPastedFiles={getBooleanProp(node, 'uploadPastedFiles')}
+            useMockProgress={getBooleanProp(node, 'useMockProgress')}
+            withCredentials={getBooleanProp(node, 'withCredentials')}
+            style={mergeStyle()}
+            onCancelUpload={() => emitInteractionLifecycle('onCancelUpload')}
+            onChange={(value, context) => emitInteractionLifecycle('onChange', { value, ...context })}
+            onDragenter={(context) => emitInteractionLifecycle('onDragenter', context)}
+            onDragleave={(context) => emitInteractionLifecycle('onDragleave', context)}
+            onDrop={(context) => emitInteractionLifecycle('onDrop', context)}
+            onFail={(context) => emitInteractionLifecycle('onFail', context)}
+            onOneFileFail={(context) => emitInteractionLifecycle('onOneFileFail', context)}
+            onOneFileSuccess={(context) => emitInteractionLifecycle('onOneFileSuccess', context)}
+            onPreview={(context) => emitInteractionLifecycle('onPreview', context)}
+            onProgress={(context) => emitInteractionLifecycle('onProgress', context)}
+            onRemove={(context) => emitInteractionLifecycle('onRemove', context)}
+            onSelectChange={(files, context) => emitInteractionLifecycle('onSelectChange', { files, ...context })}
+            onSuccess={(context) => emitInteractionLifecycle('onSuccess', context)}
+            onValidate={(context) => emitInteractionLifecycle('onValidate', context)}
+            onWaitingUploadFilesChange={(context) => emitInteractionLifecycle('onWaitingUploadFilesChange', context)}
+          >
+            {renderChildList(node.children ?? [], onLifecycle)}
+          </Upload>
         </div>
       );
     case 'Drawer': {

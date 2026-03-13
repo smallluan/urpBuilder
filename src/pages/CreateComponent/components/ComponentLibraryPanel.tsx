@@ -77,6 +77,7 @@ const getCategoryByType = (type: string): ComponentCategory => {
     type === 'Switch'
     || type === 'InputNumber'
     || type === 'Slider'
+    || type === 'Upload'
     || type === 'ColorPicker'
     || type === 'TimePicker'
     || type === 'TimeRangePicker'
@@ -155,6 +156,7 @@ const getIconByType = (type: string) => {
     BackTop: ArrowUpToLine,
     Drawer: RectangleHorizontal,
     Progress: SlidersHorizontal,
+    Upload: ArrowUpToLine,
     Menu: ListOrdered,
     HeadMenu: ListOrdered,
     'Menu.Submenu': ListOrdered,
