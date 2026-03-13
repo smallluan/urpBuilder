@@ -27,6 +27,7 @@ import type {
   ComponentFlowNodeData,
   EventFilterNodeData,
   FlowComponentDragPayload,
+  TimerNodeData,
 } from '../../types/flow';
 import { CORE_LIFETIMES } from '../../constants/componentBuilder';
 
@@ -37,6 +38,7 @@ const COMPONENT_TRACE_COLOR = '#0052d9';
 const EVENT_FILTER_TRACE_COLOR = '#2ba471';
 const CODE_TRACE_COLOR = '#6f5af0';
 const NETWORK_REQUEST_TRACE_COLOR = '#eb6f0a';
+const TIMER_TRACE_COLOR = '#0f766e';
 const COMPONENT_FALLBACK_LIFETIMES: Record<string, string[]> = {
   Slider: ['onChange'],
 };
@@ -159,6 +161,10 @@ const FlowCanvas: React.FC = () => {
 
     if (activeNode.type === 'networkRequestNode') {
       return NETWORK_REQUEST_TRACE_COLOR;
+    }
+
+    if (activeNode.type === 'timerNode') {
+      return TIMER_TRACE_COLOR;
     }
 
     return COMPONENT_TRACE_COLOR;
@@ -424,7 +430,8 @@ const FlowCanvas: React.FC = () => {
         (targetNode.type === 'componentNode' ||
           targetNode.type === 'codeNode' ||
           targetNode.type === 'eventFilterNode' ||
-          targetNode.type === 'networkRequestNode')
+          targetNode.type === 'networkRequestNode' ||
+          targetNode.type === 'timerNode')
       ) {
         return;
       }
@@ -737,6 +744,25 @@ const FlowCanvas: React.FC = () => {
         };
 
         applyFlowEdit('新增网络请求节点', ({ nodes: previousNodes, edges: previousEdges }) => ({
+          nodes: [...previousNodes, nextNode],
+          edges: previousEdges,
+        }));
+        return;
+      }
+
+      if (payload.kind === 'builtin-node' && payload.nodeType === 'timerNode') {
+        const nodeId = createFlowNodeId('timer-node');
+        const nextNode: Node = {
+          id: nodeId,
+          type: 'timerNode',
+          position,
+          data: {
+            label: payload.label || '定时器节点',
+            intervalMs: 1000,
+          } satisfies TimerNodeData,
+        };
+
+        applyFlowEdit('新增定时器节点', ({ nodes: previousNodes, edges: previousEdges }) => ({
           nodes: [...previousNodes, nextNode],
           edges: previousEdges,
         }));

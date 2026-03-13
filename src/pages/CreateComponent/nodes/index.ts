@@ -4,6 +4,7 @@ import CodeNode from './CodeNode';
 import ComponentFlowNode from './ComponentFlowNode';
 import EventFilterNode from './EventFilterNode';
 import NetworkRequestNode from './NetworkRequestNode';
+import TimerNode from './TimerNode';
 
 export const flowNodeTypes: NodeTypes = {
   componentNode: ComponentFlowNode,
@@ -11,4 +12,5 @@ export const flowNodeTypes: NodeTypes = {
   annotationNode: AnnotationNode,
   codeNode: CodeNode,
   networkRequestNode: NetworkRequestNode,
+  timerNode: TimerNode,
 };

@@ -13,7 +13,7 @@ import {
   ERROR_OPTIONS,
   METHOD_OPTIONS,
 } from '../../constants/flowBuilder';
-import type { EventFilterFormState, NetworkRequestFormState } from '../../types/flow';
+import type { EventFilterFormState, NetworkRequestFormState, TimerNodeFormState } from '../../types/flow';
 import './style.less';
 
 interface CodeNodeFormState extends CodeEditorValue {}
@@ -30,6 +30,7 @@ const FlowLayout: React.FC = () => {
     eventFilterNode: '事件过滤节点',
     codeNode: '代码节点',
     networkRequestNode: '网络请求节点',
+    timerNode: '定时器节点',
     annotationNode: '注释节点',
   };
 
@@ -46,6 +47,7 @@ const FlowLayout: React.FC = () => {
   const [codeDraft, setCodeDraft] = useState<CodeNodeFormState | null>(null);
   const [codeEditorVisible, setCodeEditorVisible] = useState(false);
   const [eventFilterDraft, setEventFilterDraft] = useState<EventFilterFormState | null>(null);
+  const [timerDraft, setTimerDraft] = useState<TimerNodeFormState | null>(null);
   const [rightPanelMode, setRightPanelMode] = useState<RightPanelMode>('library');
 
   const builtinNodes = [
@@ -66,6 +68,12 @@ const FlowLayout: React.FC = () => {
       label: '网络请求节点',
       theme: 'request',
       icon: <UploadIcon />,
+    },
+    {
+      nodeType: 'timerNode',
+      label: '定时器节点',
+      theme: 'timer',
+      icon: <span>⏱</span>,
     },
   ] as const;
 
@@ -130,6 +138,19 @@ const FlowLayout: React.FC = () => {
       upstreamLabel: String(nodeData.upstreamLabel ?? '-'),
       availableLifetimes,
       selectedLifetimes,
+    });
+  }, [activeFlowNode]);
+
+  useEffect(() => {
+    if (!activeFlowNode || activeFlowNode.type !== 'timerNode') {
+      setTimerDraft(null);
+      return;
+    }
+
+    const nodeData = (activeFlowNode.data ?? {}) as Record<string, unknown>;
+    setTimerDraft({
+      label: String(nodeData.label ?? '定时器节点'),
+      intervalMs: Math.max(100, Number(nodeData.intervalMs ?? 1000)),
     });
   }, [activeFlowNode]);
 
@@ -214,6 +235,20 @@ const FlowLayout: React.FC = () => {
     return JSON.stringify(currentComparable) !== JSON.stringify(draftComparable);
   }, [activeFlowNode, eventFilterDraft]);
 
+  const canApplyTimerDraft = useMemo(() => {
+    if (!activeFlowNode || activeFlowNode.type !== 'timerNode' || !timerDraft) {
+      return false;
+    }
+
+    const nodeData = (activeFlowNode.data ?? {}) as Record<string, unknown>;
+    const currentComparable = {
+      label: String(nodeData.label ?? '定时器节点'),
+      intervalMs: Math.max(100, Number(nodeData.intervalMs ?? 1000)),
+    };
+
+    return JSON.stringify(currentComparable) !== JSON.stringify(timerDraft);
+  }, [activeFlowNode, timerDraft]);
+
   const handleApplyNetworkDraft = () => {
     if (!activeFlowNode || activeFlowNode.type !== 'networkRequestNode' || !networkDraft) {
       return;
@@ -275,6 +310,22 @@ const FlowLayout: React.FC = () => {
         selectedLifetimes: eventFilterDraft.selectedLifetimes,
       }),
       '更新事件过滤节点配置',
+    );
+  };
+
+  const handleApplyTimerDraft = () => {
+    if (!activeFlowNode || activeFlowNode.type !== 'timerNode' || !timerDraft) {
+      return;
+    }
+
+    updateFlowNodeData(
+      activeFlowNode.id,
+      (previous) => ({
+        ...previous,
+        label: timerDraft.label,
+        intervalMs: Math.max(100, Math.round(timerDraft.intervalMs)),
+      }),
+      '更新定时器节点配置',
     );
   };
 
@@ -499,6 +550,53 @@ const FlowLayout: React.FC = () => {
                     </Button>
                     <Button size="small" theme="primary" variant="outline" onClick={() => setCodeEditorVisible(true)}>
                       编辑代码
+                    </Button>
+                  </div>
+                </div>
+              ) : null}
+
+              {activeFlowNode.type === 'timerNode' && timerDraft ? (
+                <div className="flow-config-panel__group">
+                  <div className="flow-config-panel__group-title">定时器节点配置</div>
+
+                  <div className="flow-config-field">
+                    <div className="flow-config-field__label">节点名称</div>
+                    <Input
+                      size="small"
+                      value={timerDraft.label}
+                      onChange={(value) =>
+                        setTimerDraft((previous) => (previous ? { ...previous, label: String(value ?? '') } : previous))
+                      }
+                    />
+                  </div>
+
+                  <div className="flow-config-field">
+                    <div className="flow-config-field__label">触发间隔(ms)</div>
+                    <InputNumber
+                      size="small"
+                      min={100}
+                      max={86400000}
+                      value={timerDraft.intervalMs}
+                      onChange={(value) =>
+                        setTimerDraft((previous) => (previous ? { ...previous, intervalMs: Math.max(100, Number(value ?? 1000)) } : previous))
+                      }
+                    />
+                  </div>
+
+                  <div className="config-row">
+                    <span className="config-label">说明</span>
+                    <span className="config-value">预览时会按设定间隔自动触发下游链路</span>
+                  </div>
+
+                  <div className="flow-config-panel__actions">
+                    <Button
+                      size="small"
+                      theme="primary"
+                      variant="outline"
+                      disabled={!canApplyTimerDraft}
+                      onClick={handleApplyTimerDraft}
+                    >
+                      应用配置
                     </Button>
                   </div>
                 </div>

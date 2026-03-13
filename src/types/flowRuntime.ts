@@ -24,6 +24,18 @@ export interface RuntimeRequestError {
 
 export type RuntimeEvent =
   | {
+      kind: 'timer';
+      timerNodeId: string;
+      intervalMs: number;
+      tickAt: number;
+    }
+  | {
+      kind: 'value';
+      value: unknown;
+      fromCodeNodeId: string;
+      payload?: unknown;
+    }
+  | {
       kind: 'lifecycle';
       lifetime: string;
       componentKey: string;

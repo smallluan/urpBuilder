@@ -50,6 +50,11 @@ export interface NetworkRequestNodeData extends FlowNodeActionHandlers {
   mockEnabled?: boolean;
 }
 
+export interface TimerNodeData extends FlowNodeActionHandlers {
+  label?: string;
+  intervalMs?: number;
+}
+
 export interface AnnotationNodeData extends FlowNodeActionHandlers {
   text?: string;
   onChange?: (nodeId: string, text: string) => void;
@@ -72,4 +77,9 @@ export interface EventFilterFormState {
   upstreamLabel: string;
   availableLifetimes: string[];
   selectedLifetimes: string[];
+}
+
+export interface TimerNodeFormState {
+  label: string;
+  intervalMs: number;
 }

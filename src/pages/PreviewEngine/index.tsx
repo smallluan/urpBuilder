@@ -52,6 +52,7 @@ const PreviewEngine: React.FC = () => {
 
     return () => {
       unsubscribePatched();
+      runtime.destroy();
       runtimeRef.current = null;
       if (window.dataHub === hub) {
         delete window.dataHub;

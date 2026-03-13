@@ -5,6 +5,7 @@ import type {
   ComponentFlowNodeData,
   EventFilterNodeData,
   NetworkRequestNodeData,
+  TimerNodeData,
 } from '../../../types/flow';
 import type { RuntimeEvent, RuntimeRequestError, RuntimeRequestSuccess } from '../../../types/flowRuntime';
 
@@ -214,6 +215,10 @@ export class PreviewFlowRuntime {
   // 一个组件可能在流程图中被拖入多个组件节点实例。
   private readonly componentNodeMap: Map<string, string[]>;
 
+  private readonly timerHandles = new Map<string, number>();
+
+  private readonly timerEnabledMap = new Map<string, boolean>();
+
   constructor(nodes: Node[], edges: Edge[], dataHub: PreviewDataHub) {
     this.dataHub = dataHub;
     this.nodeMap = new Map(nodes.map((node) => [node.id, node]));
@@ -243,6 +248,16 @@ export class PreviewFlowRuntime {
       list.push(node.id);
       this.componentNodeMap.set(sourceKey, list);
     });
+
+    this.startTimerNodes();
+  }
+
+  destroy() {
+    this.timerHandles.forEach((handle) => {
+      window.clearInterval(handle);
+    });
+    this.timerHandles.clear();
+    this.timerEnabledMap.clear();
   }
 
   emitLifecycle(componentKey: string, lifetime: string, payload?: unknown) {
@@ -323,8 +338,82 @@ export class PreviewFlowRuntime {
       return this.handleComponentNode(node, input);
     }
 
+    if (node.type === 'timerNode') {
+      return this.handleTimerNode(node, input);
+    }
+
     // 其他节点类型默认透传，便于后续扩展（如网络请求节点）。
     return input;
+  }
+
+  private startTimerNodes() {
+    this.nodeMap.forEach((node) => {
+      if (node.type !== 'timerNode') {
+        return;
+      }
+
+      this.timerEnabledMap.set(node.id, true);
+
+      this.startSingleTimer(node);
+    });
+  }
+
+  private startSingleTimer(node: Node) {
+    const existingHandle = this.timerHandles.get(node.id);
+    if (typeof existingHandle === 'number') {
+      window.clearInterval(existingHandle);
+    }
+
+      const data = (node.data ?? {}) as TimerNodeData;
+      const intervalMs = typeof data.intervalMs === 'number' && Number.isFinite(data.intervalMs)
+        ? Math.max(100, Math.round(data.intervalMs))
+        : 1000;
+
+      const handle = window.setInterval(() => {
+        if (this.timerEnabledMap.get(node.id) === false) {
+          return;
+        }
+
+        const runtimeEvent: RuntimeEvent = {
+          kind: 'timer',
+          timerNodeId: node.id,
+          intervalMs,
+          tickAt: Date.now(),
+        };
+
+        void this.propagate(node.id, runtimeEvent);
+      }, intervalMs);
+
+      this.timerHandles.set(node.id, handle);
+  }
+
+  private stopSingleTimer(nodeId: string) {
+    const handle = this.timerHandles.get(nodeId);
+    if (typeof handle === 'number') {
+      window.clearInterval(handle);
+      this.timerHandles.delete(nodeId);
+    }
+  }
+
+  private setTimerEnabled(nodeId: string, enabled: boolean) {
+    const previousEnabled = this.timerEnabledMap.get(nodeId);
+    if (previousEnabled === enabled) {
+      return;
+    }
+
+    this.timerEnabledMap.set(nodeId, enabled);
+
+    if (!enabled) {
+      this.stopSingleTimer(nodeId);
+      return;
+    }
+
+    const node = this.nodeMap.get(nodeId);
+    if (!node || node.type !== 'timerNode') {
+      return;
+    }
+
+    this.startSingleTimer(node);
   }
 
   // 事件过滤节点：只放行被订阅的生命周期。
@@ -378,6 +467,15 @@ export class PreviewFlowRuntime {
 
       const executor = new Function('dataHub', 'ctx', `'use strict';\nreturn (async () => {\n${code}\n})();`);
       const result = await executor(this.dataHub.createCodeContext(), ctx);
+
+      if (typeof result === 'boolean') {
+        return {
+          kind: 'value',
+          value: result,
+          fromCodeNodeId: node.id,
+          payload: input,
+        };
+      }
 
       // 仅接受“对象”作为声明式 patch，其他返回值视为无效。
       if (!isPlainObject(result)) {
@@ -542,6 +640,15 @@ export class PreviewFlowRuntime {
 
     this.dataHub.applyComponentPatch(sourceKey, input.patch);
     // patch 一旦消费即终止，不再向后传递，保证单向写入语义清晰。
+    return null;
+  }
+
+  private handleTimerNode(node: Node, input: RuntimeEvent): RuntimeEvent | null {
+    if (input.kind !== 'value' || typeof input.value !== 'boolean') {
+      return null;
+    }
+
+    this.setTimerEnabled(node.id, input.value);
     return null;
   }
 }

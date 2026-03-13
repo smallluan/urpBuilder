@@ -668,6 +668,10 @@
       border-color: #ffd7b3;
     }
 
+    .flow-builtins-item--timer:hover {
+      border-color: #b7ece4;
+    }
+
     .flow-builtins-item__left {
       min-width: 0;
       display: inline-flex;
@@ -705,6 +709,12 @@
       border-color: #ffd7b3;
       background: #fff3e8;
       color: #eb6f0a;
+    }
+
+    .flow-builtins-item__icon--timer {
+      border-color: #b7ece4;
+      background: #e9fbf7;
+      color: #0f766e;
     }
 
     .flow-builtins-item__name {
@@ -1974,6 +1984,61 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.flow-timer-node {
+  min-width: 220px;
+  padding: 14px 14px 12px;
+  border-radius: 14px;
+  border: 1px solid #b7ece4;
+  background: linear-gradient(180deg, #f2fffc 0%, #e8fbf7 100%);
+  box-shadow: 0 10px 24px rgba(18, 118, 105, 0.12);
+}
+
+.flow-timer-node.is-selected {
+  border-color: #0f766e;
+  box-shadow: 0 0 0 2px rgba(15, 118, 110, 0.16), 0 10px 24px rgba(18, 118, 105, 0.14);
+}
+
+.flow-timer-node__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.flow-timer-node__badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 24px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: rgba(15, 118, 110, 0.14);
+  color: #0f766e;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.flow-timer-node__interval {
+  font-size: 12px;
+  font-weight: 600;
+  color: #0f766e;
+}
+
+.flow-timer-node__title {
+  font-size: 15px;
+  line-height: 22px;
+  font-weight: 600;
+  color: #102a43;
+  margin-bottom: 4px;
+}
+
+.flow-timer-node__meta {
+  font-size: 12px;
+  line-height: 18px;
+  color: #52706d;
 }
 
 .flow-annotation-node {
