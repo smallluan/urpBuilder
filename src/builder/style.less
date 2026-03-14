@@ -2306,6 +2306,50 @@
   gap: 8px;
 }
 
+.builder-custom-component {
+  width: 100%;
+  border: 1px dashed #7c92b3;
+  border-radius: 8px;
+  background: linear-gradient(180deg, #f8fbff 0%, #ffffff 100%);
+  padding: 10px 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-sizing: border-box;
+}
+
+.builder-custom-component--error {
+  border-color: #de5b4d;
+  background: #fff5f3;
+}
+
+.builder-custom-component:hover {
+  border-color: #2f7cf6;
+  background: #f3f8ff;
+}
+
+.builder-custom-component.is-active {
+  border-color: #2f7cf6;
+  box-shadow: 0 0 0 2px rgba(47, 124, 246, 0.15);
+}
+
+.builder-custom-component__title {
+  font-size: 13px;
+  line-height: 18px;
+  color: #1f2329;
+  font-weight: 600;
+}
+
+.builder-custom-component__meta {
+  margin-top: 6px;
+  font-size: 11px;
+  line-height: 16px;
+  color: #6b7485;
+}
+
+.builder-custom-component-runtime {
+  width: 100%;
+}
+
 .flow-node-actions-row--end {
   justify-content: flex-end;
 }

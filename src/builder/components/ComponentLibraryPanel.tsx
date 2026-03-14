@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Input, Popup } from 'tdesign-react';
 import { SearchIcon } from 'tdesign-icons-react';
 import {
@@ -31,6 +31,19 @@ import type { LucideIcon } from 'lucide-react';
 import componentCatalog from '../../config/componentCatalog';
 import { componentLibraryEntries, groupedComponentTypes, type ComponentLibraryCategory, type ComponentLibraryEntry, type ComponentLibraryGroupEntry } from '../../config/componentLibrary';
 import DragableWrapper from '../../components/DragableWrapper';
+import { getPageBaseList, getPageDetail } from '../../api/pageTemplate';
+
+interface ComponentContract {
+  exposedProps?: Array<{ propKey?: string }>;
+  exposedLifecycles?: Array<{ lifetime?: string }>;
+}
+
+interface CustomComponentSchema {
+  name: string;
+  type: 'CustomComponent';
+  props: Record<string, unknown>;
+  lifetimes: string[];
+}
 
 interface ComponentLibraryPanelProps {
   selectedName: string | null;
@@ -244,6 +257,7 @@ const getPopupNodeKindLabel = (type: string): string => {
 const ComponentLibraryPanel: React.FC<ComponentLibraryPanelProps> = ({ selectedName, onSelect }) => {
   const [keyword, setKeyword] = useState('');
   const [openedGroupKey, setOpenedGroupKey] = useState<string | null>(null);
+  const [customComponentSchemas, setCustomComponentSchemas] = useState<CustomComponentSchema[]>([]);
 
   // 拖拽组件开始时，将组件的结构化数据携带
   const handleOnDrapStart = (e: React.DragEvent<HTMLDivElement>, data: any) => {
@@ -343,6 +357,107 @@ const ComponentLibraryPanel: React.FC<ComponentLibraryPanelProps> = ({ selectedN
     });
   }, [filteredEntries]);
 
+  useEffect(() => {
+    let cancelled = false;
+
+    const buildCustomComponentSchemas = async () => {
+      try {
+        const baseListResult = await getPageBaseList({ page: 1, pageSize: 50 });
+        const list = Array.isArray(baseListResult.data?.list) ? baseListResult.data.list : [];
+
+        const details = await Promise.all(
+          list.map(async (item) => {
+            try {
+              const detail = await getPageDetail(String(item.pageId));
+              return {
+                base: item,
+                detail: detail.data,
+              };
+            } catch {
+              return {
+                base: item,
+                detail: null,
+              };
+            }
+          }),
+        );
+
+        const nextSchemas = details
+          .map(({ base, detail }) => {
+            const pageConfig = (detail?.template?.pageConfig ?? {}) as { componentContract?: ComponentContract };
+            const contract = pageConfig.componentContract;
+            const exposedProps = Array.isArray(contract?.exposedProps)
+              ? contract.exposedProps
+                  .map((item) => String(item?.propKey ?? '').trim())
+                  .filter(Boolean)
+              : [];
+            const exposedLifecycles = Array.isArray(contract?.exposedLifecycles)
+              ? contract.exposedLifecycles
+                  .map((item) => String(item?.lifetime ?? '').trim())
+                  .filter(Boolean)
+              : [];
+
+            const props = {
+              __componentId: {
+                name: '组件ID',
+                value: String(base.pageId ?? ''),
+                editType: 'input',
+              },
+              __componentName: {
+                name: '组件名称',
+                value: String(base.pageName ?? base.pageId ?? '自定义组件'),
+                editType: 'input',
+              },
+              ...Object.fromEntries(
+                exposedProps.map((propKey) => [
+                  propKey,
+                  {
+                    name: propKey,
+                    value: '',
+                    editType: 'input',
+                  },
+                ]),
+              ),
+            };
+
+            return {
+              name: String(base.pageName ?? base.pageId ?? '自定义组件'),
+              type: 'CustomComponent' as const,
+              props,
+              lifetimes: Array.from(new Set(exposedLifecycles)),
+            };
+          })
+          .filter((item) => !!item.name);
+
+        if (!cancelled) {
+          setCustomComponentSchemas(nextSchemas);
+        }
+      } catch {
+        if (!cancelled) {
+          setCustomComponentSchemas([]);
+        }
+      }
+    };
+
+    void buildCustomComponentSchemas();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const filteredCustomComponentSchemas = useMemo(() => {
+    const text = keyword.trim().toLowerCase();
+    if (!text) {
+      return customComponentSchemas;
+    }
+
+    return customComponentSchemas.filter((item) => {
+      return item.name.toLowerCase().includes(text)
+        || String((item.props.__componentId as { value?: unknown } | undefined)?.value ?? '').toLowerCase().includes(text);
+    });
+  }, [customComponentSchemas, keyword]);
+
   const renderLibraryItemCard = (schema: ComponentSchema, isActive: boolean, helperText?: string) => {
     const itemCategory = getCategoryByType(String(schema.type ?? ''));
     const IconComponent = getIconByType(String(schema.type ?? ''));
@@ -422,6 +537,36 @@ const ComponentLibraryPanel: React.FC<ComponentLibraryPanelProps> = ({ selectedN
       </div>
 
       <div className="library-list">
+        {filteredCustomComponentSchemas.length > 0 ? (
+          <div className="library-section">
+            <div className="library-section-head">
+              <div className="library-section-title">
+                <Boxes size={14} strokeWidth={2} />
+                <span>已保存组件</span>
+              </div>
+              <span className="library-section-count">{filteredCustomComponentSchemas.length}</span>
+            </div>
+
+            <div className="library-section-grid">
+              {filteredCustomComponentSchemas.map((schema) => (
+                <DragableWrapper onDragStart={handleOnDrapStart} key={`custom-${schema.name}-${(schema.props.__componentId as { value?: unknown } | undefined)?.value ?? ''}`} data={schema}>
+                  <div
+                    className={`library-item ${selectedName === schema.name ? 'is-active' : ''}`}
+                    title={schema.name}
+                    onClick={() => onSelect(schema.name)}
+                  >
+                    <div className="library-item-icon library-item-icon--action">
+                      <Boxes size={16} strokeWidth={2} />
+                    </div>
+                    <div className="library-item-name">{schema.name}</div>
+                    <div className="library-item-type">{String((schema.props.__componentId as { value?: unknown } | undefined)?.value ?? 'CustomComponent')}</div>
+                  </div>
+                </DragableWrapper>
+              ))}
+            </div>
+          </div>
+        ) : null}
+
         {CATEGORY_ORDER.map((category) => {
           const categoryEntries = groupedCatalog[category] ?? [];
           if (categoryEntries.length === 0) {

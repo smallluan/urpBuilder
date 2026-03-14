@@ -3,6 +3,7 @@ export interface FlowComponentDragPayload {
   name?: string;
   componentType?: string;
   sourceKey?: string;
+  sourceRef?: string;
   lifetimes?: string[];
   nodeType?:
     | 'eventFilterNode'
@@ -26,6 +27,7 @@ export interface ComponentFlowNodeData extends FlowNodeActionHandlers {
   label?: string;
   componentType?: string;
   sourceKey?: string;
+  sourceRef?: string;
   lifetimes?: string[];
 }
 
@@ -65,6 +67,7 @@ export interface PropExposeNodeData extends FlowNodeActionHandlers {
   label?: string;
   sourceNodeId?: string;
   sourceKey?: string;
+  sourceRef?: string;
   sourceLabel?: string;
   availablePropKeys?: string[];
   selectedPropKeys?: string[];

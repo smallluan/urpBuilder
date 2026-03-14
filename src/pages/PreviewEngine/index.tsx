@@ -18,6 +18,7 @@ const PreviewEngine: React.FC = () => {
   const serializedFromState = (location.state as { snapshot?: string } | null)?.snapshot;
   const snapshotKey = searchParams.get('snapshotKey');
   const pageId = searchParams.get('pageId');
+  const scopeId = (searchParams.get('scopeId') || 'root').trim() || 'root';
 
   const serializedFromStorage = snapshotKey ? window.localStorage.getItem(snapshotKey) : null;
   const serialized = serializedFromStorage ?? serializedFromState;
@@ -63,7 +64,7 @@ const PreviewEngine: React.FC = () => {
   }, [snapshot.uiTreeData]);
 
   React.useEffect(() => {
-    const hub = createPreviewDataHub(snapshot.uiTreeData);
+    const hub = createPreviewDataHub(snapshot.uiTreeData, { scopeId });
     const runtime = createPreviewFlowRuntime(snapshot.flowNodes, snapshot.flowEdges, hub);
     const unsubscribePatched = hub.subscribe('component:patched', () => {
       setRenderTree(hub.getTreeSnapshot());
@@ -80,7 +81,7 @@ const PreviewEngine: React.FC = () => {
         delete window.dataHub;
       }
     };
-  }, [snapshot.flowEdges, snapshot.flowNodes, snapshot.uiTreeData]);
+  }, [scopeId, snapshot.flowEdges, snapshot.flowNodes, snapshot.uiTreeData]);
 
   const handleLifecycle = React.useCallback((componentKey: string, lifetime: string, payload?: unknown) => {
     runtimeRef.current?.emitLifecycle(componentKey, lifetime, payload);

@@ -5,6 +5,7 @@ import type { LifecycleExposeNodeData, PropExposeNodeData } from '../../types/fl
 export interface ComponentExposedProp {
   propKey: string;
   sourceKey: string;
+  sourceRef?: string;
   sourceLabel?: string;
 }
 
@@ -46,6 +47,7 @@ export const buildComponentContract = (
     .flatMap((node) => {
       const data = (node.data ?? {}) as PropExposeNodeData;
       const sourceKey = String(data.sourceKey ?? '').trim();
+      const sourceRef = String(data.sourceRef ?? '').trim();
       const sourceLabel = String(data.sourceLabel ?? '').trim();
       const selectedPropKeys = Array.isArray(data.selectedPropKeys)
         ? data.selectedPropKeys.map((item) => String(item).trim()).filter(Boolean)
@@ -58,6 +60,7 @@ export const buildComponentContract = (
       return selectedPropKeys.map((propKey) => ({
         propKey,
         sourceKey,
+        sourceRef: sourceRef || undefined,
         sourceLabel: sourceLabel || undefined,
       }));
     });

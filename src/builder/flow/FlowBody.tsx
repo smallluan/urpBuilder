@@ -77,6 +77,20 @@ const resolveConfigurablePropKeys = (props: unknown): string[] => {
     .sort((a, b) => a.localeCompare(b, 'zh-CN'));
 };
 
+const toSourceRef = (sourceKey?: unknown, sourceRef?: unknown) => {
+  const normalizedRef = typeof sourceRef === 'string' ? sourceRef.trim() : '';
+  if (normalizedRef) {
+    return normalizedRef;
+  }
+
+  const normalizedKey = typeof sourceKey === 'string' ? sourceKey.trim() : '';
+  if (!normalizedKey) {
+    return '';
+  }
+
+  return `root::${normalizedKey}`;
+};
+
 const createFlowNodeId = (prefix: string) =>
   `${prefix}-${Date.now()}-${Math.round(Math.random() * 1000)}`;
 
@@ -597,7 +611,7 @@ const FlowCanvas: React.FC = () => {
 
       if (sourceNode?.type === 'componentNode' && targetNode?.type === 'eventFilterNode') {
         const sourceData = (sourceNode.data ?? {}) as ComponentFlowNodeData;
-        const sourceKey = sourceData.sourceKey ?? '';
+        const sourceIdentity = toSourceRef(sourceData.sourceKey, sourceData.sourceRef);
 
         const existingUpstreamSourceIds = currentEdges
           .filter((edge) => edge.target === targetNode.id)
@@ -608,7 +622,7 @@ const FlowCanvas: React.FC = () => {
           .filter((node): node is Node => !!node && node.type === 'componentNode')
           .some((node) => {
             const upstreamData = (node.data ?? {}) as ComponentFlowNodeData;
-            return (upstreamData.sourceKey ?? '') !== sourceKey;
+            return toSourceRef(upstreamData.sourceKey, upstreamData.sourceRef) !== sourceIdentity;
           });
 
         if (hasDifferentSourceKey) {
@@ -642,8 +656,9 @@ const FlowCanvas: React.FC = () => {
         const targetData = (targetNode.data ?? {}) as ComponentFlowNodeData;
         const sourceData = (sourceNode.data ?? {}) as PropExposeNodeData;
         const sourceKey = String(targetData.sourceKey ?? '').trim();
+        const sourceRef = toSourceRef(targetData.sourceKey, targetData.sourceRef);
 
-        if (!sourceKey) {
+        if (!sourceKey || !sourceRef) {
           setFlowAlertMessage('属性暴露节点连接失败：目标组件节点缺少 sourceKey。');
           return;
         }
@@ -655,7 +670,7 @@ const FlowCanvas: React.FC = () => {
 
         const hasDifferentSourceKey = existingTargets.some((node) => {
           const data = (node.data ?? {}) as ComponentFlowNodeData;
-          return String(data.sourceKey ?? '').trim() !== sourceKey;
+          return toSourceRef(data.sourceKey, data.sourceRef) !== sourceRef;
         });
 
         if (hasDifferentSourceKey) {
@@ -685,6 +700,7 @@ const FlowCanvas: React.FC = () => {
               ...currentData,
               sourceNodeId: targetNode.id,
               sourceKey,
+              sourceRef,
               sourceLabel: targetData.label || targetData.componentType || '组件节点',
               availablePropKeys,
               selectedPropKeys,
@@ -777,8 +793,8 @@ const FlowCanvas: React.FC = () => {
       }
 
       const targetData = (targetNode.data ?? {}) as ComponentFlowNodeData;
-      const sourceKey = String(targetData.sourceKey ?? '').trim();
-      if (!sourceKey) {
+      const sourceIdentity = toSourceRef(targetData.sourceKey, targetData.sourceRef);
+      if (!sourceIdentity) {
         return false;
       }
 
@@ -789,7 +805,7 @@ const FlowCanvas: React.FC = () => {
 
       return existingTargets.every((node) => {
         const data = (node.data ?? {}) as ComponentFlowNodeData;
-        return String(data.sourceKey ?? '').trim() === sourceKey;
+        return toSourceRef(data.sourceKey, data.sourceRef) === sourceIdentity;
       });
     }
 
@@ -841,6 +857,7 @@ const FlowCanvas: React.FC = () => {
 
       if (payload.kind === 'component-node') {
         const nodeId = createFlowNodeId('component-node');
+        const sourceRef = toSourceRef(payload.sourceKey, payload.sourceRef);
         const nextNode: Node = {
           id: nodeId,
           type: 'componentNode',
@@ -849,6 +866,7 @@ const FlowCanvas: React.FC = () => {
             label: payload.name || '组件节点',
             componentType: payload.componentType || 'Unknown',
             sourceKey: payload.sourceKey,
+            sourceRef: sourceRef || undefined,
             lifetimes: resolveFlowLifetimes(payload.lifetimes, payload.componentType),
           },
         };

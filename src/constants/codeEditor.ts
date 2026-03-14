@@ -44,10 +44,34 @@ export const CODE_EDITOR_JS_GLOBAL_COMPLETIONS: Completion[] = [
     info: '读取某个组件的完整状态对象（含 props/lifetimes）。',
   },
   {
+    label: 'dataHub.getComponentStateByRef',
+    type: 'function',
+    detail: '(componentRef) => ComponentState | undefined',
+    info: '按作用域引用读取组件状态（推荐，避免 key 冲突）。',
+  },
+  {
     label: 'dataHub.getComponentProp',
     type: 'function',
     detail: '(componentKey, propKey) => unknown',
     info: '读取某个组件的单个属性值。',
+  },
+  {
+    label: 'dataHub.getComponentPropByRef',
+    type: 'function',
+    detail: '(componentRef, propKey) => unknown',
+    info: '按作用域引用读取组件属性（推荐，避免 key 冲突）。',
+  },
+  {
+    label: 'dataHub.composeRef',
+    type: 'function',
+    detail: '(componentKey) => componentRef',
+    info: '将组件 key 转为当前作用域的 componentRef。',
+  },
+  {
+    label: 'dataHub.scopeId',
+    type: 'property',
+    detail: '当前运行时作用域',
+    info: '代码节点上下文绑定的组件作用域标识。',
   },
   {
     label: 'dataHub.getAllComponentStates',

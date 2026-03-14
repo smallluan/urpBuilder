@@ -7,6 +7,13 @@ import type { ComponentLifecycleHandler, ListRecord, SwiperImageItem } from '../
 import { CORE_LIFETIMES, LIST_PREVIEW_DATA } from '../../../constants/componentBuilder';
 import { renderNamedIcon } from '../../../constants/iconRegistry';
 import { getTabsSlotNodeByValue, normalizeTabsList, normalizeTabsValue } from '../../../builder/utils/tabs';
+import {
+  applyExposedPropsToTemplate,
+  cloneTemplateUiTree,
+  getNodeStringProp,
+  loadCustomComponentDetail,
+  namespaceUiTreeKeys,
+} from '../../../utils/customComponentRuntime';
 
 interface PreviewRendererProps {
   node: UiTreeNode;
@@ -854,6 +861,77 @@ const renderChildren = (
     />
   )) ?? null;
 };
+
+function PreviewCustomComponentRenderer({
+  node,
+  onLifecycle,
+}: {
+  node: UiTreeNode;
+  onLifecycle?: ComponentLifecycleHandler;
+}) {
+  const [templateTree, setTemplateTree] = React.useState<UiTreeNode | null>(null);
+  const [loading, setLoading] = React.useState(false);
+
+  const componentId = getNodeStringProp(node, '__componentId');
+
+  React.useEffect(() => {
+    let cancelled = false;
+
+    if (!componentId) {
+      setTemplateTree(null);
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    setLoading(true);
+    void loadCustomComponentDetail(componentId)
+      .then((detail) => {
+        if (cancelled) {
+          return;
+        }
+
+        const root = cloneTemplateUiTree(detail);
+        if (!root) {
+          setTemplateTree(null);
+          return;
+        }
+
+        const injectedTree = applyExposedPropsToTemplate(node, root, detail);
+        const namespaced = namespaceUiTreeKeys(injectedTree, `preview-cc-${node.key}`);
+        setTemplateTree(namespaced);
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [componentId, node]);
+
+  if (!componentId) {
+    return null;
+  }
+
+  if (loading) {
+    return null;
+  }
+
+  if (!templateTree) {
+    return null;
+  }
+
+  return (
+    <>
+      {(templateTree.children ?? []).map((child) => (
+        <PreviewRenderer key={child.key} node={child} onLifecycle={onLifecycle} />
+      ))}
+    </>
+  );
+}
 
 const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) => {
   const inlineStyle = getStyleProp(node);
@@ -2274,6 +2352,12 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) 
           >
             {getTextProp(node, 'content')}
           </Typography.Text>
+        </div>
+      );
+    case 'CustomComponent':
+      return (
+        <div style={mergeStyle()}>
+          <PreviewCustomComponentRenderer node={node} onLifecycle={onLifecycle} />
         </div>
       );
     default:

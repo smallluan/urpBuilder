@@ -1,5 +1,5 @@
 import type { Edge, Node } from '@xyflow/react';
-import type { PreviewDataHub } from './dataHub';
+import { composeComponentRef, type PreviewDataHub } from './dataHub';
 import type {
   CodeNodeData,
   ComponentFlowNodeData,
@@ -211,7 +211,7 @@ export class PreviewFlowRuntime {
 
   private readonly downstreamMap: Map<string, string[]>;
 
-  // sourceKey -> componentNodeId[]
+  // sourceIdentity(sourceRef/sourceKey) -> componentNodeId[]
   // 一个组件可能在流程图中被拖入多个组件节点实例。
   private readonly componentNodeMap: Map<string, string[]>;
 
@@ -239,14 +239,14 @@ export class PreviewFlowRuntime {
       }
 
       const data = (node.data ?? {}) as ComponentFlowNodeData;
-      const sourceKey = typeof data.sourceKey === 'string' ? data.sourceKey : '';
-      if (!sourceKey) {
+      const sourceIdentity = this.resolveSourceIdentity(data);
+      if (!sourceIdentity) {
         return;
       }
 
-      const list = this.componentNodeMap.get(sourceKey) ?? [];
+      const list = this.componentNodeMap.get(sourceIdentity) ?? [];
       list.push(node.id);
-      this.componentNodeMap.set(sourceKey, list);
+      this.componentNodeMap.set(sourceIdentity, list);
     });
 
     this.startTimerNodes();
@@ -261,7 +261,20 @@ export class PreviewFlowRuntime {
   }
 
   emitLifecycle(componentKey: string, lifetime: string, payload?: unknown) {
-    const componentNodeIds = this.componentNodeMap.get(componentKey) ?? [];
+    const rawKey = String(componentKey ?? '').trim();
+    if (!rawKey) {
+      return;
+    }
+
+    const normalizedRef = rawKey.includes('::')
+      ? rawKey
+      : composeComponentRef(this.dataHub.getScopeId(), rawKey);
+
+    const componentNodeIds = [
+      ...(this.componentNodeMap.get(rawKey) ?? []),
+      ...(this.componentNodeMap.get(normalizedRef) ?? []),
+    ];
+
     if (componentNodeIds.length === 0) {
       return;
     }
@@ -269,14 +282,28 @@ export class PreviewFlowRuntime {
     const runtimeEvent: RuntimeEvent = {
       kind: 'lifecycle',
       lifetime,
-      componentKey,
+      componentKey: rawKey,
       payload,
     };
 
     // 同一个组件 key 对应的全部组件节点实例都要作为触发起点。
-    componentNodeIds.forEach((nodeId) => {
+    Array.from(new Set(componentNodeIds)).forEach((nodeId) => {
       void this.propagate(nodeId, runtimeEvent);
     });
+  }
+
+  private resolveSourceIdentity(data: ComponentFlowNodeData): string {
+    const sourceRef = typeof data.sourceRef === 'string' ? data.sourceRef.trim() : '';
+    if (sourceRef) {
+      return sourceRef;
+    }
+
+    const sourceKey = typeof data.sourceKey === 'string' ? data.sourceKey.trim() : '';
+    if (!sourceKey) {
+      return '';
+    }
+
+    return composeComponentRef(this.dataHub.getScopeId(), sourceKey);
   }
 
   // 宽度优先传播：事件沿有向边向下游传递。
@@ -631,14 +658,14 @@ export class PreviewFlowRuntime {
       return input;
     }
 
-    // 组件节点是 patch 终点：按 sourceKey 定位 UI 树组件并写入属性。
+    // 组件节点是 patch 终点：按 sourceRef/sourceKey 定位 UI 树组件并写入属性。
     const data = (node.data ?? {}) as ComponentFlowNodeData;
-    const sourceKey = typeof data.sourceKey === 'string' ? data.sourceKey : '';
-    if (!sourceKey) {
+    const sourceIdentity = this.resolveSourceIdentity(data);
+    if (!sourceIdentity) {
       return null;
     }
 
-    this.dataHub.applyComponentPatch(sourceKey, input.patch);
+    this.dataHub.applyComponentPatch(sourceIdentity, input.patch);
     // patch 一旦消费即终止，不再向后传递，保证单向写入语义清晰。
     return null;
   }

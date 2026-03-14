@@ -32,6 +32,7 @@ const FlowAsideLeft: React.FC = () => {
 			name: String(node.label ?? '节点'),
 			componentType: String(node.type ?? 'Unknown'),
 			sourceKey: node.key,
+			sourceRef: `root::${node.key}`,
 			lifetimes: Array.isArray(node.lifetimes) ? node.lifetimes : [],
 		};
 

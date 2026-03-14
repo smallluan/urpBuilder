@@ -234,9 +234,18 @@ export const createBuilderStore = (options: CreateBuilderStoreOptions = {}) => {
 
         const nextFlowNodes = state.flowNodes.map((node) => {
           if (node.type !== 'componentNode' && node.type !== 'propExposeNode') return node;
-          const nodeData = (node.data ?? {}) as { sourceKey?: string };
-          if (nodeData.sourceKey !== prevKey) return node;
-          return { ...node, data: { ...nodeData, sourceKey: trimmedKey } };
+          const nodeData = (node.data ?? {}) as { sourceKey?: string; sourceRef?: string };
+          const sourceKeyMatched = nodeData.sourceKey === prevKey;
+          const sourceRefMatched = typeof nodeData.sourceRef === 'string' && nodeData.sourceRef.trim() === `root::${prevKey}`;
+          if (!sourceKeyMatched && !sourceRefMatched) return node;
+          return {
+            ...node,
+            data: {
+              ...nodeData,
+              sourceKey: sourceKeyMatched ? trimmedKey : nodeData.sourceKey,
+              sourceRef: sourceRefMatched ? `root::${trimmedKey}` : nodeData.sourceRef,
+            },
+          };
         });
 
         result = { success: true };
@@ -359,8 +368,19 @@ export const createBuilderStore = (options: CreateBuilderStoreOptions = {}) => {
         const removedTreeKeys = collectTreeKeys(result.removedNode);
         const flowNodesToRemove = state.flowNodes.filter((node) => {
           if (node.type !== 'componentNode' && node.type !== 'propExposeNode') return false;
-          const sourceKey = (node.data as { sourceKey?: string } | undefined)?.sourceKey;
-          return typeof sourceKey === 'string' && removedTreeKeys.has(sourceKey);
+          const nodeData = (node.data as { sourceKey?: string; sourceRef?: string } | undefined) ?? {};
+          const sourceKey = nodeData.sourceKey;
+          if (typeof sourceKey === 'string' && removedTreeKeys.has(sourceKey)) {
+            return true;
+          }
+
+          const sourceRef = typeof nodeData.sourceRef === 'string' ? nodeData.sourceRef.trim() : '';
+          if (!sourceRef.startsWith('root::')) {
+            return false;
+          }
+
+          const sourceRefKey = sourceRef.slice('root::'.length);
+          return !!sourceRefKey && removedTreeKeys.has(sourceRefKey);
         });
 
         const removedFlowNodeIds = new Set(flowNodesToRemove.map((node) => node.id));

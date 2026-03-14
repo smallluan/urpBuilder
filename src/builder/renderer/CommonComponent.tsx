@@ -12,16 +12,102 @@ import {
 import { createPropAccessors } from './propAccessors';
 import { buildMenuNodesRenderer } from './componentHelpers';
 import { registry } from './registries';
+import {
+  applyExposedPropsToTemplate,
+  cloneTemplateUiTree,
+  getNodeStringProp,
+  loadCustomComponentDetail,
+  namespaceUiTreeKeys,
+} from '../../utils/customComponentRuntime';
 
 interface CommonComponentProps {
   type?: string;
   data?: UiTreeNode;
   onDropData?: UiDropDataHandler;
+  activationOwnerKey?: string;
+  lockActivationToOwner?: boolean;
 }
+
+const BuilderCustomComponentRenderer: React.FC<{ node: UiTreeNode }> = ({ node }) => {
+  const [templateTree, setTemplateTree] = React.useState<UiTreeNode | null>(null);
+  const [loading, setLoading] = React.useState(false);
+
+  const componentId = getNodeStringProp(node, '__componentId');
+
+  React.useEffect(() => {
+    let cancelled = false;
+
+    if (!componentId) {
+      setTemplateTree(null);
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    setLoading(true);
+    void loadCustomComponentDetail(componentId)
+      .then((detail) => {
+        if (cancelled) {
+          return;
+        }
+
+        const root = cloneTemplateUiTree(detail);
+        if (!root) {
+          setTemplateTree(null);
+          return;
+        }
+
+        const injectedTree = applyExposedPropsToTemplate(node, root, detail);
+        const namespaced = namespaceUiTreeKeys(injectedTree, `cc-${node.key}`);
+        setTemplateTree(namespaced);
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [componentId, node]);
+
+  if (!componentId) {
+    return null;
+  }
+
+  if (loading) {
+    return null;
+  }
+
+  if (!templateTree || (templateTree.children ?? []).length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="builder-custom-component-runtime" data-custom-component-runtime>
+      {(templateTree.children ?? []).map((child) => (
+        <CommonComponent
+          key={child.key}
+          type={child.type}
+          data={child}
+          activationOwnerKey={node.key}
+          lockActivationToOwner
+        />
+      ))}
+    </div>
+  );
+};
 
 export default function CommonComponent(properties: CommonComponentProps) {
   const { useStore } = useBuilderContext();
-  const { type, data, onDropData } = properties;
+  const {
+    type,
+    data,
+    onDropData,
+    activationOwnerKey,
+    lockActivationToOwner = false,
+  } = properties;
   const normalizedType = typeof type === 'string' ? type.trim() : type;
   const [tabsInnerValue, setTabsInnerValue] = React.useState<string | number | undefined>(undefined);
   const setActiveNode = useStore((state) => state.setActiveNode);
@@ -42,7 +128,10 @@ export default function CommonComponent(properties: CommonComponentProps) {
   }, [data?.key]);
 
   const inlineStyle = getStyleProp();
-  const isNodeActive = !!data?.key && activeNodeKey === data.key;
+  const resolvedActivationKey = lockActivationToOwner
+    ? (activationOwnerKey || data?.key || '')
+    : (data?.key || '');
+  const isNodeActive = !!resolvedActivationKey && activeNodeKey === resolvedActivationKey;
 
   const mergeStyle = (baseStyle?: React.CSSProperties): React.CSSProperties | undefined => {
     if (!baseStyle && !inlineStyle) return undefined;
@@ -51,8 +140,8 @@ export default function CommonComponent(properties: CommonComponentProps) {
 
   const handleActivateSelf = (event: React.MouseEvent<HTMLElement>) => {
     event.stopPropagation();
-    if (!data?.key) return;
-    setActiveNode(data.key);
+    if (!resolvedActivationKey) return;
+    setActiveNode(resolvedActivationKey);
   };
 
   // Space props
@@ -95,8 +184,36 @@ export default function CommonComponent(properties: CommonComponentProps) {
 
   // Early returns
   if (isSlotNode(data)) {
-    return <DropArea data={data} onDropData={onDropData} emptyText="拖拽组件到此插槽" />;
+    return (
+      <DropArea
+        data={data}
+        onDropData={lockActivationToOwner ? undefined : onDropData}
+        emptyText="拖拽组件到此插槽"
+        disabled={lockActivationToOwner}
+        selectable={!lockActivationToOwner}
+      />
+    );
   }
+
+  if (normalizedType === 'CustomComponent') {
+    return (
+      <div
+        className="builder-custom-component-runtime"
+        style={mergeStyle()}
+        onClick={handleActivateSelf}
+        onClickCapture={(event) => {
+          event.stopPropagation();
+          if (data?.key) {
+            setActiveNode(data.key);
+          }
+        }}
+        data-builder-node-key={data?.key || undefined}
+      >
+        <BuilderCustomComponentRenderer node={data as UiTreeNode} />
+      </div>
+    );
+  }
+
   const visible = getBooleanProp('visible');
   const isDrawerNode = normalizedType === 'Drawer';
   if (visible === false && !isDrawerNode) return null;
