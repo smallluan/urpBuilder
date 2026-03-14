@@ -111,6 +111,8 @@ export function registerLayoutComponents(registry: ComponentRegistry): void {
         className="builder-route-outlet"
         style={mergeStyle({
           minHeight,
+          display: 'flex',
+          flexDirection: 'column',
           border: borderless ? 'none' : '1px dashed #9aa6b2',
           borderRadius: 8,
           background: '#fff',
@@ -118,7 +120,7 @@ export function registerLayoutComponents(registry: ComponentRegistry): void {
           padding: 8,
         })}
       >
-        <DropArea style={{ flex: 1, minHeight: 0 }} data={data} onDropData={onDropData} emptyText="拖拽当前路由页面组件到路由出口" />
+        <DropArea className="drop-area--route-outlet" style={{ flex: 1, minHeight: 0 }} data={data} onDropData={onDropData} emptyText="拖拽当前路由页面组件到路由出口" />
       </div>
     );
   });
