@@ -12,7 +12,15 @@ import { create } from 'zustand';
 import { v4 as uuidv4 } from 'uuid';
 import cloneDeep from 'lodash/cloneDeep';
 import type { Edge, Node } from '@xyflow/react';
-import type { BuilderStore, BuiltInLayoutTemplateId, PageRouteConfig, PageRouteRecord, UiHistoryAction, UiTreeNode } from './types';
+import type {
+  BuilderStore,
+  BuiltInLayoutTemplateId,
+  PageRouteConfig,
+  PageRouteRecord,
+  RouteScopeConfig,
+  UiHistoryAction,
+  UiTreeNode,
+} from './types';
 import {
   appendNodeByParentKey,
   findNodeByKey,
@@ -89,6 +97,405 @@ const createPageRouteRecord = (
   history: cloneDeep(route?.history ?? createEmptyHistory()),
 });
 
+const ROUTE_SCOPE_META_KEY = '__routeScope';
+
+const normalizeRouteScope = (
+  rawScope: unknown,
+  activeRouteId: string | null,
+): RouteScopeConfig => {
+  if (!rawScope || typeof rawScope !== 'object' || Array.isArray(rawScope)) {
+    return { mode: 'private' };
+  }
+
+  const scope = rawScope as RouteScopeConfig;
+  if (scope.mode === 'all') {
+    return { mode: 'all' };
+  }
+
+  if (scope.mode === 'include') {
+    const routeIds = Array.isArray(scope.routeIds)
+      ? Array.from(new Set(scope.routeIds.map((item) => String(item ?? '').trim()).filter(Boolean)))
+      : [];
+
+    if (routeIds.length === 0) {
+      return { mode: 'private' };
+    }
+
+    if (routeIds.length === 1 && activeRouteId && routeIds[0] === activeRouteId) {
+      return { mode: 'private' };
+    }
+
+    return { mode: 'include', routeIds };
+  }
+
+  return { mode: 'private' };
+};
+
+const getUiNodeRouteScope = (node: UiTreeNode, activeRouteId: string | null): RouteScopeConfig => {
+  const rawValue = (node.props?.[ROUTE_SCOPE_META_KEY] as { value?: unknown } | undefined)?.value;
+  return normalizeRouteScope(rawValue, activeRouteId);
+};
+
+const patchUiNodeRouteScope = (node: UiTreeNode, scope: RouteScopeConfig): UiTreeNode => {
+  const nextProps = {
+    ...(node.props ?? {}),
+    [ROUTE_SCOPE_META_KEY]: {
+      name: '路由作用域',
+      value: scope,
+    },
+  };
+
+  return {
+    ...node,
+    props: nextProps,
+  };
+};
+
+const getFlowEntityRouteScope = (
+  data: unknown,
+  activeRouteId: string | null,
+): RouteScopeConfig => {
+  if (!data || typeof data !== 'object' || Array.isArray(data)) {
+    return { mode: 'private' };
+  }
+
+  const rawScope = (data as Record<string, unknown>)[ROUTE_SCOPE_META_KEY];
+  return normalizeRouteScope(rawScope, activeRouteId);
+};
+
+const isScopeSharedForRoute = (scope: RouteScopeConfig, routeId: string | null): boolean => {
+  if (scope.mode === 'all') {
+    return true;
+  }
+
+  if (scope.mode === 'include') {
+    const routeIds = Array.isArray(scope.routeIds) ? scope.routeIds : [];
+    return Boolean(routeId) && routeIds.includes(String(routeId));
+  }
+
+  return false;
+};
+
+const isPrivateScope = (scope: RouteScopeConfig): boolean => scope.mode === 'private';
+
+const findFirstRouteOutletKey = (root: UiTreeNode): string | null => {
+  if (root.type === 'RouteOutlet') {
+    return root.key;
+  }
+
+  for (const child of root.children ?? []) {
+    const found = findFirstRouteOutletKey(child);
+    if (found) {
+      return found;
+    }
+  }
+
+  return null;
+};
+
+const resolveEffectiveOutletKey = (tree: UiTreeNode, preferredKey: string | null): string | null => {
+  if (preferredKey) {
+    const preferredNode = findNodeByKey(tree, preferredKey);
+    if (preferredNode?.type === 'RouteOutlet') {
+      return preferredKey;
+    }
+  }
+
+  return findFirstRouteOutletKey(tree);
+};
+
+const composeRouteUiTree = (
+  privateTree: UiTreeNode,
+  sharedTree: UiTreeNode | null,
+  outletKey: string | null,
+): UiTreeNode => {
+  if (!sharedTree || !outletKey) {
+    return cloneDeep(privateTree);
+  }
+
+  const sharedOutlet = findNodeByKey(sharedTree, outletKey);
+  if (!sharedOutlet) {
+    return cloneDeep(privateTree);
+  }
+
+  const privateOutlet = findNodeByKey(privateTree, outletKey);
+  const outletChildren = privateOutlet?.type === 'RouteOutlet'
+    ? cloneDeep(privateOutlet.children ?? [])
+    : [];
+
+  return updateNodeByKey(cloneDeep(sharedTree), outletKey, (target) => ({
+    ...target,
+    children: outletChildren,
+  }));
+};
+
+const composeRouteFlow = (
+  privateNodes: Node[],
+  privateEdges: Edge[],
+  sharedNodes: Node[],
+  sharedEdges: Edge[],
+): { flowNodes: Node[]; flowEdges: Edge[] } => {
+  const visibleSharedNodes = sharedNodes;
+
+  const mergedNodeMap = new Map<string, Node>();
+  visibleSharedNodes.forEach((node) => {
+    mergedNodeMap.set(node.id, cloneDeep(node));
+  });
+  privateNodes.forEach((node) => {
+    mergedNodeMap.set(node.id, cloneDeep(node));
+  });
+  const flowNodes = Array.from(mergedNodeMap.values());
+  const flowNodeIds = new Set(flowNodes.map((node) => node.id));
+
+  const visibleSharedEdges = sharedEdges;
+
+  const mergedEdgeMap = new Map<string, Edge>();
+  visibleSharedEdges.forEach((edge) => {
+    if (flowNodeIds.has(edge.source) && flowNodeIds.has(edge.target)) {
+      mergedEdgeMap.set(edge.id, cloneDeep(edge));
+    }
+  });
+  privateEdges.forEach((edge) => {
+    if (flowNodeIds.has(edge.source) && flowNodeIds.has(edge.target)) {
+      mergedEdgeMap.set(edge.id, cloneDeep(edge));
+    }
+  });
+
+  return {
+    flowNodes,
+    flowEdges: Array.from(mergedEdgeMap.values()),
+  };
+};
+
+const resolveFlowSourceKey = (node: Node): string => {
+  const nodeData = (node.data ?? {}) as { sourceKey?: unknown; sourceRef?: unknown };
+  if (typeof nodeData.sourceKey === 'string' && nodeData.sourceKey.trim()) {
+    return nodeData.sourceKey.trim();
+  }
+
+  if (typeof nodeData.sourceRef === 'string' && nodeData.sourceRef.startsWith('root::')) {
+    return nodeData.sourceRef.slice('root::'.length).trim();
+  }
+
+  return '';
+};
+
+const syncRouteSnapshotsWithActiveState = (
+  state: BuilderStore,
+): {
+  nextRoutes: PageRouteRecord[];
+  nextSharedUiTree: UiTreeNode | null;
+  nextSharedFlowNodes: Node[];
+  nextSharedFlowEdges: Edge[];
+  activeRouteOutletKey: string | null;
+} => {
+  if (!state.activePageRouteId) {
+    return {
+      nextRoutes: state.pageRoutes,
+      nextSharedUiTree: state.sharedUiTree,
+      nextSharedFlowNodes: state.sharedFlowNodes,
+      nextSharedFlowEdges: state.sharedFlowEdges,
+      activeRouteOutletKey: state.activeRouteOutletKey,
+    };
+  }
+
+  const activeRouteId = state.activePageRouteId;
+  const outletKey = resolveEffectiveOutletKey(state.uiPageData, state.activeRouteOutletKey);
+  const outletNode = outletKey ? findNodeByKey(state.uiPageData, outletKey) : null;
+
+  if (outletNode?.type === 'RouteOutlet') {
+    const outletNodeKey = String(outletKey);
+    const outletTreeKeys = collectTreeKeys(outletNode);
+
+    const nextSharedUiTree = updateNodeByKey(cloneDeep(state.uiPageData), outletNodeKey, (target) => ({
+      ...target,
+      children: [],
+    }));
+
+    const privateUiTree: UiTreeNode = cloneDeep(state.uiPageData);
+
+    const privateNodeIdSet = new Set<string>();
+    state.flowNodes.forEach((node) => {
+      const sourceKey = resolveFlowSourceKey(node);
+      if (sourceKey && outletTreeKeys.has(sourceKey)) {
+        privateNodeIdSet.add(node.id);
+      }
+    });
+
+    let changed = true;
+    while (changed) {
+      changed = false;
+      state.flowEdges.forEach((edge) => {
+        const sourcePrivate = privateNodeIdSet.has(edge.source);
+        const targetPrivate = privateNodeIdSet.has(edge.target);
+        if (sourcePrivate && !targetPrivate) {
+          privateNodeIdSet.add(edge.target);
+          changed = true;
+        } else if (!sourcePrivate && targetPrivate) {
+          privateNodeIdSet.add(edge.source);
+          changed = true;
+        }
+      });
+    }
+
+    const privateFlowNodes = state.flowNodes
+      .filter((node) => privateNodeIdSet.has(node.id))
+      .map((node) => cloneDeep(node));
+    const nextSharedFlowNodes = state.flowNodes
+      .filter((node) => !privateNodeIdSet.has(node.id))
+      .map((node) => cloneDeep(node));
+
+    const privateFlowEdges = state.flowEdges
+      .filter((edge) => privateNodeIdSet.has(edge.source) && privateNodeIdSet.has(edge.target))
+      .map((edge) => cloneDeep(edge));
+    const nextSharedFlowEdges = state.flowEdges
+      .filter((edge) => !privateNodeIdSet.has(edge.source) || !privateNodeIdSet.has(edge.target))
+      .map((edge) => cloneDeep(edge));
+
+    const nextRoutes = state.pageRoutes.map((route) => {
+      if (route.routeId !== activeRouteId) {
+        return route;
+      }
+
+      return {
+        ...route,
+        routeConfig: cloneDeep(state.pageRouteConfig ?? route.routeConfig),
+        uiTree: privateUiTree,
+        flowNodes: privateFlowNodes,
+        flowEdges: privateFlowEdges,
+        selectedLayoutTemplateId: state.selectedLayoutTemplateId,
+        history: cloneDeep(state.history),
+      };
+    });
+
+    return {
+      nextRoutes,
+      nextSharedUiTree,
+      nextSharedFlowNodes,
+      nextSharedFlowEdges,
+      activeRouteOutletKey: outletKey,
+    };
+  }
+
+  const privateUiChildren: UiTreeNode[] = [];
+  const sharedUiCandidates: UiTreeNode[] = [];
+
+  (state.uiPageData.children ?? []).forEach((child) => {
+    const scope = getUiNodeRouteScope(child, activeRouteId);
+    if (isPrivateScope(scope)) {
+      privateUiChildren.push(cloneDeep(child));
+      return;
+    }
+
+    sharedUiCandidates.push(cloneDeep(child));
+  });
+
+  const previousSharedChildren = state.sharedUiTree?.children ?? [];
+
+  const visibleSharedUiKeysBefore = new Set(
+    previousSharedChildren
+      .filter((item) => isScopeSharedForRoute(getUiNodeRouteScope(item, activeRouteId), activeRouteId))
+      .map((item) => item.key),
+  );
+  const nextSharedUiMap = new Map<string, UiTreeNode>(
+    previousSharedChildren
+      .filter((item) => !visibleSharedUiKeysBefore.has(item.key))
+      .map((item) => [item.key, cloneDeep(item)]),
+  );
+  sharedUiCandidates.forEach((item) => {
+    nextSharedUiMap.set(item.key, cloneDeep(item));
+  });
+
+  const privateUiTree: UiTreeNode = {
+    ...cloneDeep(state.uiPageData),
+    children: privateUiChildren,
+  };
+
+  const privateFlowNodes: Node[] = [];
+  const sharedFlowNodeCandidates: Node[] = [];
+  state.flowNodes.forEach((node) => {
+    const scope = getFlowEntityRouteScope(node.data, activeRouteId);
+    if (isPrivateScope(scope)) {
+      privateFlowNodes.push(cloneDeep(node));
+      return;
+    }
+
+    sharedFlowNodeCandidates.push(cloneDeep(node));
+  });
+
+  const visibleSharedFlowNodeIdsBefore = new Set(
+    state.sharedFlowNodes
+      .filter((node) => isScopeSharedForRoute(getFlowEntityRouteScope(node.data, activeRouteId), activeRouteId))
+      .map((node) => node.id),
+  );
+  const nextSharedFlowNodeMap = new Map<string, Node>(
+    state.sharedFlowNodes
+      .filter((node) => !visibleSharedFlowNodeIdsBefore.has(node.id))
+      .map((node) => [node.id, cloneDeep(node)]),
+  );
+  sharedFlowNodeCandidates.forEach((node) => {
+    nextSharedFlowNodeMap.set(node.id, cloneDeep(node));
+  });
+
+  const activeFlowNodeIds = new Set(state.flowNodes.map((node) => node.id));
+  const privateFlowEdges: Edge[] = [];
+  const sharedFlowEdgeCandidates: Edge[] = [];
+  state.flowEdges.forEach((edge) => {
+    if (!activeFlowNodeIds.has(edge.source) || !activeFlowNodeIds.has(edge.target)) {
+      return;
+    }
+
+    const scope = getFlowEntityRouteScope(edge.data, activeRouteId);
+    if (isPrivateScope(scope)) {
+      privateFlowEdges.push(cloneDeep(edge));
+      return;
+    }
+
+    sharedFlowEdgeCandidates.push(cloneDeep(edge));
+  });
+
+  const visibleSharedFlowEdgeIdsBefore = new Set(
+    state.sharedFlowEdges
+      .filter((edge) => isScopeSharedForRoute(getFlowEntityRouteScope(edge.data, activeRouteId), activeRouteId))
+      .map((edge) => edge.id),
+  );
+  const nextSharedFlowEdgeMap = new Map<string, Edge>(
+    state.sharedFlowEdges
+      .filter((edge) => !visibleSharedFlowEdgeIdsBefore.has(edge.id))
+      .map((edge) => [edge.id, cloneDeep(edge)]),
+  );
+  sharedFlowEdgeCandidates.forEach((edge) => {
+    nextSharedFlowEdgeMap.set(edge.id, cloneDeep(edge));
+  });
+
+  const nextRoutes = state.pageRoutes.map((route) => {
+    if (route.routeId !== activeRouteId) {
+      return route;
+    }
+
+    return {
+      ...route,
+      routeConfig: cloneDeep(state.pageRouteConfig ?? route.routeConfig),
+      uiTree: privateUiTree,
+      flowNodes: privateFlowNodes,
+      flowEdges: privateFlowEdges,
+      selectedLayoutTemplateId: state.selectedLayoutTemplateId,
+      history: cloneDeep(state.history),
+    };
+  });
+
+  return {
+    nextRoutes,
+    nextSharedUiTree: {
+      ...cloneDeep(state.uiPageData),
+      children: Array.from(nextSharedUiMap.values()),
+    },
+    nextSharedFlowNodes: Array.from(nextSharedFlowNodeMap.values()),
+    nextSharedFlowEdges: Array.from(nextSharedFlowEdgeMap.values()),
+    activeRouteOutletKey: outletKey,
+  };
+};
+
 export const createBuilderStore = (options: CreateBuilderStoreOptions = {}) => {
   const { buildLayoutNodes, initialRootNode } = options;
   const rootNode: UiTreeNode = {
@@ -106,6 +513,10 @@ export const createBuilderStore = (options: CreateBuilderStoreOptions = {}) => {
     pageRouteConfig: null,
     pageRoutes: [],
     activePageRouteId: null,
+    activeRouteOutletKey: null,
+    sharedUiTree: null,
+    sharedFlowNodes: [],
+    sharedFlowEdges: [],
 
     // ===== 流程图状态 =====
     flowNodes: [],
@@ -155,21 +566,32 @@ export const createBuilderStore = (options: CreateBuilderStoreOptions = {}) => {
             pageRoutes: [],
             activePageRouteId: null,
             pageRouteConfig: null,
+            activeRouteOutletKey: null,
+            sharedUiTree: null,
+            sharedFlowNodes: [],
+            sharedFlowEdges: [],
           };
         }
+
+        const composedUiTree = composeRouteUiTree(activeRoute.uiTree, null, null);
+        const composedFlow = composeRouteFlow(activeRoute.flowNodes, activeRoute.flowEdges, [], []);
 
         return {
           pageRoutes: normalizedRoutes,
           activePageRouteId: activeRoute.routeId,
           pageRouteConfig: cloneDeep(activeRoute.routeConfig),
-          uiPageData: cloneDeep(activeRoute.uiTree),
-          flowNodes: cloneDeep(activeRoute.flowNodes),
-          flowEdges: cloneDeep(activeRoute.flowEdges),
+          uiPageData: composedUiTree,
+          flowNodes: composedFlow.flowNodes,
+          flowEdges: composedFlow.flowEdges,
           selectedLayoutTemplateId: activeRoute.selectedLayoutTemplateId,
           history: cloneDeep(activeRoute.history),
           activeNodeKey: null,
           activeNode: null,
           flowActiveNodeId: null,
+          activeRouteOutletKey: resolveEffectiveOutletKey(composedUiTree, null),
+          sharedUiTree: null,
+          sharedFlowNodes: [],
+          sharedFlowEdges: [],
         };
       }),
 
@@ -194,34 +616,33 @@ export const createBuilderStore = (options: CreateBuilderStoreOptions = {}) => {
           return state;
         }
 
-        const nextRoutes = state.pageRoutes.map((route) => {
-          if (route.routeId !== state.activePageRouteId) {
-            return route;
-          }
-
-          return {
-            ...route,
-            routeConfig: cloneDeep(state.pageRouteConfig ?? route.routeConfig),
-            uiTree: cloneDeep(state.uiPageData),
-            flowNodes: cloneDeep(state.flowNodes),
-            flowEdges: cloneDeep(state.flowEdges),
-            selectedLayoutTemplateId: state.selectedLayoutTemplateId,
-            history: cloneDeep(state.history),
-          };
-        });
+        const synced = syncRouteSnapshotsWithActiveState(state);
+        const nextRoutes = synced.nextRoutes;
 
         const targetRoute = nextRoutes.find((route) => route.routeId === normalizedRouteId);
         if (!targetRoute) {
           return state;
         }
 
+        const composedUiTree = composeRouteUiTree(targetRoute.uiTree, synced.nextSharedUiTree, synced.activeRouteOutletKey);
+        const composedFlow = composeRouteFlow(
+          targetRoute.flowNodes,
+          targetRoute.flowEdges,
+          synced.nextSharedFlowNodes,
+          synced.nextSharedFlowEdges,
+        );
+
         return {
           pageRoutes: nextRoutes,
+          activeRouteOutletKey: synced.activeRouteOutletKey,
+          sharedUiTree: synced.nextSharedUiTree,
+          sharedFlowNodes: synced.nextSharedFlowNodes,
+          sharedFlowEdges: synced.nextSharedFlowEdges,
           activePageRouteId: targetRoute.routeId,
           pageRouteConfig: cloneDeep(targetRoute.routeConfig),
-          uiPageData: cloneDeep(targetRoute.uiTree),
-          flowNodes: cloneDeep(targetRoute.flowNodes),
-          flowEdges: cloneDeep(targetRoute.flowEdges),
+          uiPageData: composedUiTree,
+          flowNodes: composedFlow.flowNodes,
+          flowEdges: composedFlow.flowEdges,
           selectedLayoutTemplateId: targetRoute.selectedLayoutTemplateId,
           history: cloneDeep(targetRoute.history),
           activeNodeKey: null,
@@ -237,21 +658,8 @@ export const createBuilderStore = (options: CreateBuilderStoreOptions = {}) => {
           return state;
         }
 
-        const routesWithSnapshot = state.pageRoutes.map((route) => {
-          if (route.routeId !== state.activePageRouteId) {
-            return route;
-          }
-
-          return {
-            ...route,
-            routeConfig: cloneDeep(state.pageRouteConfig ?? route.routeConfig),
-            uiTree: cloneDeep(state.uiPageData),
-            flowNodes: cloneDeep(state.flowNodes),
-            flowEdges: cloneDeep(state.flowEdges),
-            selectedLayoutTemplateId: state.selectedLayoutTemplateId,
-            history: cloneDeep(state.history),
-          };
-        });
+        const synced = syncRouteSnapshotsWithActiveState(state);
+        const routesWithSnapshot = synced.nextRoutes;
 
         const removeIndex = routesWithSnapshot.findIndex((route) => route.routeId === normalizedRouteId);
         if (removeIndex < 0) {
@@ -263,6 +671,10 @@ export const createBuilderStore = (options: CreateBuilderStoreOptions = {}) => {
         if (state.activePageRouteId !== normalizedRouteId) {
           return {
             pageRoutes: nextRoutes,
+            activeRouteOutletKey: synced.activeRouteOutletKey,
+            sharedUiTree: synced.nextSharedUiTree,
+            sharedFlowNodes: synced.nextSharedFlowNodes,
+            sharedFlowEdges: synced.nextSharedFlowEdges,
           };
         }
 
@@ -271,13 +683,25 @@ export const createBuilderStore = (options: CreateBuilderStoreOptions = {}) => {
           return state;
         }
 
+        const composedUiTree = composeRouteUiTree(nextActiveRoute.uiTree, synced.nextSharedUiTree, synced.activeRouteOutletKey);
+        const composedFlow = composeRouteFlow(
+          nextActiveRoute.flowNodes,
+          nextActiveRoute.flowEdges,
+          synced.nextSharedFlowNodes,
+          synced.nextSharedFlowEdges,
+        );
+
         return {
           pageRoutes: nextRoutes,
+          activeRouteOutletKey: synced.activeRouteOutletKey,
+          sharedUiTree: synced.nextSharedUiTree,
+          sharedFlowNodes: synced.nextSharedFlowNodes,
+          sharedFlowEdges: synced.nextSharedFlowEdges,
           activePageRouteId: nextActiveRoute.routeId,
           pageRouteConfig: cloneDeep(nextActiveRoute.routeConfig),
-          uiPageData: cloneDeep(nextActiveRoute.uiTree),
-          flowNodes: cloneDeep(nextActiveRoute.flowNodes),
-          flowEdges: cloneDeep(nextActiveRoute.flowEdges),
+          uiPageData: composedUiTree,
+          flowNodes: composedFlow.flowNodes,
+          flowEdges: composedFlow.flowEdges,
           selectedLayoutTemplateId: nextActiveRoute.selectedLayoutTemplateId,
           history: cloneDeep(nextActiveRoute.history),
           activeNodeKey: null,
@@ -293,21 +717,8 @@ export const createBuilderStore = (options: CreateBuilderStoreOptions = {}) => {
           return state;
         }
 
-        const routesWithSnapshot = state.pageRoutes.map((route) => {
-          if (route.routeId !== state.activePageRouteId) {
-            return route;
-          }
-
-          return {
-            ...route,
-            routeConfig: cloneDeep(state.pageRouteConfig ?? route.routeConfig),
-            uiTree: cloneDeep(state.uiPageData),
-            flowNodes: cloneDeep(state.flowNodes),
-            flowEdges: cloneDeep(state.flowEdges),
-            selectedLayoutTemplateId: state.selectedLayoutTemplateId,
-            history: cloneDeep(state.history),
-          };
-        });
+        const synced = syncRouteSnapshotsWithActiveState(state);
+        const routesWithSnapshot = synced.nextRoutes;
 
         const currentIndex = routesWithSnapshot.findIndex((route) => route.routeId === normalizedRouteId);
         if (currentIndex <= 0) {
@@ -320,6 +731,44 @@ export const createBuilderStore = (options: CreateBuilderStoreOptions = {}) => {
 
         return {
           pageRoutes: nextRoutes,
+          activeRouteOutletKey: synced.activeRouteOutletKey,
+          sharedUiTree: synced.nextSharedUiTree,
+          sharedFlowNodes: synced.nextSharedFlowNodes,
+          sharedFlowEdges: synced.nextSharedFlowEdges,
+        };
+      }),
+
+    setActiveRouteOutletKey: (outletKey) =>
+      set((state) => {
+        const normalizedOutletKey = String(outletKey ?? '').trim() || null;
+        const synced = syncRouteSnapshotsWithActiveState(state);
+        const activeRoute = synced.nextRoutes.find((route) => route.routeId === state.activePageRouteId) ?? null;
+        if (!activeRoute) {
+          return state;
+        }
+
+        const composedUiTree = composeRouteUiTree(activeRoute.uiTree, synced.nextSharedUiTree, normalizedOutletKey);
+        const effectiveOutletKey = resolveEffectiveOutletKey(composedUiTree, normalizedOutletKey);
+        const recomposedUiTree = composeRouteUiTree(activeRoute.uiTree, synced.nextSharedUiTree, effectiveOutletKey);
+        const composedFlow = composeRouteFlow(
+          activeRoute.flowNodes,
+          activeRoute.flowEdges,
+          synced.nextSharedFlowNodes,
+          synced.nextSharedFlowEdges,
+        );
+
+        return {
+          pageRoutes: synced.nextRoutes,
+          activeRouteOutletKey: effectiveOutletKey,
+          sharedUiTree: synced.nextSharedUiTree,
+          sharedFlowNodes: synced.nextSharedFlowNodes,
+          sharedFlowEdges: synced.nextSharedFlowEdges,
+          uiPageData: recomposedUiTree,
+          flowNodes: composedFlow.flowNodes,
+          flowEdges: composedFlow.flowEdges,
+          activeNodeKey: null,
+          activeNode: null,
+          flowActiveNodeId: null,
         };
       }),
 
@@ -329,23 +778,14 @@ export const createBuilderStore = (options: CreateBuilderStoreOptions = {}) => {
           return state;
         }
 
-        const nextRoutes = state.pageRoutes.map((route) => {
-          if (route.routeId !== state.activePageRouteId) {
-            return route;
-          }
-
-          return {
-            ...route,
-            routeConfig: cloneDeep(state.pageRouteConfig ?? route.routeConfig),
-            uiTree: cloneDeep(state.uiPageData),
-            flowNodes: cloneDeep(state.flowNodes),
-            flowEdges: cloneDeep(state.flowEdges),
-            selectedLayoutTemplateId: state.selectedLayoutTemplateId,
-            history: cloneDeep(state.history),
-          };
-        });
-
-        return { pageRoutes: nextRoutes };
+        const synced = syncRouteSnapshotsWithActiveState(state);
+        return {
+          pageRoutes: synced.nextRoutes,
+          activeRouteOutletKey: synced.activeRouteOutletKey,
+          sharedUiTree: synced.nextSharedUiTree,
+          sharedFlowNodes: synced.nextSharedFlowNodes,
+          sharedFlowEdges: synced.nextSharedFlowEdges,
+        };
       }),
 
     // ===== Actions — 流程图 =====
@@ -386,10 +826,15 @@ export const createBuilderStore = (options: CreateBuilderStoreOptions = {}) => {
           state.activeNodeKey,
           nextActiveNodeKey,
         );
+        const nextActiveNode = resolveActiveNode(nextTree, nextActiveNodeKey);
         return {
           uiPageData: nextTree,
           activeNodeKey: nextActiveNodeKey,
-          activeNode: resolveActiveNode(nextTree, nextActiveNodeKey),
+          activeNode: nextActiveNode,
+          activeRouteOutletKey:
+            nextActiveNode?.type === 'RouteOutlet'
+              ? nextActiveNode.key
+              : state.activeRouteOutletKey,
         };
       }),
 
@@ -401,10 +846,15 @@ export const createBuilderStore = (options: CreateBuilderStoreOptions = {}) => {
           state.activeNodeKey,
           nextActiveNodeKey,
         );
+        const nextActiveNode = resolveActiveNode(nextTree, nextActiveNodeKey);
         return {
           uiPageData: nextTree,
           activeNodeKey: nextActiveNodeKey,
-          activeNode: resolveActiveNode(nextTree, nextActiveNodeKey),
+          activeNode: nextActiveNode,
+          activeRouteOutletKey:
+            nextActiveNode?.type === 'RouteOutlet'
+              ? nextActiveNode.key
+              : state.activeRouteOutletKey,
         };
       }),
 
@@ -557,6 +1007,33 @@ export const createBuilderStore = (options: CreateBuilderStoreOptions = {}) => {
           uiPageData: nextTree,
           activeNode: resolveActiveNode(nextTree, state.activeNodeKey),
           history: nextHistory,
+        };
+      }),
+
+    setActiveNodeRouteScope: (scope) =>
+      set((state) => {
+        if (!state.activeNodeKey || !state.activePageRouteId) {
+          return state;
+        }
+
+        const normalizedScope = normalizeRouteScope(scope, state.activePageRouteId);
+        const currentNode = resolveActiveNode(state.uiPageData, state.activeNodeKey);
+        if (!currentNode) {
+          return state;
+        }
+
+        const prevScope = getUiNodeRouteScope(currentNode, state.activePageRouteId);
+        if (JSON.stringify(prevScope) === JSON.stringify(normalizedScope)) {
+          return state;
+        }
+
+        const nextTree = updateNodeByKey(state.uiPageData, state.activeNodeKey, (target) =>
+          patchUiNodeRouteScope(target, normalizedScope),
+        );
+
+        return {
+          uiPageData: nextTree,
+          activeNode: resolveActiveNode(nextTree, state.activeNodeKey),
         };
       }),
 

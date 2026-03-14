@@ -739,6 +739,22 @@ const componentCatalog = [
     props: {}
   },
   {
+    type: 'RouteOutlet',
+    name: '路由出口',
+    props: {
+      minHeight: {
+        name: '最小高度',
+        value: 360,
+        editType: 'inputNumber',
+      },
+      borderless: {
+        name: '隐藏边框',
+        value: false,
+        editType: 'switch',
+      },
+    }
+  },
+  {
     type: 'List',
     name: '列表',
     props: {

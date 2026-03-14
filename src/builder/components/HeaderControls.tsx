@@ -129,6 +129,10 @@ const HeaderControls: React.FC<Props> = ({
   const pageRouteConfig = useStore((state) => state.pageRouteConfig);
   const pageRoutes = useStore((state) => state.pageRoutes);
   const activePageRouteId = useStore((state) => state.activePageRouteId);
+  const activeRouteOutletKey = useStore((state) => state.activeRouteOutletKey);
+  const sharedUiTree = useStore((state) => state.sharedUiTree);
+  const sharedFlowNodes = useStore((state) => state.sharedFlowNodes);
+  const sharedFlowEdges = useStore((state) => state.sharedFlowEdges);
   const setCurrentPageMeta = useStore((state) => state.setCurrentPageMeta);
   const setPageRouteConfig = useStore((state) => state.setPageRouteConfig);
   const removePageRoute = useStore((state) => state.removePageRoute);
@@ -353,20 +357,7 @@ const HeaderControls: React.FC<Props> = ({
         : null;
 
       const resolvedPageRoutes = enablePageRouteConfig && pageRoutes.length > 0
-        ? pageRoutes.map((route) => {
-            if (route.routeId !== activePageRouteId) {
-              return route;
-            }
-
-            return {
-              ...route,
-              routeConfig: pageRouteConfig ?? route.routeConfig,
-              uiTree: uiTreeData,
-              flowNodes,
-              flowEdges,
-              selectedLayoutTemplateId,
-            };
-          })
+        ? pageRoutes
         : [];
 
       const payload = {
@@ -396,6 +387,12 @@ const HeaderControls: React.FC<Props> = ({
             autoWidth,
             selectedLayoutTemplateId,
             ...(enablePageRouteConfig && pageRouteConfig ? { routeConfig: pageRouteConfig } : {}),
+            ...(enablePageRouteConfig ? {
+              ...(activeRouteOutletKey ? { activeRouteOutletKey } : {}),
+              ...(sharedUiTree ? { sharedUiTree: sharedUiTree as unknown as Record<string, unknown> } : {}),
+              sharedFlowNodes: sharedFlowNodes as unknown as Array<Record<string, unknown>>,
+              sharedFlowEdges: sharedFlowEdges as unknown as Array<Record<string, unknown>>,
+            } : {}),
             ...(componentContract ? { componentContract } : {}),
           },
         },

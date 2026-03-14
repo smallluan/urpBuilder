@@ -1819,6 +1819,12 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) 
           </Footer>
         </div>
       );
+    case 'RouteOutlet':
+      return (
+        <div style={mergeStyle({ minHeight: Number(getProp(node, 'minHeight') ?? 360) || 360 })}>
+          {renderChildren(node, onLifecycle)}
+        </div>
+      );
     case 'Card':
       {
       const headerChildren = getSlotChildren(node, 'header');

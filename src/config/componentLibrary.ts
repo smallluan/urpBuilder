@@ -183,6 +183,11 @@ const LIBRARY_GROUP_ENTRIES: ComponentLibraryGroupEntry[] = [
         helperText: '布局底部区域',
         keywords: ['底部'],
       },
+      {
+        type: 'RouteOutlet',
+        helperText: '路由内容出口，切换路由时内部内容同步替换',
+        keywords: ['路由出口', 'outlet', '路由内容'],
+      },
     ],
   },
 ];

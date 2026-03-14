@@ -7,6 +7,13 @@ import type { Edge, Node } from '@xyflow/react';
 export type ScreenSize = string | number;
 export type StateAction<T> = T | ((previous: T) => T);
 
+export type RouteScopeMode = 'private' | 'all' | 'include';
+
+export interface RouteScopeConfig {
+  mode: RouteScopeMode;
+  routeIds?: string[];
+}
+
 export interface PageRouteConfig {
   routePath: string;
   routeName: string;
@@ -176,6 +183,10 @@ export interface BuilderStore {
   pageRouteConfig: PageRouteConfig | null;
   pageRoutes: PageRouteRecord[];
   activePageRouteId: string | null;
+  activeRouteOutletKey: string | null;
+  sharedUiTree: UiTreeNode | null;
+  sharedFlowNodes: Node[];
+  sharedFlowEdges: Edge[];
 
   // 流程图状态
   flowNodes: Node[];
@@ -202,7 +213,9 @@ export interface BuilderStore {
   switchPageRoute: (routeId: string) => void;
   removePageRoute: (routeId: string) => void;
   setDefaultPageRoute: (routeId: string) => void;
+  setActiveRouteOutletKey: (outletKey: string | null) => void;
   syncActivePageRouteSnapshot: () => void;
+  setActiveNodeRouteScope: (scope: RouteScopeConfig) => void;
 
   // Actions — 流程图
   setFlowNodes: (nodes: StateAction<Node[]>) => void;

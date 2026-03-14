@@ -101,4 +101,25 @@ export function registerLayoutComponents(registry: ComponentRegistry): void {
       </Footer>
     );
   });
+
+  registry.set('RouteOutlet', (ctx) => {
+    const { data, onDropData, getNumberProp, getBooleanProp, mergeStyle } = ctx;
+    const minHeight = Number(getNumberProp('minHeight')) || 360;
+    const borderless = getBooleanProp('borderless');
+    return (
+      <div
+        className="builder-route-outlet"
+        style={mergeStyle({
+          minHeight,
+          border: borderless ? 'none' : '1px dashed #9aa6b2',
+          borderRadius: 8,
+          background: '#fff',
+          boxSizing: 'border-box',
+          padding: 8,
+        })}
+      >
+        <DropArea data={data} onDropData={onDropData} emptyText="拖拽当前路由页面组件到路由出口" />
+      </div>
+    );
+  });
 }

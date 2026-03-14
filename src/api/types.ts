@@ -50,6 +50,11 @@ export interface PageTemplateContent {
       menuTitle?: string;
       useLayout?: boolean;
     };
+    activeRouteOutletKey?: string;
+    sharedUiTree?: Record<string, unknown>;
+    sharedUiChildren?: Array<Record<string, unknown>>;
+    sharedFlowNodes?: Array<Record<string, unknown>>;
+    sharedFlowEdges?: Array<Record<string, unknown>>;
     [key: string]: unknown;
   };
 }

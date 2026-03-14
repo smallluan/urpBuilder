@@ -839,7 +839,6 @@ const ComponentConfigPanel: React.FC = () => {
   const activeBreakpointValue = gridResponsiveDraft[activeBreakpoint] ?? {};
   const activeSpan = typeof activeBreakpointValue.span === 'number' ? activeBreakpointValue.span : 6;
   const activeOffset = typeof activeBreakpointValue.offset === 'number' ? activeBreakpointValue.offset : 0;
-
   return (
     <div className="right-panel-body">
       <div className="config-form">

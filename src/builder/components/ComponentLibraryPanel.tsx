@@ -118,6 +118,7 @@ const getCategoryByType = (type: string): ComponentLibraryCategory => {
     || type.startsWith('Grid.')
     || type.startsWith('Layout.')
     || type === 'Layout'
+    || type === 'RouteOutlet'
   ) {
     return 'layout';
   }
@@ -180,6 +181,7 @@ const getIconByType = (type: string) => {
     Space: GripHorizontal,
     'Grid.Row': Rows3,
     'Grid.Col': Columns3,
+    RouteOutlet: RectangleHorizontal,
     Card: RectangleHorizontal,
     Image: ImageIcon,
     Avatar: UserRound,

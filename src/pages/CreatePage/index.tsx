@@ -10,6 +10,7 @@ import ComponentAsideRight from '../../builder/components/ComponentAsideRight';
 import FlowLayout from '../../builder/flow/FlowLayout';
 import { BuilderProvider } from '../../builder/context/BuilderContext';
 import type { BuiltInLayoutTemplateId, PageRouteConfig, PageRouteRecord, UiTreeNode } from '../../builder/store/types';
+import { findNodeByKey, updateNodeByKey } from '../../utils/createComponentTree';
 import { useCreatePageStore } from './store';
 import PageRouteToolbar from './components/PageRouteToolbar.tsx';
 
@@ -64,6 +65,87 @@ const normalizeTemplateRoutes = (template: Record<string, unknown>, fallbackRout
     selectedLayoutTemplateId: (template.pageConfig as Record<string, unknown> | undefined)?.selectedLayoutTemplateId as BuiltInLayoutTemplateId | null | undefined ?? null,
     history: { pointer: -1, actions: [] },
   }];
+};
+
+const findFirstRouteOutletKey = (root: UiTreeNode): string | null => {
+  if (root.type === 'RouteOutlet') {
+    return root.key;
+  }
+
+  for (const child of root.children ?? []) {
+    const found = findFirstRouteOutletKey(child);
+    if (found) {
+      return found;
+    }
+  }
+
+  return null;
+};
+
+const resolveEffectiveOutletKey = (tree: UiTreeNode, preferredKey: string | null): string | null => {
+  if (preferredKey) {
+    const target = findNodeByKey(tree, preferredKey);
+    if (target?.type === 'RouteOutlet') {
+      return preferredKey;
+    }
+  }
+
+  return findFirstRouteOutletKey(tree);
+};
+
+const composeRouteUiTree = (privateTree: UiTreeNode, sharedUiTree: UiTreeNode | null, outletKey: string | null): UiTreeNode => {
+  if (!sharedUiTree || !outletKey) {
+    return privateTree;
+  }
+
+  const sharedOutlet = findNodeByKey(sharedUiTree, outletKey);
+  if (!sharedOutlet) {
+    return privateTree;
+  }
+
+  const privateOutlet = findNodeByKey(privateTree, outletKey);
+  const outletChildren = privateOutlet?.type === 'RouteOutlet'
+    ? (privateOutlet.children ?? [])
+    : [];
+
+  return updateNodeByKey(sharedUiTree, outletKey, (target) => ({
+    ...target,
+    children: outletChildren,
+  }));
+};
+
+const composeRouteFlow = (
+  privateNodes: Node[],
+  privateEdges: Edge[],
+  sharedNodes: Node[],
+  sharedEdges: Edge[],
+) => {
+  const visibleSharedNodes = sharedNodes;
+
+  const mergedNodes = new Map<string, Node>();
+  visibleSharedNodes.forEach((node) => mergedNodes.set(node.id, node));
+  privateNodes.forEach((node) => mergedNodes.set(node.id, node));
+  const flowNodes = Array.from(mergedNodes.values());
+  const flowNodeIds = new Set(flowNodes.map((node) => node.id));
+
+  const visibleSharedEdges = sharedEdges;
+
+  const mergedEdges = new Map<string, Edge>();
+  visibleSharedEdges.forEach((edge) => {
+    if (flowNodeIds.has(edge.source) && flowNodeIds.has(edge.target)) {
+      mergedEdges.set(edge.id, edge);
+    }
+  });
+  privateEdges.forEach((edge) => {
+    if (flowNodeIds.has(edge.source) && flowNodeIds.has(edge.target)) {
+      mergedEdges.set(edge.id, edge);
+    }
+  });
+
+  return {
+    flowNodes,
+    flowEdges: Array.from(mergedEdges.values()),
+  };
 };
 
 const PageLayout: React.FC = () => {
@@ -148,6 +230,33 @@ const CreatePage: React.FC = () => {
         const pageConfig = template.pageConfig ?? {};
         const normalizedRouteConfig = normalizeRouteConfig(pageConfig.routeConfig);
         const normalizedRoutes = normalizeTemplateRoutes(template as unknown as Record<string, unknown>, normalizedRouteConfig);
+        const sharedUiTree = pageConfig.sharedUiTree && typeof pageConfig.sharedUiTree === 'object' && !Array.isArray(pageConfig.sharedUiTree)
+          ? (pageConfig.sharedUiTree as unknown as UiTreeNode)
+          : (Array.isArray(pageConfig.sharedUiChildren)
+            ? ({
+              key: '__root__',
+              label: '该页面',
+              props: {},
+              children: pageConfig.sharedUiChildren as unknown as UiTreeNode[],
+            } as UiTreeNode)
+            : null);
+        const sharedFlowNodes = Array.isArray(pageConfig.sharedFlowNodes)
+          ? (pageConfig.sharedFlowNodes as unknown as Node[])
+          : [];
+        const sharedFlowEdges = Array.isArray(pageConfig.sharedFlowEdges)
+          ? (pageConfig.sharedFlowEdges as unknown as Edge[])
+          : [];
+        const firstRoute = normalizedRoutes[0] ?? null;
+        const activeRouteOutletKey = resolveEffectiveOutletKey(
+          firstRoute?.uiTree ?? ({ key: '__root__', label: '该页面', props: {}, children: [] } as UiTreeNode),
+          typeof pageConfig.activeRouteOutletKey === 'string' ? pageConfig.activeRouteOutletKey : null,
+        );
+        const composedUiTree = firstRoute
+          ? composeRouteUiTree(firstRoute.uiTree, sharedUiTree, activeRouteOutletKey)
+          : ({ key: '__root__', label: '该页面', props: {}, children: [] } as UiTreeNode);
+        const composedFlow = firstRoute
+          ? composeRouteFlow(firstRoute.flowNodes, firstRoute.flowEdges, sharedFlowNodes, sharedFlowEdges)
+          : { flowNodes: [], flowEdges: [] as Edge[] };
 
         setCurrentPageMeta({
           pageId: detail.base?.pageId ?? pageId,
@@ -160,13 +269,17 @@ const CreatePage: React.FC = () => {
             typeof pageConfig.autoWidth === 'number'
               ? pageConfig.autoWidth
               : (detail.base?.autoWidth ?? 1800),
-          uiPageData: normalizedRoutes[0]?.uiTree as UiTreeNode,
-          flowNodes: normalizedRoutes[0]?.flowNodes ?? [],
-          flowEdges: normalizedRoutes[0]?.flowEdges ?? [],
-          selectedLayoutTemplateId: normalizedRoutes[0]?.selectedLayoutTemplateId ?? null,
-          pageRouteConfig: normalizedRoutes[0]?.routeConfig ?? normalizedRouteConfig,
+          uiPageData: composedUiTree,
+          flowNodes: composedFlow.flowNodes,
+          flowEdges: composedFlow.flowEdges,
+          selectedLayoutTemplateId: firstRoute?.selectedLayoutTemplateId ?? null,
+          pageRouteConfig: firstRoute?.routeConfig ?? normalizedRouteConfig,
           pageRoutes: normalizedRoutes,
-          activePageRouteId: normalizedRoutes[0]?.routeId ?? null,
+          activePageRouteId: firstRoute?.routeId ?? null,
+          activeRouteOutletKey,
+          sharedUiTree,
+          sharedFlowNodes,
+          sharedFlowEdges,
           flowActiveNodeId: null,
           activeNodeKey: null,
           activeNode: null,
