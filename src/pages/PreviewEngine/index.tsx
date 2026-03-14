@@ -12,24 +12,6 @@ import './style.less';
 const EMPTY_ROOT: UiTreeNode = { key: '__root__', type: 'root', label: '', props: {}, children: [] };
 const SITE_PREVIEW_PREFIX = '/site-preview';
 
-const toQueryString = (params?: Record<string, unknown>) => {
-  if (!params || typeof params !== 'object') {
-    return '';
-  }
-
-  const searchParams = new URLSearchParams();
-  Object.entries(params).forEach(([key, value]) => {
-    if (value === undefined || value === null) {
-      return;
-    }
-
-    searchParams.set(key, String(value));
-  });
-
-  const text = searchParams.toString();
-  return text ? `?${text}` : '';
-};
-
 const normalizeRoutePath = (value: string) => {
   const text = String(value ?? '').trim();
   if (!text) {
@@ -136,10 +118,32 @@ const PreviewEngine: React.FC = () => {
     [parsedSnapshot, remoteSnapshot],
   );
 
-  const [renderTree, setRenderTree] = React.useState(snapshot.uiTreeData);
-  const runtimeRef = React.useRef<PreviewFlowRuntime | null>(null);
   const normalizedCurrentRoutePath = normalizeRoutePath(routePathFromLocation || '/');
-  const routeMatched = true;
+  const routeSnapshots = React.useMemo(
+    () => Array.isArray(snapshot.pageConfig?.routeSnapshots) ? snapshot.pageConfig?.routeSnapshots : [],
+    [snapshot.pageConfig?.routeSnapshots],
+  );
+  const defaultRoutePath = React.useMemo(
+    () => normalizeRoutePath(snapshot.pageConfig?.defaultRoutePath || '/'),
+    [snapshot.pageConfig?.defaultRoutePath],
+  );
+  const matchedRouteSnapshot = React.useMemo(() => {
+    if (routeSnapshots.length === 0) {
+      return null;
+    }
+
+    return routeSnapshots.find((item) => normalizeRoutePath(item.routePath) === normalizedCurrentRoutePath)
+      ?? routeSnapshots.find((item) => normalizeRoutePath(item.routePath) === defaultRoutePath)
+      ?? routeSnapshots[0]
+      ?? null;
+  }, [defaultRoutePath, normalizedCurrentRoutePath, routeSnapshots]);
+  const routeMatched = routeSnapshots.length === 0 ? true : routeSnapshots.some((item) => normalizeRoutePath(item.routePath) === normalizedCurrentRoutePath);
+  const effectiveUiTree = matchedRouteSnapshot?.uiTreeData ?? snapshot.uiTreeData;
+  const effectiveFlowNodes = matchedRouteSnapshot?.flowNodes ?? snapshot.flowNodes;
+  const effectiveFlowEdges = matchedRouteSnapshot?.flowEdges ?? snapshot.flowEdges;
+
+  const [renderTree, setRenderTree] = React.useState(effectiveUiTree);
+  const runtimeRef = React.useRef<PreviewFlowRuntime | null>(null);
   const routeNotFound = isSitePreview && !routeMatched;
   const routeHasRenderableContent = (renderTree.children ?? []).length > 0;
   const routeEmpty = !routeNotFound && !routeHasRenderableContent;
@@ -147,18 +151,30 @@ const PreviewEngine: React.FC = () => {
   const routeSubscribersRef = React.useRef(new Set<(state: DataHubRouterState) => void>());
   const routerState = React.useMemo<DataHubRouterState>(() => ({
     path: normalizedCurrentRoutePath,
-    routeId: undefined,
+    routeId: matchedRouteSnapshot?.routeId,
     matched: routeMatched,
-  }), [normalizedCurrentRoutePath, routeMatched]);
+  }), [matchedRouteSnapshot?.routeId, normalizedCurrentRoutePath, routeMatched]);
   const resolveNavigatePath = React.useCallback((path: string, params?: Record<string, unknown>) => {
     const normalizedPath = normalizeRoutePath(path || '/');
-    const query = toQueryString(params);
+    const mergedSearch = new URLSearchParams(location.search);
+    if (params && typeof params === 'object') {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value === undefined || value === null) {
+          mergedSearch.delete(key);
+          return;
+        }
+
+        mergedSearch.set(key, String(value));
+      });
+    }
+
+    const query = mergedSearch.toString() ? `?${mergedSearch.toString()}` : '';
     if (isSitePreview) {
       return `${SITE_PREVIEW_PREFIX}${normalizedPath}${query}`;
     }
 
     return `${normalizedPath}${query}`;
-  }, [isSitePreview]);
+  }, [isSitePreview, location.search]);
   const routerContext = React.useMemo(() => ({
     current: () => routerState,
     push: (path: string, params?: Record<string, unknown>) => {
@@ -184,8 +200,8 @@ const PreviewEngine: React.FC = () => {
   }), [navigate, resolveNavigatePath, routerState]);
 
   React.useEffect(() => {
-    setRenderTree(snapshot.uiTreeData);
-  }, [snapshot.uiTreeData]);
+    setRenderTree(effectiveUiTree);
+  }, [effectiveUiTree]);
 
   React.useEffect(() => {
     routeSubscribersRef.current.forEach((handler) => {
@@ -194,8 +210,8 @@ const PreviewEngine: React.FC = () => {
   }, [routerState]);
 
   React.useEffect(() => {
-    const hub = createPreviewDataHub(snapshot.uiTreeData, { scopeId, router: routerContext });
-    const runtime = createPreviewFlowRuntime(snapshot.flowNodes, snapshot.flowEdges, hub);
+    const hub = createPreviewDataHub(effectiveUiTree, { scopeId, router: routerContext });
+    const runtime = createPreviewFlowRuntime(effectiveFlowNodes, effectiveFlowEdges, hub);
     const unsubscribePatched = hub.subscribe('component:patched', () => {
       setRenderTree(hub.getTreeSnapshot());
     });
@@ -211,7 +227,7 @@ const PreviewEngine: React.FC = () => {
         delete window.dataHub;
       }
     };
-  }, [routerContext, scopeId, snapshot.flowEdges, snapshot.flowNodes, snapshot.uiTreeData]);
+  }, [effectiveFlowEdges, effectiveFlowNodes, effectiveUiTree, routerContext, scopeId]);
 
   const handleLifecycle = React.useCallback((componentKey: string, lifetime: string, payload?: unknown) => {
     runtimeRef.current?.emitLifecycle(componentKey, lifetime, payload);

@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import cloneDeep from 'lodash/cloneDeep';
 import { Radio, Button, Space, Drawer, Timeline, Tag, Dialog, Input, Switch } from 'tdesign-react';
 import { UploadIcon, ViewImageIcon, ArrowLeftIcon, ArrowRightIcon, HistoryIcon } from 'tdesign-icons-react';
 import { useBuilderContext } from '../context/BuilderContext';
@@ -7,6 +8,7 @@ import { serializePreviewSnapshot } from '../../pages/PreviewEngine/utils/snapsh
 import { buildComponentContract } from '../flow/componentContract';
 import { savePageDraft, updatePageDraft } from '../../api/pageTemplate';
 import { emitApiAlert } from '../../api/alertBus';
+import { findNodeByKey, updateNodeByKey } from '../../utils/createComponentTree';
 
 type Props = {
   mode: 'component' | 'flow';
@@ -40,6 +42,70 @@ const toReadableValue = (value: unknown) => {
   }
 
   return JSON.stringify(value);
+};
+
+const normalizeRoutePath = (value: string) => {
+  const text = String(value ?? '').trim();
+  if (!text) {
+    return '/';
+  }
+
+  return text.startsWith('/') ? text : `/${text}`;
+};
+
+const composeRouteUiTree = (
+  privateTree: any,
+  sharedTree: any,
+  outletKey: string | null,
+) => {
+  if (!sharedTree || !outletKey) {
+    return cloneDeep(privateTree);
+  }
+
+  const sharedOutlet = findNodeByKey(sharedTree, outletKey);
+  if (!sharedOutlet) {
+    return cloneDeep(privateTree);
+  }
+
+  const privateOutlet = findNodeByKey(privateTree, outletKey);
+  const outletChildren = privateOutlet?.type === 'RouteOutlet'
+    ? cloneDeep(privateOutlet.children ?? [])
+    : [];
+
+  return updateNodeByKey(cloneDeep(sharedTree), outletKey, (target) => ({
+    ...target,
+    children: outletChildren,
+  }));
+};
+
+const composeRouteFlow = (
+  privateNodes: any[],
+  privateEdges: any[],
+  sharedNodes: any[],
+  sharedEdges: any[],
+) => {
+  const mergedNodes = new Map<string, any>();
+  sharedNodes.forEach((node) => mergedNodes.set(node.id, cloneDeep(node)));
+  privateNodes.forEach((node) => mergedNodes.set(node.id, cloneDeep(node)));
+  const flowNodes = Array.from(mergedNodes.values());
+  const flowNodeIds = new Set(flowNodes.map((node) => node.id));
+
+  const mergedEdges = new Map<string, any>();
+  sharedEdges.forEach((edge) => {
+    if (flowNodeIds.has(edge.source) && flowNodeIds.has(edge.target)) {
+      mergedEdges.set(edge.id, cloneDeep(edge));
+    }
+  });
+  privateEdges.forEach((edge) => {
+    if (flowNodeIds.has(edge.source) && flowNodeIds.has(edge.target)) {
+      mergedEdges.set(edge.id, cloneDeep(edge));
+    }
+  });
+
+  return {
+    flowNodes,
+    flowEdges: Array.from(mergedEdges.values()),
+  };
 };
 
 const toActionDescription = (action: UiHistoryAction) => {
@@ -177,15 +243,42 @@ const HeaderControls: React.FC<Props> = ({
   };
 
   const handlePreview = () => {
+    const routeSnapshots = enablePageRouteConfig
+      ? pageRoutes.map((route) => {
+          const composedUiTree = composeRouteUiTree(route.uiTree, sharedUiTree, activeRouteOutletKey);
+          const composedFlow = composeRouteFlow(
+            route.flowNodes,
+            route.flowEdges,
+            sharedFlowNodes,
+            sharedFlowEdges,
+          );
+
+          return {
+            routeId: route.routeId,
+            routePath: normalizeRoutePath(route.routeConfig.routePath),
+            uiTreeData: composedUiTree,
+            flowNodes: composedFlow.flowNodes,
+            flowEdges: composedFlow.flowEdges,
+          };
+        })
+      : [];
+
+    const activeRoutePath = enablePageRouteConfig
+      ? normalizeRoutePath(pageRouteConfig?.routePath?.trim() ?? '/')
+      : '';
+    const activeRouteSnapshot = routeSnapshots.find((item) => item.routePath === activeRoutePath) ?? routeSnapshots[0];
+
     const snapshot = serializePreviewSnapshot({
-      uiTreeData,
-      flowNodes,
-      flowEdges,
+      uiTreeData: activeRouteSnapshot?.uiTreeData ?? uiTreeData,
+      flowNodes: activeRouteSnapshot?.flowNodes ?? flowNodes,
+      flowEdges: activeRouteSnapshot?.flowEdges ?? flowEdges,
       pageConfig: enablePageRouteConfig
         ? {
             routeConfig: pageRouteConfig,
             pageId: currentPageId,
             pageName: currentPageName,
+            defaultRoutePath: activeRouteSnapshot?.routePath ?? activeRoutePath,
+            routeSnapshots,
           }
         : undefined,
     });
@@ -193,7 +286,7 @@ const HeaderControls: React.FC<Props> = ({
     const snapshotKey = `preview-snapshot-${Date.now()}-${Math.round(Math.random() * 10000)}`;
     window.localStorage.setItem(snapshotKey, snapshot);
 
-    const routePath = enablePageRouteConfig ? pageRouteConfig?.routePath?.trim() ?? '' : '';
+    const routePath = enablePageRouteConfig ? (activeRouteSnapshot?.routePath ?? activeRoutePath) : '';
     const previewUrl = new URL(routePath ? `/site-preview${routePath}` : '/preview-engine', window.location.origin);
     previewUrl.searchParams.set('snapshotKey', snapshotKey);
     if (routePath) {

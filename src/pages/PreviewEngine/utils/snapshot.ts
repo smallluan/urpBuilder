@@ -6,6 +6,14 @@ export interface PreviewPageConfig {
   routeConfig?: PageRouteConfig | null;
   pageId?: string;
   pageName?: string;
+  defaultRoutePath?: string;
+  routeSnapshots?: Array<{
+    routeId?: string;
+    routePath: string;
+    uiTreeData: UiTreeNode;
+    flowNodes: Node[];
+    flowEdges: Edge[];
+  }>;
 }
 
 export interface PreviewSnapshot {

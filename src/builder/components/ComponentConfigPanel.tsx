@@ -22,6 +22,7 @@ import {
   type IconInitialFilterKey,
   type IconQuickFilterKey,
 } from '../../constants/iconRegistry';
+import componentCatalog from '../../config/componentCatalog';
 import { createDefaultTabsList, normalizeTabsList } from '../utils/tabs';
 import { loadCustomComponentDetail, resolveExposedPropSchemas } from '../../utils/customComponentRuntime';
 
@@ -187,6 +188,8 @@ const LIST_ITEM_META_PROP_KEYS = new Set([
   'actionSize',
 ]);
 
+const MENU_ICON_COMPAT_NODE_TYPES = new Set(['Menu.Item', 'Menu.Submenu']);
+
 const COMMON_PROP_PRIORITY_MAP = new Map<string, number>([
   ['visible', 9],
   ['className', 10],
@@ -282,7 +285,25 @@ const ComponentConfigPanel: React.FC = () => {
     code: '[]',
   });
 
-  const propsMap = (activeNode?.props ?? {}) as Record<string, ComponentPropSchema>;
+  const propsMap = React.useMemo(() => {
+    const activeProps = (activeNode?.props ?? {}) as Record<string, ComponentPropSchema>;
+    if (!activeNode?.type || !MENU_ICON_COMPAT_NODE_TYPES.has(activeNode.type)) {
+      return activeProps;
+    }
+
+    const catalogSchema = componentCatalog.find((item) => item.type === activeNode.type);
+    const catalogProps = (catalogSchema?.props ?? {}) as Record<string, ComponentPropSchema>;
+    if (!catalogProps.iconName || activeProps.iconName) {
+      return activeProps;
+    }
+
+    return {
+      ...activeProps,
+      iconName: {
+        ...catalogProps.iconName,
+      },
+    };
+  }, [activeNode?.props, activeNode?.type]);
   const styleValue = (propsMap.__style?.value ?? {}) as Record<string, unknown>;
   const switchControlled = (activeNode?.type === 'Switch' || activeNode?.type === 'Slider' || activeNode?.type === 'Steps')
     ? Boolean((propsMap.controlled?.value ?? true))
