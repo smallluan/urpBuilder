@@ -71,6 +71,12 @@ export interface PropExposeNodeData extends FlowNodeActionHandlers {
   sourceLabel?: string;
   availablePropKeys?: string[];
   selectedPropKeys?: string[];
+  /**
+   * 支持为来源属性配置对外别名（alias）。
+   * sourcePropKey: 来源组件内部的属性名
+   * alias: 在外部暴露为的名称（可选，若不填则使用 sourcePropKey）
+   */
+  selectedMappings?: Array<{ sourcePropKey: string; alias?: string }>;
 }
 
 export interface LifecycleExposeNodeData extends FlowNodeActionHandlers {
@@ -115,6 +121,7 @@ export interface PropExposeNodeFormState {
   sourceLabel: string;
   availablePropKeys: string[];
   selectedPropKeys: string[];
+  selectedMappings?: Array<{ sourcePropKey: string; alias?: string }>;
 }
 
 export interface LifecycleExposeNodeFormState {

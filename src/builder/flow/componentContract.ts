@@ -3,7 +3,10 @@ import type { UiTreeNode } from '../store/types';
 import type { LifecycleExposeNodeData, PropExposeNodeData } from '../../types/flow';
 
 export interface ComponentExposedProp {
+  // propKey: 来源节点内部属性名（target node 中的属性 key）
   propKey: string;
+  // key: 对外暴露的名称（alias）。为兼容历史数据，propKey 也可能同时作为对外名称。
+  key?: string;
   sourceKey: string;
   sourceRef?: string;
   sourceLabel?: string;
@@ -53,16 +56,25 @@ export const buildComponentContract = (
         ? data.selectedPropKeys.map((item) => String(item).trim()).filter(Boolean)
         : [];
 
+      const selectedMappings = Array.isArray((data as any).selectedMappings)
+        ? (data as any).selectedMappings as Array<{ sourcePropKey?: string; alias?: string }>
+        : [];
+
       if (!sourceKey || selectedPropKeys.length === 0) {
         return [] as ComponentExposedProp[];
       }
 
-      return selectedPropKeys.map((propKey) => ({
-        propKey,
-        sourceKey,
-        sourceRef: sourceRef || undefined,
-        sourceLabel: sourceLabel || undefined,
-      }));
+      return selectedPropKeys.map((propKey) => {
+        const mapping = selectedMappings.find((m) => String(m?.sourcePropKey ?? '').trim() === propKey);
+        const externalKey = mapping && typeof mapping.alias === 'string' && mapping.alias.trim() ? mapping.alias.trim() : propKey;
+        return {
+          propKey,
+          key: externalKey,
+          sourceKey,
+          sourceRef: sourceRef || undefined,
+          sourceLabel: sourceLabel || undefined,
+        };
+      });
     });
 
   const exposedLifecycles = flowNodes

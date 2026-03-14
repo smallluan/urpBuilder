@@ -329,14 +329,19 @@ export const applyExposedPropsToTemplate = (
   const nextRoot = cloneDeep(templateRoot);
 
   exposedProps.forEach((item) => {
-    const propKey = typeof item === 'string'
+    const sourcePropKey = typeof item === 'string'
       ? String(item).trim()
       : String(item?.propKey ?? item?.key ?? '').trim();
-    if (!propKey) {
+    if (!sourcePropKey) {
       return;
     }
 
-    const externalValue = getNodePropValue(instanceNode, propKey);
+    // external property name on instance: if contract provides explicit external name (key), use it, otherwise fallback to sourcePropKey
+    const externalPropName = typeof item === 'string'
+      ? String(item).trim()
+      : String(item?.key ?? item?.propKey ?? '').trim();
+
+    const externalValue = getNodePropValue(instanceNode, externalPropName);
     if (externalValue === undefined) {
       return;
     }
@@ -345,16 +350,16 @@ export const applyExposedPropsToTemplate = (
       sourceKey: typeof item === 'string' ? '' : item?.sourceKey,
       sourceRef: typeof item === 'string' ? '' : item?.sourceRef,
     });
-    const fallbackTargetNode = targetNode ?? findFirstNodeContainsProp(nextRoot, propKey);
+    const fallbackTargetNode = targetNode ?? findFirstNodeContainsProp(nextRoot, sourcePropKey);
     if (!fallbackTargetNode) {
       return;
     }
 
     const targetProps = (fallbackTargetNode.props ?? {}) as Record<string, unknown>;
-    const targetProp = (targetProps[propKey] ?? {}) as Record<string, unknown>;
+    const targetProp = (targetProps[sourcePropKey] ?? {}) as Record<string, unknown>;
     fallbackTargetNode.props = {
       ...targetProps,
-      [propKey]: {
+      [sourcePropKey]: {
         ...targetProp,
         value: externalValue,
       },

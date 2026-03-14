@@ -57,6 +57,7 @@ const FlowLayout: React.FC = () => {
   const [eventFilterDraft, setEventFilterDraft] = useState<EventFilterFormState | null>(null);
   const [timerDraft, setTimerDraft] = useState<TimerNodeFormState | null>(null);
   const [propExposeDraft, setPropExposeDraft] = useState<PropExposeNodeFormState | null>(null);
+  const [propAliasDrawerVisible, setPropAliasDrawerVisible] = useState(false);
   const [lifecycleExposeDraft, setLifecycleExposeDraft] = useState<LifecycleExposeNodeFormState | null>(null);
   const [rightPanelMode, setRightPanelMode] = useState<RightPanelMode>('library');
 
@@ -191,11 +192,19 @@ const FlowLayout: React.FC = () => {
       : [];
     const selectedPropKeys = selectedRaw.filter((item) => availablePropKeys.includes(item));
 
+    const selectedMappings = Array.isArray(nodeData.selectedMappings)
+      ? (nodeData.selectedMappings as Array<Record<string, unknown>>).map((m) => ({
+          sourcePropKey: String(m?.sourcePropKey ?? ''),
+          alias: typeof m?.alias === 'string' ? String(m?.alias) : undefined,
+        })).filter((m) => Boolean(m.sourcePropKey))
+      : selectedPropKeys.map((k) => ({ sourcePropKey: k, alias: undefined }));
+
     setPropExposeDraft({
       label: String(nodeData.label ?? '属性暴露节点'),
       sourceLabel: String(nodeData.sourceLabel ?? '-'),
       availablePropKeys,
       selectedPropKeys,
+      selectedMappings,
     });
   }, [activeFlowNode]);
 
@@ -334,11 +343,13 @@ const FlowLayout: React.FC = () => {
     const currentComparable = {
       label: String(nodeData.label ?? '属性暴露节点'),
       selectedPropKeys,
+      selectedMappings: Array.isArray(nodeData.selectedMappings) ? nodeData.selectedMappings : undefined,
     };
 
     const draftComparable = {
       label: propExposeDraft.label,
       selectedPropKeys: propExposeDraft.selectedPropKeys,
+      selectedMappings: propExposeDraft.selectedMappings,
     };
 
     return JSON.stringify(currentComparable) !== JSON.stringify(draftComparable);
@@ -462,6 +473,7 @@ const FlowLayout: React.FC = () => {
         ...previous,
         label: propExposeDraft.label,
         selectedPropKeys: propExposeDraft.selectedPropKeys,
+        selectedMappings: propExposeDraft.selectedMappings,
       }),
       '更新属性暴露节点配置',
     );
@@ -776,33 +788,19 @@ const FlowLayout: React.FC = () => {
                     />
                   </div>
 
-                  <div className="flow-config-field">
+                  <div className="config-row">
                     <div className="flow-config-field__label">对外暴露属性</div>
-                    <Select
+                    <Button
                       size="small"
-                      multiple
-                      clearable
+                      theme="default"
+                      variant="outline"
                       disabled={propExposeDraft.availablePropKeys.length === 0}
-                      placeholder={propExposeDraft.availablePropKeys.length === 0 ? '请先连接组件节点' : '请选择可配置属性'}
-                      options={propExposeDraft.availablePropKeys.map((item) => ({
-                        label: item,
-                        value: item,
-                      }))}
-                      value={propExposeDraft.selectedPropKeys}
-                      onChange={(value) => {
-                        const nextValues = Array.isArray(value)
-                          ? value.map((item) => String(item))
-                          : (value ? [String(value)] : []);
-                        setPropExposeDraft((previous) =>
-                          previous
-                            ? {
-                                ...previous,
-                                selectedPropKeys: nextValues,
-                              }
-                            : previous,
-                        );
-                      }}
-                    />
+                      onClick={() => setPropAliasDrawerVisible(true)}
+                    >
+                      {propExposeDraft.selectedPropKeys && propExposeDraft.selectedPropKeys.length > 0
+                        ? `已选择 ${propExposeDraft.selectedPropKeys.length} 项`
+                        : '选择要暴露的属性'}
+                    </Button>
                   </div>
 
                   <div className="flow-config-panel__actions">
@@ -1039,6 +1037,103 @@ const FlowLayout: React.FC = () => {
                   onClick={() => {
                     handleApplyNetworkDraft();
                     setNetworkEditorVisible(false);
+                  }}
+                >
+                  应用配置
+                </Button>
+              </div>
+            </div>
+          ) : null}
+        </Drawer>
+
+        <Drawer
+          visible={propAliasDrawerVisible && !!activeFlowNode && activeFlowNode.type === 'propExposeNode' && !!propExposeDraft}
+          header="属性别名配置"
+          placement="right"
+          size="480px"
+          footer={false}
+          onClose={() => setPropAliasDrawerVisible(false)}
+        >
+          {propExposeDraft ? (
+            <div className="flow-config-drawer-form">
+              <div className="flow-config-drawer-subtitle">在此选择要暴露的属性，并为每项配置对外别名。</div>
+
+              <div className="flow-config-field">
+                <div className="flow-config-field__label">选择属性</div>
+                <Select
+                  size="small"
+                  multiple
+                  clearable
+                  disabled={propExposeDraft.availablePropKeys.length === 0}
+                  placeholder={propExposeDraft.availablePropKeys.length === 0 ? '请先连接组件节点' : '请选择要暴露的属性'}
+                  options={propExposeDraft.availablePropKeys.map((item) => ({ label: item, value: item }))}
+                  value={propExposeDraft.selectedPropKeys}
+                  onChange={(value) => {
+                    const nextValues = Array.isArray(value)
+                      ? value.map((item) => String(item))
+                      : (value ? [String(value)] : []);
+                    setPropExposeDraft((previous) =>
+                      previous
+                        ? {
+                            ...previous,
+                            selectedPropKeys: nextValues,
+                            selectedMappings: nextValues.map((k) => {
+                              const exists = previous.selectedMappings?.find((m) => m.sourcePropKey === k);
+                              return exists ? { ...exists } : { sourcePropKey: k, alias: undefined };
+                            }),
+                          }
+                        : previous,
+                    );
+                  }}
+                />
+              </div>
+
+              <div className="flow-config-field">
+                <div className="flow-config-field__label">别名（可选）</div>
+                <div className="flow-config-expose-mappings">
+                  {propExposeDraft.selectedMappings && propExposeDraft.selectedMappings.length > 0 ? (
+                    propExposeDraft.selectedMappings.map((m, idx) => (
+                      <div key={`${m.sourcePropKey}-${idx}`} className="flow-config-expose-mapping-row">
+                        <div className="flow-config-expose-mapping-name">{m.sourcePropKey}</div>
+                        <Input
+                          size="small"
+                          placeholder="对外名称（不填则使用来源名称）"
+                          value={m.alias ?? ''}
+                          onChange={(value) => {
+                            setPropExposeDraft((previous) => {
+                              if (!previous) return previous;
+                              const next = (previous.selectedMappings ?? []).map((item) =>
+                                item.sourcePropKey === m.sourcePropKey ? { ...item, alias: String(value ?? '') || undefined } : item,
+                              );
+                              return { ...previous, selectedMappings: next };
+                            });
+                          }}
+                        />
+                      </div>
+                    ))
+                  ) : (
+                    <div className="flow-config-field__hint">请先从上方选择要暴露的属性</div>
+                  )}
+                </div>
+              </div>
+
+              <div className="flow-config-drawer-actions">
+                <Button
+                  size="small"
+                  theme="default"
+                  variant="outline"
+                  onClick={() => setPropAliasDrawerVisible(false)}
+                >
+                  取消
+                </Button>
+                <Button
+                  size="small"
+                  theme="primary"
+                  variant="outline"
+                  disabled={!propExposeDraft || !propExposeDraft.selectedPropKeys || propExposeDraft.selectedPropKeys.length === 0}
+                  onClick={() => {
+                    handleApplyPropExposeDraft();
+                    setPropAliasDrawerVisible(false);
                   }}
                 >
                   应用配置

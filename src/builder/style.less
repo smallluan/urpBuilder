@@ -882,6 +882,40 @@
       line-height: 16px;
     }
 
+    /* 属性别名配置行 */
+    .flow-config-expose-mappings {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 6px;
+    }
+
+    .flow-config-expose-mapping-row {
+      display: grid;
+      grid-template-columns: 120px 1fr;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .flow-config-expose-mapping-name {
+      font-size: 12px;
+      color: #374151;
+      background: #f3f4f6;
+      border: 1px solid #e6e9ee;
+      padding: 6px 8px;
+      border-radius: 6px;
+      text-align: center;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .flow-config-expose-mapping-row input,
+    .flow-config-expose-mapping-row .t-input,
+    .flow-config-expose-mapping-row .t-input__inner {
+      width: 100%;
+    }
+
     .flow-config-field--inline {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -2159,6 +2193,29 @@
   background: #f2f7ff;
   border: 1px solid #dce9ff;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.flow-prop-expose-node__tag-alias {
+  font-weight: 600;
+  color: #0b63d6;
+  margin-right: 6px;
+  max-width: 60px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.flow-prop-expose-node__tag-arrow {
+  margin: 0 6px;
+  color: #9aa4b2;
+  font-size: 11px;
+}
+
+.flow-prop-expose-node__tag-source {
+  color: #1f2937;
+  opacity: 0.9;
+  max-width: 60px;
   overflow: hidden;
   text-overflow: ellipsis;
 }

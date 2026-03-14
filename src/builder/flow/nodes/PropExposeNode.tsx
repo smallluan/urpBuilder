@@ -6,9 +6,13 @@ import type { PropExposeNodeData } from '../../../types/flow';
 const PropExposeNode: React.FC<NodeProps> = ({ id, data, selected }) => {
   const nodeData = (data ?? {}) as PropExposeNodeData;
   const selectedPropKeys = Array.isArray(nodeData.selectedPropKeys) ? nodeData.selectedPropKeys : [];
+  const selectedMappings = Array.isArray(nodeData.selectedMappings) ? nodeData.selectedMappings : [];
   const maxVisibleTags = 3;
-  const visiblePropKeys = selectedPropKeys.slice(0, maxVisibleTags);
-  const remainingCount = Math.max(0, selectedPropKeys.length - visiblePropKeys.length);
+  const visibleItems = (selectedMappings.length > 0
+    ? selectedMappings.map((m) => ({ name: String(m.sourcePropKey ?? ''), alias: (m as any).alias }))
+    : selectedPropKeys.map((k) => ({ name: k, alias: undefined })))
+    .slice(0, maxVisibleTags);
+  const remainingCount = Math.max(0, (selectedMappings.length > 0 ? selectedMappings.length : selectedPropKeys.length) - visibleItems.length);
   const targetPosition = nodeData.flipX ? Position.Right : Position.Left;
   const sourcePosition = nodeData.flipX ? Position.Left : Position.Right;
 
@@ -26,10 +30,20 @@ const PropExposeNode: React.FC<NodeProps> = ({ id, data, selected }) => {
       </div>
 
       <div className="flow-prop-expose-node__tags">
-        {selectedPropKeys.length > 0 ? (
+        {(selectedMappings.length > 0 || selectedPropKeys.length > 0) ? (
           <>
-            {visiblePropKeys.map((item) => (
-              <span className="flow-prop-expose-node__tag" key={item}>{item}</span>
+            {visibleItems.map((item) => (
+              <span className="flow-prop-expose-node__tag" key={item.name}>
+                {item.alias ? (
+                  <>
+                    <span className="flow-prop-expose-node__tag-alias">{item.alias}</span>
+                    <span className="flow-prop-expose-node__tag-arrow">←</span>
+                    <span className="flow-prop-expose-node__tag-source">{item.name}</span>
+                  </>
+                ) : (
+                  <span className="flow-prop-expose-node__tag-source">{item.name}</span>
+                )}
+              </span>
             ))}
             {remainingCount > 0 ? (
               <span className="flow-prop-expose-node__tag flow-prop-expose-node__tag--more">+{remainingCount}</span>
