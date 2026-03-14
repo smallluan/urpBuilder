@@ -230,6 +230,99 @@ export const createBuilderStore = (options: CreateBuilderStoreOptions = {}) => {
         };
       }),
 
+    removePageRoute: (routeId) =>
+      set((state) => {
+        const normalizedRouteId = String(routeId ?? '').trim();
+        if (!normalizedRouteId || state.pageRoutes.length <= 1) {
+          return state;
+        }
+
+        const routesWithSnapshot = state.pageRoutes.map((route) => {
+          if (route.routeId !== state.activePageRouteId) {
+            return route;
+          }
+
+          return {
+            ...route,
+            routeConfig: cloneDeep(state.pageRouteConfig ?? route.routeConfig),
+            uiTree: cloneDeep(state.uiPageData),
+            flowNodes: cloneDeep(state.flowNodes),
+            flowEdges: cloneDeep(state.flowEdges),
+            selectedLayoutTemplateId: state.selectedLayoutTemplateId,
+            history: cloneDeep(state.history),
+          };
+        });
+
+        const removeIndex = routesWithSnapshot.findIndex((route) => route.routeId === normalizedRouteId);
+        if (removeIndex < 0) {
+          return state;
+        }
+
+        const nextRoutes = routesWithSnapshot.filter((route) => route.routeId !== normalizedRouteId);
+
+        if (state.activePageRouteId !== normalizedRouteId) {
+          return {
+            pageRoutes: nextRoutes,
+          };
+        }
+
+        const nextActiveRoute = nextRoutes[Math.min(removeIndex, nextRoutes.length - 1)] ?? nextRoutes[0] ?? null;
+        if (!nextActiveRoute) {
+          return state;
+        }
+
+        return {
+          pageRoutes: nextRoutes,
+          activePageRouteId: nextActiveRoute.routeId,
+          pageRouteConfig: cloneDeep(nextActiveRoute.routeConfig),
+          uiPageData: cloneDeep(nextActiveRoute.uiTree),
+          flowNodes: cloneDeep(nextActiveRoute.flowNodes),
+          flowEdges: cloneDeep(nextActiveRoute.flowEdges),
+          selectedLayoutTemplateId: nextActiveRoute.selectedLayoutTemplateId,
+          history: cloneDeep(nextActiveRoute.history),
+          activeNodeKey: null,
+          activeNode: null,
+          flowActiveNodeId: null,
+        };
+      }),
+
+    setDefaultPageRoute: (routeId) =>
+      set((state) => {
+        const normalizedRouteId = String(routeId ?? '').trim();
+        if (!normalizedRouteId || state.pageRoutes.length <= 1) {
+          return state;
+        }
+
+        const routesWithSnapshot = state.pageRoutes.map((route) => {
+          if (route.routeId !== state.activePageRouteId) {
+            return route;
+          }
+
+          return {
+            ...route,
+            routeConfig: cloneDeep(state.pageRouteConfig ?? route.routeConfig),
+            uiTree: cloneDeep(state.uiPageData),
+            flowNodes: cloneDeep(state.flowNodes),
+            flowEdges: cloneDeep(state.flowEdges),
+            selectedLayoutTemplateId: state.selectedLayoutTemplateId,
+            history: cloneDeep(state.history),
+          };
+        });
+
+        const currentIndex = routesWithSnapshot.findIndex((route) => route.routeId === normalizedRouteId);
+        if (currentIndex <= 0) {
+          return state;
+        }
+
+        const nextRoutes = [...routesWithSnapshot];
+        const [defaultRoute] = nextRoutes.splice(currentIndex, 1);
+        nextRoutes.unshift(defaultRoute);
+
+        return {
+          pageRoutes: nextRoutes,
+        };
+      }),
+
     syncActivePageRouteSnapshot: () =>
       set((state) => {
         if (!state.activePageRouteId || state.pageRoutes.length === 0) {

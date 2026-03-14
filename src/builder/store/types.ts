@@ -200,6 +200,8 @@ export interface BuilderStore {
   setPageRoutes: (routes: PageRouteRecord[], activeRouteId?: string | null) => void;
   addPageRoute: (route?: Partial<PageRouteRecord>) => string;
   switchPageRoute: (routeId: string) => void;
+  removePageRoute: (routeId: string) => void;
+  setDefaultPageRoute: (routeId: string) => void;
   syncActivePageRouteSnapshot: () => void;
 
   // Actions — 流程图

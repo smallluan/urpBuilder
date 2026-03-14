@@ -13,18 +13,49 @@ const PageRouteToolbar: React.FC = () => {
   const activeRoute = pageRoutes.find((item) => item.routeId === activePageRouteId) ?? null;
 
   const handleCreateRoute = () => {
-    const routeIndex = pageRoutes.length + 1;
-    const nextRouteId = addPageRoute({
-      routeId: `route-${routeIndex}`,
+    const routeIdSet = new Set(pageRoutes.map((route) => route.routeId));
+    const routePathSet = new Set(pageRoutes.map((route) => route.routeConfig.routePath.trim()).filter(Boolean));
+    const routeNameSet = new Set(pageRoutes.map((route) => route.routeConfig.routeName.trim()).filter(Boolean));
+
+    let routeIndex = pageRoutes.length + 1;
+    let nextRouteId = `route-${routeIndex}`;
+    while (routeIdSet.has(nextRouteId)) {
+      routeIndex += 1;
+      nextRouteId = `route-${routeIndex}`;
+    }
+
+    let nextRoutePath = routeIndex === 1 ? '/' : `/route-${routeIndex}`;
+    while (routePathSet.has(nextRoutePath)) {
+      routeIndex += 1;
+      if (routeIdSet.has(`route-${routeIndex}`)) {
+        continue;
+      }
+      nextRouteId = `route-${routeIndex}`;
+      nextRoutePath = `/route-${routeIndex}`;
+    }
+
+    let nextRouteName = `route${routeIndex}`;
+    while (routeNameSet.has(nextRouteName)) {
+      routeIndex += 1;
+      if (routeIdSet.has(`route-${routeIndex}`) || routePathSet.has(`/route-${routeIndex}`)) {
+        continue;
+      }
+      nextRouteId = `route-${routeIndex}`;
+      nextRoutePath = `/route-${routeIndex}`;
+      nextRouteName = `route${routeIndex}`;
+    }
+
+    const createdRouteId = addPageRoute({
+      routeId: nextRouteId,
       routeConfig: {
-        routePath: routeIndex === 1 ? '/' : `/route-${routeIndex}`,
-        routeName: `route${routeIndex}`,
+        routePath: nextRoutePath,
+        routeName: nextRouteName,
         pageTitle: `路由 ${routeIndex}`,
         menuTitle: `路由 ${routeIndex}`,
         useLayout: true,
       },
     });
-    switchPageRoute(nextRouteId);
+    switchPageRoute(createdRouteId);
   };
 
   const handleOpenRouteSettings = () => {
@@ -36,8 +67,8 @@ const PageRouteToolbar: React.FC = () => {
       <Select
         className="page-route-toolbar__select"
         value={activePageRouteId ?? undefined}
-        options={pageRoutes.map((route) => ({
-          label: `${route.routeConfig.menuTitle || route.routeConfig.pageTitle || route.routeConfig.routeName} · ${route.routeConfig.routePath || '/'}`,
+        options={pageRoutes.map((route, index) => ({
+          label: `${index === 0 ? '[默认] ' : ''}${route.routeConfig.menuTitle || route.routeConfig.pageTitle || route.routeConfig.routeName} · ${route.routeConfig.routePath || '/'}`,
           value: route.routeId,
         }))}
         onChange={(value) => switchPageRoute(String(value ?? ''))}
