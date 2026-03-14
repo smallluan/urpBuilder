@@ -6,8 +6,7 @@ import { deserializePreviewSnapshot, type PreviewSnapshot } from './utils/snapsh
 import { createPreviewDataHub, type DataHubRouterState } from './runtime/dataHub';
 import { createPreviewFlowRuntime, type PreviewFlowRuntime } from './runtime/flowRuntime';
 import { getPageBaseList, getPageDetail } from '../../api/pageTemplate';
-import type { PageBaseInfo } from '../../api/types';
-import type { PageRouteConfig, UiTreeNode } from '../../builder/store/types';
+import type { UiTreeNode } from '../../builder/store/types';
 import './style.less';
 
 const EMPTY_ROOT: UiTreeNode = { key: '__root__', type: 'root', label: '', props: {}, children: [] };
@@ -40,7 +39,13 @@ const normalizeRoutePath = (value: string) => {
   return text.startsWith('/') ? text : `/${text}`;
 };
 
-const normalizeRouteConfig = (value: unknown): PageRouteConfig | null => {
+const normalizeRouteConfig = (value: unknown): {
+  routePath: string;
+  routeName: string;
+  pageTitle: string;
+  menuTitle: string;
+  useLayout: boolean;
+} | null => {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
     return null;
   }
@@ -80,13 +85,6 @@ const PreviewEngine: React.FC = () => {
   // 当通过 pageId 直接打开预览时，从 API 加载数据
   const [remoteSnapshot, setRemoteSnapshot] = React.useState<PreviewSnapshot | null>(null);
   const [resolvedPageId, setResolvedPageId] = React.useState<string>('');
-  const [resolvedRouteConfig, setResolvedRouteConfig] = React.useState<PageRouteConfig | null>(null);
-  const [sitePages, setSitePages] = React.useState<PageBaseInfo[]>([]);
-
-  const snapshotRouteConfig = React.useMemo(
-    () => normalizeRouteConfig(parsedSnapshot?.pageConfig?.routeConfig),
-    [parsedSnapshot],
-  );
 
   React.useEffect(() => {
     if (parsedSnapshot || pageId || !routePathFromLocation) {
@@ -101,34 +99,11 @@ const PreviewEngine: React.FC = () => {
         }
 
         setResolvedPageId(target.pageId);
-        setResolvedRouteConfig(normalizeRouteConfig(target.routeConfig));
       })
       .catch(() => {
         setResolvedPageId('');
-        setResolvedRouteConfig(null);
       });
   }, [pageId, parsedSnapshot, routePathFromLocation]);
-
-  React.useEffect(() => {
-    if (!isSitePreview) {
-      setSitePages([]);
-      return;
-    }
-
-    getPageBaseList({ entityType: 'page', page: 1, pageSize: 200 })
-      .then((res) => {
-        const list = Array.isArray(res.data?.list) ? res.data.list : [];
-        setSitePages(
-          list.filter((item) => {
-            const routeConfig = normalizeRouteConfig(item.routeConfig);
-            return Boolean(routeConfig?.routePath);
-          }),
-        );
-      })
-      .catch(() => {
-        setSitePages([]);
-      });
-  }, [isSitePreview]);
 
   React.useEffect(() => {
     const finalPageId = pageId || resolvedPageId;
@@ -142,7 +117,6 @@ const PreviewEngine: React.FC = () => {
         if (pageTitle) {
           document.title = pageTitle;
         }
-        setResolvedRouteConfig(routeConfig);
         setRemoteSnapshot({
           uiTreeData: (template.uiTree as unknown as UiTreeNode) ?? EMPTY_ROOT,
           flowNodes: (template.flowNodes as unknown as Node[]) ?? [],
@@ -164,32 +138,8 @@ const PreviewEngine: React.FC = () => {
 
   const [renderTree, setRenderTree] = React.useState(snapshot.uiTreeData);
   const runtimeRef = React.useRef<PreviewFlowRuntime | null>(null);
-  const activeRouteConfig = snapshotRouteConfig ?? resolvedRouteConfig;
-  const shouldUseLayout = isSitePreview && activeRouteConfig?.useLayout !== false;
-  const currentTitle = activeRouteConfig?.pageTitle?.trim() || activeRouteConfig?.menuTitle?.trim() || '页面预览';
-  const navigationItems = React.useMemo(
-    () => sitePages
-      .map((item) => {
-        const routeConfig = normalizeRouteConfig(item.routeConfig);
-        if (!routeConfig?.routePath) {
-          return null;
-        }
-
-        return {
-          pageId: item.pageId,
-          routePath: routeConfig.routePath,
-          title: routeConfig.menuTitle?.trim() || routeConfig.pageTitle?.trim() || item.pageName,
-        };
-      })
-      .filter(Boolean) as Array<{ pageId: string; routePath: string; title: string }>,
-    [sitePages],
-  );
   const normalizedCurrentRoutePath = normalizeRoutePath(routePathFromLocation || '/');
-  const matchedNavigationItem = React.useMemo(
-    () => navigationItems.find((item) => normalizeRoutePath(item.routePath) === normalizedCurrentRoutePath) ?? null,
-    [navigationItems, normalizedCurrentRoutePath],
-  );
-  const routeMatched = !isSitePreview || !!matchedNavigationItem;
+  const routeMatched = true;
   const routeNotFound = isSitePreview && !routeMatched;
   const routeHasRenderableContent = (renderTree.children ?? []).length > 0;
   const routeEmpty = !routeNotFound && !routeHasRenderableContent;
@@ -197,9 +147,9 @@ const PreviewEngine: React.FC = () => {
   const routeSubscribersRef = React.useRef(new Set<(state: DataHubRouterState) => void>());
   const routerState = React.useMemo<DataHubRouterState>(() => ({
     path: normalizedCurrentRoutePath,
-    routeId: matchedNavigationItem?.pageId,
+    routeId: undefined,
     matched: routeMatched,
-  }), [matchedNavigationItem?.pageId, normalizedCurrentRoutePath, routeMatched]);
+  }), [normalizedCurrentRoutePath, routeMatched]);
   const resolveNavigatePath = React.useCallback((path: string, params?: Record<string, unknown>) => {
     const normalizedPath = normalizeRoutePath(path || '/');
     const query = toQueryString(params);
@@ -269,69 +219,18 @@ const PreviewEngine: React.FC = () => {
 
   return (
     <div className="preview-engine-page" data-preview-scroll-container="true">
-      {shouldUseLayout ? (
-        <div className="site-preview-layout">
-          <header className="site-preview-layout__header">
-            <div className="site-preview-layout__brand">站点预览</div>
-            <div className="site-preview-layout__title">{currentTitle}</div>
-          </header>
-          <div className="site-preview-layout__body">
-            <aside className="site-preview-layout__aside">
-              <div className="site-preview-layout__aside-title">页面导航</div>
-              <div className="site-preview-layout__nav">
-                {navigationItems.length > 0 ? navigationItems.map((item) => {
-                  const active = normalizeRoutePath(item.routePath) === routePathFromLocation;
-                  return (
-                    <button
-                      key={item.pageId}
-                      type="button"
-                      className={`site-preview-layout__nav-item${active ? ' is-active' : ''}`}
-                      onClick={() => navigate(`/site-preview${normalizeRoutePath(item.routePath)}`)}
-                    >
-                      {item.title}
-                    </button>
-                  );
-                }) : (
-                  <div className="site-preview-layout__nav-empty">暂无可导航页面</div>
-                )}
-              </div>
-            </aside>
-
-            <main className="site-preview-layout__content">
-              <div className="preview-engine-canvas" data-preview-page>
-                {routeNotFound ? (
-                  <div className="preview-route-status preview-route-status--not-found">
-                    <div className="preview-route-status__title">未匹配到路由页面</div>
-                    <div className="preview-route-status__desc">当前路径 {normalizedCurrentRoutePath} 未配置页面，请检查路由配置。</div>
-                  </div>
-                ) : routeEmpty ? (
-                  <div className="preview-route-status preview-route-status--empty">
-                    <div className="preview-route-status__title">当前路由内容为空</div>
-                    <div className="preview-route-status__desc">该路由已匹配，但页面尚未添加组件。</div>
-                  </div>
-                ) : (
-                  (renderTree.children ?? []).map((child) => (
-                    <PreviewRenderer key={child.key} node={child} onLifecycle={handleLifecycle} />
-                  ))
-                )}
-              </div>
-            </main>
+      <div className="preview-engine-canvas" data-preview-page>
+        {routeEmpty ? (
+          <div className="preview-route-status preview-route-status--empty">
+            <div className="preview-route-status__title">当前路由内容为空</div>
+            <div className="preview-route-status__desc">页面中暂无可渲染组件，请先在搭建器中添加内容。</div>
           </div>
-        </div>
-      ) : (
-        <div className="preview-engine-canvas" data-preview-page>
-          {routeEmpty ? (
-            <div className="preview-route-status preview-route-status--empty">
-              <div className="preview-route-status__title">当前路由内容为空</div>
-              <div className="preview-route-status__desc">页面中暂无可渲染组件，请先在搭建器中添加内容。</div>
-            </div>
-          ) : (
-            (renderTree.children ?? []).map((child) => (
-              <PreviewRenderer key={child.key} node={child} onLifecycle={handleLifecycle} />
-            ))
-          )}
-        </div>
-      )}
+        ) : (
+          (renderTree.children ?? []).map((child) => (
+            <PreviewRenderer key={child.key} node={child} onLifecycle={handleLifecycle} />
+          ))
+        )}
+      </div>
     </div>
   );
 };
