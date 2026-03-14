@@ -25,7 +25,7 @@ const ComponentAsideRight: React.FC = () => {
 					<ComponentLibraryPanel selectedName={selectedName} onSelect={setSelectedName} hideSavedComponents />
 				</div>
 				<div className={`right-panel-view ${mode === 'saved' ? '' : ' right-panel-view--hidden'}`}>
-					<SavedComponentPanel selectedName={selectedName} onSelect={setSelectedName} />
+					<SavedComponentPanel selectedName={selectedName} onSelect={setSelectedName} active={mode === 'saved'} />
 				</div>
 				<div className={`right-panel-view ${mode === 'config' ? '' : ' right-panel-view--hidden'}`}>
 					<ComponentConfigPanel />

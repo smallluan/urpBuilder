@@ -5,7 +5,7 @@ import PreviewRenderer from './components/PreviewRenderer';
 import { deserializePreviewSnapshot, type PreviewSnapshot } from './utils/snapshot';
 import { createPreviewDataHub, type DataHubRouterState } from './runtime/dataHub';
 import { createPreviewFlowRuntime, type PreviewFlowRuntime } from './runtime/flowRuntime';
-import { getPageBaseList, getPageDetail } from '../../api/pageTemplate';
+import { getPageTemplateBaseList, getPageTemplateDetail } from '../../api/pageTemplate';
 import type { UiTreeNode } from '../../builder/store/types';
 import './style.less';
 
@@ -73,7 +73,7 @@ const PreviewEngine: React.FC = () => {
       return;
     }
 
-    getPageBaseList({ routePath: routePathFromLocation, entityType: 'page', page: 1, pageSize: 1 })
+    getPageTemplateBaseList({ routePath: routePathFromLocation, page: 1, pageSize: 1 })
       .then((res) => {
         const target = res.data?.list?.[0];
         if (!target?.pageId) {
@@ -90,7 +90,7 @@ const PreviewEngine: React.FC = () => {
   React.useEffect(() => {
     const finalPageId = pageId || resolvedPageId;
     if (parsedSnapshot || !finalPageId) return;
-    getPageDetail(finalPageId)
+    getPageTemplateDetail(finalPageId)
       .then((res) => {
         const template = res.data?.template;
         if (!template) return;

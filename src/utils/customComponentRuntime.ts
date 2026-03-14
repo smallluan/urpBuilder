@@ -1,6 +1,6 @@
 import cloneDeep from 'lodash/cloneDeep';
-import { getPageDetail } from '../api/pageTemplate';
-import type { PageDetail } from '../api/types';
+import { getComponentTemplateDetail } from '../api/componentTemplate';
+import type { ComponentDetail } from '../api/types';
 import type { UiTreeNode } from '../builder/store/types';
 
 interface ComponentContract {
@@ -57,7 +57,7 @@ const tryParseJsonObject = (value: unknown): Record<string, unknown> | null => {
   return null;
 };
 
-const resolveComponentContract = (detail: PageDetail | null): ComponentContract | null => {
+const resolveComponentContract = (detail: ComponentDetail | null): ComponentContract | null => {
   const pageConfigRaw = detail?.template?.pageConfig;
   const pageConfig = tryParseJsonObject(pageConfigRaw);
   if (!pageConfig) {
@@ -73,7 +73,7 @@ const resolveComponentContract = (detail: PageDetail | null): ComponentContract 
   return contractObject as ComponentContract;
 };
 
-const resolveFlowNodeExposedProps = (detail: PageDetail | null): ExposedPropRefItem[] => {
+const resolveFlowNodeExposedProps = (detail: ComponentDetail | null): ExposedPropRefItem[] => {
   const flowNodes = Array.isArray(detail?.template?.flowNodes)
     ? (detail?.template?.flowNodes as Array<Record<string, unknown>>)
     : [];
@@ -104,7 +104,7 @@ const resolveFlowNodeExposedProps = (detail: PageDetail | null): ExposedPropRefI
   return result;
 };
 
-const resolveFlowNodeExposedLifecycles = (detail: PageDetail | null): string[] => {
+const resolveFlowNodeExposedLifecycles = (detail: ComponentDetail | null): string[] => {
   const flowNodes = Array.isArray(detail?.template?.flowNodes)
     ? (detail?.template?.flowNodes as Array<Record<string, unknown>>)
     : [];
@@ -127,7 +127,7 @@ const resolveFlowNodeExposedLifecycles = (detail: PageDetail | null): string[] =
   return Array.from(new Set(lifecycles));
 };
 
-const detailCache = new Map<string, Promise<PageDetail | null>>();
+const detailCache = new Map<string, Promise<ComponentDetail | null>>();
 
 const normalizeComponentId = (componentId: string) => String(componentId ?? '').trim();
 
@@ -216,7 +216,7 @@ const findSourceNodeByExposeItem = (
   return findNodeByKey(templateRoot, sourceKey);
 };
 
-export const resolveExposedPropSchemas = (detail: PageDetail | null): ExposedPropSchemaItem[] => {
+export const resolveExposedPropSchemas = (detail: ComponentDetail | null): ExposedPropSchemaItem[] => {
   const templateRoot = cloneTemplateUiTree(detail);
   if (!templateRoot) {
     return [];
@@ -262,7 +262,7 @@ export const resolveExposedPropSchemas = (detail: PageDetail | null): ExposedPro
   return Array.from(map.values());
 };
 
-export const resolveExposedLifecycles = (detail: PageDetail | null): string[] => {
+export const resolveExposedLifecycles = (detail: ComponentDetail | null): string[] => {
   const contract = resolveComponentContract(detail);
   const contractLifecycles = Array.isArray(contract?.exposedLifecycles) ? contract?.exposedLifecycles : [];
   const lifecycles = contractLifecycles.length > 0
@@ -280,7 +280,7 @@ export const resolveExposedLifecycles = (detail: PageDetail | null): string[] =>
   );
 };
 
-export const loadCustomComponentDetail = async (componentId: string, options?: { forceRefresh?: boolean }): Promise<PageDetail | null> => {
+export const loadCustomComponentDetail = async (componentId: string, options?: { forceRefresh?: boolean }): Promise<ComponentDetail | null> => {
   const normalizedId = normalizeComponentId(componentId);
   if (!normalizedId) {
     return null;
@@ -293,7 +293,7 @@ export const loadCustomComponentDetail = async (componentId: string, options?: {
   if (!detailCache.has(normalizedId)) {
     detailCache.set(
       normalizedId,
-      getPageDetail(normalizedId)
+      getComponentTemplateDetail(normalizedId)
         .then((res) => res.data ?? null)
         .catch(() => null),
     );
@@ -302,7 +302,7 @@ export const loadCustomComponentDetail = async (componentId: string, options?: {
   return detailCache.get(normalizedId) ?? null;
 };
 
-export const cloneTemplateUiTree = (detail: PageDetail | null): UiTreeNode | null => {
+export const cloneTemplateUiTree = (detail: ComponentDetail | null): UiTreeNode | null => {
   const tree = detail?.template?.uiTree as unknown;
   if (!tree || typeof tree !== 'object' || Array.isArray(tree)) {
     return null;
@@ -314,7 +314,7 @@ export const cloneTemplateUiTree = (detail: PageDetail | null): UiTreeNode | nul
 export const applyExposedPropsToTemplate = (
   instanceNode: UiTreeNode,
   templateRoot: UiTreeNode,
-  detail: PageDetail | null,
+  detail: ComponentDetail | null,
 ): UiTreeNode => {
   const contract = resolveComponentContract(detail);
   const contractExposedProps = Array.isArray(contract?.exposedProps) ? contract?.exposedProps ?? [] : [];

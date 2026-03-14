@@ -3,7 +3,7 @@ import { Input, Select } from 'tdesign-react';
 import { SearchIcon } from 'tdesign-icons-react';
 import { Boxes } from 'lucide-react';
 import DragableWrapper from '../../components/DragableWrapper';
-import { getPageBaseList, getPageDetail } from '../../api/pageTemplate';
+import { getComponentBaseList, getComponentTemplateDetail } from '../../api/componentTemplate';
 import { resolveExposedLifecycles, resolveExposedPropSchemas } from '../../utils/customComponentRuntime';
 
 interface CustomComponentSchema {
@@ -16,9 +16,10 @@ interface CustomComponentSchema {
 interface SavedComponentPanelProps {
   selectedName: string | null;
   onSelect: (name: string) => void;
+  active?: boolean;
 }
 
-const SavedComponentPanel: React.FC<SavedComponentPanelProps> = ({ selectedName, onSelect }) => {
+const SavedComponentPanel: React.FC<SavedComponentPanelProps> = ({ selectedName, onSelect, active = true }) => {
   const [keyword, setKeyword] = useState('');
   const [category, setCategory] = useState('all');
   const [customComponentSchemas, setCustomComponentSchemas] = useState<CustomComponentSchema[]>([]);
@@ -29,17 +30,21 @@ const SavedComponentPanel: React.FC<SavedComponentPanelProps> = ({ selectedName,
   };
 
   useEffect(() => {
+    if (!active) {
+      return undefined;
+    }
+
     let cancelled = false;
 
     const buildCustomComponentSchemas = async () => {
       try {
-        const baseListResult = await getPageBaseList({ page: 1, pageSize: 50 });
+        const baseListResult = await getComponentBaseList({ page: 1, pageSize: 50 });
         const list = Array.isArray(baseListResult.data?.list) ? baseListResult.data.list : [];
 
         const details = await Promise.all(
           list.map(async (item) => {
             try {
-              const detail = await getPageDetail(String(item.pageId));
+              const detail = await getComponentTemplateDetail(String(item.pageId));
               return {
                 base: item,
                 detail: detail.data,
@@ -105,7 +110,7 @@ const SavedComponentPanel: React.FC<SavedComponentPanelProps> = ({ selectedName,
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [active]);
 
   const filteredCustomComponentSchemas = useMemo(() => {
     const text = keyword.trim().toLowerCase();

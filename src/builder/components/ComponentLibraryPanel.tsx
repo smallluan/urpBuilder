@@ -31,7 +31,7 @@ import type { LucideIcon } from 'lucide-react';
 import componentCatalog from '../../config/componentCatalog';
 import { componentLibraryEntries, groupedComponentTypes, type ComponentLibraryCategory, type ComponentLibraryEntry, type ComponentLibraryGroupEntry } from '../../config/componentLibrary';
 import DragableWrapper from '../../components/DragableWrapper';
-import { getPageBaseList, getPageDetail } from '../../api/pageTemplate';
+import { getComponentBaseList, getComponentTemplateDetail } from '../../api/componentTemplate';
 import { resolveExposedLifecycles, resolveExposedPropSchemas } from '../../utils/customComponentRuntime';
 
 interface CustomComponentSchema {
@@ -366,13 +366,13 @@ const ComponentLibraryPanel: React.FC<ComponentLibraryPanelProps> = ({ selectedN
 
     const buildCustomComponentSchemas = async () => {
       try {
-        const baseListResult = await getPageBaseList({ page: 1, pageSize: 50 });
+        const baseListResult = await getComponentBaseList({ page: 1, pageSize: 50 });
         const list = Array.isArray(baseListResult.data?.list) ? baseListResult.data.list : [];
 
         const details = await Promise.all(
           list.map(async (item) => {
             try {
-              const detail = await getPageDetail(String(item.pageId));
+              const detail = await getComponentTemplateDetail(String(item.pageId));
               return {
                 base: item,
                 detail: detail.data,

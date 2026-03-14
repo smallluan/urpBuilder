@@ -4,7 +4,7 @@ import './style.less';
 import HeaderControls from '../../builder/components/HeaderControls';
 import ComponentLayout from './ComponentLayout';
 import FlowLayout from '../../builder/flow/FlowLayout';
-import { getPageDetail } from '../../api/pageTemplate';
+import { getComponentTemplateDetail } from '../../api/componentTemplate';
 import { emitApiAlert } from '../../api/alertBus';
 import { useCreateComponentStore } from './store';
 import { BuilderProvider } from '../../builder/context/BuilderContext';
@@ -12,14 +12,29 @@ import { BuilderShell } from '../../builder/components/BuilderShell';
 import type { Edge, Node } from '@xyflow/react';
 import type { UiTreeNode, BuiltInLayoutTemplateId } from '../../builder/store/types';
 
+const resolveValidTemplateIdFromUrl = () => {
+  const searchParams = new URLSearchParams(window.location.search);
+  const rawId = (searchParams.get('id') || searchParams.get('pageId') || '').trim();
+
+  if (!rawId) {
+    return '';
+  }
+
+  const normalized = rawId.toLowerCase();
+  if (normalized === 'undefined' || normalized === 'null' || normalized === '-') {
+    return '';
+  }
+
+  return rawId;
+};
+
 const CreateComponent: React.FC = () => {
   const [mode, setMode] = useState<'component' | 'flow'>('component');
   const loadedPageIdRef = useRef<string | null>(null);
   const setCurrentPageMeta = useCreateComponentStore((state) => state.setCurrentPageMeta);
 
   useEffect(() => {
-    const searchParams = new URLSearchParams(window.location.search);
-    const pageId = (searchParams.get('id') || searchParams.get('pageId') || '').trim();
+    const pageId = resolveValidTemplateIdFromUrl();
 
     if (!pageId) {
       return;
@@ -34,7 +49,7 @@ const CreateComponent: React.FC = () => {
 
     const loadPageDetail = async () => {
       try {
-        const response = await getPageDetail(pageId);
+        const response = await getComponentTemplateDetail(pageId);
         const detail = response.data;
         const template = detail?.template;
 

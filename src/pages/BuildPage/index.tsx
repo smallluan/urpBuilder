@@ -1,16 +1,17 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Input, Button, Table } from 'tdesign-react';
+import { Input, Button, Dialog, Table } from 'tdesign-react';
 import { AddIcon, SearchIcon, EditIcon, DeleteIcon, BrowseIcon } from 'tdesign-icons-react';
 import type { PrimaryTableCol } from 'tdesign-react/es/table/type';
-import { getPageBaseList } from '../../api/pageTemplate';
-import type { PageBaseInfo } from '../../api/types';
+import { deletePageTemplate, getPageTemplateBaseList } from '../../api/pageTemplate';
+import type { PageTemplateBaseInfo } from '../../api/types';
+import { emitApiAlert } from '../../api/alertBus';
 import './style.less';
 
 interface PageTemplateRow {
   id: string;
   pageId: string;
   pageName: string;
-  status: PageBaseInfo['status'];
+  status: PageTemplateBaseInfo['status'];
   currentVersion: number;
   routePath: string;
   pageTitle: string;
@@ -18,6 +19,11 @@ interface PageTemplateRow {
   useLayout: string;
   updatedAt: string;
 }
+
+const isValidTemplateId = (value: string) => {
+  const normalized = value.trim().toLowerCase();
+  return Boolean(normalized) && normalized !== 'undefined' && normalized !== 'null' && normalized !== '-';
+};
 
 const toSafeText = (value: unknown) => {
   if (typeof value === 'string') {
@@ -63,13 +69,14 @@ const BuildPage: React.FC = () => {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [total, setTotal] = useState(0);
+  const [deleteTarget, setDeleteTarget] = useState<PageTemplateRow | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const fetchPageList = useCallback(async (params: { page: number; pageSize: number; pageName?: string }) => {
     setLoading(true);
     try {
-      const result = await getPageBaseList({
+      const result = await getPageTemplateBaseList({
         ...params,
-        entityType: 'page',
       });
       const rawList = Array.isArray(result.data?.list) ? result.data.list : [];
       const nextList = rawList.map((item) => ({
@@ -118,6 +125,11 @@ const BuildPage: React.FC = () => {
   };
 
   const handlePreview = (row: PageTemplateRow) => {
+    if (!isValidTemplateId(row.pageId)) {
+      emitApiAlert('操作失败', '当前记录缺少有效页面 ID，无法预览');
+      return;
+    }
+
     const routePath = row.routePath !== '-' ? row.routePath : '';
     const previewUrl = routePath
       ? `${window.location.origin}/site-preview${routePath}`
@@ -126,12 +138,50 @@ const BuildPage: React.FC = () => {
   };
 
   const handleEdit = (row: PageTemplateRow) => {
+    if (!isValidTemplateId(row.pageId)) {
+      emitApiAlert('操作失败', '当前记录缺少有效页面 ID，无法进入编辑');
+      return;
+    }
+
     const editUrl = `${window.location.origin}/create-page?id=${encodeURIComponent(row.pageId)}`;
     window.open(editUrl, '_blank');
   };
 
-  const handleDelete = (_row: PageTemplateRow) => {
-    // 删除接口待后续接入
+  const handleDelete = (row: PageTemplateRow) => {
+    setDeleteTarget(row);
+  };
+
+  const handleCancelDelete = () => {
+    if (deleting) {
+      return;
+    }
+
+    setDeleteTarget(null);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget?.pageId || deleting) {
+      return;
+    }
+
+    if (!isValidTemplateId(deleteTarget.pageId)) {
+      emitApiAlert('操作失败', '当前记录缺少有效页面 ID，无法删除');
+      return;
+    }
+
+    setDeleting(true);
+    try {
+      await deletePageTemplate(deleteTarget.pageId);
+      emitApiAlert('删除成功', `页面 ${deleteTarget.pageName} 已删除`, 'success');
+      setDeleteTarget(null);
+      fetchPageList({
+        page,
+        pageSize,
+        pageName: query.trim() || undefined,
+      });
+    } finally {
+      setDeleting(false);
+    }
   };
 
   const buildColumns = useMemo<PrimaryTableCol<PageTemplateRow>[]>(
@@ -225,6 +275,26 @@ const BuildPage: React.FC = () => {
           style={{ minWidth: '1440px' }}
         />
       </div>
+
+      <Dialog
+        visible={Boolean(deleteTarget)}
+        header="确认删除页面"
+        confirmBtn={{
+          theme: 'danger',
+          loading: deleting,
+          content: '确认删除',
+        }}
+        cancelBtn={{
+          disabled: deleting,
+          content: '取消',
+        }}
+        onClose={handleCancelDelete}
+        onConfirm={handleConfirmDelete}
+      >
+        <div>
+          即将删除页面“{deleteTarget?.pageName || '-'}”（ID: {deleteTarget?.pageId || '-'}）。删除后不可恢复，请确认。
+        </div>
+      </Dialog>
     </div>
   );
 };

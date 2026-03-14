@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import type { Edge, Node } from '@xyflow/react';
-import { getPageDetail } from '../../api/pageTemplate';
+import { getPageTemplateDetail } from '../../api/pageTemplate';
 import { emitApiAlert } from '../../api/alertBus';
 import HeaderControls from '../../builder/components/HeaderControls';
 import { BuilderShell } from '../../builder/components/BuilderShell';
@@ -13,6 +13,22 @@ import type { BuiltInLayoutTemplateId, PageRouteConfig, PageRouteRecord, UiTreeN
 import { findNodeByKey, updateNodeByKey } from '../../utils/createComponentTree';
 import { useCreatePageStore } from './store';
 import PageRouteToolbar from './components/PageRouteToolbar.tsx';
+
+const resolveValidTemplateIdFromUrl = () => {
+  const searchParams = new URLSearchParams(window.location.search);
+  const rawId = (searchParams.get('id') || searchParams.get('pageId') || '').trim();
+
+  if (!rawId) {
+    return '';
+  }
+
+  const normalized = rawId.toLowerCase();
+  if (normalized === 'undefined' || normalized === 'null' || normalized === '-') {
+    return '';
+  }
+
+  return rawId;
+};
 
 const normalizeRouteConfig = (value: unknown): PageRouteConfig | null => {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
@@ -161,7 +177,7 @@ const PageLayout: React.FC = () => {
 const CreatePage: React.FC = () => {
   const [mode, setMode] = useState<'component' | 'flow'>('component');
   const loadedPageIdRef = useRef<string | null>(null);
-  const pageIdFromUrl = new URLSearchParams(window.location.search).get('id') || new URLSearchParams(window.location.search).get('pageId') || '';
+  const pageIdFromUrl = resolveValidTemplateIdFromUrl();
   const setCurrentPageMeta = useCreatePageStore((state) => state.setCurrentPageMeta);
   const pageRoutes = useCreatePageStore((state) => state.pageRoutes);
   const activePageRouteId = useCreatePageStore((state) => state.activePageRouteId);
@@ -202,8 +218,7 @@ const CreatePage: React.FC = () => {
   }, [activePageRouteId, uiPageData, flowNodes, flowEdges, selectedLayoutTemplateId, pageRouteConfig, syncActivePageRouteSnapshot]);
 
   useEffect(() => {
-    const searchParams = new URLSearchParams(window.location.search);
-    const pageId = (searchParams.get('id') || searchParams.get('pageId') || '').trim();
+    const pageId = resolveValidTemplateIdFromUrl();
 
     if (!pageId) {
       return;
@@ -218,7 +233,7 @@ const CreatePage: React.FC = () => {
 
     const loadPageDetail = async () => {
       try {
-        const response = await getPageDetail(pageId);
+        const response = await getPageTemplateDetail(pageId);
         const detail = response.data;
         const template = detail?.template;
 

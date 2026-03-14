@@ -7,6 +7,7 @@ import type { UiHistoryAction } from '../store/types';
 import { serializePreviewSnapshot } from '../../pages/PreviewEngine/utils/snapshot';
 import { buildComponentContract } from '../flow/componentContract';
 import { savePageDraft, updatePageDraft } from '../../api/pageTemplate';
+import { saveComponentDraft, updateComponentDraft } from '../../api/componentTemplate';
 import { emitApiAlert } from '../../api/alertBus';
 import { findNodeByKey, updateNodeByKey } from '../../utils/createComponentTree';
 
@@ -453,48 +454,69 @@ const HeaderControls: React.FC<Props> = ({
         ? pageRoutes
         : [];
 
-      const payload = {
-        base: {
-          pageId,
-          pageName,
-          entityType,
+      const templatePayload = {
+        uiTree: uiTreeData as unknown as Record<string, unknown>,
+        flowNodes: flowNodes as unknown as Array<Record<string, unknown>>,
+        flowEdges: flowEdges as unknown as Array<Record<string, unknown>>,
+        ...(resolvedPageRoutes.length > 0 ? {
+          routes: resolvedPageRoutes.map((route) => ({
+            routeId: route.routeId,
+            routeConfig: route.routeConfig,
+            uiTree: route.uiTree as unknown as Record<string, unknown>,
+            flowNodes: route.flowNodes as unknown as Array<Record<string, unknown>>,
+            flowEdges: route.flowEdges as unknown as Array<Record<string, unknown>>,
+            selectedLayoutTemplateId: route.selectedLayoutTemplateId,
+          })),
+        } : {}),
+        pageConfig: {
           screenSize,
           autoWidth,
-        },
-        template: {
-          uiTree: uiTreeData as unknown as Record<string, unknown>,
-          flowNodes: flowNodes as unknown as Array<Record<string, unknown>>,
-          flowEdges: flowEdges as unknown as Array<Record<string, unknown>>,
-          ...(resolvedPageRoutes.length > 0 ? {
-            routes: resolvedPageRoutes.map((route) => ({
-              routeId: route.routeId,
-              routeConfig: route.routeConfig,
-              uiTree: route.uiTree as unknown as Record<string, unknown>,
-              flowNodes: route.flowNodes as unknown as Array<Record<string, unknown>>,
-              flowEdges: route.flowEdges as unknown as Array<Record<string, unknown>>,
-              selectedLayoutTemplateId: route.selectedLayoutTemplateId,
-            })),
+          selectedLayoutTemplateId,
+          ...(enablePageRouteConfig && pageRouteConfig ? { routeConfig: pageRouteConfig } : {}),
+          ...(enablePageRouteConfig ? {
+            ...(activeRouteOutletKey ? { activeRouteOutletKey } : {}),
+            ...(sharedUiTree ? { sharedUiTree: sharedUiTree as unknown as Record<string, unknown> } : {}),
+            sharedFlowNodes: sharedFlowNodes as unknown as Array<Record<string, unknown>>,
+            sharedFlowEdges: sharedFlowEdges as unknown as Array<Record<string, unknown>>,
           } : {}),
-          pageConfig: {
-            screenSize,
-            autoWidth,
-            selectedLayoutTemplateId,
-            ...(enablePageRouteConfig && pageRouteConfig ? { routeConfig: pageRouteConfig } : {}),
-            ...(enablePageRouteConfig ? {
-              ...(activeRouteOutletKey ? { activeRouteOutletKey } : {}),
-              ...(sharedUiTree ? { sharedUiTree: sharedUiTree as unknown as Record<string, unknown> } : {}),
-              sharedFlowNodes: sharedFlowNodes as unknown as Array<Record<string, unknown>>,
-              sharedFlowEdges: sharedFlowEdges as unknown as Array<Record<string, unknown>>,
-            } : {}),
-            ...(componentContract ? { componentContract } : {}),
-          },
+          ...(componentContract ? { componentContract } : {}),
         },
       };
 
-      if (isEditMode) {
-        await updatePageDraft(currentPageId, payload);
+      if (entityType === 'component') {
+        const payload = {
+          base: {
+            pageId,
+            pageName,
+            entityType: 'component' as const,
+            screenSize,
+            autoWidth,
+          },
+          template: templatePayload,
+        };
+
+        if (isEditMode) {
+          await updateComponentDraft(currentPageId, payload);
+        } else {
+          await saveComponentDraft(payload);
+        }
       } else {
-        await savePageDraft(payload);
+        const payload = {
+          base: {
+            pageId,
+            pageName,
+            entityType: 'page' as const,
+            screenSize,
+            autoWidth,
+          },
+          template: templatePayload,
+        };
+
+        if (isEditMode) {
+          await updatePageDraft(currentPageId, payload);
+        } else {
+          await savePageDraft(payload);
+        }
       }
 
       setCurrentPageMeta({
