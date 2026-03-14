@@ -4,6 +4,7 @@ import { UploadIcon, ViewImageIcon, ArrowLeftIcon, ArrowRightIcon, HistoryIcon }
 import { useBuilderContext } from '../context/BuilderContext';
 import type { UiHistoryAction } from '../store/types';
 import { serializePreviewSnapshot } from '../../pages/PreviewEngine/utils/snapshot';
+import { buildComponentContract } from '../flow/componentContract';
 import { savePageDraft, updatePageDraft } from '../../api/pageTemplate';
 import { emitApiAlert } from '../../api/alertBus';
 
@@ -12,6 +13,7 @@ type Props = {
   onChange: (v: 'component' | 'flow') => void;
   designLabel?: string;
   saveEntityLabel?: string;
+  enableComponentContract?: boolean;
 };
 
 const toReadableValue = (value: unknown) => {
@@ -101,6 +103,7 @@ const HeaderControls: React.FC<Props> = ({
   onChange,
   designLabel = '组件',
   saveEntityLabel = '组件',
+  enableComponentContract = false,
 }) => {
   const { useStore } = useBuilderContext();
   const history = useStore((state) => state.history);
@@ -194,6 +197,10 @@ const HeaderControls: React.FC<Props> = ({
     setSaving(true);
 
     try {
+      const componentContract = enableComponentContract
+        ? buildComponentContract(uiTreeData, flowNodes, flowEdges)
+        : null;
+
       const payload = {
         base: {
           pageId,
@@ -209,6 +216,7 @@ const HeaderControls: React.FC<Props> = ({
             screenSize,
             autoWidth,
             selectedLayoutTemplateId,
+            ...(componentContract ? { componentContract } : {}),
           },
         },
       };

@@ -4,7 +4,13 @@ export interface FlowComponentDragPayload {
   componentType?: string;
   sourceKey?: string;
   lifetimes?: string[];
-  nodeType?: string;
+  nodeType?:
+    | 'eventFilterNode'
+    | 'codeNode'
+    | 'networkRequestNode'
+    | 'timerNode'
+    | 'propExposeNode'
+    | 'lifecycleExposeNode';
   label?: string;
 }
 
@@ -55,6 +61,23 @@ export interface TimerNodeData extends FlowNodeActionHandlers {
   intervalMs?: number;
 }
 
+export interface PropExposeNodeData extends FlowNodeActionHandlers {
+  label?: string;
+  sourceNodeId?: string;
+  sourceKey?: string;
+  sourceLabel?: string;
+  availablePropKeys?: string[];
+  selectedPropKeys?: string[];
+}
+
+export interface LifecycleExposeNodeData extends FlowNodeActionHandlers {
+  label?: string;
+  upstreamNodeId?: string;
+  upstreamLabel?: string;
+  availableLifetimes?: string[];
+  selectedLifetimes?: string[];
+}
+
 export interface AnnotationNodeData extends FlowNodeActionHandlers {
   text?: string;
   onChange?: (nodeId: string, text: string) => void;
@@ -82,4 +105,18 @@ export interface EventFilterFormState {
 export interface TimerNodeFormState {
   label: string;
   intervalMs: number;
+}
+
+export interface PropExposeNodeFormState {
+  label: string;
+  sourceLabel: string;
+  availablePropKeys: string[];
+  selectedPropKeys: string[];
+}
+
+export interface LifecycleExposeNodeFormState {
+  label: string;
+  upstreamLabel: string;
+  availableLifetimes: string[];
+  selectedLifetimes: string[];
 }

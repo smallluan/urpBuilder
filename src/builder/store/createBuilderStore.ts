@@ -233,7 +233,7 @@ export const createBuilderStore = (options: CreateBuilderStoreOptions = {}) => {
         }));
 
         const nextFlowNodes = state.flowNodes.map((node) => {
-          if (node.type !== 'componentNode') return node;
+          if (node.type !== 'componentNode' && node.type !== 'propExposeNode') return node;
           const nodeData = (node.data ?? {}) as { sourceKey?: string };
           if (nodeData.sourceKey !== prevKey) return node;
           return { ...node, data: { ...nodeData, sourceKey: trimmedKey } };
@@ -358,7 +358,7 @@ export const createBuilderStore = (options: CreateBuilderStoreOptions = {}) => {
 
         const removedTreeKeys = collectTreeKeys(result.removedNode);
         const flowNodesToRemove = state.flowNodes.filter((node) => {
-          if (node.type !== 'componentNode') return false;
+          if (node.type !== 'componentNode' && node.type !== 'propExposeNode') return false;
           const sourceKey = (node.data as { sourceKey?: string } | undefined)?.sourceKey;
           return typeof sourceKey === 'string' && removedTreeKeys.has(sourceKey);
         });
@@ -372,26 +372,73 @@ export const createBuilderStore = (options: CreateBuilderStoreOptions = {}) => {
         const nextFlowNodes = state.flowNodes
           .filter((node) => !removedFlowNodeIds.has(node.id))
           .map((node) => {
-            if (node.type !== 'eventFilterNode') return node;
-            const nodeData = (node.data ?? {}) as {
-              upstreamNodeId?: string;
-              upstreamLabel?: string;
-              availableLifetimes?: string[];
-              selectedLifetimes?: string[];
-            };
-            if (!nodeData.upstreamNodeId || !removedFlowNodeIds.has(nodeData.upstreamNodeId)) {
-              return node;
+            if (node.type === 'eventFilterNode') {
+              const nodeData = (node.data ?? {}) as {
+                upstreamNodeId?: string;
+                upstreamLabel?: string;
+                availableLifetimes?: string[];
+                selectedLifetimes?: string[];
+              };
+              if (!nodeData.upstreamNodeId || !removedFlowNodeIds.has(nodeData.upstreamNodeId)) {
+                return node;
+              }
+              return {
+                ...node,
+                data: {
+                  ...nodeData,
+                  upstreamNodeId: undefined,
+                  upstreamLabel: undefined,
+                  availableLifetimes: [],
+                  selectedLifetimes: [],
+                },
+              };
             }
-            return {
-              ...node,
-              data: {
-                ...nodeData,
-                upstreamNodeId: undefined,
-                upstreamLabel: undefined,
-                availableLifetimes: [],
-                selectedLifetimes: [],
-              },
-            };
+
+            if (node.type === 'lifecycleExposeNode') {
+              const nodeData = (node.data ?? {}) as {
+                upstreamNodeId?: string;
+                upstreamLabel?: string;
+                availableLifetimes?: string[];
+                selectedLifetimes?: string[];
+              };
+              if (!nodeData.upstreamNodeId || !removedFlowNodeIds.has(nodeData.upstreamNodeId)) {
+                return node;
+              }
+              return {
+                ...node,
+                data: {
+                  ...nodeData,
+                  upstreamNodeId: undefined,
+                  upstreamLabel: undefined,
+                  availableLifetimes: [],
+                  selectedLifetimes: [],
+                },
+              };
+            }
+
+            if (node.type === 'propExposeNode') {
+              const nodeData = (node.data ?? {}) as {
+                sourceNodeId?: string;
+                sourceLabel?: string;
+                availablePropKeys?: string[];
+                selectedPropKeys?: string[];
+              };
+              if (!nodeData.sourceNodeId || !removedFlowNodeIds.has(nodeData.sourceNodeId)) {
+                return node;
+              }
+              return {
+                ...node,
+                data: {
+                  ...nodeData,
+                  sourceNodeId: undefined,
+                  sourceLabel: undefined,
+                  availablePropKeys: [],
+                  selectedPropKeys: [],
+                },
+              };
+            }
+
+            return node;
           });
 
         const nextFlowNodeIds = new Set(nextFlowNodes.map((node) => node.id));

@@ -27,9 +27,12 @@ import type {
   ComponentFlowNodeData,
   EventFilterNodeData,
   FlowComponentDragPayload,
+  LifecycleExposeNodeData,
+  PropExposeNodeData,
   TimerNodeData,
 } from '../../types/flow';
 import { CORE_LIFETIMES } from '../../constants/componentBuilder';
+import { findNodeByKey } from '../../utils/createComponentTree';
 
 const FLOW_DRAG_DATA_KEY = 'drag-component-data';
 
@@ -39,9 +42,13 @@ const EVENT_FILTER_TRACE_COLOR = '#2ba471';
 const CODE_TRACE_COLOR = '#6f5af0';
 const NETWORK_REQUEST_TRACE_COLOR = '#eb6f0a';
 const TIMER_TRACE_COLOR = '#0f766e';
+const PROP_EXPOSE_TRACE_COLOR = '#2f7cf6';
+const LIFECYCLE_EXPOSE_TRACE_COLOR = '#7b61ff';
 const COMPONENT_FALLBACK_LIFETIMES: Record<string, string[]> = {
   Slider: ['onChange'],
 };
+
+const RESERVED_COMPONENT_PROP_KEYS = new Set(['__style', '__slot']);
 
 const resolveFlowLifetimes = (lifetimes: unknown, componentType?: string): string[] => {
   const list = Array.isArray(lifetimes)
@@ -58,6 +65,16 @@ const resolveFlowLifetimes = (lifetimes: unknown, componentType?: string): strin
   }
 
   return CORE_LIFETIMES;
+};
+
+const resolveConfigurablePropKeys = (props: unknown): string[] => {
+  if (!props || typeof props !== 'object' || Array.isArray(props)) {
+    return [];
+  }
+
+  return Object.keys(props as Record<string, unknown>)
+    .filter((key) => key && !RESERVED_COMPONENT_PROP_KEYS.has(key))
+    .sort((a, b) => a.localeCompare(b, 'zh-CN'));
 };
 
 const createFlowNodeId = (prefix: string) =>
@@ -166,6 +183,14 @@ const FlowCanvas: React.FC = () => {
 
     if (activeNode.type === 'timerNode') {
       return TIMER_TRACE_COLOR;
+    }
+
+    if (activeNode.type === 'propExposeNode') {
+      return PROP_EXPOSE_TRACE_COLOR;
+    }
+
+    if (activeNode.type === 'lifecycleExposeNode') {
+      return LIFECYCLE_EXPOSE_TRACE_COLOR;
     }
 
     return COMPONENT_TRACE_COLOR;
@@ -432,7 +457,9 @@ const FlowCanvas: React.FC = () => {
           targetNode.type === 'codeNode' ||
           targetNode.type === 'eventFilterNode' ||
           targetNode.type === 'networkRequestNode' ||
-          targetNode.type === 'timerNode')
+          targetNode.type === 'timerNode' ||
+          targetNode.type === 'propExposeNode' ||
+          targetNode.type === 'lifecycleExposeNode')
       ) {
         return;
       }
@@ -457,6 +484,32 @@ const FlowCanvas: React.FC = () => {
 
         if (node.type === 'eventFilterNode') {
           const nodeData = (node.data ?? {}) as EventFilterNodeData;
+          if (nodeData.upstreamNodeId === nodeId) {
+            return {
+              ...node,
+              data: {
+                ...nodeData,
+                upstreamNodeId: nextNodeId,
+              },
+            };
+          }
+        }
+
+        if (node.type === 'propExposeNode') {
+          const nodeData = (node.data ?? {}) as PropExposeNodeData;
+          if (nodeData.sourceNodeId === nodeId) {
+            return {
+              ...node,
+              data: {
+                ...nodeData,
+                sourceNodeId: nextNodeId,
+              },
+            };
+          }
+        }
+
+        if (node.type === 'lifecycleExposeNode') {
+          const nodeData = (node.data ?? {}) as LifecycleExposeNodeData;
           if (nodeData.upstreamNodeId === nodeId) {
             return {
               ...node,
@@ -585,6 +638,90 @@ const FlowCanvas: React.FC = () => {
         });
       }
 
+      if (sourceNode?.type === 'propExposeNode' && targetNode?.type === 'componentNode') {
+        const targetData = (targetNode.data ?? {}) as ComponentFlowNodeData;
+        const sourceData = (sourceNode.data ?? {}) as PropExposeNodeData;
+        const sourceKey = String(targetData.sourceKey ?? '').trim();
+
+        if (!sourceKey) {
+          setFlowAlertMessage('属性暴露节点连接失败：目标组件节点缺少 sourceKey。');
+          return;
+        }
+
+        const existingTargets = currentEdges
+          .filter((edge) => edge.source === sourceNode.id)
+          .map((edge) => currentNodes.find((node) => node.id === edge.target))
+          .filter((node): node is Node => !!node && node.type === 'componentNode');
+
+        const hasDifferentSourceKey = existingTargets.some((node) => {
+          const data = (node.data ?? {}) as ComponentFlowNodeData;
+          return String(data.sourceKey ?? '').trim() !== sourceKey;
+        });
+
+        if (hasDifferentSourceKey) {
+          setFlowAlertMessage('同一个属性暴露节点仅能绑定同一组件来源。');
+          return;
+        }
+
+        const uiRoot = useStore.getState().uiPageData;
+        const sourceUiNode = findNodeByKey(uiRoot, sourceKey);
+        const availablePropKeys = resolveConfigurablePropKeys(sourceUiNode?.props ?? {});
+        const selectedExisting = Array.isArray(sourceData.selectedPropKeys)
+          ? sourceData.selectedPropKeys.map((item) => String(item)).filter((item) => availablePropKeys.includes(item))
+          : [];
+        const selectedPropKeys = selectedExisting.length > 0
+          ? selectedExisting
+          : (availablePropKeys.length === 1 ? [availablePropKeys[0]] : []);
+
+        nextNodes = currentNodes.map((item) => {
+          if (item.id !== sourceNode.id) {
+            return item;
+          }
+
+          const currentData = (item.data ?? {}) as PropExposeNodeData;
+          return {
+            ...item,
+            data: {
+              ...currentData,
+              sourceNodeId: targetNode.id,
+              sourceKey,
+              sourceLabel: targetData.label || targetData.componentType || '组件节点',
+              availablePropKeys,
+              selectedPropKeys,
+            },
+          };
+        });
+      }
+
+      if (sourceNode?.type === 'eventFilterNode' && targetNode?.type === 'lifecycleExposeNode') {
+        const sourceData = (sourceNode.data ?? {}) as EventFilterNodeData;
+        const availableLifetimes = Array.isArray(sourceData.availableLifetimes)
+          ? sourceData.availableLifetimes.map((item) => String(item)).filter(Boolean)
+          : [];
+        const selectedRaw = Array.isArray(sourceData.selectedLifetimes)
+          ? sourceData.selectedLifetimes.map((item) => String(item)).filter(Boolean)
+          : [];
+        const selectedLifetimes = selectedRaw.filter((item) => availableLifetimes.includes(item));
+
+        nextNodes = currentNodes.map((item) => {
+          if (item.id !== targetNode.id) {
+            return item;
+          }
+
+          const currentData = (item.data ?? {}) as LifecycleExposeNodeData;
+          return {
+            ...item,
+            data: {
+              ...currentData,
+              upstreamNodeId: sourceNode.id,
+              upstreamLabel: sourceData.label || '事件过滤节点',
+              availableLifetimes,
+              selectedLifetimes,
+            },
+          };
+        });
+      }
+
       const nextEdge: Edge = {
         id: createFlowEdgeId(params.source, params.target),
         source: params.source,
@@ -618,6 +755,7 @@ const FlowCanvas: React.FC = () => {
     }
 
     const currentNodes = useStore.getState().flowNodes;
+    const currentEdges = useStore.getState().flowEdges;
     const sourceNode = currentNodes.find((item) => item.id === params.source);
     const targetNode = currentNodes.find((item) => item.id === params.target);
 
@@ -625,8 +763,47 @@ const FlowCanvas: React.FC = () => {
       return false;
     }
 
+    if (sourceNode?.type === 'lifecycleExposeNode') {
+      return false;
+    }
+
+    if (targetNode?.type === 'propExposeNode') {
+      return false;
+    }
+
+    if (sourceNode?.type === 'propExposeNode') {
+      if (targetNode?.type !== 'componentNode') {
+        return false;
+      }
+
+      const targetData = (targetNode.data ?? {}) as ComponentFlowNodeData;
+      const sourceKey = String(targetData.sourceKey ?? '').trim();
+      if (!sourceKey) {
+        return false;
+      }
+
+      const existingTargets = currentEdges
+        .filter((edge) => edge.source === sourceNode.id)
+        .map((edge) => currentNodes.find((node) => node.id === edge.target))
+        .filter((node): node is Node => !!node && node.type === 'componentNode');
+
+      return existingTargets.every((node) => {
+        const data = (node.data ?? {}) as ComponentFlowNodeData;
+        return String(data.sourceKey ?? '').trim() === sourceKey;
+      });
+    }
+
     if (targetNode?.type === 'eventFilterNode') {
       return sourceNode?.type === 'componentNode';
+    }
+
+    if (targetNode?.type === 'lifecycleExposeNode') {
+      if (sourceNode?.type !== 'eventFilterNode') {
+        return false;
+      }
+
+      const hasUpstream = currentEdges.some((edge) => edge.target === targetNode.id);
+      return !hasUpstream;
     }
 
     return true;
@@ -768,6 +945,50 @@ const FlowCanvas: React.FC = () => {
           edges: previousEdges,
         }));
         return;
+      }
+
+      if (payload.kind === 'builtin-node' && payload.nodeType === 'propExposeNode') {
+        const nodeId = createFlowNodeId('prop-expose-node');
+        const nextNode: Node = {
+          id: nodeId,
+          type: 'propExposeNode',
+          position,
+          data: {
+            label: payload.label || '属性暴露节点',
+            sourceNodeId: undefined,
+            sourceKey: undefined,
+            sourceLabel: '',
+            availablePropKeys: [],
+            selectedPropKeys: [],
+          } satisfies PropExposeNodeData,
+        };
+
+        applyFlowEdit('新增属性暴露节点', ({ nodes: previousNodes, edges: previousEdges }) => ({
+          nodes: [...previousNodes, nextNode],
+          edges: previousEdges,
+        }));
+        return;
+      }
+
+      if (payload.kind === 'builtin-node' && payload.nodeType === 'lifecycleExposeNode') {
+        const nodeId = createFlowNodeId('lifecycle-expose-node');
+        const nextNode: Node = {
+          id: nodeId,
+          type: 'lifecycleExposeNode',
+          position,
+          data: {
+            label: payload.label || '生命周期暴露节点',
+            upstreamNodeId: undefined,
+            upstreamLabel: '',
+            availableLifetimes: [],
+            selectedLifetimes: [],
+          } satisfies LifecycleExposeNodeData,
+        };
+
+        applyFlowEdit('新增生命周期暴露节点', ({ nodes: previousNodes, edges: previousEdges }) => ({
+          nodes: [...previousNodes, nextNode],
+          edges: previousEdges,
+        }));
       }
 
     },

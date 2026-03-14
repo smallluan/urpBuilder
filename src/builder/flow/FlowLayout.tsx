@@ -13,7 +13,13 @@ import {
   ERROR_OPTIONS,
   METHOD_OPTIONS,
 } from '../../constants/flowBuilder';
-import type { EventFilterFormState, NetworkRequestFormState, TimerNodeFormState } from '../../types/flow';
+import type {
+  EventFilterFormState,
+  LifecycleExposeNodeFormState,
+  NetworkRequestFormState,
+  PropExposeNodeFormState,
+  TimerNodeFormState,
+} from '../../types/flow';
 
 interface CodeNodeFormState extends CodeEditorValue {}
 
@@ -31,6 +37,8 @@ const FlowLayout: React.FC = () => {
     codeNode: '代码节点',
     networkRequestNode: '网络请求节点',
     timerNode: '定时器节点',
+    propExposeNode: '属性暴露节点',
+    lifecycleExposeNode: '生命周期暴露节点',
     annotationNode: '注释节点',
   };
 
@@ -48,6 +56,8 @@ const FlowLayout: React.FC = () => {
   const [codeEditorVisible, setCodeEditorVisible] = useState(false);
   const [eventFilterDraft, setEventFilterDraft] = useState<EventFilterFormState | null>(null);
   const [timerDraft, setTimerDraft] = useState<TimerNodeFormState | null>(null);
+  const [propExposeDraft, setPropExposeDraft] = useState<PropExposeNodeFormState | null>(null);
+  const [lifecycleExposeDraft, setLifecycleExposeDraft] = useState<LifecycleExposeNodeFormState | null>(null);
   const [rightPanelMode, setRightPanelMode] = useState<RightPanelMode>('library');
 
   const builtinNodes = [
@@ -74,6 +84,18 @@ const FlowLayout: React.FC = () => {
       label: '定时器节点',
       theme: 'timer',
       icon: <span>⏱</span>,
+    },
+    {
+      nodeType: 'propExposeNode',
+      label: '属性暴露节点',
+      theme: 'event',
+      icon: <span>🔌</span>,
+    },
+    {
+      nodeType: 'lifecycleExposeNode',
+      label: '生命周期暴露节点',
+      theme: 'code',
+      icon: <span>📤</span>,
     },
   ] as const;
 
@@ -151,6 +173,52 @@ const FlowLayout: React.FC = () => {
     setTimerDraft({
       label: String(nodeData.label ?? '定时器节点'),
       intervalMs: Math.max(100, Number(nodeData.intervalMs ?? 1000)),
+    });
+  }, [activeFlowNode]);
+
+  useEffect(() => {
+    if (!activeFlowNode || activeFlowNode.type !== 'propExposeNode') {
+      setPropExposeDraft(null);
+      return;
+    }
+
+    const nodeData = (activeFlowNode.data ?? {}) as Record<string, unknown>;
+    const availablePropKeys = Array.isArray(nodeData.availablePropKeys)
+      ? nodeData.availablePropKeys.map((item) => String(item)).filter(Boolean)
+      : [];
+    const selectedRaw = Array.isArray(nodeData.selectedPropKeys)
+      ? nodeData.selectedPropKeys.map((item) => String(item)).filter(Boolean)
+      : [];
+    const selectedPropKeys = selectedRaw.filter((item) => availablePropKeys.includes(item));
+
+    setPropExposeDraft({
+      label: String(nodeData.label ?? '属性暴露节点'),
+      sourceLabel: String(nodeData.sourceLabel ?? '-'),
+      availablePropKeys,
+      selectedPropKeys,
+    });
+  }, [activeFlowNode]);
+
+  useEffect(() => {
+    if (!activeFlowNode || activeFlowNode.type !== 'lifecycleExposeNode') {
+      setLifecycleExposeDraft(null);
+      return;
+    }
+
+    const nodeData = (activeFlowNode.data ?? {}) as Record<string, unknown>;
+    const availableLifetimes = Array.isArray(nodeData.availableLifetimes)
+      ? nodeData.availableLifetimes.map((item) => String(item)).filter(Boolean)
+      : [];
+    const selectedRaw = Array.isArray(nodeData.selectedLifetimes)
+      ? nodeData.selectedLifetimes.map((item) => String(item)).filter(Boolean)
+      : [];
+    const selectedLifetimes = selectedRaw.filter((item) => availableLifetimes.includes(item));
+
+    setLifecycleExposeDraft({
+      label: String(nodeData.label ?? '生命周期暴露节点'),
+      upstreamLabel: String(nodeData.upstreamLabel ?? '-'),
+      availableLifetimes,
+      selectedLifetimes,
     });
   }, [activeFlowNode]);
 
@@ -249,6 +317,60 @@ const FlowLayout: React.FC = () => {
     return JSON.stringify(currentComparable) !== JSON.stringify(timerDraft);
   }, [activeFlowNode, timerDraft]);
 
+  const canApplyPropExposeDraft = useMemo(() => {
+    if (!activeFlowNode || activeFlowNode.type !== 'propExposeNode' || !propExposeDraft) {
+      return false;
+    }
+
+    const nodeData = (activeFlowNode.data ?? {}) as Record<string, unknown>;
+    const availablePropKeys = Array.isArray(nodeData.availablePropKeys)
+      ? nodeData.availablePropKeys.map((item) => String(item)).filter(Boolean)
+      : [];
+    const selectedRaw = Array.isArray(nodeData.selectedPropKeys)
+      ? nodeData.selectedPropKeys.map((item) => String(item)).filter(Boolean)
+      : [];
+    const selectedPropKeys = selectedRaw.filter((item) => availablePropKeys.includes(item));
+
+    const currentComparable = {
+      label: String(nodeData.label ?? '属性暴露节点'),
+      selectedPropKeys,
+    };
+
+    const draftComparable = {
+      label: propExposeDraft.label,
+      selectedPropKeys: propExposeDraft.selectedPropKeys,
+    };
+
+    return JSON.stringify(currentComparable) !== JSON.stringify(draftComparable);
+  }, [activeFlowNode, propExposeDraft]);
+
+  const canApplyLifecycleExposeDraft = useMemo(() => {
+    if (!activeFlowNode || activeFlowNode.type !== 'lifecycleExposeNode' || !lifecycleExposeDraft) {
+      return false;
+    }
+
+    const nodeData = (activeFlowNode.data ?? {}) as Record<string, unknown>;
+    const availableLifetimes = Array.isArray(nodeData.availableLifetimes)
+      ? nodeData.availableLifetimes.map((item) => String(item)).filter(Boolean)
+      : [];
+    const selectedRaw = Array.isArray(nodeData.selectedLifetimes)
+      ? nodeData.selectedLifetimes.map((item) => String(item)).filter(Boolean)
+      : [];
+    const selectedLifetimes = selectedRaw.filter((item) => availableLifetimes.includes(item));
+
+    const currentComparable = {
+      label: String(nodeData.label ?? '生命周期暴露节点'),
+      selectedLifetimes,
+    };
+
+    const draftComparable = {
+      label: lifecycleExposeDraft.label,
+      selectedLifetimes: lifecycleExposeDraft.selectedLifetimes,
+    };
+
+    return JSON.stringify(currentComparable) !== JSON.stringify(draftComparable);
+  }, [activeFlowNode, lifecycleExposeDraft]);
+
   const handleApplyNetworkDraft = () => {
     if (!activeFlowNode || activeFlowNode.type !== 'networkRequestNode' || !networkDraft) {
       return;
@@ -326,6 +448,38 @@ const FlowLayout: React.FC = () => {
         intervalMs: Math.max(100, Math.round(timerDraft.intervalMs)),
       }),
       '更新定时器节点配置',
+    );
+  };
+
+  const handleApplyPropExposeDraft = () => {
+    if (!activeFlowNode || activeFlowNode.type !== 'propExposeNode' || !propExposeDraft) {
+      return;
+    }
+
+    updateFlowNodeData(
+      activeFlowNode.id,
+      (previous) => ({
+        ...previous,
+        label: propExposeDraft.label,
+        selectedPropKeys: propExposeDraft.selectedPropKeys,
+      }),
+      '更新属性暴露节点配置',
+    );
+  };
+
+  const handleApplyLifecycleExposeDraft = () => {
+    if (!activeFlowNode || activeFlowNode.type !== 'lifecycleExposeNode' || !lifecycleExposeDraft) {
+      return;
+    }
+
+    updateFlowNodeData(
+      activeFlowNode.id,
+      (previous) => ({
+        ...previous,
+        label: lifecycleExposeDraft.label,
+        selectedLifetimes: lifecycleExposeDraft.selectedLifetimes,
+      }),
+      '更新生命周期暴露节点配置',
     );
   };
 
@@ -595,6 +749,132 @@ const FlowLayout: React.FC = () => {
                       variant="outline"
                       disabled={!canApplyTimerDraft}
                       onClick={handleApplyTimerDraft}
+                    >
+                      应用配置
+                    </Button>
+                  </div>
+                </div>
+              ) : null}
+
+              {activeFlowNode.type === 'propExposeNode' && propExposeDraft ? (
+                <div className="flow-config-panel__group">
+                  <div className="flow-config-panel__group-title">属性暴露节点配置</div>
+
+                  <div className="config-row">
+                    <span className="config-label">来源组件</span>
+                    <span className="config-value" title={propExposeDraft.sourceLabel}>{propExposeDraft.sourceLabel}</span>
+                  </div>
+
+                  <div className="flow-config-field">
+                    <div className="flow-config-field__label">节点名称</div>
+                    <Input
+                      size="small"
+                      value={propExposeDraft.label}
+                      onChange={(value) =>
+                        setPropExposeDraft((previous) => (previous ? { ...previous, label: String(value ?? '') } : previous))
+                      }
+                    />
+                  </div>
+
+                  <div className="flow-config-field">
+                    <div className="flow-config-field__label">对外暴露属性</div>
+                    <Select
+                      size="small"
+                      multiple
+                      clearable
+                      disabled={propExposeDraft.availablePropKeys.length === 0}
+                      placeholder={propExposeDraft.availablePropKeys.length === 0 ? '请先连接组件节点' : '请选择可配置属性'}
+                      options={propExposeDraft.availablePropKeys.map((item) => ({
+                        label: item,
+                        value: item,
+                      }))}
+                      value={propExposeDraft.selectedPropKeys}
+                      onChange={(value) => {
+                        const nextValues = Array.isArray(value)
+                          ? value.map((item) => String(item))
+                          : (value ? [String(value)] : []);
+                        setPropExposeDraft((previous) =>
+                          previous
+                            ? {
+                                ...previous,
+                                selectedPropKeys: nextValues,
+                              }
+                            : previous,
+                        );
+                      }}
+                    />
+                  </div>
+
+                  <div className="flow-config-panel__actions">
+                    <Button
+                      size="small"
+                      theme="primary"
+                      variant="outline"
+                      disabled={!canApplyPropExposeDraft}
+                      onClick={handleApplyPropExposeDraft}
+                    >
+                      应用配置
+                    </Button>
+                  </div>
+                </div>
+              ) : null}
+
+              {activeFlowNode.type === 'lifecycleExposeNode' && lifecycleExposeDraft ? (
+                <div className="flow-config-panel__group">
+                  <div className="flow-config-panel__group-title">生命周期暴露节点配置</div>
+
+                  <div className="config-row">
+                    <span className="config-label">上游节点</span>
+                    <span className="config-value" title={lifecycleExposeDraft.upstreamLabel}>{lifecycleExposeDraft.upstreamLabel}</span>
+                  </div>
+
+                  <div className="flow-config-field">
+                    <div className="flow-config-field__label">节点名称</div>
+                    <Input
+                      size="small"
+                      value={lifecycleExposeDraft.label}
+                      onChange={(value) =>
+                        setLifecycleExposeDraft((previous) => (previous ? { ...previous, label: String(value ?? '') } : previous))
+                      }
+                    />
+                  </div>
+
+                  <div className="flow-config-field">
+                    <div className="flow-config-field__label">对外输出生命周期</div>
+                    <Select
+                      size="small"
+                      multiple
+                      clearable
+                      disabled={lifecycleExposeDraft.availableLifetimes.length === 0}
+                      placeholder={lifecycleExposeDraft.availableLifetimes.length === 0 ? '请先连接事件过滤节点' : '请选择输出事件'}
+                      options={lifecycleExposeDraft.availableLifetimes.map((item) => ({
+                        label: item,
+                        value: item,
+                      }))}
+                      value={lifecycleExposeDraft.selectedLifetimes}
+                      onChange={(value) => {
+                        const nextValues = Array.isArray(value)
+                          ? value.map((item) => String(item))
+                          : (value ? [String(value)] : []);
+                        setLifecycleExposeDraft((previous) =>
+                          previous
+                            ? {
+                                ...previous,
+                                selectedLifetimes: nextValues,
+                              }
+                            : previous,
+                        );
+                      }}
+                    />
+                  </div>
+
+                  <div className="flow-config-panel__actions">
+                    <Button
+                      size="small"
+                      theme="primary"
+                      variant="outline"
+                      disabled={!canApplyLifecycleExposeDraft}
+                      onClick={handleApplyLifecycleExposeDraft}
                     >
                       应用配置
                     </Button>
