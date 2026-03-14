@@ -118,7 +118,7 @@ export function registerLayoutComponents(registry: ComponentRegistry): void {
           padding: 8,
         })}
       >
-        <DropArea style={{ height: '100%' }} data={data} onDropData={onDropData} emptyText="拖拽当前路由页面组件到路由出口" />
+        <DropArea style={{ flex: 1, minHeight: 0 }} data={data} onDropData={onDropData} emptyText="拖拽当前路由页面组件到路由出口" />
       </div>
     );
   });
