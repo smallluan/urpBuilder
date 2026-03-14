@@ -118,23 +118,7 @@ export function registerLayoutComponents(registry: ComponentRegistry): void {
           padding: 8,
         })}
       >
-        <DropArea data={data} onDropData={onDropData} emptyText="拖拽当前路由页面组件到路由出口" />
-        {(data?.children ?? []).length === 0 ? (
-          <div
-            className="route-outlet-empty-hint"
-            style={{
-              pointerEvents: 'none',
-              marginTop: 8,
-              color: '#8b98a6',
-              fontSize: 13,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            暂无路由内容 — 将组件从左侧面板拖拽到此处以填充当前路由页面。
-          </div>
-        ) : null}
+        <DropArea style={{ height: '100%' }} data={data} onDropData={onDropData} emptyText="拖拽当前路由页面组件到路由出口" />
       </div>
     );
   });
