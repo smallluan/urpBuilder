@@ -1820,11 +1820,20 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) 
         </div>
       );
     case 'RouteOutlet':
+      {
+      const outletChildren = renderChildren(node, onLifecycle);
+      const hasOutletContent = (node.children ?? []).length > 0;
       return (
         <div style={mergeStyle({ minHeight: Number(getProp(node, 'minHeight') ?? 360) || 360 })}>
-          {renderChildren(node, onLifecycle)}
+          {hasOutletContent ? outletChildren : (
+            <div className="preview-route-outlet-empty">
+              <div className="preview-route-outlet-empty__title">路由内容为空</div>
+              <div className="preview-route-outlet-empty__desc">该路由出口暂未放置组件，可在搭建器中拖拽内容到此处。</div>
+            </div>
+          )}
         </div>
       );
+      }
     case 'Card':
       {
       const headerChildren = getSlotChildren(node, 'header');

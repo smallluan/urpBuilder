@@ -21,6 +21,20 @@ export interface ComponentStateRecord {
 
 export type ComponentPatch = Record<string, unknown>;
 
+export interface DataHubRouterState {
+  path: string;
+  routeId?: string;
+  matched: boolean;
+}
+
+export interface DataHubRouterContext {
+  current: () => DataHubRouterState;
+  push: (path: string, params?: Record<string, unknown>) => boolean;
+  replace: (path: string, params?: Record<string, unknown>) => boolean;
+  back: () => void;
+  subscribe: (handler: (state: DataHubRouterState) => void) => () => void;
+}
+
 export interface DataHubCodeContext {
   scopeId: string;
   composeRef: (componentKey: string) => string;
@@ -29,6 +43,7 @@ export interface DataHubCodeContext {
   getComponentState: (componentKey: string) => ComponentStateRecord | undefined;
   getComponentProp: (componentKey: string, propKey: string) => unknown;
   getAllComponentStates: () => ComponentStateRecord[];
+  router: DataHubRouterContext;
 }
 
 type DataHubEventHandler = (payload: unknown) => void;
@@ -112,7 +127,9 @@ export class PreviewDataHub {
 
   private readonly eventMap = new Map<string, Set<DataHubEventHandler>>();
 
-  constructor(uiTreeData: UiTreeNode, options?: { scopeId?: string }) {
+  private readonly routerContext: DataHubRouterContext;
+
+  constructor(uiTreeData: UiTreeNode, options?: { scopeId?: string; router?: DataHubRouterContext }) {
     this.treeRoot = cloneDeep(uiTreeData);
     this.scopeId = String(options?.scopeId ?? DEFAULT_SCOPE_ID).trim() || DEFAULT_SCOPE_ID;
     const nodeMaps = collectNodeMaps(this.treeRoot, this.scopeId);
@@ -121,6 +138,15 @@ export class PreviewDataHub {
     this.nodeRefMap = nodeMaps.refMap;
     this.stateKeyMap = stateMaps.keyMap;
     this.stateRefMap = stateMaps.refMap;
+    this.routerContext = options?.router ?? {
+      current: () => ({ path: '/', matched: true }),
+      push: () => false,
+      replace: () => false,
+      back: () => {
+        window.history.back();
+      },
+      subscribe: () => () => {},
+    };
   }
 
   getScopeId() {
@@ -262,6 +288,7 @@ export class PreviewDataHub {
       getComponentState: (componentKey) => this.getComponentState(componentKey),
       getComponentProp: (componentKey, propKey) => this.getComponentProp(componentKey, propKey),
       getAllComponentStates: () => this.getAllComponentStates(),
+      router: this.routerContext,
     };
   }
 
@@ -270,7 +297,10 @@ export class PreviewDataHub {
   }
 }
 
-export const createPreviewDataHub = (uiTreeData: UiTreeNode, options?: { scopeId?: string }) =>
+export const createPreviewDataHub = (
+  uiTreeData: UiTreeNode,
+  options?: { scopeId?: string; router?: DataHubRouterContext },
+) =>
   new PreviewDataHub(uiTreeData, options);
 
 declare global {

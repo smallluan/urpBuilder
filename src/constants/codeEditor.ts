@@ -80,6 +80,42 @@ export const CODE_EDITOR_JS_GLOBAL_COMPLETIONS: Completion[] = [
     info: '读取当前页面全部组件状态快照。',
   },
   {
+    label: 'dataHub.router',
+    type: 'variable',
+    detail: '路由控制上下文',
+    info: '支持路由读取与跳转：current/push/replace/back/subscribe。',
+  },
+  {
+    label: 'dataHub.router.current',
+    type: 'function',
+    detail: '() => { path, routeId, matched }',
+    info: '读取当前路由状态。',
+  },
+  {
+    label: 'dataHub.router.push',
+    type: 'function',
+    detail: '(path, params?) => boolean',
+    info: '前进跳转到目标路由，例如 dataHub.router.push("/order", { id: 1 })。',
+  },
+  {
+    label: 'dataHub.router.replace',
+    type: 'function',
+    detail: '(path, params?) => boolean',
+    info: '替换当前历史记录并跳转。',
+  },
+  {
+    label: 'dataHub.router.back',
+    type: 'function',
+    detail: '() => void',
+    info: '返回上一条历史记录。',
+  },
+  {
+    label: 'dataHub.router.subscribe',
+    type: 'function',
+    detail: '(listener) => unsubscribe',
+    info: '监听路由状态变化，返回取消监听函数。',
+  },
+  {
     label: 'ctx',
     type: 'variable',
     detail: '当前触发上下文',
