@@ -1,16 +1,16 @@
 import React, { useEffect, useRef, useState } from 'react';
 // layout components handle their own asides
 import './style.less';
-import HeaderControls from '../BuilderCore/components/HeaderControls';
+import HeaderControls from '../../builder/components/HeaderControls';
 import ComponentLayout from './ComponentLayout';
-import FlowLayout from '../BuilderCore/flow/FlowLayout';
+import FlowLayout from '../../builder/flow/FlowLayout';
 import { getPageDetail } from '../../api/pageTemplate';
 import { emitApiAlert } from '../../api/alertBus';
 import { useCreateComponentStore } from './store';
-import { BuilderProvider } from '../BuilderCore/context/BuilderContext';
-import { BuilderShell } from '../BuilderCore/components/BuilderShell';
+import { BuilderProvider } from '../../builder/context/BuilderContext';
+import { BuilderShell } from '../../builder/components/BuilderShell';
 import type { Edge, Node } from '@xyflow/react';
-import type { UiTreeNode, BuiltInLayoutTemplateId } from '../BuilderCore/store/types';
+import type { UiTreeNode, BuiltInLayoutTemplateId } from '../../builder/store/types';
 
 const CreateComponent: React.FC = () => {
   const [mode, setMode] = useState<'component' | 'flow'>('component');

@@ -2,9 +2,9 @@ import React, { useMemo, useState } from 'react';
 import type { DragEvent } from 'react';
 import { AddCircleIcon } from 'tdesign-icons-react';
 import './index.less';
-import CommonComponent from '../../pages/BuilderCore/renderer/CommonComponent';
-import type { UiDropDataHandler, UiTreeNode } from '../../pages/BuilderCore/store/types';
-import { useBuilderContext } from '../../pages/BuilderCore/context/BuilderContext';
+import CommonComponent from '../../builder/renderer/CommonComponent';
+import type { UiDropDataHandler, UiTreeNode } from '../../builder/store/types';
+import { useBuilderContext } from '../../builder/context/BuilderContext';
 
 interface DropAreaProps {
   children?: React.ReactNode;

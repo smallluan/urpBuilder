@@ -1,5 +1,5 @@
 import cloneDeep from 'lodash/cloneDeep';
-import type { UiTreeNode } from '../../BuilderCore/store/types';
+import type { UiTreeNode } from '../../../builder/store/types';
 
 export interface ComponentStateRecord {
   key: string;

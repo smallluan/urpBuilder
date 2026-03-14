@@ -1,6 +1,6 @@
 import { parse, stringify } from 'flatted';
 import type { Edge, Node } from '@xyflow/react';
-import type { UiTreeNode } from '../../BuilderCore/store/types';
+import type { UiTreeNode } from '../../../builder/store/types';
 
 export interface PreviewSnapshot {
   uiTreeData: UiTreeNode;

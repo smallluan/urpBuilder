@@ -1,12 +1,12 @@
 import React from 'react';
 import { Avatar, Button, Card, Col, Divider, Image, Row, Space, Switch, Swiper, Typography, Layout, Calendar, ColorPicker, TimePicker, TimeRangePicker, InputNumber, Slider, Steps, List, Link, Tabs, BackTop, Menu, Drawer, Progress, Upload, Input, Textarea } from 'tdesign-react';
-import type { UiTreeNode } from '../../BuilderCore/store/types';
-import { getNodeSlotKey, isSlotNode } from '../../BuilderCore/utils/slot';
-import { convertResponsiveConfigToTDesignProps, normalizeResponsiveConfig } from '../../BuilderCore/utils/gridResponsive';
+import type { UiTreeNode } from '../../../builder/store/types';
+import { getNodeSlotKey, isSlotNode } from '../../../builder/utils/slot';
+import { convertResponsiveConfigToTDesignProps, normalizeResponsiveConfig } from '../../../builder/utils/gridResponsive';
 import type { ComponentLifecycleHandler, ListRecord, SwiperImageItem } from '../../../types/component';
 import { CORE_LIFETIMES, LIST_PREVIEW_DATA } from '../../../constants/componentBuilder';
 import { renderNamedIcon } from '../../../constants/iconRegistry';
-import { getTabsSlotNodeByValue, normalizeTabsList, normalizeTabsValue } from '../../BuilderCore/utils/tabs';
+import { getTabsSlotNodeByValue, normalizeTabsList, normalizeTabsValue } from '../../../builder/utils/tabs';
 
 interface PreviewRendererProps {
   node: UiTreeNode;
