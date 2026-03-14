@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import ComponentLibraryPanel from './ComponentLibraryPanel';
 import ComponentConfigPanel from './ComponentConfigPanel';
+import SavedComponentPanel from './SavedComponentPanel';
 import RightPanelHeader, { type RightPanelMode } from './RightPanelHeader';
 import { useBuilderContext } from '../context/BuilderContext';
 
@@ -18,10 +19,13 @@ const ComponentAsideRight: React.FC = () => {
 
 	return (
 		<aside className="aside-right">
-			<RightPanelHeader mode={mode} onChange={setMode} />
+			<RightPanelHeader mode={mode} onChange={setMode} showSaved savedLabel="自定义" />
 			<div className="right-panel-content">
 				<div className={`right-panel-view ${mode === 'library' ? '' : ' right-panel-view--hidden'}`}>
-					<ComponentLibraryPanel selectedName={selectedName} onSelect={setSelectedName} />
+					<ComponentLibraryPanel selectedName={selectedName} onSelect={setSelectedName} hideSavedComponents />
+				</div>
+				<div className={`right-panel-view ${mode === 'saved' ? '' : ' right-panel-view--hidden'}`}>
+					<SavedComponentPanel selectedName={selectedName} onSelect={setSelectedName} />
 				</div>
 				<div className={`right-panel-view ${mode === 'config' ? '' : ' right-panel-view--hidden'}`}>
 					<ComponentConfigPanel />

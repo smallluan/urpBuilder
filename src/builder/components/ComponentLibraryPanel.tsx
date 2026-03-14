@@ -44,6 +44,7 @@ interface CustomComponentSchema {
 interface ComponentLibraryPanelProps {
   selectedName: string | null;
   onSelect: (name: string) => void;
+  hideSavedComponents?: boolean;
 }
 
 type ComponentSchema = (typeof componentCatalog)[number];
@@ -252,7 +253,7 @@ const getPopupNodeKindLabel = (type: string): string => {
   return '容器';
 };
 
-const ComponentLibraryPanel: React.FC<ComponentLibraryPanelProps> = ({ selectedName, onSelect }) => {
+const ComponentLibraryPanel: React.FC<ComponentLibraryPanelProps> = ({ selectedName, onSelect, hideSavedComponents = false }) => {
   const [keyword, setKeyword] = useState('');
   const [openedGroupKey, setOpenedGroupKey] = useState<string | null>(null);
   const [customComponentSchemas, setCustomComponentSchemas] = useState<CustomComponentSchema[]>([]);
@@ -356,6 +357,11 @@ const ComponentLibraryPanel: React.FC<ComponentLibraryPanelProps> = ({ selectedN
   }, [filteredEntries]);
 
   useEffect(() => {
+    if (hideSavedComponents) {
+      setCustomComponentSchemas([]);
+      return undefined;
+    }
+
     let cancelled = false;
 
     const buildCustomComponentSchemas = async () => {
@@ -432,7 +438,7 @@ const ComponentLibraryPanel: React.FC<ComponentLibraryPanelProps> = ({ selectedN
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [hideSavedComponents]);
 
   const filteredCustomComponentSchemas = useMemo(() => {
     const text = keyword.trim().toLowerCase();
@@ -525,7 +531,7 @@ const ComponentLibraryPanel: React.FC<ComponentLibraryPanelProps> = ({ selectedN
       </div>
 
       <div className="library-list">
-        {filteredCustomComponentSchemas.length > 0 ? (
+        {!hideSavedComponents && filteredCustomComponentSchemas.length > 0 ? (
           <div className="library-section">
             <div className="library-section-head">
               <div className="library-section-title">

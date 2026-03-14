@@ -117,7 +117,6 @@ export function registerLayoutComponents(registry: ComponentRegistry): void {
           borderRadius: 8,
           background: '#fff',
           boxSizing: 'border-box',
-          padding: 8,
         })}
       >
         <DropArea className="drop-area--route-outlet" style={{ flex: 1, minHeight: 0 }} data={data} onDropData={onDropData} emptyText="拖拽当前路由页面组件到路由出口" />
