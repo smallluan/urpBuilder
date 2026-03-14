@@ -8,7 +8,7 @@ import { getBreakpointByWidth, resolveBuilderViewportWidth } from '../utils/grid
 
 const { Text } = Typography;
 
-const ComponentMainBody: React.FC = () => {
+const ComponentMainBody: React.FC<{ toolbarExtra?: React.ReactNode }> = ({ toolbarExtra }) => {
   const { useStore } = useBuilderContext();
   const screenSize = useStore((state) => state.screenSize);
   const autoWidth = useStore((state) => state.autoWidth);
@@ -79,16 +79,9 @@ const ComponentMainBody: React.FC = () => {
 
   return (
     <main className="main-body">
-      <div
-        style={{
-          backgroundColor: 'white',
-          padding: '8px',
-          boxSizing: 'border-box',
-          borderRadius: '4px',
-        }}
-      >
-        <Space size={8} align="center">
-          <Space size={8} align="center">
+      <div className="component-main-toolbar">
+        <div className="component-main-toolbar__row">
+          <Space size={8} align="center" className="component-main-toolbar__group">
           <Text style={{ fontSize: '12px' }}>开发尺寸：</Text>
           <Select
             style={{ width: '200px' }}
@@ -106,6 +99,7 @@ const ComponentMainBody: React.FC = () => {
           />
           <Text style={{ fontSize: '12px', color: '#8b92a1' }}>当前断点：{simulatorBreakpoint}</Text>
           </Space>
+          {toolbarExtra ? <div className="component-main-toolbar__extra">{toolbarExtra}</div> : null}
           <Button
             size="medium"
             theme="default"
@@ -114,7 +108,7 @@ const ComponentMainBody: React.FC = () => {
           >
             选择布局
           </Button>
-        </Space>
+        </div>
       </div>
 
       <div className="main-inner">

@@ -7,6 +7,24 @@ import type { Edge, Node } from '@xyflow/react';
 export type ScreenSize = string | number;
 export type StateAction<T> = T | ((previous: T) => T);
 
+export interface PageRouteConfig {
+  routePath: string;
+  routeName: string;
+  pageTitle: string;
+  menuTitle: string;
+  useLayout: boolean;
+}
+
+export interface PageRouteRecord {
+  routeId: string;
+  routeConfig: PageRouteConfig;
+  uiTree: UiTreeNode;
+  flowNodes: Node[];
+  flowEdges: Edge[];
+  selectedLayoutTemplateId: BuiltInLayoutTemplateId | null;
+  history: UiHistoryState;
+}
+
 /** 内置布局模板 ID。定义在此处以避免与具体模板数据产生循环依赖。 */
 export type BuiltInLayoutTemplateId =
   | 'header-body'
@@ -155,6 +173,9 @@ export interface BuilderStore {
   autoWidth: number;
   currentPageId: string;
   currentPageName: string;
+  pageRouteConfig: PageRouteConfig | null;
+  pageRoutes: PageRouteRecord[];
+  activePageRouteId: string | null;
 
   // 流程图状态
   flowNodes: Node[];
@@ -175,6 +196,11 @@ export interface BuilderStore {
   setScreenSize: (screenSize: ScreenSize) => void;
   setAutoWidth: (width: number) => void;
   setCurrentPageMeta: (payload: { pageId?: string; pageName?: string }) => void;
+  setPageRouteConfig: (config: PageRouteConfig | null | ((previous: PageRouteConfig | null) => PageRouteConfig | null)) => void;
+  setPageRoutes: (routes: PageRouteRecord[], activeRouteId?: string | null) => void;
+  addPageRoute: (route?: Partial<PageRouteRecord>) => string;
+  switchPageRoute: (routeId: string) => void;
+  syncActivePageRouteSnapshot: () => void;
 
   // Actions — 流程图
   setFlowNodes: (nodes: StateAction<Node[]>) => void;

@@ -55,6 +55,10 @@ export const router = createBrowserRouter([
     path: '/preview-engine',
     element: load(<PreviewEngine />),
   },
+  {
+    path: '/site-preview/*',
+    element: load(<PreviewEngine />),
+  },
 ]);
 
 export default router;

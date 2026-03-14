@@ -1,11 +1,18 @@
 import { parse, stringify } from 'flatted';
 import type { Edge, Node } from '@xyflow/react';
-import type { UiTreeNode } from '../../../builder/store/types';
+import type { PageRouteConfig, UiTreeNode } from '../../../builder/store/types';
+
+export interface PreviewPageConfig {
+  routeConfig?: PageRouteConfig | null;
+  pageId?: string;
+  pageName?: string;
+}
 
 export interface PreviewSnapshot {
   uiTreeData: UiTreeNode;
   flowNodes: Node[];
   flowEdges: Edge[];
+  pageConfig?: PreviewPageConfig;
 }
 
 export const serializePreviewSnapshot = (snapshot: PreviewSnapshot): string => {

@@ -12,7 +12,7 @@ import { create } from 'zustand';
 import { v4 as uuidv4 } from 'uuid';
 import cloneDeep from 'lodash/cloneDeep';
 import type { Edge, Node } from '@xyflow/react';
-import type { BuilderStore, BuiltInLayoutTemplateId, UiHistoryAction, UiTreeNode } from './types';
+import type { BuilderStore, BuiltInLayoutTemplateId, PageRouteConfig, PageRouteRecord, UiHistoryAction, UiTreeNode } from './types';
 import {
   appendNodeByParentKey,
   findNodeByKey,
@@ -63,6 +63,32 @@ const DEFAULT_ROOT_NODE: UiTreeNode = {
   lifetimes: [],
 };
 
+const DEFAULT_PAGE_ROUTE_CONFIG: PageRouteConfig = {
+  routePath: '/',
+  routeName: 'root',
+  pageTitle: '默认路由',
+  menuTitle: '默认路由',
+  useLayout: true,
+};
+
+const createEmptyHistory = () => ({ pointer: -1, actions: [] as UiHistoryAction[] });
+
+const createPageRouteRecord = (
+  rootNode: UiTreeNode,
+  route?: Partial<PageRouteRecord>,
+): PageRouteRecord => ({
+  routeId: String(route?.routeId ?? uuidv4()),
+  routeConfig: {
+    ...DEFAULT_PAGE_ROUTE_CONFIG,
+    ...(route?.routeConfig ?? {}),
+  },
+  uiTree: cloneDeep(route?.uiTree ?? rootNode),
+  flowNodes: cloneDeep(route?.flowNodes ?? []),
+  flowEdges: cloneDeep(route?.flowEdges ?? []),
+  selectedLayoutTemplateId: route?.selectedLayoutTemplateId ?? null,
+  history: cloneDeep(route?.history ?? createEmptyHistory()),
+});
+
 export const createBuilderStore = (options: CreateBuilderStoreOptions = {}) => {
   const { buildLayoutNodes, initialRootNode } = options;
   const rootNode: UiTreeNode = {
@@ -77,6 +103,9 @@ export const createBuilderStore = (options: CreateBuilderStoreOptions = {}) => {
     autoWidth: 1800,
     currentPageId: '',
     currentPageName: '',
+    pageRouteConfig: null,
+    pageRoutes: [],
+    activePageRouteId: null,
 
     // ===== 流程图状态 =====
     flowNodes: [],
@@ -91,7 +120,7 @@ export const createBuilderStore = (options: CreateBuilderStoreOptions = {}) => {
     treeInstance: null,
 
     // ===== 历史系统 =====
-    history: { pointer: -1, actions: [] },
+    history: createEmptyHistory(),
 
     // ===== Actions — 视图环境 =====
 
@@ -104,6 +133,127 @@ export const createBuilderStore = (options: CreateBuilderStoreOptions = {}) => {
         currentPageId: pageId ?? state.currentPageId,
         currentPageName: pageName ?? state.currentPageName,
       })),
+
+    setPageRouteConfig: (config) =>
+      set((state) => ({
+        pageRouteConfig:
+          typeof config === 'function'
+            ? (config as (previous: typeof state.pageRouteConfig) => typeof state.pageRouteConfig)(state.pageRouteConfig)
+            : config,
+      })),
+
+    setPageRoutes: (routes, activeRouteId = null) =>
+      set(() => {
+        const normalizedRoutes = Array.isArray(routes)
+          ? routes.map((route) => createPageRouteRecord(rootNode, route))
+          : [];
+        const nextActiveRouteId = activeRouteId ?? normalizedRoutes[0]?.routeId ?? null;
+        const activeRoute = normalizedRoutes.find((item) => item.routeId === nextActiveRouteId) ?? null;
+
+        if (!activeRoute) {
+          return {
+            pageRoutes: [],
+            activePageRouteId: null,
+            pageRouteConfig: null,
+          };
+        }
+
+        return {
+          pageRoutes: normalizedRoutes,
+          activePageRouteId: activeRoute.routeId,
+          pageRouteConfig: cloneDeep(activeRoute.routeConfig),
+          uiPageData: cloneDeep(activeRoute.uiTree),
+          flowNodes: cloneDeep(activeRoute.flowNodes),
+          flowEdges: cloneDeep(activeRoute.flowEdges),
+          selectedLayoutTemplateId: activeRoute.selectedLayoutTemplateId,
+          history: cloneDeep(activeRoute.history),
+          activeNodeKey: null,
+          activeNode: null,
+          flowActiveNodeId: null,
+        };
+      }),
+
+    addPageRoute: (route) => {
+      const routeId = String(route?.routeId ?? uuidv4());
+      set((state) => {
+        const nextRoute = createPageRouteRecord(rootNode, {
+          ...route,
+          routeId,
+        });
+        return {
+          pageRoutes: [...state.pageRoutes, nextRoute],
+        };
+      });
+      return routeId;
+    },
+
+    switchPageRoute: (routeId) =>
+      set((state) => {
+        const normalizedRouteId = String(routeId ?? '').trim();
+        if (!normalizedRouteId || state.activePageRouteId === normalizedRouteId) {
+          return state;
+        }
+
+        const nextRoutes = state.pageRoutes.map((route) => {
+          if (route.routeId !== state.activePageRouteId) {
+            return route;
+          }
+
+          return {
+            ...route,
+            routeConfig: cloneDeep(state.pageRouteConfig ?? route.routeConfig),
+            uiTree: cloneDeep(state.uiPageData),
+            flowNodes: cloneDeep(state.flowNodes),
+            flowEdges: cloneDeep(state.flowEdges),
+            selectedLayoutTemplateId: state.selectedLayoutTemplateId,
+            history: cloneDeep(state.history),
+          };
+        });
+
+        const targetRoute = nextRoutes.find((route) => route.routeId === normalizedRouteId);
+        if (!targetRoute) {
+          return state;
+        }
+
+        return {
+          pageRoutes: nextRoutes,
+          activePageRouteId: targetRoute.routeId,
+          pageRouteConfig: cloneDeep(targetRoute.routeConfig),
+          uiPageData: cloneDeep(targetRoute.uiTree),
+          flowNodes: cloneDeep(targetRoute.flowNodes),
+          flowEdges: cloneDeep(targetRoute.flowEdges),
+          selectedLayoutTemplateId: targetRoute.selectedLayoutTemplateId,
+          history: cloneDeep(targetRoute.history),
+          activeNodeKey: null,
+          activeNode: null,
+          flowActiveNodeId: null,
+        };
+      }),
+
+    syncActivePageRouteSnapshot: () =>
+      set((state) => {
+        if (!state.activePageRouteId || state.pageRoutes.length === 0) {
+          return state;
+        }
+
+        const nextRoutes = state.pageRoutes.map((route) => {
+          if (route.routeId !== state.activePageRouteId) {
+            return route;
+          }
+
+          return {
+            ...route,
+            routeConfig: cloneDeep(state.pageRouteConfig ?? route.routeConfig),
+            uiTree: cloneDeep(state.uiPageData),
+            flowNodes: cloneDeep(state.flowNodes),
+            flowEdges: cloneDeep(state.flowEdges),
+            selectedLayoutTemplateId: state.selectedLayoutTemplateId,
+            history: cloneDeep(state.history),
+          };
+        });
+
+        return { pageRoutes: nextRoutes };
+      }),
 
     // ===== Actions — 流程图 =====
 

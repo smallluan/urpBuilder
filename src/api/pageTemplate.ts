@@ -31,6 +31,8 @@ export const publishPage = async (payload: PublishPagePayload) => {
 export const getPageBaseList = async (params?: {
   pageName?: string;
   status?: PageBaseInfo['status'];
+  entityType?: PageBaseInfo['entityType'];
+  routePath?: string;
   page?: number;
   pageSize?: number;
 }) => {

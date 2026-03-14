@@ -1,5 +1,5 @@
-import React, { useMemo, useState } from 'react';
-import { Radio, Button, Space, Drawer, Timeline, Tag, Dialog, Input } from 'tdesign-react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Radio, Button, Space, Drawer, Timeline, Tag, Dialog, Input, Switch } from 'tdesign-react';
 import { UploadIcon, ViewImageIcon, ArrowLeftIcon, ArrowRightIcon, HistoryIcon } from 'tdesign-icons-react';
 import { useBuilderContext } from '../context/BuilderContext';
 import type { UiHistoryAction } from '../store/types';
@@ -13,7 +13,17 @@ type Props = {
   onChange: (v: 'component' | 'flow') => void;
   designLabel?: string;
   saveEntityLabel?: string;
+  entityType?: 'page' | 'component';
   enableComponentContract?: boolean;
+  enablePageRouteConfig?: boolean;
+};
+
+type RouteConfigDraft = {
+  routePath: string;
+  routeName: string;
+  pageTitle: string;
+  menuTitle: string;
+  useLayout: boolean;
 };
 
 const toReadableValue = (value: unknown) => {
@@ -103,7 +113,9 @@ const HeaderControls: React.FC<Props> = ({
   onChange,
   designLabel = '组件',
   saveEntityLabel = '组件',
+  entityType = 'component',
   enableComponentContract = false,
+  enablePageRouteConfig = false,
 }) => {
   const { useStore } = useBuilderContext();
   const history = useStore((state) => state.history);
@@ -114,7 +126,11 @@ const HeaderControls: React.FC<Props> = ({
   const autoWidth = useStore((state) => state.autoWidth);
   const currentPageId = useStore((state) => state.currentPageId);
   const currentPageName = useStore((state) => state.currentPageName);
+  const pageRouteConfig = useStore((state) => state.pageRouteConfig);
+  const pageRoutes = useStore((state) => state.pageRoutes);
+  const activePageRouteId = useStore((state) => state.activePageRouteId);
   const setCurrentPageMeta = useStore((state) => state.setCurrentPageMeta);
+  const setPageRouteConfig = useStore((state) => state.setPageRouteConfig);
   const selectedLayoutTemplateId = useStore((state) => state.selectedLayoutTemplateId);
   const undo = useStore((state) => state.undo);
   const redo = useStore((state) => state.redo);
@@ -124,6 +140,14 @@ const HeaderControls: React.FC<Props> = ({
   const [componentName, setComponentName] = useState('');
   const [componentId, setComponentId] = useState('');
   const [saving, setSaving] = useState(false);
+  const [pageSettingsVisible, setPageSettingsVisible] = useState(false);
+  const [routeConfigDraft, setRouteConfigDraft] = useState<RouteConfigDraft>({
+    routePath: '',
+    routeName: '',
+    pageTitle: '',
+    menuTitle: '',
+    useLayout: true,
+  });
 
   const canUndo = history.pointer >= 0;
   const canRedo = history.pointer < history.actions.length - 1;
@@ -150,13 +174,24 @@ const HeaderControls: React.FC<Props> = ({
       uiTreeData,
       flowNodes,
       flowEdges,
+      pageConfig: enablePageRouteConfig
+        ? {
+            routeConfig: pageRouteConfig,
+            pageId: currentPageId,
+            pageName: currentPageName,
+          }
+        : undefined,
     });
 
     const snapshotKey = `preview-snapshot-${Date.now()}-${Math.round(Math.random() * 10000)}`;
     window.localStorage.setItem(snapshotKey, snapshot);
 
-    const previewUrl = new URL('/preview-engine', window.location.origin);
+    const routePath = enablePageRouteConfig ? pageRouteConfig?.routePath?.trim() ?? '' : '';
+    const previewUrl = new URL(routePath ? `/site-preview${routePath}` : '/preview-engine', window.location.origin);
     previewUrl.searchParams.set('snapshotKey', snapshotKey);
+    if (routePath) {
+      previewUrl.searchParams.set('previewMode', 'route');
+    }
 
     window.open(previewUrl.toString(), '_blank', 'noopener,noreferrer');
   };
@@ -165,6 +200,49 @@ const HeaderControls: React.FC<Props> = ({
     setComponentName(currentPageName || '');
     setComponentId(currentPageId || '');
     setSaveDialogVisible(true);
+  };
+
+  const handleOpenPageSettings = () => {
+    setRouteConfigDraft({
+      routePath: pageRouteConfig?.routePath ?? '',
+      routeName: pageRouteConfig?.routeName ?? '',
+      pageTitle: pageRouteConfig?.pageTitle ?? '',
+      menuTitle: pageRouteConfig?.menuTitle ?? '',
+      useLayout: pageRouteConfig?.useLayout !== false,
+    });
+    setPageSettingsVisible(true);
+  };
+
+  useEffect(() => {
+    if (!enablePageRouteConfig) {
+      return undefined;
+    }
+
+    const handleEvent = () => {
+      handleOpenPageSettings();
+    };
+
+    window.addEventListener('builder:open-page-settings', handleEvent);
+    return () => {
+      window.removeEventListener('builder:open-page-settings', handleEvent);
+    };
+  }, [enablePageRouteConfig, pageRouteConfig]);
+
+  const handleApplyPageSettings = () => {
+    const routePath = routeConfigDraft.routePath.trim();
+    if (routePath && !routePath.startsWith('/')) {
+      emitApiAlert('保存失败', '页面路由路径必须以 / 开头');
+      return;
+    }
+
+    setPageRouteConfig({
+      routePath,
+      routeName: routeConfigDraft.routeName.trim(),
+      pageTitle: routeConfigDraft.pageTitle.trim(),
+      menuTitle: routeConfigDraft.menuTitle.trim(),
+      useLayout: routeConfigDraft.useLayout,
+    });
+    setPageSettingsVisible(false);
   };
 
   const handleCloseSaveDialog = () => {
@@ -201,10 +279,28 @@ const HeaderControls: React.FC<Props> = ({
         ? buildComponentContract(uiTreeData, flowNodes, flowEdges)
         : null;
 
+      const resolvedPageRoutes = enablePageRouteConfig && pageRoutes.length > 0
+        ? pageRoutes.map((route) => {
+            if (route.routeId !== activePageRouteId) {
+              return route;
+            }
+
+            return {
+              ...route,
+              routeConfig: pageRouteConfig ?? route.routeConfig,
+              uiTree: uiTreeData,
+              flowNodes,
+              flowEdges,
+              selectedLayoutTemplateId,
+            };
+          })
+        : [];
+
       const payload = {
         base: {
           pageId,
           pageName,
+          entityType,
           screenSize,
           autoWidth,
         },
@@ -212,10 +308,21 @@ const HeaderControls: React.FC<Props> = ({
           uiTree: uiTreeData as unknown as Record<string, unknown>,
           flowNodes: flowNodes as unknown as Array<Record<string, unknown>>,
           flowEdges: flowEdges as unknown as Array<Record<string, unknown>>,
+          ...(resolvedPageRoutes.length > 0 ? {
+            routes: resolvedPageRoutes.map((route) => ({
+              routeId: route.routeId,
+              routeConfig: route.routeConfig,
+              uiTree: route.uiTree as unknown as Record<string, unknown>,
+              flowNodes: route.flowNodes as unknown as Array<Record<string, unknown>>,
+              flowEdges: route.flowEdges as unknown as Array<Record<string, unknown>>,
+              selectedLayoutTemplateId: route.selectedLayoutTemplateId,
+            })),
+          } : {}),
           pageConfig: {
             screenSize,
             autoWidth,
             selectedLayoutTemplateId,
+            ...(enablePageRouteConfig && pageRouteConfig ? { routeConfig: pageRouteConfig } : {}),
             ...(componentContract ? { componentContract } : {}),
           },
         },
@@ -279,6 +386,9 @@ const HeaderControls: React.FC<Props> = ({
             >
               操作历史
             </Button>
+            {enablePageRouteConfig ? (
+              <Button theme="default" size="small" variant="outline" onClick={handleOpenPageSettings}>当前路由设置</Button>
+            ) : null}
             <Button theme="primary" size="small" icon={<UploadIcon />} onClick={handleOpenSaveDialog}>保存</Button>
             <Button theme="default" size="small" icon={<ViewImageIcon />} onClick={handlePreview}>预览</Button>
           </div>
@@ -325,6 +435,72 @@ const HeaderControls: React.FC<Props> = ({
           </div>
         </div>
       </Dialog>
+
+      <Drawer
+        visible={pageSettingsVisible}
+        header="当前路由设置"
+        placement="right"
+        size="420px"
+        footer={false}
+        onClose={() => setPageSettingsVisible(false)}
+      >
+        <div className="flow-config-drawer-form">
+          <div className="flow-config-drawer-subtitle">这里配置当前路由的路径、名称和展示信息。切换路由后，下面的组件树、模拟器和流程都会一起切换。</div>
+
+          <div className="flow-config-field">
+            <div className="flow-config-field__label">路由路径</div>
+            <Input
+              value={routeConfigDraft.routePath}
+              placeholder="例如：/user/profile"
+              onChange={(value) => setRouteConfigDraft((prev) => ({ ...prev, routePath: String(value ?? '') }))}
+              clearable
+            />
+          </div>
+
+          <div className="flow-config-field">
+            <div className="flow-config-field__label">路由名称</div>
+            <Input
+              value={routeConfigDraft.routeName}
+              placeholder="例如：UserProfilePage"
+              onChange={(value) => setRouteConfigDraft((prev) => ({ ...prev, routeName: String(value ?? '') }))}
+              clearable
+            />
+          </div>
+
+          <div className="flow-config-field">
+            <div className="flow-config-field__label">页面标题</div>
+            <Input
+              value={routeConfigDraft.pageTitle}
+              placeholder="浏览器标题"
+              onChange={(value) => setRouteConfigDraft((prev) => ({ ...prev, pageTitle: String(value ?? '') }))}
+              clearable
+            />
+          </div>
+
+          <div className="flow-config-field">
+            <div className="flow-config-field__label">菜单名称</div>
+            <Input
+              value={routeConfigDraft.menuTitle}
+              placeholder="侧边菜单显示名"
+              onChange={(value) => setRouteConfigDraft((prev) => ({ ...prev, menuTitle: String(value ?? '') }))}
+              clearable
+            />
+          </div>
+
+          <div className="flow-config-field flow-config-field--switch">
+            <div className="flow-config-field__label">使用主布局</div>
+            <Switch
+              value={routeConfigDraft.useLayout}
+              onChange={(value) => setRouteConfigDraft((prev) => ({ ...prev, useLayout: Boolean(value) }))}
+            />
+          </div>
+
+          <div className="flow-config-drawer-actions">
+            <Button size="small" theme="default" variant="outline" onClick={() => setPageSettingsVisible(false)}>取消</Button>
+            <Button size="small" theme="primary" onClick={handleApplyPageSettings}>应用设置</Button>
+          </div>
+        </div>
+      </Drawer>
 
       <Drawer
         visible={historyVisible}

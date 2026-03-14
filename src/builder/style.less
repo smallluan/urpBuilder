@@ -416,6 +416,7 @@
     }
   }
 
+
   .main-body {
     flex: 1;
     width: calc(100vw - 632px);
@@ -425,6 +426,45 @@
     scrollbar-width: thin;
     background: #f3f3f3;
     box-sizing: border-box;
+
+    .component-main-toolbar {
+      background-color: #fff;
+      padding: 8px;
+      border-radius: 4px;
+      box-sizing: border-box;
+      overflow-x: auto;
+    }
+
+    .component-main-toolbar__row {
+      min-width: 0;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: nowrap;
+      white-space: nowrap;
+    }
+
+    .component-main-toolbar__group {
+      flex-wrap: nowrap;
+    }
+
+    .component-main-toolbar__extra {
+      display: inline-flex;
+      align-items: center;
+      flex-wrap: nowrap;
+    }
+
+    .page-route-toolbar {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: nowrap;
+      white-space: nowrap;
+    }
+
+    .page-route-toolbar__select {
+      width: 230px;
+    }
 
     .main-inner {
       width: 100%;

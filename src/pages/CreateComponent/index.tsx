@@ -79,7 +79,7 @@ const CreateComponent: React.FC = () => {
 
   return (
     <BuilderProvider useStore={useCreateComponentStore}>
-      <BuilderShell header={<HeaderControls mode={mode} onChange={setMode} enableComponentContract />}>
+      <BuilderShell header={<HeaderControls mode={mode} onChange={setMode} entityType="component" enableComponentContract />}>
         {mode === 'component' ? <ComponentLayout /> : <FlowLayout />}
       </BuilderShell>
     </BuilderProvider>

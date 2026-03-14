@@ -65,7 +65,10 @@ const BuildComponent: React.FC = () => {
   const fetchPageBaseList = useCallback(async (params: { page: number; pageSize: number; pageName?: string }) => {
     setLoading(true);
     try {
-      const result = await getPageBaseList(params);
+      const result = await getPageBaseList({
+        ...params,
+        entityType: 'component',
+      });
       const rawList = Array.isArray(result.data?.list) ? result.data.list : [];
       const nextList = rawList.map((item) => ({
         id: toSafeText(item.pageId),
