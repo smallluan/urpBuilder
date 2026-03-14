@@ -5,10 +5,11 @@
  * CreateComponent 的 ComponentLayout / FlowLayout 作为 children 传入，
  * CreatePage 同理，可传入自己的布局组件，无需修改此 Shell。
  *
- * 复用 CreateComponent 已有的 CSS 类名（create-page / create-header）。
+ * 样式由 BuilderCore/style.less 统一提供（create-page / create-header）。
  */
 
 import React from 'react';
+import '../style.less';
 
 export interface BuilderShellProps {
   /** 顶部 header 区域内容（如 HeaderControls） */
