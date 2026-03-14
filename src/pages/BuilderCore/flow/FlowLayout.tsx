@@ -14,7 +14,6 @@ import {
   METHOD_OPTIONS,
 } from '../../../constants/flowBuilder';
 import type { EventFilterFormState, NetworkRequestFormState, TimerNodeFormState } from '../../../types/flow';
-import '../../CreateComponent/style.less';
 
 interface CodeNodeFormState extends CodeEditorValue {}
 

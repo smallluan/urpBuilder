@@ -4,7 +4,7 @@
  */
 import { v4 as uuidv4 } from 'uuid';
 import { createBuilderStore } from '../../BuilderCore/store/createBuilderStore';
-import { buildNodesByLayoutTemplate } from '../layoutTemplates';
+import { buildNodesByLayoutTemplate } from '../../BuilderCore/config/layoutTemplates';
 
 /**
  * CreateComponent 专属的 store 实例。

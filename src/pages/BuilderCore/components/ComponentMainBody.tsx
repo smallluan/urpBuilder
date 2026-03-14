@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { Button, Dialog, Input, Space, Select, Typography } from 'tdesign-react';
 import ComponentBody from '../renderer/ComponentBody';
-import SCREEN_SIZES from '../../CreateComponent/screenSizes';
+import SCREEN_SIZES from '../config/screenSizes';
 import { useBuilderContext } from '../context/BuilderContext';
-import { BUILT_IN_LAYOUT_TEMPLATES, type BuiltInLayoutTemplateId } from '../../CreateComponent/layoutTemplates';
+import { BUILT_IN_LAYOUT_TEMPLATES, type BuiltInLayoutTemplateId } from '../config/layoutTemplates';
 import { getBreakpointByWidth, resolveBuilderViewportWidth } from '../utils/gridResponsive';
 
 const { Text } = Typography;

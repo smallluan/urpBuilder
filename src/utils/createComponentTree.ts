@@ -1,7 +1,7 @@
 import { v4 as uuidv4 } from 'uuid';
-import type { UiTreeNode } from '../pages/CreateComponent/store/type';
-import { createSlotNode } from '../pages/CreateComponent/utils/slot';
-import { getTabsPanelSlotKey, normalizeTabsList } from '../pages/CreateComponent/utils/tabs';
+import type { UiTreeNode } from '../pages/BuilderCore/store/types';
+import { createSlotNode } from '../pages/BuilderCore/utils/slot';
+import { getTabsPanelSlotKey, normalizeTabsList } from '../pages/BuilderCore/utils/tabs';
 
 const createTypographyTitleNode = (): UiTreeNode => ({
   key: uuidv4(),

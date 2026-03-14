@@ -3,15 +3,14 @@ import React, { useEffect, useRef, useState } from 'react';
 import './style.less';
 import HeaderControls from '../BuilderCore/components/HeaderControls';
 import ComponentLayout from './ComponentLayout';
-import FlowLayout from './FlowLayout';
+import FlowLayout from '../BuilderCore/flow/FlowLayout';
 import { getPageDetail } from '../../api/pageTemplate';
 import { emitApiAlert } from '../../api/alertBus';
 import { useCreateComponentStore } from './store';
 import { BuilderProvider } from '../BuilderCore/context/BuilderContext';
 import { BuilderShell } from '../BuilderCore/components/BuilderShell';
 import type { Edge, Node } from '@xyflow/react';
-import type { UiTreeNode } from './store/type';
-import type { BuiltInLayoutTemplateId } from './layoutTemplates';
+import type { UiTreeNode, BuiltInLayoutTemplateId } from '../BuilderCore/store/types';
 
 const CreateComponent: React.FC = () => {
   const [mode, setMode] = useState<'component' | 'flow'>('component');

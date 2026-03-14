@@ -3,8 +3,8 @@ import type { DragEvent } from 'react';
 import { AddCircleIcon } from 'tdesign-icons-react';
 import './index.less';
 import CommonComponent from '../../pages/BuilderCore/renderer/CommonComponent';
-import type { UiDropDataHandler, UiTreeNode } from '../../pages/CreateComponent/store/type';
-import { useCreateComponentStore } from '../../pages/CreateComponent/store';
+import type { UiDropDataHandler, UiTreeNode } from '../../pages/BuilderCore/store/types';
+import { useBuilderContext } from '../../pages/BuilderCore/context/BuilderContext';
 
 interface DropAreaProps {
   children?: React.ReactNode;
@@ -66,10 +66,11 @@ export default function DropArea({
   compactWhenFilled = false,
   isTreeNode = false,
 }: DropAreaProps) {
+  const { useStore } = useBuilderContext();
   const [isDragOver, setIsDragOver] = useState(false);
   const childrenLength = React.Children.count(children);
-  const activeNodeKey = useCreateComponentStore((state) => state.activeNodeKey);
-  const setActiveNode = useCreateComponentStore((state) => state.setActiveNode);
+  const activeNodeKey = useStore((state) => state.activeNodeKey);
+  const setActiveNode = useStore((state) => state.setActiveNode);
   const isNodeActive = !!data?.key && activeNodeKey === data.key;
 
   // 拖拽经过时允许放置，并切换高亮态
