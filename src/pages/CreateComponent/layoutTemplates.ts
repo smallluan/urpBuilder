@@ -2,12 +2,10 @@ import cloneDeep from 'lodash/cloneDeep';
 import componentCatalog from '../../config/componentCatalog';
 import { toUiTreeNode } from '../../utils/createComponentTree';
 import type { UiTreeNode } from './store/type';
+import type { BuiltInLayoutTemplateId } from '../BuilderCore/store/types';
 
-export type BuiltInLayoutTemplateId =
-  | 'header-body'
-  | 'header-aside-body'
-  | 'header-body-footer'
-  | 'header-aside-body-footer';
+// BuiltInLayoutTemplateId 已迁移至 BuilderCore，此处保持向后兼容的再导出
+export type { BuiltInLayoutTemplateId } from '../BuilderCore/store/types';
 
 interface LayoutTemplateNodeSchema {
   type: string;

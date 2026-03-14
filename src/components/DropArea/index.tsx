@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import type { DragEvent } from 'react';
 import { AddCircleIcon } from 'tdesign-icons-react';
 import './index.less';
-import CommonComponent from '../../pages/CreateComponent/components/CommonComponent';
+import CommonComponent from '../../pages/BuilderCore/renderer/CommonComponent';
 import type { UiDropDataHandler, UiTreeNode } from '../../pages/CreateComponent/store/type';
 import { useCreateComponentStore } from '../../pages/CreateComponent/store';
 

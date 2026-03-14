@@ -4,8 +4,8 @@ import { Button, Input, Tree } from 'tdesign-react';
 import type { TreeInstanceFunctions } from 'tdesign-react';
 import { SearchIcon } from 'tdesign-icons-react';
 import { GripHorizontal, LayoutGrid, Minus, Palette, PlusSquare, Trash2 } from 'lucide-react';
-import { useCreateComponentStore } from '../store';
-import type { UiTreeNode } from '../store/type';
+import { useBuilderContext } from '../context/BuilderContext';
+import type { UiTreeNode } from '../store/types';
 import NodeStyleDrawer from './NodeStyleDrawer';
 import { getNodeSlotKey, isSlotNode } from '../utils/slot';
 import componentCatalog from '../../../config/componentCatalog';
@@ -148,14 +148,15 @@ const getNodeVisualKind = (node: UiTreeNode, root: UiTreeNode): NodeVisualKind =
 const GRID_COL_COMPONENT_SCHEMA = componentCatalog.find((item) => item.type === 'Grid.Col');
 
 const ComponentAsideLeft: React.FC = () => {
-  const uiPageData = useCreateComponentStore((state) => state.uiPageData);
-  const setTreeInstance = useCreateComponentStore((state) => state.setTreeInstance);
-  const activeNodeKey = useCreateComponentStore((state) => state.activeNodeKey);
-  const setActiveNode = useCreateComponentStore((state) => state.setActiveNode);
-  const toggleActiveNode = useCreateComponentStore((state) => state.toggleActiveNode);
-  const removeFromUiPageData = useCreateComponentStore((state) => state.removeFromUiPageData);
-  const insertToUiPageData = useCreateComponentStore((state) => state.insertToUiPageData);
-  const updateActiveNodeProp = useCreateComponentStore((state) => state.updateActiveNodeProp);
+  const { useStore } = useBuilderContext();
+  const uiPageData = useStore((state) => state.uiPageData);
+  const setTreeInstance = useStore((state) => state.setTreeInstance);
+  const activeNodeKey = useStore((state) => state.activeNodeKey);
+  const setActiveNode = useStore((state) => state.setActiveNode);
+  const toggleActiveNode = useStore((state) => state.toggleActiveNode);
+  const removeFromUiPageData = useStore((state) => state.removeFromUiPageData);
+  const insertToUiPageData = useStore((state) => state.insertToUiPageData);
+  const updateActiveNodeProp = useStore((state) => state.updateActiveNodeProp);
   const [dragOverNodeKey, setDragOverNodeKey] = useState<string | null>(null);
   const [contextMenuState, setContextMenuState] = useState<{
     visible: boolean;

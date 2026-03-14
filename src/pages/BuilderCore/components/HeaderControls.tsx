@@ -1,8 +1,8 @@
 import React, { useMemo, useState } from 'react';
 import { Radio, Button, Space, Drawer, Timeline, Tag, Dialog, Input } from 'tdesign-react';
 import { UploadIcon, ViewImageIcon, ArrowLeftIcon, ArrowRightIcon, HistoryIcon } from 'tdesign-icons-react';
-import { useCreateComponentStore } from '../store';
-import type { UiHistoryAction } from '../store/type';
+import { useBuilderContext } from '../context/BuilderContext';
+import type { UiHistoryAction } from '../store/types';
 import { serializePreviewSnapshot } from '../../PreviewEngine/utils/snapshot';
 import { savePageDraft, updatePageDraft } from '../../../api/pageTemplate';
 import { emitApiAlert } from '../../../api/alertBus';
@@ -95,19 +95,20 @@ const toActionDescription = (action: UiHistoryAction) => {
 };
 
 const HeaderControls: React.FC<Props> = ({ mode, onChange }) => {
-  const history = useCreateComponentStore((state) => state.history);
-  const uiTreeData = useCreateComponentStore((state) => state.uiPageData);
-  const flowNodes = useCreateComponentStore((state) => state.flowNodes);
-  const flowEdges = useCreateComponentStore((state) => state.flowEdges);
-  const screenSize = useCreateComponentStore((state) => state.screenSize);
-  const autoWidth = useCreateComponentStore((state) => state.autoWidth);
-  const currentPageId = useCreateComponentStore((state) => state.currentPageId);
-  const currentPageName = useCreateComponentStore((state) => state.currentPageName);
-  const setCurrentPageMeta = useCreateComponentStore((state) => state.setCurrentPageMeta);
-  const selectedLayoutTemplateId = useCreateComponentStore((state) => state.selectedLayoutTemplateId);
-  const undo = useCreateComponentStore((state) => state.undo);
-  const redo = useCreateComponentStore((state) => state.redo);
-  const jumpToHistory = useCreateComponentStore((state) => state.jumpToHistory);
+  const { useStore } = useBuilderContext();
+  const history = useStore((state) => state.history);
+  const uiTreeData = useStore((state) => state.uiPageData);
+  const flowNodes = useStore((state) => state.flowNodes);
+  const flowEdges = useStore((state) => state.flowEdges);
+  const screenSize = useStore((state) => state.screenSize);
+  const autoWidth = useStore((state) => state.autoWidth);
+  const currentPageId = useStore((state) => state.currentPageId);
+  const currentPageName = useStore((state) => state.currentPageName);
+  const setCurrentPageMeta = useStore((state) => state.setCurrentPageMeta);
+  const selectedLayoutTemplateId = useStore((state) => state.selectedLayoutTemplateId);
+  const undo = useStore((state) => state.undo);
+  const redo = useStore((state) => state.redo);
+  const jumpToHistory = useStore((state) => state.jumpToHistory);
   const [historyVisible, setHistoryVisible] = useState(false);
   const [saveDialogVisible, setSaveDialogVisible] = useState(false);
   const [componentName, setComponentName] = useState('');

@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { Button, ColorPicker, Dialog, Empty, Input, InputNumber, Popup, Select, Slider, Space, Switch, Table, Tag, Typography } from 'tdesign-react';
 import { HelpCircleIcon } from 'tdesign-icons-react';
-import { useCreateComponentStore } from '../store';
-import type { UiTreeNode } from '../store/type';
+import { useBuilderContext } from '../context/BuilderContext';
+import type { UiTreeNode } from '../store/types';
 import NodeStyleDrawer from './NodeStyleDrawer';
 import { isSlotNode } from '../utils/slot';
 import CodeEditorDialog, { type CodeEditorValue } from './CodeEditorDialog';
@@ -247,13 +247,14 @@ const resolveEditType = (schema: ComponentPropSchema): EditType => {
 };
 
 const ComponentConfigPanel: React.FC = () => {
-  const activeNode = useCreateComponentStore((state) => state.activeNode);
-  const uiPageData = useCreateComponentStore((state) => state.uiPageData);
-  const updateActiveNodeLabel = useCreateComponentStore((state) => state.updateActiveNodeLabel);
-  const updateActiveNodeKey = useCreateComponentStore((state) => state.updateActiveNodeKey);
-  const updateActiveNodeProp = useCreateComponentStore((state) => state.updateActiveNodeProp);
-  const screenSize = useCreateComponentStore((state) => state.screenSize);
-  const autoWidth = useCreateComponentStore((state) => state.autoWidth);
+  const { useStore } = useBuilderContext();
+  const activeNode = useStore((state) => state.activeNode);
+  const uiPageData = useStore((state) => state.uiPageData);
+  const updateActiveNodeLabel = useStore((state) => state.updateActiveNodeLabel);
+  const updateActiveNodeKey = useStore((state) => state.updateActiveNodeKey);
+  const updateActiveNodeProp = useStore((state) => state.updateActiveNodeProp);
+  const screenSize = useStore((state) => state.screenSize);
+  const autoWidth = useStore((state) => state.autoWidth);
   const [labelDraft, setLabelDraft] = useState('');
   const [keyDraft, setKeyDraft] = useState('');
   const [keyError, setKeyError] = useState('');
@@ -823,7 +824,7 @@ const ComponentConfigPanel: React.FC = () => {
             <NodeStyleDrawer
               targetKey={activeNode.key}
               value={styleValue}
-              onChange={(nextStyle) => updateActiveNodeProp('__style', nextStyle)}
+              onChange={(nextStyle: Record<string, unknown>) => updateActiveNodeProp('__style', nextStyle)}
             />
           </div>
         </div>

@@ -1,21 +1,22 @@
 import React, { useEffect, useState } from 'react';
 import { Button, Dialog, Input, Space, Select, Typography } from 'tdesign-react';
-import ComponentBody from '../ComponentBody';
-import SCREEN_SIZES from '../screenSizes';
-import { useCreateComponentStore } from '../store';
-import { BUILT_IN_LAYOUT_TEMPLATES, type BuiltInLayoutTemplateId } from '../layoutTemplates';
+import ComponentBody from '../renderer/ComponentBody';
+import SCREEN_SIZES from '../../CreateComponent/screenSizes';
+import { useBuilderContext } from '../context/BuilderContext';
+import { BUILT_IN_LAYOUT_TEMPLATES, type BuiltInLayoutTemplateId } from '../../CreateComponent/layoutTemplates';
 import { getBreakpointByWidth, resolveBuilderViewportWidth } from '../utils/gridResponsive';
 
 const { Text } = Typography;
 
 const ComponentMainBody: React.FC = () => {
-  const screenSize = useCreateComponentStore((state) => state.screenSize);
-  const autoWidth = useCreateComponentStore((state) => state.autoWidth);
-  const setScreenSize = useCreateComponentStore((state) => state.setScreenSize);
-  const setAutoWidth = useCreateComponentStore((state) => state.setAutoWidth);
-  const uiPageData = useCreateComponentStore((state) => state.uiPageData);
-  const selectedLayoutTemplateId = useCreateComponentStore((state) => state.selectedLayoutTemplateId);
-  const applyBuiltInLayoutTemplate = useCreateComponentStore((state) => state.applyBuiltInLayoutTemplate);
+  const { useStore } = useBuilderContext();
+  const screenSize = useStore((state) => state.screenSize);
+  const autoWidth = useStore((state) => state.autoWidth);
+  const setScreenSize = useStore((state) => state.setScreenSize);
+  const setAutoWidth = useStore((state) => state.setAutoWidth);
+  const uiPageData = useStore((state) => state.uiPageData);
+  const selectedLayoutTemplateId = useStore((state) => state.selectedLayoutTemplateId);
+  const applyBuiltInLayoutTemplate = useStore((state) => state.applyBuiltInLayoutTemplate);
 
   const inputDisabled = screenSize !== 'auto';
   const [draftInputValue, setDraftInputValue] = useState<string>(String(autoWidth));

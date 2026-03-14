@@ -1,25 +1,2 @@
-import type { UiTreeNode } from '../store/type';
-
-export const findNodePathByKey = (
-  node: UiTreeNode,
-  targetKey: string,
-  path: UiTreeNode[] = [],
-): UiTreeNode[] | null => {
-  const nextPath = [...path, node];
-  if (node.key === targetKey) {
-    return nextPath;
-  }
-
-  if (!node.children?.length) {
-    return null;
-  }
-
-  for (const child of node.children) {
-    const found = findNodePathByKey(child, targetKey, nextPath);
-    if (found) {
-      return found;
-    }
-  }
-
-  return null;
-};
+﻿// 已迁移至 BuilderCore，此处保持向后兼容的频道代理
+export * from '../../BuilderCore/utils/tree';

@@ -1,12 +1,14 @@
 import React, { useEffect, useRef, useState } from 'react';
 // layout components handle their own asides
 import './style.less';
-import HeaderControls from './components/HeaderControls';
+import HeaderControls from '../BuilderCore/components/HeaderControls';
 import ComponentLayout from './ComponentLayout';
 import FlowLayout from './FlowLayout';
 import { getPageDetail } from '../../api/pageTemplate';
 import { emitApiAlert } from '../../api/alertBus';
 import { useCreateComponentStore } from './store';
+import { BuilderProvider } from '../BuilderCore/context/BuilderContext';
+import { BuilderShell } from '../BuilderCore/components/BuilderShell';
 import type { Edge, Node } from '@xyflow/react';
 import type { UiTreeNode } from './store/type';
 import type { BuiltInLayoutTemplateId } from './layoutTemplates';
@@ -77,15 +79,11 @@ const CreateComponent: React.FC = () => {
   }, [setCurrentPageMeta]);
 
   return (
-    <div className="create-page">
-      <header className="create-header">
-        <HeaderControls mode={mode} onChange={setMode} />
-      </header>
-
-      <div className="create-body">
+    <BuilderProvider useStore={useCreateComponentStore}>
+      <BuilderShell header={<HeaderControls mode={mode} onChange={setMode} />}>
         {mode === 'component' ? <ComponentLayout /> : <FlowLayout />}
-      </div>
-    </div>
+      </BuilderShell>
+    </BuilderProvider>
   );
 };
 

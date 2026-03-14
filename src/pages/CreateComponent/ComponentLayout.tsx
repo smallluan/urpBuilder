@@ -1,7 +1,7 @@
 import React from 'react';
-import ComponentAsideLeft from './components/ComponentAsideLeft';
-import ComponentMainBody from './components/ComponentMainBody';
-import ComponentAsideRight from './components/ComponentAsideRight';
+import ComponentAsideLeft from '../BuilderCore/components/ComponentAsideLeft';
+import ComponentMainBody from '../BuilderCore/components/ComponentMainBody';
+import ComponentAsideRight from '../BuilderCore/components/ComponentAsideRight';
 import './style.less';
 
 const ComponentLayout: React.FC = () => {
