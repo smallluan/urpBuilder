@@ -23,6 +23,7 @@ import {
   type IconQuickFilterKey,
 } from '../../constants/iconRegistry';
 import { createDefaultTabsList, normalizeTabsList } from '../utils/tabs';
+import { loadCustomComponentDetail, resolveExposedPropSchemas } from '../../utils/customComponentRuntime';
 
 type EditType = 'switch' | 'input' | 'inputNumber' | 'select' | 'iconSelect' | 'swiperImages' | 'tabsConfig' | 'jsonCode';
 
@@ -272,6 +273,7 @@ const ComponentConfigPanel: React.FC = () => {
   const [activeBreakpoint, setActiveBreakpoint] = useState<GridBreakpoint>('xs');
   const [iconQuickFilters, setIconQuickFilters] = useState<Record<string, IconQuickFilterKey>>({});
   const [iconInitialFilters, setIconInitialFilters] = useState<Record<string, IconInitialFilterKey>>({});
+  const [customComponentFallbackProps, setCustomComponentFallbackProps] = useState<Array<[string, ComponentPropSchema]>>([]);
   const [jsonCodeValue, setJsonCodeValue] = useState<CodeEditorValue>({
     label: 'JSON示例数据',
     language: 'json',
@@ -358,6 +360,24 @@ const ComponentConfigPanel: React.FC = () => {
       .map((item) => [item.propKey, item.schema] as const);
   }, [editableProps]);
 
+  const mergedEditableProps = React.useMemo(() => {
+    if (customComponentFallbackProps.length === 0) {
+      return sortedEditableProps;
+    }
+
+    const merged = [...sortedEditableProps];
+    const existingKeys = new Set(merged.map(([propKey]) => propKey));
+    customComponentFallbackProps.forEach(([propKey, schema]) => {
+      if (existingKeys.has(propKey)) {
+        return;
+      }
+      merged.push([propKey, schema] as const);
+      existingKeys.add(propKey);
+    });
+
+    return merged;
+  }, [customComponentFallbackProps, sortedEditableProps]);
+
   const isNodeInsideListTemplate = Boolean(listItemAncestor && activeNode && activeNode.type !== 'List.Item');
   const bindableProps = activeNode?.type ? (LIST_BINDABLE_PROP_OPTIONS[activeNode.type] ?? []) : [];
   const listBindingSchema = propsMap.__listBinding;
@@ -396,6 +416,46 @@ const ComponentConfigPanel: React.FC = () => {
     setInputDrafts(nextInputDrafts);
     setNumberDrafts(nextNumberDrafts);
   }, [activeNode?.key, activeNode?.label, activeNode?.props]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadFallbackProps = async () => {
+      if (!activeNode || activeNode.type !== 'CustomComponent') {
+        setCustomComponentFallbackProps([]);
+        return;
+      }
+
+      const nonMetaPropKeys = Object.keys((activeNode.props ?? {}) as Record<string, unknown>)
+        .filter((propKey) => propKey && !propKey.startsWith('__'));
+      if (nonMetaPropKeys.length > 0) {
+        setCustomComponentFallbackProps([]);
+        return;
+      }
+
+      const componentIdSchema = (activeNode.props?.__componentId ?? null) as { value?: unknown } | null;
+      const componentId = String(componentIdSchema?.value ?? '').trim();
+      if (!componentId) {
+        setCustomComponentFallbackProps([]);
+        return;
+      }
+
+      const detail = await loadCustomComponentDetail(componentId, { forceRefresh: true });
+      if (cancelled) {
+        return;
+      }
+
+      const exposed = resolveExposedPropSchemas(detail);
+      const fallback = exposed.map((item) => [item.propKey, item.schema as ComponentPropSchema] as [string, ComponentPropSchema]);
+      setCustomComponentFallbackProps(fallback);
+    };
+
+    void loadFallbackProps();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activeNode]);
 
   if (!activeNode) {
     return (
@@ -829,7 +889,7 @@ const ComponentConfigPanel: React.FC = () => {
           </div>
         </div>
 
-        {sortedEditableProps.map(([propKey, schema]) => (
+        {mergedEditableProps.map(([propKey, schema]) => (
           <div key={propKey} className="config-row">
             <span className="config-label">{schema.name ?? propKey}</span>
             <div className="config-editor">{renderEditor(propKey, schema)}</div>

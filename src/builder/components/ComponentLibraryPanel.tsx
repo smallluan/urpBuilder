@@ -32,11 +32,7 @@ import componentCatalog from '../../config/componentCatalog';
 import { componentLibraryEntries, groupedComponentTypes, type ComponentLibraryCategory, type ComponentLibraryEntry, type ComponentLibraryGroupEntry } from '../../config/componentLibrary';
 import DragableWrapper from '../../components/DragableWrapper';
 import { getPageBaseList, getPageDetail } from '../../api/pageTemplate';
-
-interface ComponentContract {
-  exposedProps?: Array<{ propKey?: string }>;
-  exposedLifecycles?: Array<{ lifetime?: string }>;
-}
+import { resolveExposedLifecycles, resolveExposedPropSchemas } from '../../utils/customComponentRuntime';
 
 interface CustomComponentSchema {
   name: string;
@@ -384,18 +380,8 @@ const ComponentLibraryPanel: React.FC<ComponentLibraryPanelProps> = ({ selectedN
 
         const nextSchemas = details
           .map(({ base, detail }) => {
-            const pageConfig = (detail?.template?.pageConfig ?? {}) as { componentContract?: ComponentContract };
-            const contract = pageConfig.componentContract;
-            const exposedProps = Array.isArray(contract?.exposedProps)
-              ? contract.exposedProps
-                  .map((item) => String(item?.propKey ?? '').trim())
-                  .filter(Boolean)
-              : [];
-            const exposedLifecycles = Array.isArray(contract?.exposedLifecycles)
-              ? contract.exposedLifecycles
-                  .map((item) => String(item?.lifetime ?? '').trim())
-                  .filter(Boolean)
-              : [];
+            const exposedPropSchemas = resolveExposedPropSchemas(detail);
+            const exposedLifecycles = resolveExposedLifecycles(detail);
 
             const props = {
               __componentId: {
@@ -409,12 +395,12 @@ const ComponentLibraryPanel: React.FC<ComponentLibraryPanelProps> = ({ selectedN
                 editType: 'input',
               },
               ...Object.fromEntries(
-                exposedProps.map((propKey) => [
-                  propKey,
+                exposedPropSchemas.map((item) => [
+                  item.propKey,
                   {
-                    name: propKey,
-                    value: '',
-                    editType: 'input',
+                    ...item.schema,
+                    name: String(item.schema.name ?? item.propKey),
+                    value: item.schema.value ?? '',
                   },
                 ]),
               ),

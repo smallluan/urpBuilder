@@ -1,5 +1,6 @@
 import React from 'react';
 import { Avatar, Button, Card, Col, Divider, Image, Row, Space, Switch, Swiper, Typography, Layout, Calendar, ColorPicker, TimePicker, TimeRangePicker, InputNumber, Slider, Steps, List, Link, Tabs, BackTop, Menu, Drawer, Progress, Upload, Input, Textarea } from 'tdesign-react';
+import type { Edge, Node } from '@xyflow/react';
 import type { UiTreeNode } from '../../../builder/store/types';
 import { getNodeSlotKey, isSlotNode } from '../../../builder/utils/slot';
 import { convertResponsiveConfigToTDesignProps, normalizeResponsiveConfig } from '../../../builder/utils/gridResponsive';
@@ -7,12 +8,14 @@ import type { ComponentLifecycleHandler, ListRecord, SwiperImageItem } from '../
 import { CORE_LIFETIMES, LIST_PREVIEW_DATA } from '../../../constants/componentBuilder';
 import { renderNamedIcon } from '../../../constants/iconRegistry';
 import { getTabsSlotNodeByValue, normalizeTabsList, normalizeTabsValue } from '../../../builder/utils/tabs';
+import { createPreviewDataHub } from '../runtime/dataHub';
+import { createPreviewFlowRuntime, type PreviewFlowRuntime } from '../runtime/flowRuntime';
 import {
   applyExposedPropsToTemplate,
   cloneTemplateUiTree,
   getNodeStringProp,
   loadCustomComponentDetail,
-  namespaceUiTreeKeys,
+  resolveExposedLifecycles,
 } from '../../../utils/customComponentRuntime';
 
 interface PreviewRendererProps {
@@ -869,16 +872,29 @@ function PreviewCustomComponentRenderer({
   node: UiTreeNode;
   onLifecycle?: ComponentLifecycleHandler;
 }) {
-  const [templateTree, setTemplateTree] = React.useState<UiTreeNode | null>(null);
+  const [runtimeSeed, setRuntimeSeed] = React.useState<{
+    tree: UiTreeNode;
+    flowNodes: Node[];
+    flowEdges: Edge[];
+    exposedLifecycles: string[];
+  } | null>(null);
+  const [renderTree, setRenderTree] = React.useState<UiTreeNode | null>(null);
   const [loading, setLoading] = React.useState(false);
+  const runtimeRef = React.useRef<PreviewFlowRuntime | null>(null);
 
   const componentId = getNodeStringProp(node, '__componentId');
+
+  const exposedLifecycleSet = React.useMemo(
+    () => new Set(runtimeSeed?.exposedLifecycles ?? []),
+    [runtimeSeed?.exposedLifecycles],
+  );
 
   React.useEffect(() => {
     let cancelled = false;
 
     if (!componentId) {
-      setTemplateTree(null);
+      setRuntimeSeed(null);
+      setRenderTree(null);
       return () => {
         cancelled = true;
       };
@@ -893,13 +909,23 @@ function PreviewCustomComponentRenderer({
 
         const root = cloneTemplateUiTree(detail);
         if (!root) {
-          setTemplateTree(null);
+          setRuntimeSeed(null);
+          setRenderTree(null);
           return;
         }
 
         const injectedTree = applyExposedPropsToTemplate(node, root, detail);
-        const namespaced = namespaceUiTreeKeys(injectedTree, `preview-cc-${node.key}`);
-        setTemplateTree(namespaced);
+        const flowNodes = (detail?.template?.flowNodes as unknown as Node[]) ?? [];
+        const flowEdges = (detail?.template?.flowEdges as unknown as Edge[]) ?? [];
+        const exposedLifecycles = resolveExposedLifecycles(detail);
+
+        setRuntimeSeed({
+          tree: injectedTree,
+          flowNodes,
+          flowEdges,
+          exposedLifecycles,
+        });
+        setRenderTree(injectedTree);
       })
       .finally(() => {
         if (!cancelled) {
@@ -912,6 +938,44 @@ function PreviewCustomComponentRenderer({
     };
   }, [componentId, node]);
 
+  React.useEffect(() => {
+    runtimeRef.current?.destroy();
+    runtimeRef.current = null;
+
+    if (!runtimeSeed) {
+      return;
+    }
+
+    const hub = createPreviewDataHub(runtimeSeed.tree, { scopeId: 'root' });
+    const runtime = createPreviewFlowRuntime(runtimeSeed.flowNodes, runtimeSeed.flowEdges, hub);
+    const unsubscribePatched = hub.subscribe('component:patched', () => {
+      setRenderTree(hub.getTreeSnapshot());
+    });
+
+    runtimeRef.current = runtime;
+
+    return () => {
+      unsubscribePatched();
+      runtime.destroy();
+      if (runtimeRef.current === runtime) {
+        runtimeRef.current = null;
+      }
+    };
+  }, [runtimeSeed]);
+
+  const handleInnerLifecycle = React.useCallback<ComponentLifecycleHandler>((componentKey, lifetime, payload) => {
+    runtimeRef.current?.emitLifecycle(componentKey, lifetime, payload);
+
+    if (onLifecycle && exposedLifecycleSet.has(String(lifetime ?? '').trim())) {
+      onLifecycle(node.key, lifetime, {
+        from: 'custom-component',
+        componentId,
+        componentKey,
+        payload,
+      });
+    }
+  }, [componentId, exposedLifecycleSet, node.key, onLifecycle]);
+
   if (!componentId) {
     return null;
   }
@@ -920,14 +984,14 @@ function PreviewCustomComponentRenderer({
     return null;
   }
 
-  if (!templateTree) {
+  if (!renderTree) {
     return null;
   }
 
   return (
     <>
-      {(templateTree.children ?? []).map((child) => (
-        <PreviewRenderer key={child.key} node={child} onLifecycle={onLifecycle} />
+      {(renderTree.children ?? []).map((child) => (
+        <PreviewRenderer key={child.key} node={child} onLifecycle={handleInnerLifecycle} />
       ))}
     </>
   );
