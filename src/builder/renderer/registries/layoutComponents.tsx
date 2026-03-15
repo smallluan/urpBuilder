@@ -14,7 +14,7 @@ export function registerLayoutComponents(registry: ComponentRegistry): void {
       spaceSplitDashed, spaceSplitAlign, spaceSplitContent,
     } = ctx;
     return (
-      <DropArea data={data} onDropData={onDropData}>
+      <DropArea data={data} onDropData={onDropData} style={mergeStyle()}>
         <SpaceContent
           align={getStringProp('align')}
           direction={spaceDirection}
@@ -25,7 +25,7 @@ export function registerLayoutComponents(registry: ComponentRegistry): void {
           spaceSplitDashed={spaceSplitDashed}
           spaceSplitAlign={spaceSplitAlign}
           spaceSplitContent={spaceSplitContent}
-          style={mergeStyle()}
+          style={undefined}
           onActivate={handleActivateSelf}
           nodeKey={data?.key}
           active={isNodeActive}
@@ -37,12 +37,12 @@ export function registerLayoutComponents(registry: ComponentRegistry): void {
   registry.set('Grid.Row', (ctx) => {
     const { data, onDropData, getStringProp, getNumberProp, mergeStyle } = ctx;
     return (
-      <DropArea style={{ width: '100%' }} data={data} onDropData={onDropData}>
+      <DropArea style={mergeStyle({ width: '100%' })} data={data} onDropData={onDropData}>
         <RowContent
           align={getStringProp('align')}
           justify={getStringProp('justify')}
           gutter={getNumberProp('gutter')}
-          style={mergeStyle()}
+          style={undefined}
         />
       </DropArea>
     );

@@ -59,6 +59,7 @@ const FlowLayout: React.FC = () => {
   const [propExposeDraft, setPropExposeDraft] = useState<PropExposeNodeFormState | null>(null);
   const [propAliasDrawerVisible, setPropAliasDrawerVisible] = useState(false);
   const [lifecycleExposeDraft, setLifecycleExposeDraft] = useState<LifecycleExposeNodeFormState | null>(null);
+  const [lifecycleAliasDrawerVisible, setLifecycleAliasDrawerVisible] = useState(false);
   const [rightPanelMode, setRightPanelMode] = useState<RightPanelMode>('library');
 
   const builtinNodes = [
@@ -222,12 +223,21 @@ const FlowLayout: React.FC = () => {
       ? nodeData.selectedLifetimes.map((item) => String(item)).filter(Boolean)
       : [];
     const selectedLifetimes = selectedRaw.filter((item) => availableLifetimes.includes(item));
+    const selectedMappings = Array.isArray(nodeData.selectedMappings)
+      ? (nodeData.selectedMappings as Array<Record<string, unknown>>)
+        .map((item) => ({
+          sourceLifetime: String(item.sourceLifetime ?? ''),
+          alias: typeof item.alias === 'string' ? String(item.alias) : undefined,
+        }))
+        .filter((item) => Boolean(item.sourceLifetime))
+      : selectedLifetimes.map((item) => ({ sourceLifetime: item, alias: undefined }));
 
     setLifecycleExposeDraft({
       label: String(nodeData.label ?? '生命周期暴露节点'),
       upstreamLabel: String(nodeData.upstreamLabel ?? '-'),
       availableLifetimes,
       selectedLifetimes,
+      selectedMappings,
     });
   }, [activeFlowNode]);
 
@@ -377,6 +387,7 @@ const FlowLayout: React.FC = () => {
     const draftComparable = {
       label: lifecycleExposeDraft.label,
       selectedLifetimes: lifecycleExposeDraft.selectedLifetimes,
+      selectedMappings: lifecycleExposeDraft.selectedMappings,
     };
 
     return JSON.stringify(currentComparable) !== JSON.stringify(draftComparable);
@@ -490,6 +501,7 @@ const FlowLayout: React.FC = () => {
         ...previous,
         label: lifecycleExposeDraft.label,
         selectedLifetimes: lifecycleExposeDraft.selectedLifetimes,
+        selectedMappings: lifecycleExposeDraft.selectedMappings,
       }),
       '更新生命周期暴露节点配置',
     );
@@ -839,31 +851,17 @@ const FlowLayout: React.FC = () => {
 
                   <div className="flow-config-field">
                     <div className="flow-config-field__label">对外输出生命周期</div>
-                    <Select
+                    <Button
                       size="small"
-                      multiple
-                      clearable
+                      theme="default"
+                      variant="outline"
                       disabled={lifecycleExposeDraft.availableLifetimes.length === 0}
-                      placeholder={lifecycleExposeDraft.availableLifetimes.length === 0 ? '请先连接事件过滤节点' : '请选择输出事件'}
-                      options={lifecycleExposeDraft.availableLifetimes.map((item) => ({
-                        label: item,
-                        value: item,
-                      }))}
-                      value={lifecycleExposeDraft.selectedLifetimes}
-                      onChange={(value) => {
-                        const nextValues = Array.isArray(value)
-                          ? value.map((item) => String(item))
-                          : (value ? [String(value)] : []);
-                        setLifecycleExposeDraft((previous) =>
-                          previous
-                            ? {
-                                ...previous,
-                                selectedLifetimes: nextValues,
-                              }
-                            : previous,
-                        );
-                      }}
-                    />
+                      onClick={() => setLifecycleAliasDrawerVisible(true)}
+                    >
+                      {lifecycleExposeDraft.selectedLifetimes.length > 0
+                        ? `已选择 ${lifecycleExposeDraft.selectedLifetimes.length} 项`
+                        : '选择并设置别名'}
+                    </Button>
                   </div>
 
                   <div className="flow-config-panel__actions">
@@ -888,6 +886,101 @@ const FlowLayout: React.FC = () => {
             </div>
           )}
         </div>
+
+        <Drawer
+          visible={lifecycleAliasDrawerVisible && !!activeFlowNode && activeFlowNode.type === 'lifecycleExposeNode' && !!lifecycleExposeDraft}
+          header="生命周期别名配置"
+          placement="right"
+          size="480px"
+          footer={false}
+          onClose={() => setLifecycleAliasDrawerVisible(false)}
+        >
+          {lifecycleExposeDraft ? (
+            <div className="flow-config-drawer-form">
+              <div className="flow-config-drawer-subtitle">选择需要对外暴露的生命周期，并为每项设置别名。</div>
+
+              <div className="flow-config-field">
+                <div className="flow-config-field__label">选择生命周期</div>
+                <Select
+                  size="small"
+                  multiple
+                  clearable
+                  disabled={lifecycleExposeDraft.availableLifetimes.length === 0}
+                  placeholder={lifecycleExposeDraft.availableLifetimes.length === 0 ? '请先连接事件过滤节点' : '请选择要暴露的生命周期'}
+                  options={lifecycleExposeDraft.availableLifetimes.map((item) => ({ label: item, value: item }))}
+                  value={lifecycleExposeDraft.selectedLifetimes}
+                  onChange={(value) => {
+                    const nextValues = Array.isArray(value)
+                      ? value.map((item) => String(item))
+                      : (value ? [String(value)] : []);
+
+                    setLifecycleExposeDraft((previous) =>
+                      previous
+                        ? {
+                            ...previous,
+                            selectedLifetimes: nextValues,
+                            selectedMappings: nextValues.map((k) => {
+                              const exists = previous.selectedMappings?.find((m) => m.sourceLifetime === k);
+                              return exists ? { ...exists } : { sourceLifetime: k, alias: undefined };
+                            }),
+                          }
+                        : previous,
+                    );
+                  }}
+                />
+              </div>
+
+              <div className="flow-config-field">
+                <div className="flow-config-field__label">别名（可选）</div>
+                <div className="flow-config-expose-mappings">
+                  {lifecycleExposeDraft.selectedMappings && lifecycleExposeDraft.selectedMappings.length > 0 ? (
+                    lifecycleExposeDraft.selectedMappings.map((item, idx) => (
+                      <div key={`${item.sourceLifetime}-${idx}`} className="flow-config-expose-mapping-row">
+                        <div className="flow-config-expose-mapping-name">{item.sourceLifetime}</div>
+                        <Input
+                          size="small"
+                          placeholder="对外名称（不填则使用来源名称）"
+                          value={item.alias ?? ''}
+                          onChange={(value) => {
+                            setLifecycleExposeDraft((previous) => {
+                              if (!previous) return previous;
+                              const next = (previous.selectedMappings ?? []).map((mapping) =>
+                                mapping.sourceLifetime === item.sourceLifetime
+                                  ? { ...mapping, alias: String(value ?? '') || undefined }
+                                  : mapping,
+                              );
+                              return { ...previous, selectedMappings: next };
+                            });
+                          }}
+                        />
+                      </div>
+                    ))
+                  ) : (
+                    <div className="flow-config-field__hint">请先从上方选择要暴露的生命周期</div>
+                  )}
+                </div>
+              </div>
+
+              <div className="flow-config-drawer-actions">
+                <Button size="small" theme="default" variant="outline" onClick={() => setLifecycleAliasDrawerVisible(false)}>
+                  取消
+                </Button>
+                <Button
+                  size="small"
+                  theme="primary"
+                  variant="outline"
+                  disabled={!lifecycleExposeDraft.selectedLifetimes || lifecycleExposeDraft.selectedLifetimes.length === 0}
+                  onClick={() => {
+                    handleApplyLifecycleExposeDraft();
+                    setLifecycleAliasDrawerVisible(false);
+                  }}
+                >
+                  应用配置
+                </Button>
+              </div>
+            </div>
+          ) : null}
+        </Drawer>
 
         <Drawer
           visible={networkEditorVisible && !!activeFlowNode && activeFlowNode.type === 'networkRequestNode' && !!networkDraft}

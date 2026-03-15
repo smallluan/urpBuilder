@@ -131,10 +131,9 @@ const BuildPage: React.FC = () => {
     }
 
     const routePath = row.routePath !== '-' ? row.routePath : '';
-    const previewUrl = routePath
-      ? `${window.location.origin}/site-preview${routePath}`
-      : `${window.location.origin}/preview-engine?pageId=${encodeURIComponent(row.pageId)}`;
-    window.open(previewUrl, '_blank');
+    const previewUrl = new URL(routePath ? `/site-preview${routePath}` : '/preview-engine', window.location.origin);
+    previewUrl.searchParams.set('pageId', row.pageId);
+    window.open(previewUrl.toString(), '_blank');
   };
 
   const handleEdit = (row: PageTemplateRow) => {

@@ -211,6 +211,32 @@ const toPayload = (draft: StyleValue): Record<string, unknown> => {
 	return nextStyle;
 };
 
+const normalizeComparableStyle = (value?: Record<string, unknown>) => {
+	if (!value || typeof value !== 'object' || Array.isArray(value)) {
+		return {} as Record<string, string>;
+	}
+
+	const normalizedEntries = Object.entries(value)
+		.map(([key, rawValue]) => [key, String(rawValue ?? '').trim()] as const)
+		.filter(([, text]) => text.length > 0)
+		.sort(([a], [b]) => a.localeCompare(b));
+
+	return Object.fromEntries(normalizedEntries);
+};
+
+const isSameStylePayload = (left: Record<string, unknown>, right: Record<string, unknown>) => {
+	const normalizedLeft = normalizeComparableStyle(left);
+	const normalizedRight = normalizeComparableStyle(right);
+	const leftKeys = Object.keys(normalizedLeft);
+	const rightKeys = Object.keys(normalizedRight);
+
+	if (leftKeys.length !== rightKeys.length) {
+		return false;
+	}
+
+	return leftKeys.every((key) => normalizedLeft[key] === normalizedRight[key]);
+};
+
 const NodeStyleDrawer: React.FC<NodeStyleDrawerProps> = ({
 	value,
 	onChange,
@@ -259,8 +285,13 @@ const NodeStyleDrawer: React.FC<NodeStyleDrawerProps> = ({
 			return;
 		}
 
-		onChange(cssTextToPayload(cssDraft));
-	}, [visible, autoApply, hasUserEdited, cssDraft, onChange]);
+		const nextPayload = cssTextToPayload(cssDraft);
+		if (isSameStylePayload(nextPayload, normalized)) {
+			return;
+		}
+
+		onChange(nextPayload);
+	}, [visible, autoApply, hasUserEdited, cssDraft, normalized, onChange]);
 
 	const handleClose = () => {
 		setVisible(false);

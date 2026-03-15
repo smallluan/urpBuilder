@@ -15,6 +15,7 @@ import {
   cloneTemplateUiTree,
   getNodeStringProp,
   loadCustomComponentDetail,
+  resolveExposedLifecycleMappings,
   resolveExposedLifecycles,
 } from '../../../utils/customComponentRuntime';
 
@@ -60,6 +61,35 @@ const getTextProp = (node: UiTreeNode, propName: string) => {
     return String(value);
   }
   return undefined;
+};
+
+const resolvePreviewPathFromHref = (href: string) => {
+  const text = String(href ?? '').trim();
+  if (!text) {
+    return '';
+  }
+
+  try {
+    const parsed = new URL(text, window.location.origin);
+    return `${parsed.pathname}${parsed.search}${parsed.hash}`;
+  } catch {
+    return text;
+  }
+};
+
+const navigatePreviewByHref = (href: string) => {
+  const targetPath = resolvePreviewPathFromHref(href);
+  if (!targetPath) {
+    return;
+  }
+
+  const router = (window.dataHub as { router?: { push?: (path: string) => unknown } } | undefined)?.router;
+  if (router?.push) {
+    router.push(targetPath);
+    return;
+  }
+
+  window.location.href = targetPath;
 };
 
 const getCalendarValueProp = (node: UiTreeNode, propName: string) => {
@@ -877,6 +907,7 @@ function PreviewCustomComponentRenderer({
     flowNodes: Node[];
     flowEdges: Edge[];
     exposedLifecycles: string[];
+    lifecycleMappings: Array<{ lifetime: string; key?: string }>;
   } | null>(null);
   const [renderTree, setRenderTree] = React.useState<UiTreeNode | null>(null);
   const [loading, setLoading] = React.useState(false);
@@ -918,12 +949,14 @@ function PreviewCustomComponentRenderer({
         const flowNodes = (detail?.template?.flowNodes as unknown as Node[]) ?? [];
         const flowEdges = (detail?.template?.flowEdges as unknown as Edge[]) ?? [];
         const exposedLifecycles = resolveExposedLifecycles(detail);
+        const lifecycleMappings = resolveExposedLifecycleMappings(detail);
 
         setRuntimeSeed({
           tree: injectedTree,
           flowNodes,
           flowEdges,
           exposedLifecycles,
+          lifecycleMappings,
         });
         setRenderTree(injectedTree);
       })
@@ -966,15 +999,31 @@ function PreviewCustomComponentRenderer({
   const handleInnerLifecycle = React.useCallback<ComponentLifecycleHandler>((componentKey, lifetime, payload) => {
     runtimeRef.current?.emitLifecycle(componentKey, lifetime, payload);
 
-    if (onLifecycle && exposedLifecycleSet.has(String(lifetime ?? '').trim())) {
-      onLifecycle(node.key, lifetime, {
+    const emittedLifetime = String(lifetime ?? '').trim();
+    if (!onLifecycle || !emittedLifetime) {
+      return;
+    }
+
+    const lifecycleMappings = runtimeSeed?.lifecycleMappings ?? [];
+    const mappedKeys = lifecycleMappings
+      .filter((item) => item.lifetime === emittedLifetime)
+      .map((item) => String(item.key || item.lifetime).trim())
+      .filter(Boolean);
+
+    const targetLifecycles = mappedKeys.length > 0
+      ? Array.from(new Set(mappedKeys))
+      : (exposedLifecycleSet.has(emittedLifetime) ? [emittedLifetime] : []);
+
+    targetLifecycles.forEach((targetLifetime) => {
+      onLifecycle(node.key, targetLifetime, {
         from: 'custom-component',
         componentId,
         componentKey,
+        originalLifetime: emittedLifetime,
         payload,
       });
-    }
-  }, [componentId, exposedLifecycleSet, node.key, onLifecycle]);
+    });
+  }, [componentId, exposedLifecycleSet, node.key, onLifecycle, runtimeSeed?.lifecycleMappings]);
 
   if (!componentId) {
     return null;
@@ -1268,17 +1317,22 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) 
       if (childType === 'Menu.Item') {
         const iconNode = renderNamedIcon(getChildStringProp('iconName'));
         const itemValue = getChildStringProp('value')?.trim() || child.key;
+        const itemHref = getChildStringProp('href') || undefined;
         return (
           <Menu.MenuItem
             key={child.key}
             value={itemValue}
             content={getChildTextProp('content') || undefined}
             icon={iconNode as any}
-            href={getChildStringProp('href') || undefined}
+            href={itemHref}
             target={getChildStringProp('target') as any}
             disabled={getChildBooleanProp('disabled')}
             onClick={(context) => {
+              context?.e?.preventDefault?.();
               if (!onLifecycle) {
+                if (itemHref) {
+                  navigatePreviewByHref(itemHref);
+                }
                 return;
               }
 
@@ -1286,6 +1340,10 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) 
                 nodeType: child.type,
                 ...context,
               });
+
+              if (itemHref) {
+                navigatePreviewByHref(itemHref);
+              }
             }}
           />
         );
@@ -1322,11 +1380,12 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) 
       {
       const prefixIcon = renderNamedIcon(getStringProp(node, 'prefixIconName'));
       const suffixIcon = renderNamedIcon(getStringProp(node, 'suffixIconName'));
+      const linkHref = getStringProp(node, 'href') || undefined;
       return (
         <div style={mergeStyle()}>
           <Link
             content={getTextProp(node, 'content')}
-            href={getStringProp(node, 'href') || undefined}
+            href={linkHref}
             target={getStringProp(node, 'target') || undefined}
             theme={getStringProp(node, 'theme') as any}
             size={getStringProp(node, 'size') as any}
@@ -1338,6 +1397,9 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) 
             onClick={(event) => {
               event.preventDefault();
               emitInteractionLifecycle('onClick');
+              if (linkHref) {
+                navigatePreviewByHref(linkHref);
+              }
             }}
           />
         </div>

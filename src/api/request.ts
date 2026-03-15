@@ -21,7 +21,9 @@ const resolveErrorMessage = (error: AxiosError<ApiResponse>) => {
 };
 
 const requestClient = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:3333/api',
+  baseURL:
+    import.meta.env.VITE_API_BASE_URL
+    || (import.meta.env.PROD ? 'http://39.105.227.198:9090/api' : 'http://localhost:3333/api'),
   timeout: API_TIMEOUT,
 });
 

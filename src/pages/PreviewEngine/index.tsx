@@ -12,6 +12,20 @@ import './style.less';
 const EMPTY_ROOT: UiTreeNode = { key: '__root__', type: 'root', label: '', props: {}, children: [] };
 const SITE_PREVIEW_PREFIX = '/site-preview';
 
+const normalizePageId = (value: string | null) => {
+  const text = String(value ?? '').trim();
+  if (!text) {
+    return '';
+  }
+
+  const lowered = text.toLowerCase();
+  if (lowered === 'undefined' || lowered === 'null' || lowered === '-') {
+    return '';
+  }
+
+  return text;
+};
+
 const normalizeRoutePath = (value: string) => {
   const text = String(value ?? '').trim();
   if (!text) {
@@ -49,7 +63,7 @@ const PreviewEngine: React.FC = () => {
 
   const serializedFromState = (location.state as { snapshot?: string } | null)?.snapshot;
   const snapshotKey = searchParams.get('snapshotKey');
-  const pageId = searchParams.get('pageId');
+  const pageId = normalizePageId(searchParams.get('pageId'));
   const scopeId = (searchParams.get('scopeId') || 'root').trim() || 'root';
   const routePathFromLocation = location.pathname.startsWith(SITE_PREVIEW_PREFIX)
     ? normalizeRoutePath(location.pathname.slice(SITE_PREVIEW_PREFIX.length) || '/')
@@ -67,45 +81,85 @@ const PreviewEngine: React.FC = () => {
   // 当通过 pageId 直接打开预览时，从 API 加载数据
   const [remoteSnapshot, setRemoteSnapshot] = React.useState<PreviewSnapshot | null>(null);
   const [resolvedPageId, setResolvedPageId] = React.useState<string>('');
+  const [routeResolveError, setRouteResolveError] = React.useState<string>('');
 
   React.useEffect(() => {
     if (parsedSnapshot || pageId || !routePathFromLocation) {
+      setRouteResolveError('');
       return;
     }
 
-    getPageTemplateBaseList({ routePath: routePathFromLocation, page: 1, pageSize: 1 })
+    getPageTemplateBaseList({ routePath: routePathFromLocation, page: 1, pageSize: 100 })
       .then((res) => {
-        const target = res.data?.list?.[0];
-        if (!target?.pageId) {
+        const list = Array.isArray(res.data?.list) ? res.data.list : [];
+        const candidates = list.filter((item) => normalizePageId(item.pageId));
+
+        if (candidates.length === 1) {
+          setResolvedPageId(candidates[0].pageId);
+          setRouteResolveError('');
           return;
         }
 
-        setResolvedPageId(target.pageId);
+        setResolvedPageId('');
+        if (candidates.length === 0) {
+          setRouteResolveError(`未找到路径 ${routePathFromLocation} 对应的页面，请确认 pageId 或路由路径。`);
+          return;
+        }
+
+        setRouteResolveError(`路径 ${routePathFromLocation} 匹配到多个页面，请在 URL 上追加 ?pageId=页面ID 进行区分。`);
       })
       .catch(() => {
         setResolvedPageId('');
+        setRouteResolveError('页面解析失败，请稍后重试或在 URL 上追加 ?pageId=页面ID。');
       });
   }, [pageId, parsedSnapshot, routePathFromLocation]);
 
   React.useEffect(() => {
     const finalPageId = pageId || resolvedPageId;
-    if (parsedSnapshot || !finalPageId) return;
+    if (parsedSnapshot || !finalPageId) {
+      return;
+    }
+
     getPageTemplateDetail(finalPageId)
       .then((res) => {
         const template = res.data?.template;
         if (!template) return;
+
         const routeConfig = normalizeRouteConfig((template.pageConfig ?? {}).routeConfig);
         const pageTitle = typeof routeConfig?.pageTitle === 'string' ? routeConfig.pageTitle.trim() : '';
         if (pageTitle) {
           document.title = pageTitle;
         }
+
+        const routeSnapshots = Array.isArray(template.routes)
+          ? template.routes.map((route, index) => ({
+              routeId: typeof route.routeId === 'string' ? route.routeId : `route-${index + 1}`,
+              routePath: normalizeRoutePath(route.routeConfig?.routePath ?? (index === 0 ? '/' : `/route-${index + 1}`)),
+              uiTreeData: (route.uiTree as unknown as UiTreeNode) ?? EMPTY_ROOT,
+              flowNodes: (route.flowNodes as unknown as Node[]) ?? [],
+              flowEdges: (route.flowEdges as unknown as Edge[]) ?? [],
+            }))
+          : [];
+
+        const defaultRoutePath = routeSnapshots[0]?.routePath
+          ?? normalizeRoutePath(routeConfig?.routePath ?? '/');
+
         setRemoteSnapshot({
-          uiTreeData: (template.uiTree as unknown as UiTreeNode) ?? EMPTY_ROOT,
-          flowNodes: (template.flowNodes as unknown as Node[]) ?? [],
-          flowEdges: (template.flowEdges as unknown as Edge[]) ?? [],
+          uiTreeData: routeSnapshots[0]?.uiTreeData ?? ((template.uiTree as unknown as UiTreeNode) ?? EMPTY_ROOT),
+          flowNodes: routeSnapshots[0]?.flowNodes ?? ((template.flowNodes as unknown as Node[]) ?? []),
+          flowEdges: routeSnapshots[0]?.flowEdges ?? ((template.flowEdges as unknown as Edge[]) ?? []),
+          pageConfig: {
+            routeConfig,
+            pageId: finalPageId,
+            defaultRoutePath,
+            routeSnapshots,
+          },
         });
+        setRouteResolveError('');
       })
-      .catch(() => {/* 加载失败时保持空白，不阻塞渲染 */});
+      .catch(() => {
+        setRouteResolveError(`页面 ${finalPageId} 加载失败，请确认页面 ID 是否存在。`);
+      });
   }, [pageId, parsedSnapshot, resolvedPageId]);
 
   const snapshot: PreviewSnapshot = React.useMemo(
@@ -147,6 +201,8 @@ const PreviewEngine: React.FC = () => {
   const routeNotFound = isSitePreview && !routeMatched;
   const routeHasRenderableContent = (renderTree.children ?? []).length > 0;
   const routeEmpty = !routeNotFound && !routeHasRenderableContent;
+  const finalPageId = pageId || resolvedPageId;
+  const shouldShowResolveError = !parsedSnapshot && !finalPageId && Boolean(routeResolveError);
 
   const routeSubscribersRef = React.useRef(new Set<(state: DataHubRouterState) => void>());
   const routerState = React.useMemo<DataHubRouterState>(() => ({
@@ -236,7 +292,17 @@ const PreviewEngine: React.FC = () => {
   return (
     <div className="preview-engine-page" data-preview-scroll-container="true">
       <div className="preview-engine-canvas" data-preview-page>
-        {routeEmpty ? (
+        {shouldShowResolveError ? (
+          <div className="preview-route-status preview-route-status--empty">
+            <div className="preview-route-status__title">无法定位预览页面</div>
+            <div className="preview-route-status__desc">{routeResolveError}</div>
+          </div>
+        ) : routeNotFound ? (
+          <div className="preview-route-status preview-route-status--empty">
+            <div className="preview-route-status__title">当前路由不存在</div>
+            <div className="preview-route-status__desc">请确认页面中是否存在该路由，或检查 URL 的 pageId 与路径是否匹配。</div>
+          </div>
+        ) : routeEmpty ? (
           <div className="preview-route-status preview-route-status--empty">
             <div className="preview-route-status__title">当前路由内容为空</div>
             <div className="preview-route-status__desc">页面中暂无可渲染组件，请先在搭建器中添加内容。</div>

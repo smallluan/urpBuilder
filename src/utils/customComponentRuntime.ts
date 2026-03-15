@@ -18,6 +18,7 @@ interface ComponentContract {
 
 interface ExposedPropSchemaItem {
   propKey: string;
+  sourcePropKey?: string;
   schema: Record<string, unknown>;
 }
 
@@ -26,6 +27,11 @@ interface ExposedPropRefItem {
   key?: string;
   sourceKey?: string;
   sourceRef?: string;
+}
+
+interface ExposedLifecycleRefItem {
+  lifetime: string;
+  key?: string;
 }
 
 const tryParseJsonObject = (value: unknown): Record<string, unknown> | null => {
@@ -88,6 +94,40 @@ const resolveFlowNodeExposedProps = (detail: ComponentDetail | null): ExposedPro
     const data = (node?.data ?? {}) as Record<string, unknown>;
     const sourceKey = typeof data.sourceKey === 'string' ? data.sourceKey : '';
     const sourceRef = typeof data.sourceRef === 'string' ? data.sourceRef : '';
+    const selectedMappings = Array.isArray(data.selectedMappings)
+      ? data.selectedMappings
+        .map((item) => {
+          if (!item || typeof item !== 'object') {
+            return null;
+          }
+
+          const mapping = item as Record<string, unknown>;
+          const sourcePropKey = String(mapping.sourcePropKey ?? '').trim();
+          if (!sourcePropKey) {
+            return null;
+          }
+
+          const alias = typeof mapping.alias === 'string' ? String(mapping.alias).trim() : '';
+          return {
+            sourcePropKey,
+            alias,
+          };
+        })
+        .filter((item): item is { sourcePropKey: string; alias: string } => !!item)
+      : [];
+
+    if (selectedMappings.length > 0) {
+      selectedMappings.forEach((item) => {
+        result.push({
+          propKey: item.sourcePropKey,
+          key: item.alias || item.sourcePropKey,
+          sourceKey,
+          sourceRef,
+        });
+      });
+      return;
+    }
+
     const selectedPropKeys = Array.isArray(data.selectedPropKeys)
       ? data.selectedPropKeys.map((item) => String(item ?? '').trim()).filter(Boolean)
       : [];
@@ -95,6 +135,7 @@ const resolveFlowNodeExposedProps = (detail: ComponentDetail | null): ExposedPro
     selectedPropKeys.forEach((propKey) => {
       result.push({
         propKey,
+        key: propKey,
         sourceKey,
         sourceRef,
       });
@@ -104,12 +145,12 @@ const resolveFlowNodeExposedProps = (detail: ComponentDetail | null): ExposedPro
   return result;
 };
 
-const resolveFlowNodeExposedLifecycles = (detail: ComponentDetail | null): string[] => {
+const resolveFlowNodeExposedLifecycles = (detail: ComponentDetail | null): ExposedLifecycleRefItem[] => {
   const flowNodes = Array.isArray(detail?.template?.flowNodes)
     ? (detail?.template?.flowNodes as Array<Record<string, unknown>>)
     : [];
 
-  const lifecycles: string[] = [];
+  const lifecycles: ExposedLifecycleRefItem[] = [];
   flowNodes.forEach((node) => {
     const nodeType = String(node?.type ?? '').trim();
     if (nodeType !== 'lifecycleExposeNode') {
@@ -117,14 +158,47 @@ const resolveFlowNodeExposedLifecycles = (detail: ComponentDetail | null): strin
     }
 
     const data = (node?.data ?? {}) as Record<string, unknown>;
+    const selectedMappings: ExposedLifecycleRefItem[] = Array.isArray(data.selectedMappings)
+      ? data.selectedMappings.reduce<ExposedLifecycleRefItem[]>((acc, item) => {
+          if (!item || typeof item !== 'object') {
+            return acc;
+          }
+
+          const mapping = item as Record<string, unknown>;
+          const sourceLifetime = String(mapping.sourceLifetime ?? '').trim();
+          if (!sourceLifetime) {
+            return acc;
+          }
+
+          const alias = typeof mapping.alias === 'string' ? String(mapping.alias).trim() : '';
+          acc.push({
+            lifetime: sourceLifetime,
+            key: alias || sourceLifetime,
+          });
+          return acc;
+        }, [])
+      : [];
+
+    if (selectedMappings.length > 0) {
+      lifecycles.push(...selectedMappings);
+      return;
+    }
+
     const selectedLifetimes = Array.isArray(data.selectedLifetimes)
       ? data.selectedLifetimes.map((item) => String(item ?? '').trim()).filter(Boolean)
       : [];
 
-    lifecycles.push(...selectedLifetimes);
+    selectedLifetimes.forEach((lifetime) => {
+      lifecycles.push({ lifetime, key: lifetime });
+    });
   });
 
-  return Array.from(new Set(lifecycles));
+  const deduped = new Map<string, ExposedLifecycleRefItem>();
+  lifecycles.forEach((item) => {
+    deduped.set(`${item.lifetime}::${item.key ?? item.lifetime}`, item);
+  });
+
+  return Array.from(deduped.values());
 };
 
 const detailCache = new Map<string, Promise<ComponentDetail | null>>();
@@ -233,10 +307,14 @@ export const resolveExposedPropSchemas = (detail: ComponentDetail | null): Expos
 
   const map = new Map<string, ExposedPropSchemaItem>();
   exposedProps.forEach((item) => {
-    const propKey = typeof item === 'string'
+    const sourcePropKey = typeof item === 'string'
       ? String(item).trim()
-      : String(item?.propKey ?? item?.key ?? '').trim();
-    if (!propKey) {
+      : String(item?.propKey ?? '').trim();
+    const exposePropKey = typeof item === 'string'
+      ? String(item).trim()
+      : String(item?.key ?? item?.propKey ?? '').trim();
+
+    if (!sourcePropKey || !exposePropKey) {
       return;
     }
 
@@ -244,40 +322,75 @@ export const resolveExposedPropSchemas = (detail: ComponentDetail | null): Expos
       sourceKey: typeof item === 'string' ? '' : item?.sourceKey,
       sourceRef: typeof item === 'string' ? '' : item?.sourceRef,
     });
-    const fallbackSourceNode = sourceNode ?? findFirstNodeContainsProp(templateRoot, propKey);
-    const schema = fallbackSourceNode?.props?.[propKey] as Record<string, unknown> | undefined;
+    const fallbackSourceNode = sourceNode ?? findFirstNodeContainsProp(templateRoot, sourcePropKey);
+    const schema = fallbackSourceNode?.props?.[sourcePropKey] as Record<string, unknown> | undefined;
+    const nextSchema = schema
+      ? cloneDeep(schema)
+      : {
+          name: sourcePropKey,
+          value: '',
+          editType: 'input',
+        };
 
-    map.set(propKey, {
-      propKey,
-      schema: schema
-        ? cloneDeep(schema)
-        : {
-            name: propKey,
-            value: '',
-            editType: 'input',
-          },
+    if (exposePropKey !== sourcePropKey) {
+      nextSchema.name = exposePropKey;
+    }
+
+    map.set(exposePropKey, {
+      propKey: exposePropKey,
+      sourcePropKey,
+      schema: nextSchema,
     });
   });
 
   return Array.from(map.values());
 };
 
-export const resolveExposedLifecycles = (detail: ComponentDetail | null): string[] => {
+export const resolveExposedLifecycleMappings = (detail: ComponentDetail | null): ExposedLifecycleRefItem[] => {
   const contract = resolveComponentContract(detail);
   const contractLifecycles = Array.isArray(contract?.exposedLifecycles) ? contract?.exposedLifecycles : [];
   const lifecycles = contractLifecycles.length > 0
     ? contractLifecycles
     : resolveFlowNodeExposedLifecycles(detail);
 
-  return Array.from(
-    new Set(
-      lifecycles
-        .map((item) => (typeof item === 'string'
-          ? String(item).trim()
-          : String(item?.lifetime ?? item?.key ?? '').trim()))
-        .filter(Boolean),
-    ),
-  );
+  const normalized = lifecycles
+    .map((item) => {
+      if (typeof item === 'string') {
+        const lifetime = String(item).trim();
+        if (!lifetime) {
+          return null;
+        }
+
+        return {
+          lifetime,
+          key: lifetime,
+        } as ExposedLifecycleRefItem;
+      }
+
+      const lifetime = String(item?.lifetime ?? item?.key ?? '').trim();
+      if (!lifetime) {
+        return null;
+      }
+
+      const key = String(item?.key ?? lifetime).trim() || lifetime;
+      return {
+        lifetime,
+        key,
+      } as ExposedLifecycleRefItem;
+    })
+    .filter((item): item is ExposedLifecycleRefItem => !!item);
+
+  const deduped = new Map<string, ExposedLifecycleRefItem>();
+  normalized.forEach((item) => {
+    deduped.set(`${item.lifetime}::${item.key}`, item);
+  });
+
+  return Array.from(deduped.values());
+};
+
+export const resolveExposedLifecycles = (detail: ComponentDetail | null): string[] => {
+  const mappings = resolveExposedLifecycleMappings(detail);
+  return Array.from(new Set(mappings.map((item) => item.key || item.lifetime).filter(Boolean)));
 };
 
 export const loadCustomComponentDetail = async (componentId: string, options?: { forceRefresh?: boolean }): Promise<ComponentDetail | null> => {

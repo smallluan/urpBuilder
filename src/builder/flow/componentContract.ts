@@ -14,6 +14,7 @@ export interface ComponentExposedProp {
 
 export interface ComponentExposedLifecycle {
   lifetime: string;
+  key?: string;
   sourceNodeId?: string;
   sourceLabel?: string;
 }
@@ -38,6 +39,69 @@ const dedupeBy = <T>(items: T[], resolver: (item: T) => string): T[] => {
     map.set(resolver(item), item);
   });
   return Array.from(map.values());
+};
+
+const sanitizeExposeKeyPart = (value: string) => {
+  const text = String(value ?? '').trim();
+  if (!text) {
+    return '';
+  }
+
+  return text.replace(/\s+/g, '_').replace(/[^A-Za-z0-9_\-]/g, '_');
+};
+
+const ensureUniqueExposeKeys = (items: ComponentExposedProp[]): ComponentExposedProp[] => {
+  const used = new Set<string>();
+
+  return items.map((item) => {
+    const fallbackBase = sanitizeExposeKeyPart(item.propKey) || 'prop';
+    const requested = sanitizeExposeKeyPart(item.key ?? '') || fallbackBase;
+
+    let candidate = requested;
+    if (used.has(candidate)) {
+      const sourceHint = sanitizeExposeKeyPart(item.sourceLabel || item.sourceKey || 'source') || 'source';
+      candidate = `${sourceHint}_${fallbackBase}`;
+    }
+
+    let sequence = 2;
+    while (used.has(candidate)) {
+      candidate = `${requested}_${sequence}`;
+      sequence += 1;
+    }
+
+    used.add(candidate);
+    return {
+      ...item,
+      key: candidate,
+    };
+  });
+};
+
+const ensureUniqueLifecycleExposeKeys = (items: ComponentExposedLifecycle[]): ComponentExposedLifecycle[] => {
+  const used = new Set<string>();
+
+  return items.map((item) => {
+    const fallbackBase = sanitizeExposeKeyPart(item.lifetime) || 'lifecycle';
+    const requested = sanitizeExposeKeyPart(item.key ?? '') || fallbackBase;
+
+    let candidate = requested;
+    if (used.has(candidate)) {
+      const sourceHint = sanitizeExposeKeyPart(item.sourceLabel || item.sourceNodeId || 'source') || 'source';
+      candidate = `${sourceHint}_${fallbackBase}`;
+    }
+
+    let sequence = 2;
+    while (used.has(candidate)) {
+      candidate = `${requested}_${sequence}`;
+      sequence += 1;
+    }
+
+    used.add(candidate);
+    return {
+      ...item,
+      key: candidate,
+    };
+  });
 };
 
 export const buildComponentContract = (
@@ -81,9 +145,17 @@ export const buildComponentContract = (
     .filter((node) => node.type === 'lifecycleExposeNode')
     .flatMap((node) => {
       const data = (node.data ?? {}) as LifecycleExposeNodeData;
-      const selectedLifetimes = Array.isArray(data.selectedLifetimes)
-        ? data.selectedLifetimes.map((item) => String(item).trim()).filter(Boolean)
+      const selectedMappings = Array.isArray((data as any).selectedMappings)
+        ? (data as any).selectedMappings as Array<{ sourceLifetime?: string; alias?: string }>
         : [];
+
+      const selectedLifetimes = selectedMappings.length > 0
+        ? selectedMappings
+          .map((item) => String(item?.sourceLifetime ?? '').trim())
+          .filter(Boolean)
+        : (Array.isArray(data.selectedLifetimes)
+          ? data.selectedLifetimes.map((item) => String(item).trim()).filter(Boolean)
+          : []);
 
       if (selectedLifetimes.length === 0) {
         return [] as ComponentExposedLifecycle[];
@@ -92,16 +164,29 @@ export const buildComponentContract = (
       const upstreamNode = getNodeById(flowNodes, data.upstreamNodeId);
       const upstreamLabel = String(data.upstreamLabel ?? (upstreamNode?.data as { label?: string } | undefined)?.label ?? '').trim();
 
-      return selectedLifetimes.map((lifetime) => ({
-        lifetime,
-        sourceNodeId: data.upstreamNodeId,
-        sourceLabel: upstreamLabel || undefined,
-      }));
+      return selectedLifetimes.map((lifetime) => {
+        const mapping = selectedMappings.find((item) => String(item?.sourceLifetime ?? '').trim() === lifetime);
+        const exposeKey = mapping && typeof mapping.alias === 'string' && mapping.alias.trim() ? mapping.alias.trim() : lifetime;
+        return {
+          lifetime,
+          key: exposeKey,
+          sourceNodeId: data.upstreamNodeId,
+          sourceLabel: upstreamLabel || undefined,
+        };
+      });
     });
+
+  const uniqueExposedProps = ensureUniqueExposeKeys(
+    dedupeBy(exposedProps, (item) => `${item.sourceKey}::${item.propKey}`),
+  );
+
+  const uniqueExposedLifecycles = ensureUniqueLifecycleExposeKeys(
+    dedupeBy(exposedLifecycles, (item) => `${item.sourceNodeId || '-'}::${item.lifetime}`),
+  );
 
   return {
     version: 1,
-    exposedProps: dedupeBy(exposedProps, (item) => `${item.sourceKey}::${item.propKey}`),
-    exposedLifecycles: dedupeBy(exposedLifecycles, (item) => `${item.sourceNodeId || '-'}::${item.lifetime}`),
+    exposedProps: uniqueExposedProps,
+    exposedLifecycles: uniqueExposedLifecycles,
   };
 };

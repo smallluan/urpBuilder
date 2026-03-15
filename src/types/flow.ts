@@ -85,6 +85,7 @@ export interface LifecycleExposeNodeData extends FlowNodeActionHandlers {
   upstreamLabel?: string;
   availableLifetimes?: string[];
   selectedLifetimes?: string[];
+  selectedMappings?: Array<{ sourceLifetime: string; alias?: string }>;
 }
 
 export interface AnnotationNodeData extends FlowNodeActionHandlers {
@@ -129,4 +130,5 @@ export interface LifecycleExposeNodeFormState {
   upstreamLabel: string;
   availableLifetimes: string[];
   selectedLifetimes: string[];
+  selectedMappings?: Array<{ sourceLifetime: string; alias?: string }>;
 }
