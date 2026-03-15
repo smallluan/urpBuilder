@@ -7,7 +7,9 @@ import type {
   PageTemplateListParams,
   PublishPagePayload,
   SavePageDraftPayload,
+  UpdateTemplateVisibilityPayload,
   UpdatePageDraftPayload,
+  WithdrawTemplatePayload,
 } from './types';
 
 const isLikelyPageItem = (item: PageBaseInfo) => {
@@ -64,6 +66,33 @@ export const publishPage = async (payload: PublishPagePayload) => {
     ...payload,
     entityType: 'page',
     templateId: payload.pageId,
+  }, {
+    params: {
+      entityType: 'page',
+    },
+  });
+  return response.data;
+};
+
+export const updatePageVisibility = async (payload: UpdateTemplateVisibilityPayload) => {
+  const response = await requestClient.patch<ApiResponse<{ version?: number }>>('/page-template/visibility', {
+    ...payload,
+    entityType: 'page',
+    templateId: payload.pageId,
+  }, {
+    params: {
+      entityType: 'page',
+    },
+  });
+  return response.data;
+};
+
+export const withdrawPageToDraft = async (payload: WithdrawTemplatePayload) => {
+  const response = await requestClient.post<ApiResponse<{ version?: number }>>('/page-template/unpublish', {
+    ...payload,
+    entityType: 'page',
+    templateId: payload.pageId,
+    status: 'draft',
   }, {
     params: {
       entityType: 'page',

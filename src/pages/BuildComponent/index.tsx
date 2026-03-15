@@ -1,8 +1,14 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Input, Button, Dialog, Select, Table } from 'tdesign-react';
-import { AddIcon, SearchIcon, EditIcon, DeleteIcon, BrowseIcon } from 'tdesign-icons-react';
+import { Input, Button, Dialog, Select, Table, Tag } from 'tdesign-react';
+import { AddIcon, SearchIcon, EditIcon, DeleteIcon, BrowseIcon, UserIcon } from 'tdesign-icons-react';
 import type { PrimaryTableCol } from 'tdesign-react/es/table/type';
-import { deleteComponentTemplate, getComponentBaseList, publishComponent } from '../../api/componentTemplate';
+import {
+  deleteComponentTemplate,
+  getComponentBaseList,
+  publishComponent,
+  updateComponentVisibility,
+  withdrawComponentToDraft,
+} from '../../api/componentTemplate';
 import type { ComponentTemplateBaseInfo, ResourceVisibility, TemplateStatus } from '../../api/types';
 import { emitApiAlert } from '../../api/alertBus';
 import { useAuth } from '../../auth/context';
@@ -64,6 +70,23 @@ const toDisplayDate = (value?: unknown) => {
   return date.toLocaleString('zh-CN', { hour12: false });
 };
 
+const splitDateTimeText = (value: string) => {
+  const normalized = String(value || '').trim();
+  if (!normalized || normalized === '-') {
+    return { date: '-', time: '' };
+  }
+
+  const firstSpaceIndex = normalized.indexOf(' ');
+  if (firstSpaceIndex < 0) {
+    return { date: normalized, time: '' };
+  }
+
+  return {
+    date: normalized.slice(0, firstSpaceIndex),
+    time: normalized.slice(firstSpaceIndex + 1),
+  };
+};
+
 const BuildComponent: React.FC = () => {
   const { user } = useAuth();
   const [query, setQuery] = useState('');
@@ -76,6 +99,8 @@ const BuildComponent: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<'all' | TemplateStatus>('all');
   const [visibilityFilter, setVisibilityFilter] = useState<'all' | ResourceVisibility>('all');
   const [publishingId, setPublishingId] = useState<string | null>(null);
+  const [visibilityChangingId, setVisibilityChangingId] = useState<string | null>(null);
+  const [withdrawingId, setWithdrawingId] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<ComponentTemplateRow | null>(null);
   const [deleting, setDeleting] = useState(false);
 
@@ -181,6 +206,48 @@ const BuildComponent: React.FC = () => {
     }
   };
 
+  const handleToggleVisibility = async (row: ComponentTemplateRow) => {
+    if (!isValidTemplateId(row.pageId) || visibilityChangingId || row.status !== 'published') {
+      if (row.status !== 'published') {
+        emitApiAlert('操作失败', '草稿组件不可设为公开，请先发布');
+      }
+      return;
+    }
+
+    const nextVisibility: ResourceVisibility = row.visibility === '公开' ? 'private' : 'public';
+    setVisibilityChangingId(row.pageId);
+    try {
+      await updateComponentVisibility({ pageId: row.pageId, visibility: nextVisibility });
+      emitApiAlert('操作成功', `组件 ${row.pageName} 已${nextVisibility === 'public' ? '设为公开' : '设为私有'}`, 'success');
+      fetchPageBaseList({
+        page,
+        pageSize,
+        pageName: query.trim() || undefined,
+      });
+    } finally {
+      setVisibilityChangingId(null);
+    }
+  };
+
+  const handleWithdrawToDraft = async (row: ComponentTemplateRow) => {
+    if (!isValidTemplateId(row.pageId) || withdrawingId || row.status !== 'published') {
+      return;
+    }
+
+    setWithdrawingId(row.pageId);
+    try {
+      await withdrawComponentToDraft({ pageId: row.pageId });
+      emitApiAlert('操作成功', `组件 ${row.pageName} 已收回为草稿`, 'success');
+      fetchPageBaseList({
+        page,
+        pageSize,
+        pageName: query.trim() || undefined,
+      });
+    } finally {
+      setWithdrawingId(null);
+    }
+  };
+
   const handleCancelDelete = () => {
     if (deleting) {
       return;
@@ -216,27 +283,80 @@ const BuildComponent: React.FC = () => {
 
   const buildColumns = useMemo<PrimaryTableCol<ComponentTemplateRow>[]>(
     () => [
-      { colKey: 'pageName', title: '组件名称', minWidth: 180 },
-      { colKey: 'ownerName', title: '创建人', width: 140 },
-      { colKey: 'visibility', title: '可见性', width: 100 },
-      { colKey: 'pageId', title: '组件ID', minWidth: 220 },
+      {
+        colKey: 'pageName',
+        title: '组件名称',
+        minWidth: 220,
+        cell: ({ row }) => (
+          <div className="table-entity-cell">
+            <span className="table-entity-cell__title">{row.pageName}</span>
+            <span className="table-entity-cell__sub">{row.screenSize !== '-' ? `尺寸：${row.screenSize}` : '未配置尺寸'}</span>
+          </div>
+        ),
+      },
+      {
+        colKey: 'ownerName',
+        title: '发布人',
+        width: 170,
+        cell: ({ row }) => (
+          <div className="table-owner-cell">
+            <span className="table-owner-cell__icon"><UserIcon size="small" /></span>
+            <span className="table-owner-cell__name">{row.ownerName}</span>
+          </div>
+        ),
+      },
+      {
+        colKey: 'visibility',
+        title: '可见性',
+        width: 120,
+        cell: ({ row }) => (
+          <Tag size="small" theme={row.visibility === '公开' ? 'primary' : 'default'} variant="light">
+            {row.visibility}
+          </Tag>
+        ),
+      },
+      {
+        colKey: 'pageId',
+        title: '组件ID',
+        minWidth: 220,
+        cell: ({ row }) => <span className="table-id-chip">{row.pageId}</span>,
+      },
       {
         colKey: 'status',
         title: '状态',
         width: 120,
-        cell: ({ row }) => (row.status === 'published' ? '已发布' : '草稿'),
+        cell: ({ row }) => (
+          <Tag size="small" theme={row.status === 'published' ? 'success' : 'warning'} variant="light">
+            {row.status === 'published' ? '已发布' : '草稿'}
+          </Tag>
+        ),
       },
       { colKey: 'currentVersion', title: '当前版本', width: 120 },
       { colKey: 'screenSize', title: '页面尺寸', width: 140 },
       { colKey: 'autoWidth', title: '自定义宽度', width: 140 },
-      { colKey: 'updatedAt', title: '更新时间', minWidth: 180 },
+      {
+        colKey: 'updatedAt',
+        title: '更新时间',
+        minWidth: 190,
+        cell: ({ row }) => {
+          const { date, time } = splitDateTimeText(row.updatedAt);
+          return (
+            <div className="table-time-cell">
+              <span className="table-time-cell__date">{date}</span>
+              {time ? <span className="table-time-cell__time">{time}</span> : null}
+            </div>
+          );
+        },
+      },
       {
         colKey: 'operations',
         title: '操作',
-        width: 360,
+        width: 520,
         fixed: 'right',
         cell: ({ row }) => {
           const manageable = canManageRow(row);
+          const isPublished = row.status === 'published';
+          const isPublic = row.visibility === '公开';
           return (
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <Button size="small" variant="outline" icon={<BrowseIcon />} onClick={() => handlePreview(row)}>
@@ -244,7 +364,7 @@ const BuildComponent: React.FC = () => {
               </Button>
               {manageable ? (
                 <>
-                  {row.status !== 'published' ? (
+                  {!isPublished ? (
                     <Button
                       size="small"
                       theme="primary"
@@ -254,6 +374,26 @@ const BuildComponent: React.FC = () => {
                     >
                       发布
                     </Button>
+                  ) : null}
+                  {isPublished ? (
+                    <>
+                      <Button
+                        size="small"
+                        variant="outline"
+                        loading={visibilityChangingId === row.pageId}
+                        onClick={() => handleToggleVisibility(row)}
+                      >
+                        {isPublic ? '设为私有' : '设为公开'}
+                      </Button>
+                      <Button
+                        size="small"
+                        variant="outline"
+                        loading={withdrawingId === row.pageId}
+                        onClick={() => handleWithdrawToDraft(row)}
+                      >
+                        收回为草稿
+                      </Button>
+                    </>
                   ) : null}
                   <Button size="small" variant="outline" icon={<DeleteIcon />} onClick={() => handleDelete(row)}>
                     删除
@@ -268,7 +408,7 @@ const BuildComponent: React.FC = () => {
         },
       },
     ],
-    [publishingId, user?.id],
+    [publishingId, user?.id, visibilityChangingId, withdrawingId],
   );
 
   const pagination = useMemo(
@@ -291,19 +431,30 @@ const BuildComponent: React.FC = () => {
 
   return (
     <div className="build-component">
-      <div className="top-row">
-        <div className="search-area">
-          <Input
-            placeholder="搜索组件名称"
-            value={query}
-            onChange={(val) => setQuery(String(val))}
-            suffix={<SearchIcon />}
-            clearable
-            onEnter={handleSearch}
-          />
+      <div className="toolbar">
+        <div className="toolbar-row toolbar-row--primary">
+          <div className="search-area">
+            <Input
+              placeholder="搜索组件名称"
+              value={query}
+              onChange={(val) => setQuery(String(val))}
+              suffix={<SearchIcon />}
+              clearable
+              onEnter={handleSearch}
+            />
+          </div>
+          <div className="primary-actions">
+            <Button theme="default" variant="outline" onClick={handleSearch} icon={<SearchIcon />}>
+              查询
+            </Button>
+            <Button theme="primary" onClick={handleCreate} icon={<AddIcon />}>
+              创建新组件
+            </Button>
+          </div>
         </div>
 
-        <div className="action-area">
+        <div className="toolbar-row toolbar-row--filters">
+          <div className="filter-area">
           <Select
             value={scope}
             options={[
@@ -345,17 +496,13 @@ const BuildComponent: React.FC = () => {
               setVisibilityFilter(nextVisibility);
             }}
           />
-          <Button theme="default" variant="outline" onClick={handleSearch} icon={<SearchIcon />}>
-            查询
-          </Button>
-          <Button theme="primary" onClick={handleCreate} icon={<AddIcon />}>
-            创建新组件
-          </Button>
+          </div>
         </div>
       </div>
 
       <div className="table-wrapper">
         <Table
+          className="list-table"
           columns={buildColumns}
           data={tableData}
           rowKey="id"

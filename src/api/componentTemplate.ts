@@ -7,7 +7,9 @@ import type {
   ComponentTemplateListParams,
   PublishComponentPayload,
   SaveComponentDraftPayload,
+  UpdateTemplateVisibilityPayload,
   UpdateComponentDraftPayload,
+  WithdrawTemplatePayload,
 } from './types';
 
 const isLikelyComponentItem = (item: PageBaseInfo) => {
@@ -52,6 +54,35 @@ export const publishComponent = async (payload: PublishComponentPayload) => {
     entityType: 'component',
     componentId: payload.pageId,
     templateId: payload.pageId,
+  }, {
+    params: {
+      entityType: 'component',
+    },
+  });
+  return response.data;
+};
+
+export const updateComponentVisibility = async (payload: UpdateTemplateVisibilityPayload) => {
+  const response = await requestClient.patch<ApiResponse<{ version?: number }>>('/page-template/visibility', {
+    ...payload,
+    entityType: 'component',
+    componentId: payload.pageId,
+    templateId: payload.pageId,
+  }, {
+    params: {
+      entityType: 'component',
+    },
+  });
+  return response.data;
+};
+
+export const withdrawComponentToDraft = async (payload: WithdrawTemplatePayload) => {
+  const response = await requestClient.post<ApiResponse<{ version?: number }>>('/page-template/unpublish', {
+    ...payload,
+    entityType: 'component',
+    componentId: payload.pageId,
+    templateId: payload.pageId,
+    status: 'draft',
   }, {
     params: {
       entityType: 'component',

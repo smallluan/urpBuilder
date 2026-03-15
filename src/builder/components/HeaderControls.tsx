@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import cloneDeep from 'lodash/cloneDeep';
-import { Radio, Button, Space, Drawer, Timeline, Tag, Dialog, Input, Select, Switch } from 'tdesign-react';
+import { Radio, Button, Space, Drawer, Timeline, Tag, Dialog, Input, Switch } from 'tdesign-react';
 import { UploadIcon, ViewImageIcon, ArrowLeftIcon, ArrowRightIcon, HistoryIcon } from 'tdesign-icons-react';
 import { useBuilderAccess, useBuilderContext } from '../context/BuilderContext';
 import type { UiHistoryAction } from '../store/types';
@@ -227,7 +227,6 @@ const HeaderControls: React.FC<Props> = ({
   const [saveDialogVisible, setSaveDialogVisible] = useState(false);
   const [componentName, setComponentName] = useState('');
   const [componentId, setComponentId] = useState('');
-  const [saveVisibility, setSaveVisibility] = useState<'private' | 'public'>('private');
   const [saving, setSaving] = useState(false);
   const [pageSettingsVisible, setPageSettingsVisible] = useState(false);
   const [deleteRouteDialogVisible, setDeleteRouteDialogVisible] = useState(false);
@@ -320,7 +319,6 @@ const HeaderControls: React.FC<Props> = ({
   const handleOpenSaveDialog = () => {
     setComponentName(currentPageName || '');
     setComponentId(currentPageId || '');
-    setSaveVisibility(currentPageVisibility === 'public' ? 'public' : 'private');
     setSaveDialogVisible(true);
   };
 
@@ -510,7 +508,7 @@ const HeaderControls: React.FC<Props> = ({
             pageId,
             pageName,
             entityType: 'component' as const,
-            visibility: saveVisibility,
+            visibility: (currentPageVisibility ?? 'private') as 'private' | 'public',
             screenSize,
             autoWidth,
           },
@@ -528,7 +526,7 @@ const HeaderControls: React.FC<Props> = ({
             pageId,
             pageName,
             entityType: 'page' as const,
-            visibility: saveVisibility,
+            visibility: (currentPageVisibility ?? 'private') as 'private' | 'public',
             screenSize,
             autoWidth,
           },
@@ -545,7 +543,7 @@ const HeaderControls: React.FC<Props> = ({
       setCurrentPageMeta({
         pageId,
         pageName,
-        visibility: saveVisibility,
+        visibility: (currentPageVisibility ?? 'private') as 'private' | 'public',
       });
       emitApiAlert('保存成功', `${saveEntityLabel} ${pageName} 已保存`, 'success');
       setSaveDialogVisible(false);
@@ -644,18 +642,7 @@ const HeaderControls: React.FC<Props> = ({
             />
           </div>
 
-          <div>
-            <div style={{ marginBottom: 6 }}>可见性</div>
-            <Select
-              value={saveVisibility}
-              disabled={readOnly}
-              options={[
-                { label: '私有（仅自己可编辑）', value: 'private' },
-                { label: '公开（可被其他人查看）', value: 'public' },
-              ]}
-              onChange={(value) => setSaveVisibility(value === 'public' ? 'public' : 'private')}
-            />
-          </div>
+
         </div>
       </Dialog>
 

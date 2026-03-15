@@ -121,6 +121,16 @@ export interface PublishComponentPayload {
   versionNote?: string;
 }
 
+export interface UpdateTemplateVisibilityPayload {
+  pageId: string;
+  visibility: ResourceVisibility;
+}
+
+export interface WithdrawTemplatePayload {
+  pageId: string;
+  versionNote?: string;
+}
+
 export type PageTemplateListParams = {
   pageName?: string;
   status?: TemplateStatus;
