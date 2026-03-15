@@ -2,8 +2,8 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Input, Button, Dialog, Select, Table } from 'tdesign-react';
 import { AddIcon, SearchIcon, EditIcon, DeleteIcon, BrowseIcon } from 'tdesign-icons-react';
 import type { PrimaryTableCol } from 'tdesign-react/es/table/type';
-import { deleteComponentTemplate, getComponentBaseList } from '../../api/componentTemplate';
-import type { ComponentTemplateBaseInfo } from '../../api/types';
+import { deleteComponentTemplate, getComponentBaseList, publishComponent } from '../../api/componentTemplate';
+import type { ComponentTemplateBaseInfo, ResourceVisibility, TemplateStatus } from '../../api/types';
 import { emitApiAlert } from '../../api/alertBus';
 import { useAuth } from '../../auth/context';
 import './style.less';
@@ -73,6 +73,9 @@ const BuildComponent: React.FC = () => {
   const [pageSize, setPageSize] = useState(10);
   const [total, setTotal] = useState(0);
   const [scope, setScope] = useState<'mine' | 'all'>('mine');
+  const [statusFilter, setStatusFilter] = useState<'all' | TemplateStatus>('all');
+  const [visibilityFilter, setVisibilityFilter] = useState<'all' | ResourceVisibility>('all');
+  const [publishingId, setPublishingId] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<ComponentTemplateRow | null>(null);
   const [deleting, setDeleting] = useState(false);
 
@@ -82,6 +85,8 @@ const BuildComponent: React.FC = () => {
       const result = await getComponentBaseList({
         ...params,
         mine: scope === 'mine',
+        status: statusFilter === 'all' ? undefined : statusFilter,
+        visibility: visibilityFilter === 'all' ? undefined : visibilityFilter,
       });
       const rawList = Array.isArray(result.data?.list) ? result.data.list : [];
       const nextList = rawList.map((item) => ({
@@ -106,7 +111,7 @@ const BuildComponent: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [scope]);
+  }, [scope, statusFilter, visibilityFilter]);
 
   useEffect(() => {
     fetchPageBaseList({
@@ -114,7 +119,7 @@ const BuildComponent: React.FC = () => {
       pageSize,
       pageName: query.trim() || undefined,
     });
-  }, [fetchPageBaseList, page, pageSize, scope]);
+  }, [fetchPageBaseList, page, pageSize, scope, statusFilter, visibilityFilter]);
 
   const canManageRow = (row: ComponentTemplateRow) => !row.ownerId || !user?.id || row.ownerId === user.id;
 
@@ -155,6 +160,25 @@ const BuildComponent: React.FC = () => {
 
   const handleDelete = (row: ComponentTemplateRow) => {
     setDeleteTarget(row);
+  };
+
+  const handlePublish = async (row: ComponentTemplateRow) => {
+    if (!isValidTemplateId(row.pageId) || publishingId) {
+      return;
+    }
+
+    setPublishingId(row.pageId);
+    try {
+      await publishComponent({ pageId: row.pageId });
+      emitApiAlert('发布成功', `组件 ${row.pageName} 已发布`, 'success');
+      fetchPageBaseList({
+        page,
+        pageSize,
+        pageName: query.trim() || undefined,
+      });
+    } finally {
+      setPublishingId(null);
+    }
   };
 
   const handleCancelDelete = () => {
@@ -209,7 +233,7 @@ const BuildComponent: React.FC = () => {
       {
         colKey: 'operations',
         title: '操作',
-        width: 280,
+        width: 360,
         fixed: 'right',
         cell: ({ row }) => {
           const manageable = canManageRow(row);
@@ -220,6 +244,17 @@ const BuildComponent: React.FC = () => {
               </Button>
               {manageable ? (
                 <>
+                  {row.status !== 'published' ? (
+                    <Button
+                      size="small"
+                      theme="primary"
+                      variant="outline"
+                      loading={publishingId === row.pageId}
+                      onClick={() => handlePublish(row)}
+                    >
+                      发布
+                    </Button>
+                  ) : null}
                   <Button size="small" variant="outline" icon={<DeleteIcon />} onClick={() => handleDelete(row)}>
                     删除
                   </Button>
@@ -233,7 +268,7 @@ const BuildComponent: React.FC = () => {
         },
       },
     ],
-    [user?.id],
+    [publishingId, user?.id],
   );
 
   const pagination = useMemo(
@@ -275,11 +310,39 @@ const BuildComponent: React.FC = () => {
               { label: '我的组件', value: 'mine' },
               { label: '全部组件', value: 'all' },
             ]}
-            style={{ width: 140, marginRight: 8 }}
+            style={{ width: 140 }}
             onChange={(value) => {
               const nextScope = value === 'all' ? 'all' : 'mine';
               setPage(1);
               setScope(nextScope);
+            }}
+          />
+          <Select
+            value={statusFilter}
+            options={[
+              { label: '全部状态', value: 'all' },
+              { label: '草稿', value: 'draft' },
+              { label: '已发布', value: 'published' },
+            ]}
+            style={{ width: 120 }}
+            onChange={(value) => {
+              const nextStatus = value === 'published' ? 'published' : value === 'draft' ? 'draft' : 'all';
+              setPage(1);
+              setStatusFilter(nextStatus);
+            }}
+          />
+          <Select
+            value={visibilityFilter}
+            options={[
+              { label: '全部可见性', value: 'all' },
+              { label: '私有', value: 'private' },
+              { label: '公开', value: 'public' },
+            ]}
+            style={{ width: 140 }}
+            onChange={(value) => {
+              const nextVisibility = value === 'public' ? 'public' : value === 'private' ? 'private' : 'all';
+              setPage(1);
+              setVisibilityFilter(nextVisibility);
             }}
           />
           <Button theme="default" variant="outline" onClick={handleSearch} icon={<SearchIcon />}>

@@ -71,6 +71,7 @@ const CreateComponent: React.FC = () => {
         setCurrentPageMeta({
           pageId: detail.base?.pageId ?? pageId,
           pageName: detail.base?.pageName ?? '',
+          visibility: detail.base?.visibility === 'public' ? 'public' : 'private',
         });
 
         useCreateComponentStore.setState({

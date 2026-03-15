@@ -47,7 +47,16 @@ export const getComponentTemplateDetail = async (componentId: string) => {
 };
 
 export const publishComponent = async (payload: PublishComponentPayload) => {
-  const response = await requestClient.post<ApiResponse<{ version: number }>>('/page-template/publish', payload);
+  const response = await requestClient.post<ApiResponse<{ version: number }>>('/page-template/publish', {
+    ...payload,
+    entityType: 'component',
+    componentId: payload.pageId,
+    templateId: payload.pageId,
+  }, {
+    params: {
+      entityType: 'component',
+    },
+  });
   return response.data;
 };
 

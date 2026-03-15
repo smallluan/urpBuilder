@@ -511,6 +511,7 @@ export const createBuilderStore = (options: CreateBuilderStoreOptions = {}) => {
     autoWidth: 1800,
     currentPageId: '',
     currentPageName: '',
+    currentPageVisibility: 'private',
     pageRouteConfig: null,
     pageRoutes: [],
     activePageRouteId: null,
@@ -540,10 +541,11 @@ export const createBuilderStore = (options: CreateBuilderStoreOptions = {}) => {
 
     setAutoWidth: (width) => set({ autoWidth: width }),
 
-    setCurrentPageMeta: ({ pageId, pageName }) =>
+    setCurrentPageMeta: ({ pageId, pageName, visibility }) =>
       set((state) => ({
         currentPageId: pageId ?? state.currentPageId,
         currentPageName: pageName ?? state.currentPageName,
+        currentPageVisibility: visibility ?? state.currentPageVisibility,
       })),
 
     setPageRouteConfig: (config) =>

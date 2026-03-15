@@ -60,7 +60,15 @@ export const getPageTemplateDetail = async (pageId: string) => {
 export const getPageDetail = getPageTemplateDetail;
 
 export const publishPage = async (payload: PublishPagePayload) => {
-  const response = await requestClient.post<ApiResponse<{ version: number }>>('/page-template/publish', payload);
+  const response = await requestClient.post<ApiResponse<{ version: number }>>('/page-template/publish', {
+    ...payload,
+    entityType: 'page',
+    templateId: payload.pageId,
+  }, {
+    params: {
+      entityType: 'page',
+    },
+  });
   return response.data;
 };
 
