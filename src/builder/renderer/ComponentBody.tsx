@@ -294,7 +294,7 @@ const ComponentBody: React.FC = () => {
       <div className="simulator-container" data-builder-scroll-container="true" style={simulatorStyle} onContextMenu={handleCanvasContextMenu}>
         <DropArea
           className="drop-area-root"
-          style={{ flex: 1, height: '100%' }}
+          style={{ minHeight: '100%', height: 'auto', flex: '0 0 auto' }}
           data={uiPageData}
           onDropData={handleDropData}
           selectable={false}

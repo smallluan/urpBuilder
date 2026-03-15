@@ -3,7 +3,7 @@ import cloneDeep from 'lodash/cloneDeep';
 import { Button, Input, Tree } from 'tdesign-react';
 import type { TreeInstanceFunctions } from 'tdesign-react';
 import { SearchIcon } from 'tdesign-icons-react';
-import { GripHorizontal, LayoutGrid, Minus, Palette, PlusSquare, Trash2 } from 'lucide-react';
+import { ArrowDown, ArrowUp, GripHorizontal, LayoutGrid, Minus, Palette, PlusSquare, Trash2 } from 'lucide-react';
 import { useBuilderContext } from '../context/BuilderContext';
 import type { UiTreeNode } from '../store/types';
 import NodeStyleDrawer from './NodeStyleDrawer';
@@ -19,6 +19,7 @@ interface RenderUiTreeNode extends Omit<UiTreeNode, 'label' | 'children'> {
 }
 
 const DROP_DATA_KEY = 'drag-component-data';
+const TREE_NODE_DRAG_KEY = 'drag-tree-node-key';
 const CONTAINER_NODE_TYPES = new Set([
   'Space',
   'Steps',
@@ -49,6 +50,88 @@ interface TreeNodeDropTarget {
   parentKey: string;
   slotKey?: string;
 }
+
+interface NodeSiblingInfo {
+  parentKey: string;
+  index: number;
+  siblingCount: number;
+}
+
+interface TreeNodeMoveDestination {
+  parentKey: string;
+  index: number;
+  slotKey?: string;
+}
+
+const collectTreeKeys = (node: UiTreeNode): string[] => {
+  const keys: string[] = [node.key];
+  (node.children ?? []).forEach((child) => {
+    keys.push(...collectTreeKeys(child));
+  });
+  return keys;
+};
+
+const getNodeSiblingInfo = (root: UiTreeNode, nodeKey: string): NodeSiblingInfo | null => {
+  const path = findNodePathByKey(root, nodeKey);
+  if (!path || path.length < 2) {
+    return null;
+  }
+
+  const parentNode = path[path.length - 2];
+  const siblings = parentNode.children ?? [];
+  const index = siblings.findIndex((item) => item.key === nodeKey);
+  if (index < 0) {
+    return null;
+  }
+
+  return {
+    parentKey: parentNode.key,
+    index,
+    siblingCount: siblings.length,
+  };
+};
+
+const isNodeDraggable = (node: UiTreeNode, rootKey: string) => node.key !== rootKey && !isSlotNode(node);
+
+const resolveTreeNodeMoveDestination = (
+  root: UiTreeNode,
+  draggedNodeKey: string,
+  targetNode: UiTreeNode,
+): TreeNodeMoveDestination | null => {
+  if (draggedNodeKey === targetNode.key) {
+    return null;
+  }
+
+  const targetPath = findNodePathByKey(root, targetNode.key);
+  if (!targetPath) {
+    return null;
+  }
+
+  if (targetPath.some((item) => item.key === draggedNodeKey)) {
+    return null;
+  }
+
+  const dropTarget = getTreeNodeDropTarget(targetNode, root);
+  if (dropTarget) {
+    const targetParent = findNodePathByKey(root, dropTarget.parentKey)?.at(-1);
+    const index = targetParent?.children?.length ?? 0;
+    return {
+      parentKey: dropTarget.parentKey,
+      index,
+      slotKey: dropTarget.slotKey,
+    };
+  }
+
+  const siblingInfo = getNodeSiblingInfo(root, targetNode.key);
+  if (!siblingInfo) {
+    return null;
+  }
+
+  return {
+    parentKey: siblingInfo.parentKey,
+    index: siblingInfo.index + 1,
+  };
+};
 
 const isListItemTemplateDroppable = (node: UiTreeNode, root: UiTreeNode) => {
   if (node.type !== 'List.Item') {
@@ -156,8 +239,10 @@ const ComponentAsideLeft: React.FC = () => {
   const toggleActiveNode = useStore((state) => state.toggleActiveNode);
   const removeFromUiPageData = useStore((state) => state.removeFromUiPageData);
   const insertToUiPageData = useStore((state) => state.insertToUiPageData);
+  const moveUiNode = useStore((state) => state.moveUiNode);
   const updateActiveNodeProp = useStore((state) => state.updateActiveNodeProp);
   const [dragOverNodeKey, setDragOverNodeKey] = useState<string | null>(null);
+  const [expandedKeys, setExpandedKeys] = useState<string[]>(() => collectTreeKeys(uiPageData));
   const [contextMenuState, setContextMenuState] = useState<{
     visible: boolean;
     nodeKey: string | null;
@@ -191,7 +276,7 @@ const ComponentAsideLeft: React.FC = () => {
     setActiveNode(nodeKey);
 
     const menuWidth = 190;
-    const menuHeight = 132;
+    const menuHeight = 228;
     const viewportWidth = window.innerWidth;
     const viewportHeight = window.innerHeight;
     const x = Math.max(8, Math.min(event.clientX, viewportWidth - menuWidth - 8));
@@ -216,6 +301,20 @@ const ComponentAsideLeft: React.FC = () => {
   };
 
   const handleTreeNodeDragOver = (event: React.DragEvent<HTMLDivElement>, node: UiTreeNode) => {
+    const draggedNodeKey = event.dataTransfer.getData(TREE_NODE_DRAG_KEY);
+    if (draggedNodeKey) {
+      const destination = resolveTreeNodeMoveDestination(uiPageData, draggedNodeKey, node);
+      if (!destination) {
+        return;
+      }
+
+      event.preventDefault();
+      event.stopPropagation();
+      event.dataTransfer.dropEffect = 'move';
+      setDragOverNodeKey(node.key);
+      return;
+    }
+
     const dropTarget = getTreeNodeDropTarget(node, uiPageData);
     if (!dropTarget) {
       return;
@@ -240,14 +339,32 @@ const ComponentAsideLeft: React.FC = () => {
   };
 
   const handleTreeNodeDrop = (event: React.DragEvent<HTMLDivElement>, node: UiTreeNode) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setDragOverNodeKey(null);
+
+    const draggedNodeKey = event.dataTransfer.getData(TREE_NODE_DRAG_KEY);
+    if (draggedNodeKey) {
+      const draggedNodePath = findNodePathByKey(uiPageData, draggedNodeKey);
+      const draggedNode = draggedNodePath?.at(-1);
+      if (!draggedNode || !isNodeDraggable(draggedNode, uiPageData.key)) {
+        return;
+      }
+
+      const destination = resolveTreeNodeMoveDestination(uiPageData, draggedNodeKey, node);
+      if (!destination) {
+        return;
+      }
+
+      moveUiNode(draggedNodeKey, destination.parentKey, destination.index, destination.slotKey);
+      setActiveNode(draggedNodeKey);
+      return;
+    }
+
     const dropTarget = getTreeNodeDropTarget(node, uiPageData);
     if (!dropTarget) {
       return;
     }
-
-    event.preventDefault();
-    event.stopPropagation();
-    setDragOverNodeKey(null);
 
     const rawData = event.dataTransfer.getData(DROP_DATA_KEY);
     if (!rawData) {
@@ -343,7 +460,17 @@ const ComponentAsideLeft: React.FC = () => {
           >
             <div className="tree-node-item">
               <span className="tree-node-item__left">
-                <span className={`tree-node-item__icon tree-node-item__icon--${nodeVisualKind}`}>{icon}</span>
+                <span
+                  className={`tree-node-item__icon tree-node-item__icon--${nodeVisualKind}`}
+                  draggable={isNodeDraggable(node, uiPageData.key)}
+                  onDragStart={(event) => {
+                    event.stopPropagation();
+                    event.dataTransfer.setData(TREE_NODE_DRAG_KEY, node.key);
+                    event.dataTransfer.effectAllowed = 'move';
+                  }}
+                >
+                  {icon}
+                </span>
                 <span className="tree-node-item__title">{title}</span>
                 {isAbstractNode ? <span className="tree-node-item__badge">抽象</span> : null}
                 {isHidden ? <span className="tree-node-item__badge tree-node-item__badge--hidden">隐藏</span> : null}
@@ -371,6 +498,25 @@ const ComponentAsideLeft: React.FC = () => {
     return path[path.length - 1];
   }, [contextMenuState.nodeKey, uiPageData]);
 
+  const contextMenuNodeSiblingInfo = useMemo(() => {
+    if (!contextMenuNode) {
+      return null;
+    }
+    return getNodeSiblingInfo(uiPageData, contextMenuNode.key);
+  }, [contextMenuNode, uiPageData]);
+
+  const canMoveContextMenuNode = Boolean(
+    contextMenuNode
+    && contextMenuNode.key !== uiPageData.key
+    && !isSlotNode(contextMenuNode),
+  );
+  const canMoveUp = Boolean(canMoveContextMenuNode && contextMenuNodeSiblingInfo && contextMenuNodeSiblingInfo.index > 0);
+  const canMoveDown = Boolean(
+    canMoveContextMenuNode
+    && contextMenuNodeSiblingInfo
+    && contextMenuNodeSiblingInfo.index < contextMenuNodeSiblingInfo.siblingCount - 1,
+  );
+
   const treeData = useMemo(() => [uiPageDataWithWrappedLabel], [uiPageDataWithWrappedLabel]);
   const treeRef = useRef<TreeInstanceFunctions<any>>(null);
 
@@ -386,6 +532,27 @@ const ComponentAsideLeft: React.FC = () => {
     setTreeInstance(treeRef.current);
     return () => setTreeInstance(null);
   }, [setTreeInstance]);
+
+  useEffect(() => {
+    const allKeys = collectTreeKeys(uiPageData);
+    const allKeySet = new Set(allKeys);
+    setExpandedKeys((previous) => {
+      if (!previous.length) {
+        return allKeys;
+      }
+
+      const retained = previous.filter((key) => allKeySet.has(key));
+      const activePath = activeNodeKey ? findNodePathByKey(uiPageData, activeNodeKey) : null;
+      if (activePath?.length) {
+        activePath.forEach((item) => {
+          if (!retained.includes(item.key)) {
+            retained.push(item.key);
+          }
+        });
+      }
+      return retained;
+    });
+  }, [activeNodeKey, uiPageData]);
 
   useEffect(() => {
     if (!contextMenuState.visible) {
@@ -428,11 +595,14 @@ const ComponentAsideLeft: React.FC = () => {
               keys={{ value: 'key' }}
               ref={treeRef}
               activable
-              expandAll
+              expanded={expandedKeys}
               line
               data={treeData}
               actived={activeNodeKey ? [activeNodeKey] : []}
               onClick={handleTreeClick}
+              onExpand={(nextExpanded) => {
+                setExpandedKeys(Array.isArray(nextExpanded) ? nextExpanded.map((item) => String(item)) : []);
+              }}
               onDragLeave={() => setDragOverNodeKey(null)}
             />
           </div>
@@ -489,6 +659,54 @@ const ComponentAsideLeft: React.FC = () => {
                   添加栅格列
                 </Button>
               ) : null}
+
+              <Button
+                size="small"
+                variant="text"
+                theme="default"
+                className="tree-node-context-action"
+                icon={<ArrowUp size={14} />}
+                disabled={!canMoveUp || !contextMenuNodeSiblingInfo || !contextMenuNode}
+                onClick={() => {
+                  if (!contextMenuNode || !contextMenuNodeSiblingInfo) {
+                    return;
+                  }
+
+                  moveUiNode(
+                    contextMenuNode.key,
+                    contextMenuNodeSiblingInfo.parentKey,
+                    contextMenuNodeSiblingInfo.index - 1,
+                  );
+                  setActiveNode(contextMenuNode.key);
+                  closeContextMenu();
+                }}
+              >
+                向上移动
+              </Button>
+
+              <Button
+                size="small"
+                variant="text"
+                theme="default"
+                className="tree-node-context-action"
+                icon={<ArrowDown size={14} />}
+                disabled={!canMoveDown || !contextMenuNodeSiblingInfo || !contextMenuNode}
+                onClick={() => {
+                  if (!contextMenuNode || !contextMenuNodeSiblingInfo) {
+                    return;
+                  }
+
+                  moveUiNode(
+                    contextMenuNode.key,
+                    contextMenuNodeSiblingInfo.parentKey,
+                    contextMenuNodeSiblingInfo.index + 1,
+                  );
+                  setActiveNode(contextMenuNode.key);
+                  closeContextMenu();
+                }}
+              >
+                向下移动
+              </Button>
 
               <Button
                 size="small"

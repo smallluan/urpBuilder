@@ -24,6 +24,7 @@ import type {
 import {
   appendNodeByParentKey,
   findNodeByKey,
+  insertNodeAtParentIndex,
   removeNodeByKey,
   toUiTreeNode,
   updateNodeByKey,
@@ -1221,6 +1222,59 @@ export const createBuilderStore = (options: CreateBuilderStoreOptions = {}) => {
           activeNodeKey: nextActiveNodeKey,
           activeNode: resolveActiveNode(result.tree, nextActiveNodeKey),
           history: nextHistory,
+        };
+      }),
+
+    moveUiNode: (nodeKey, targetParentKey, targetIndex, slotKey) =>
+      set((state) => {
+        const sourceKey = String(nodeKey ?? '').trim();
+        const parentKey = String(targetParentKey ?? '').trim();
+        if (!sourceKey || !parentKey || sourceKey === state.uiPageData.key) {
+          return state;
+        }
+
+        const removed = removeNodeByKey(state.uiPageData, sourceKey);
+        if (!removed.removedNode || !removed.parentKey || removed.index < 0) {
+          return state;
+        }
+
+        const targetParentNode = findNodeByKey(removed.tree, parentKey);
+        if (!targetParentNode) {
+          return state;
+        }
+
+        const siblingCount = targetParentNode.children?.length ?? 0;
+        const requestedIndex = Number.isFinite(targetIndex) ? Math.trunc(targetIndex) : siblingCount;
+        let safeIndex = Math.max(0, Math.min(requestedIndex, siblingCount));
+        if (removed.parentKey === parentKey && removed.index < safeIndex) {
+          safeIndex -= 1;
+        }
+
+        if (removed.parentKey === parentKey && removed.index === safeIndex) {
+          return state;
+        }
+
+        const movedNode = cloneDeep(removed.removedNode);
+        const currentProps = (movedNode.props ?? {}) as Record<string, unknown>;
+        if (slotKey) {
+          movedNode.props = {
+            ...currentProps,
+            __slot: {
+              ...((currentProps.__slot ?? {}) as Record<string, unknown>),
+              value: slotKey,
+            },
+          };
+        } else if (Object.prototype.hasOwnProperty.call(currentProps, '__slot')) {
+          const nextProps = { ...currentProps };
+          delete nextProps.__slot;
+          movedNode.props = nextProps;
+        }
+
+        const nextTree = insertNodeAtParentIndex(removed.tree, parentKey, safeIndex, movedNode);
+
+        return {
+          uiPageData: nextTree,
+          activeNode: resolveActiveNode(nextTree, state.activeNodeKey),
         };
       }),
 

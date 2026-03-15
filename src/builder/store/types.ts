@@ -231,6 +231,7 @@ export interface BuilderStore {
   setTreeInstance: (instance: UiTreeInstance | null) => void;
   insertToUiPageData: (parentKey: string, componentData: Record<string, unknown>, slotKey?: string) => void;
   removeFromUiPageData: (nodeKey: string) => void;
+  moveUiNode: (nodeKey: string, targetParentKey: string, targetIndex: number, slotKey?: string) => void;
 
   // Actions — 流程历史
   recordFlowEditHistory: (
