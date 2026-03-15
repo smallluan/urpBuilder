@@ -65,6 +65,9 @@ const Login: React.FC = () => {
           <Button theme="primary" size="large" block loading={authenticating} onClick={handleSubmit}>
             登录
           </Button>
+          <Button variant="text" theme="default" onClick={() => navigate('/register')}>
+            没有账号？去注册
+          </Button>
         </div>
       </div>
     </div>

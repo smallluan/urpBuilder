@@ -4,7 +4,7 @@ import { Button, Input, Tree } from 'tdesign-react';
 import type { TreeInstanceFunctions } from 'tdesign-react';
 import { SearchIcon } from 'tdesign-icons-react';
 import { ArrowDown, ArrowUp, GripHorizontal, LayoutGrid, Minus, Palette, PlusSquare, Trash2 } from 'lucide-react';
-import { useBuilderContext } from '../context/BuilderContext';
+import { useBuilderAccess, useBuilderContext } from '../context/BuilderContext';
 import type { UiTreeNode } from '../store/types';
 import NodeStyleDrawer from './NodeStyleDrawer';
 import { getNodeSlotKey, isSlotNode } from '../utils/slot';
@@ -232,6 +232,7 @@ const GRID_COL_COMPONENT_SCHEMA = componentCatalog.find((item) => item.type === 
 
 const ComponentAsideLeft: React.FC = () => {
   const { useStore } = useBuilderContext();
+  const { readOnly } = useBuilderAccess();
   const uiPageData = useStore((state) => state.uiPageData);
   const setTreeInstance = useStore((state) => state.setTreeInstance);
   const activeNodeKey = useStore((state) => state.activeNodeKey);
@@ -272,6 +273,10 @@ const ComponentAsideLeft: React.FC = () => {
   };
 
   const handleNodeContextMenu = (event: React.MouseEvent<HTMLDivElement>, nodeKey: string) => {
+    if (readOnly) {
+      return;
+    }
+
     event.preventDefault();
     event.stopPropagation();
     setActiveNode(nodeKey);
@@ -302,6 +307,10 @@ const ComponentAsideLeft: React.FC = () => {
   };
 
   const handleTreeNodeDragOver = (event: React.DragEvent<HTMLDivElement>, node: UiTreeNode) => {
+    if (readOnly) {
+      return;
+    }
+
     const draggedNodeKey = draggingTreeNodeKey;
     if (draggedNodeKey) {
       const destination = resolveTreeNodeMoveDestination(uiPageData, draggedNodeKey, node);
@@ -340,6 +349,10 @@ const ComponentAsideLeft: React.FC = () => {
   };
 
   const handleTreeNodeDrop = (event: React.DragEvent<HTMLDivElement>, node: UiTreeNode) => {
+    if (readOnly) {
+      return;
+    }
+
     event.preventDefault();
     event.stopPropagation();
     setDragOverNodeKey(null);
@@ -467,8 +480,11 @@ const ComponentAsideLeft: React.FC = () => {
               <span className="tree-node-item__left">
                 <span
                   className={`tree-node-item__icon tree-node-item__icon--${nodeVisualKind}`}
-                  draggable={isNodeDraggable(node, uiPageData.key)}
+                  draggable={!readOnly && isNodeDraggable(node, uiPageData.key)}
                   onDragStart={(event) => {
+                    if (readOnly) {
+                      return;
+                    }
                     event.stopPropagation();
                     setDraggingTreeNodeKey(node.key);
                     event.dataTransfer.setData(TREE_NODE_DRAG_KEY, node.key);
@@ -677,7 +693,7 @@ const ComponentAsideLeft: React.FC = () => {
                 theme="default"
                 className="tree-node-context-action"
                 icon={<ArrowUp size={14} />}
-                disabled={!canMoveUp || !contextMenuNodeSiblingInfo || !contextMenuNode}
+                disabled={readOnly || !canMoveUp || !contextMenuNodeSiblingInfo || !contextMenuNode}
                 onClick={() => {
                   if (!contextMenuNode || !contextMenuNodeSiblingInfo) {
                     return;
@@ -701,7 +717,7 @@ const ComponentAsideLeft: React.FC = () => {
                 theme="default"
                 className="tree-node-context-action"
                 icon={<ArrowDown size={14} />}
-                disabled={!canMoveDown || !contextMenuNodeSiblingInfo || !contextMenuNode}
+                disabled={readOnly || !canMoveDown || !contextMenuNodeSiblingInfo || !contextMenuNode}
                 onClick={() => {
                   if (!contextMenuNode || !contextMenuNodeSiblingInfo) {
                     return;
@@ -725,7 +741,7 @@ const ComponentAsideLeft: React.FC = () => {
                 theme="danger"
                 className="tree-node-context-action tree-node-context-action--danger"
                 icon={<Trash2 size={14} />}
-                disabled={contextMenuNode.key === uiPageData.key || isSlotNode(contextMenuNode)}
+                disabled={readOnly || contextMenuNode.key === uiPageData.key || isSlotNode(contextMenuNode)}
                 onClick={() => handleDeleteNode(contextMenuNode.key)}
               >
                 删除该节点

@@ -12,6 +12,7 @@ const CreateComponent = lazy(() => import('../pages/CreateComponent'));
 const CreatePage = lazy(() => import('../pages/CreatePage'));
 const PreviewEngine = lazy(() => import('../pages/PreviewEngine'));
 const Login = lazy(() => import('../pages/Login'));
+const Register = lazy(() => import('../pages/Register'));
 
 const load = (el: React.ReactElement) => (
   <Suspense fallback={<div>加载中...</div>}>{el}</Suspense>
@@ -48,6 +49,10 @@ export const router = createBrowserRouter([
   {
     path: '/login',
     element: <PublicOnlyRoute>{load(<Login />)}</PublicOnlyRoute>,
+  },
+  {
+    path: '/register',
+    element: <PublicOnlyRoute>{load(<Register />)}</PublicOnlyRoute>,
   },
   {
     path: '/create-component',

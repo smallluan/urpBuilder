@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Button, Dialog, Input, Space, Select, Typography } from 'tdesign-react';
 import ComponentBody from '../renderer/ComponentBody';
 import SCREEN_SIZES from '../config/screenSizes';
-import { useBuilderContext } from '../context/BuilderContext';
+import { useBuilderAccess, useBuilderContext } from '../context/BuilderContext';
 import { BUILT_IN_LAYOUT_TEMPLATES, type BuiltInLayoutTemplateId } from '../config/layoutTemplates';
 import { getBreakpointByWidth, resolveBuilderViewportWidth } from '../utils/gridResponsive';
 
@@ -10,6 +10,7 @@ const { Text } = Typography;
 
 const ComponentMainBody: React.FC<{ toolbarExtra?: React.ReactNode }> = ({ toolbarExtra }) => {
   const { useStore } = useBuilderContext();
+  const { readOnly } = useBuilderAccess();
   const screenSize = useStore((state) => state.screenSize);
   const autoWidth = useStore((state) => state.autoWidth);
   const setScreenSize = useStore((state) => state.setScreenSize);
@@ -32,6 +33,9 @@ const ComponentMainBody: React.FC<{ toolbarExtra?: React.ReactNode }> = ({ toolb
   }, [screenSize, autoWidth]);
 
   const handleSelectChange = (value: string | number) => {
+    if (readOnly) {
+      return;
+    }
     setScreenSize(value);
     if (value === 'auto') {
       setAutoWidth(1800);
@@ -39,6 +43,10 @@ const ComponentMainBody: React.FC<{ toolbarExtra?: React.ReactNode }> = ({ toolb
   };
 
   const handleInputBlur = (value: string) => {
+    if (readOnly) {
+      return;
+    }
+
     if (screenSize !== 'auto') {
       return;
     }
@@ -55,6 +63,10 @@ const ComponentMainBody: React.FC<{ toolbarExtra?: React.ReactNode }> = ({ toolb
   const isPageEmpty = (uiPageData.children?.length ?? 0) === 0;
 
   const handleSelectLayoutTemplate = (templateId: BuiltInLayoutTemplateId) => {
+    if (readOnly) {
+      return;
+    }
+
     if (isPageEmpty) {
       applyBuiltInLayoutTemplate(templateId);
       setLayoutDialogVisible(false);
@@ -88,12 +100,13 @@ const ComponentMainBody: React.FC<{ toolbarExtra?: React.ReactNode }> = ({ toolb
             options={SCREEN_SIZES}
             value={screenSize}
             onChange={(value) => handleSelectChange(value as string | number)}
+            disabled={readOnly}
           />
           <Input
             type="number"
             style={{ width: '100px' }}
             value={draftInputValue}
-            disabled={inputDisabled}
+            disabled={readOnly || inputDisabled}
             onChange={(value) => setDraftInputValue(String(value ?? ''))}
             onBlur={(value) => handleInputBlur(String(value ?? ''))}
           />
@@ -104,6 +117,7 @@ const ComponentMainBody: React.FC<{ toolbarExtra?: React.ReactNode }> = ({ toolb
             size="medium"
             theme="default"
             variant="outline"
+            disabled={readOnly}
             onClick={() => setLayoutDialogVisible(true)}
           >
             选择布局

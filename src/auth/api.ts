@@ -1,9 +1,14 @@
 import requestClient from '../api/request';
 import type { ApiResponse } from '../api/types';
-import type { AuthSession, AuthUser, LoginPayload, LogoutPayload } from './types';
+import type { AuthSession, AuthUser, LoginPayload, LogoutPayload, RegisterPayload } from './types';
 
 export const loginByPassword = async (payload: LoginPayload) => {
   const response = await requestClient.post<ApiResponse<AuthSession>>('/auth/login', payload);
+  return response.data.data;
+};
+
+export const registerByPassword = async (payload: RegisterPayload) => {
+  const response = await requestClient.post<ApiResponse<AuthSession>>('/auth/register', payload);
   return response.data.data;
 };
 

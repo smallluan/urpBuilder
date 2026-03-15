@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Button, ColorPicker, Dialog, Empty, Input, InputNumber, Popup, Select, Slider, Space, Switch, Table, Tag, Typography } from 'tdesign-react';
 import { HelpCircleIcon } from 'tdesign-icons-react';
-import { useBuilderContext } from '../context/BuilderContext';
+import { useBuilderAccess, useBuilderContext } from '../context/BuilderContext';
 import type { UiTreeNode } from '../store/types';
 import NodeStyleDrawer from './NodeStyleDrawer';
 import { isSlotNode } from '../utils/slot';
@@ -252,6 +252,7 @@ const resolveEditType = (schema: ComponentPropSchema): EditType => {
 
 const ComponentConfigPanel: React.FC = () => {
   const { useStore } = useBuilderContext();
+  const { readOnly, readOnlyReason } = useBuilderAccess();
   const activeNode = useStore((state) => state.activeNode);
   const uiPageData = useStore((state) => state.uiPageData);
   const updateActiveNodeLabel = useStore((state) => state.updateActiveNodeLabel);
@@ -488,11 +489,17 @@ const ComponentConfigPanel: React.FC = () => {
 
   if (isSlotNode(activeNode)) {
     return (
-      <div className="right-panel-body right-panel-empty">
+      <div className="config-panel">
         <Empty description="插槽节点仅用于承载拖拽，不支持单独配置" />
       </div>
     );
   }
+
+  const readOnlyBanner = readOnly ? (
+    <div style={{ marginBottom: 12, padding: '10px 12px', borderRadius: 8, background: '#fff7e8', color: '#8d5c0d', fontSize: 12 }}>
+      当前为只读模式。{readOnlyReason || '你可以查看组件配置，但不能修改。'}
+    </div>
+  ) : null;
 
   const renderEditor = (propKey: string, schema: ComponentPropSchema) => {
     const editType = resolveEditType(schema);
@@ -862,6 +869,8 @@ const ComponentConfigPanel: React.FC = () => {
   const activeOffset = typeof activeBreakpointValue.offset === 'number' ? activeBreakpointValue.offset : 0;
   return (
     <div className="right-panel-body">
+      {readOnlyBanner}
+      <div className={readOnly ? 'builder-readonly-surface' : ''}>
       <div className="config-form">
         <Typography.Title level="h6" className="config-title">组件配置</Typography.Title>
 
@@ -1418,6 +1427,7 @@ const ComponentConfigPanel: React.FC = () => {
           </div>
         </div>
       </Dialog>
+      </div>
     </div>
   );
 };

@@ -178,6 +178,8 @@ const PageLayout: React.FC = () => {
 const CreatePage: React.FC = () => {
   const { user } = useAuth();
   const [mode, setMode] = useState<'component' | 'flow'>('component');
+  const [readOnly, setReadOnly] = useState(false);
+  const [readOnlyReason, setReadOnlyReason] = useState('');
   const loadedPageIdRef = useRef<string | null>(null);
   const pageIdFromUrl = resolveValidTemplateIdFromUrl();
   const setCurrentPageMeta = useCreatePageStore((state) => state.setCurrentPageMeta);
@@ -238,9 +240,8 @@ const CreatePage: React.FC = () => {
         const response = await getPageTemplateDetail(pageId);
         const detail = response.data;
         if (detail.base?.ownerId && user?.id && detail.base.ownerId !== user.id) {
-          emitApiAlert('无权限', '当前页面不属于你，暂不允许进入编辑');
-          window.location.replace('/build-page');
-          return;
+          setReadOnly(true);
+          setReadOnlyReason('当前页面不属于你，已自动切换为只读查看。');
         }
         const template = detail?.template;
 
@@ -319,7 +320,7 @@ const CreatePage: React.FC = () => {
   }, [setCurrentPageMeta, user?.id]);
 
   return (
-    <BuilderProvider useStore={useCreatePageStore}>
+    <BuilderProvider useStore={useCreatePageStore} readOnly={readOnly} readOnlyReason={readOnlyReason}>
       <BuilderShell header={<HeaderControls mode={mode} onChange={setMode} designLabel="页面" saveEntityLabel="页面" entityType="page" enablePageRouteConfig />}>
         {mode === 'component' ? <PageLayout /> : <FlowLayout />}
       </BuilderShell>

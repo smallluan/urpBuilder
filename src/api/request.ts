@@ -11,6 +11,10 @@ const resolveErrorMessage = (error: AxiosError<ApiResponse>) => {
     return error.response.data.message;
   }
 
+  if (error.response?.status === 403) {
+    return '无权限访问该资源';
+  }
+
   if (error.code === 'ECONNABORTED') {
     return '请求超时，请稍后重试';
   }

@@ -6,7 +6,7 @@ import FlowAsideLeft from '../components/FlowAsideLeft';
 import CodeEditorDialog, { type CodeEditorValue } from '../components/CodeEditorDialog';
 import DragableWrapper from '../../components/DragableWrapper';
 import RightPanelHeader, { type RightPanelMode } from '../components/RightPanelHeader';
-import { useBuilderContext } from '../context/BuilderContext';
+import { useBuilderAccess, useBuilderContext } from '../context/BuilderContext';
 import {
   BODY_TYPE_OPTIONS,
   CODE_LANGUAGE_OPTIONS,
@@ -25,6 +25,7 @@ interface CodeNodeFormState extends CodeEditorValue {}
 
 const FlowLayout: React.FC = () => {
   const { useStore } = useBuilderContext();
+  const { readOnly, readOnlyReason } = useBuilderAccess();
   const flowNodes = useStore((state) => state.flowNodes);
   const flowEdges = useStore((state) => state.flowEdges);
   const flowActiveNodeId = useStore((state) => state.flowActiveNodeId);
@@ -102,6 +103,10 @@ const FlowLayout: React.FC = () => {
   ] as const;
 
   const handleBuiltinDragStart = (event: React.DragEvent<HTMLDivElement>, data: Record<string, unknown>) => {
+    if (readOnly) {
+      return;
+    }
+
     event.dataTransfer?.setData('drag-component-data', JSON.stringify(data));
     event.dataTransfer.effectAllowed = 'copy';
   };
@@ -527,7 +532,7 @@ const FlowLayout: React.FC = () => {
 
         <div className="right-panel-content">
           {rightPanelMode === 'library' ? (
-            <div className="right-panel-body">
+            <div className={`right-panel-body${readOnly ? ' builder-readonly-surface' : ''}`}>
               <div className="flow-builtins-panel">
                 <div className="flow-builtins-header">
                   <div className="flow-builtins-title">内置节点</div>
@@ -552,6 +557,12 @@ const FlowLayout: React.FC = () => {
             </div>
           ) : (
             <div className="right-panel-body flow-config-panel">
+              {readOnly ? (
+                <div style={{ marginBottom: 12, padding: '10px 12px', borderRadius: 8, background: '#fff7e8', color: '#8d5c0d', fontSize: 12 }}>
+                  当前为只读模式。{readOnlyReason || '你可以查看流程信息，但不能修改。'}
+                </div>
+              ) : null}
+              <div className={readOnly ? 'builder-readonly-surface' : ''}>
               <div className="flow-config-panel__title">节点配置</div>
 
               {activeFlowNode ? (
@@ -614,7 +625,7 @@ const FlowLayout: React.FC = () => {
                   </div>
 
                   <div className="flow-config-panel__actions">
-                    <Button size="small" theme="primary" variant="outline" onClick={() => setNetworkEditorVisible(true)}>
+                    <Button size="small" theme="primary" variant="outline" disabled={readOnly} onClick={() => setNetworkEditorVisible(true)}>
                       编辑配置
                     </Button>
                   </div>
@@ -664,7 +675,7 @@ const FlowLayout: React.FC = () => {
                       size="small"
                       theme="primary"
                       variant="outline"
-                      disabled={!canApplyEventFilterDraft}
+                      disabled={readOnly || !canApplyEventFilterDraft}
                       onClick={handleApplyEventFilterDraft}
                     >
                       应用配置
@@ -721,12 +732,12 @@ const FlowLayout: React.FC = () => {
                       size="small"
                       theme="default"
                       variant="outline"
-                      disabled={!canApplyCodeDraft}
+                      disabled={readOnly || !canApplyCodeDraft}
                       onClick={() => handleApplyCodeDraft()}
                     >
                       应用配置
                     </Button>
-                    <Button size="small" theme="primary" variant="outline" onClick={() => setCodeEditorVisible(true)}>
+                    <Button size="small" theme="primary" variant="outline" disabled={readOnly} onClick={() => setCodeEditorVisible(true)}>
                       编辑代码
                     </Button>
                   </div>
@@ -771,7 +782,7 @@ const FlowLayout: React.FC = () => {
                       size="small"
                       theme="primary"
                       variant="outline"
-                      disabled={!canApplyTimerDraft}
+                      disabled={readOnly || !canApplyTimerDraft}
                       onClick={handleApplyTimerDraft}
                     >
                       应用配置
@@ -806,7 +817,7 @@ const FlowLayout: React.FC = () => {
                       size="small"
                       theme="default"
                       variant="outline"
-                      disabled={propExposeDraft.availablePropKeys.length === 0}
+                      disabled={readOnly || propExposeDraft.availablePropKeys.length === 0}
                       onClick={() => setPropAliasDrawerVisible(true)}
                     >
                       {propExposeDraft.selectedPropKeys && propExposeDraft.selectedPropKeys.length > 0
@@ -820,7 +831,7 @@ const FlowLayout: React.FC = () => {
                       size="small"
                       theme="primary"
                       variant="outline"
-                      disabled={!canApplyPropExposeDraft}
+                      disabled={readOnly || !canApplyPropExposeDraft}
                       onClick={handleApplyPropExposeDraft}
                     >
                       应用配置
@@ -855,7 +866,7 @@ const FlowLayout: React.FC = () => {
                       size="small"
                       theme="default"
                       variant="outline"
-                      disabled={lifecycleExposeDraft.availableLifetimes.length === 0}
+                      disabled={readOnly || lifecycleExposeDraft.availableLifetimes.length === 0}
                       onClick={() => setLifecycleAliasDrawerVisible(true)}
                     >
                       {lifecycleExposeDraft.selectedLifetimes.length > 0
@@ -869,7 +880,7 @@ const FlowLayout: React.FC = () => {
                       size="small"
                       theme="primary"
                       variant="outline"
-                      disabled={!canApplyLifecycleExposeDraft}
+                      disabled={readOnly || !canApplyLifecycleExposeDraft}
                       onClick={handleApplyLifecycleExposeDraft}
                     >
                       应用配置
@@ -877,12 +888,13 @@ const FlowLayout: React.FC = () => {
                   </div>
                 </div>
               ) : null}
-                </div>
+            </div>
               ) : (
                 <div className="right-panel-empty flow-config-panel__empty">
                   点击流程节点后，在此展示对应的基础配置。
                 </div>
               )}
+            </div>
             </div>
           )}
         </div>

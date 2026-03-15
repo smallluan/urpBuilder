@@ -9,6 +9,7 @@
  */
 
 import React from 'react';
+import { useBuilderAccess } from '../context/BuilderContext';
 import '../style.less';
 
 export interface BuilderShellProps {
@@ -24,9 +25,18 @@ export const BuilderShell: React.FC<BuilderShellProps> = ({
   header,
   children,
   className = 'create-page',
-}) => (
-  <div className={className}>
-    <header className="create-header">{header}</header>
-    <div className="create-body">{children}</div>
-  </div>
-);
+}) => {
+  const { readOnly, readOnlyReason } = useBuilderAccess();
+
+  return (
+    <div className={className}>
+      <header className="create-header">{header}</header>
+      {readOnly ? (
+        <div className="builder-readonly-banner">
+          当前为只读模式。{readOnlyReason || '你可以查看结构和配置，但不能修改或保存。'}
+        </div>
+      ) : null}
+      <div className="create-body">{children}</div>
+    </div>
+  );
+};

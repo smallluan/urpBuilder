@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import cloneDeep from 'lodash/cloneDeep';
 import { Radio, Button, Space, Drawer, Timeline, Tag, Dialog, Input, Switch } from 'tdesign-react';
 import { UploadIcon, ViewImageIcon, ArrowLeftIcon, ArrowRightIcon, HistoryIcon } from 'tdesign-icons-react';
-import { useBuilderContext } from '../context/BuilderContext';
+import { useBuilderAccess, useBuilderContext } from '../context/BuilderContext';
 import type { UiHistoryAction } from '../store/types';
 import { serializePreviewSnapshot } from '../../pages/PreviewEngine/utils/snapshot';
 import { buildComponentContract } from '../flow/componentContract';
@@ -198,6 +198,7 @@ const HeaderControls: React.FC<Props> = ({
   enablePageRouteConfig = false,
 }) => {
   const { useStore } = useBuilderContext();
+  const { readOnly } = useBuilderAccess();
   const history = useStore((state) => state.history);
   const uiTreeData = useStore((state) => state.uiPageData);
   const flowNodes = useStore((state) => state.flowNodes);
@@ -565,7 +566,7 @@ const HeaderControls: React.FC<Props> = ({
               size="small"
               variant="outline"
               icon={<ArrowLeftIcon />}
-              disabled={!canUndo}
+              disabled={readOnly || !canUndo}
               onClick={undo}
             >
               上一步
@@ -575,7 +576,7 @@ const HeaderControls: React.FC<Props> = ({
               size="small"
               variant="outline"
               icon={<ArrowRightIcon />}
-              disabled={!canRedo}
+              disabled={readOnly || !canRedo}
               onClick={redo}
             >
               下一步
@@ -590,9 +591,9 @@ const HeaderControls: React.FC<Props> = ({
               操作历史
             </Button>
             {enablePageRouteConfig ? (
-              <Button theme="default" size="small" variant="outline" onClick={handleOpenPageSettings}>当前路由设置</Button>
+              <Button theme="default" size="small" variant="outline" disabled={readOnly} onClick={handleOpenPageSettings}>当前路由设置</Button>
             ) : null}
-            <Button theme="primary" size="small" icon={<UploadIcon />} onClick={handleOpenSaveDialog}>保存</Button>
+            <Button theme="primary" size="small" icon={<UploadIcon />} disabled={readOnly} onClick={handleOpenSaveDialog}>保存</Button>
             <Button theme="default" size="small" icon={<ViewImageIcon />} onClick={handlePreview}>预览</Button>
           </div>
         </Space>
@@ -610,7 +611,7 @@ const HeaderControls: React.FC<Props> = ({
           disabled: saving,
         }}
         closeOnOverlayClick={false}
-        onConfirm={handleSave}
+        onConfirm={readOnly ? undefined : handleSave}
         onClose={handleCloseSaveDialog}
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -622,6 +623,7 @@ const HeaderControls: React.FC<Props> = ({
               onChange={(value) => setComponentName(String(value ?? ''))}
               maxlength={60}
               clearable
+              disabled={readOnly}
             />
           </div>
 
@@ -633,7 +635,7 @@ const HeaderControls: React.FC<Props> = ({
               onChange={(value) => setComponentId(String(value ?? '').trim())}
               maxlength={64}
               clearable
-              disabled={isEditMode}
+              disabled={readOnly || isEditMode}
             />
           </div>
         </div>

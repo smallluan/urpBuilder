@@ -12,6 +12,12 @@ export interface LoginPayload {
   password: string;
 }
 
+export interface RegisterPayload {
+  username: string;
+  password: string;
+  nickname?: string;
+}
+
 export interface AuthSession {
   accessToken: string;
   refreshToken?: string;
@@ -29,6 +35,7 @@ export interface AuthContextValue {
   isAuthenticated: boolean;
   user: AuthUser | null;
   login: (payload: LoginPayload) => Promise<AuthUser>;
+  register: (payload: RegisterPayload) => Promise<AuthUser>;
   logout: () => Promise<void>;
   refreshCurrentUser: () => Promise<AuthUser | null>;
 }

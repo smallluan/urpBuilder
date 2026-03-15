@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import cloneDeep from 'lodash/cloneDeep';
 import { Button, MessagePlugin } from 'tdesign-react';
 import { Palette, PlusSquare, Trash2 } from 'lucide-react';
-import { useBuilderContext } from '../context/BuilderContext';
+import { useBuilderAccess, useBuilderContext } from '../context/BuilderContext';
 import DropArea from '../../components/DropArea';
 import { LIST_TEMPLATE_ALLOWED_TYPES } from '../../constants/componentBuilder';
 import { findNodePathByKey } from '../utils/tree';
@@ -14,6 +14,7 @@ const GRID_COL_COMPONENT_SCHEMA = componentCatalog.find((item) => item.type === 
 
 const ComponentBody: React.FC = () => {
   const { useStore } = useBuilderContext();
+  const { readOnly } = useBuilderAccess();
   const screenSize = useStore((state) => state.screenSize);
   const autoWidth = useStore((state) => state.autoWidth);
   const uiPageData = useStore((state) => state.uiPageData);
@@ -53,6 +54,10 @@ const ComponentBody: React.FC = () => {
 
   // 组件拖拽后接收结构化数据，并插入到对应父节点下
   const handleDropData = (data: any, parent: any, options?: { slotKey?: string }) => {
+    if (readOnly) {
+      return;
+    }
+
     if (!parent?.key || !data || typeof data !== 'object') {
       return;
     }
@@ -225,6 +230,11 @@ const ComponentBody: React.FC = () => {
   }, [contextMenuState.nodeKey, uiPageData]);
 
   const handleDeleteNode = (nodeKey: string) => {
+    if (readOnly) {
+      closeContextMenu();
+      return;
+    }
+
     if (!nodeKey || nodeKey === uiPageData.key || !contextMenuNode || isSlotNode(contextMenuNode)) {
       closeContextMenu();
       return;
@@ -235,6 +245,11 @@ const ComponentBody: React.FC = () => {
   };
 
   const handleCanvasContextMenu = (event: React.MouseEvent<HTMLDivElement>) => {
+    if (readOnly) {
+      closeContextMenu();
+      return;
+    }
+
     const targetElement = (event.target as HTMLElement | null)?.closest<HTMLElement>('[data-builder-node-key]');
     const nodeKey = targetElement?.dataset.builderNodeKey;
     if (!nodeKey) {

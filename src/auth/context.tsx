@@ -1,8 +1,8 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
-import { getCurrentUser, loginByPassword, logoutCurrentSession } from './api';
+import { getCurrentUser, loginByPassword, logoutCurrentSession, registerByPassword } from './api';
 import { onUnauthorized } from './events';
 import { clearAuthSession, getAccessToken, getRefreshToken, migrateLegacyToken, persistAuthSession } from './storage';
-import type { AuthContextValue, AuthUser, LoginPayload } from './types';
+import type { AuthContextValue, AuthUser, LoginPayload, RegisterPayload } from './types';
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
@@ -74,6 +74,19 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
     }
   };
 
+  const register = async (payload: RegisterPayload) => {
+    setAuthenticating(true);
+    try {
+      const session = await registerByPassword(payload);
+      persistAuthSession(session);
+      setUser(session.user);
+      return session.user;
+    } finally {
+      setAuthenticating(false);
+      setInitialized(true);
+    }
+  };
+
   const logout = async () => {
     try {
       const refreshToken = getRefreshToken();
@@ -91,6 +104,7 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
     isAuthenticated: Boolean(user && getAccessToken()),
     user,
     login,
+    register,
     logout,
     refreshCurrentUser,
   }), [authenticating, initialized, user]);

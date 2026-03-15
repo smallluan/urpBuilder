@@ -24,6 +24,8 @@ type BuilderStoreHook = UseBoundStore<StoreApi<BuilderStore>>;
 
 interface BuilderContextValue {
   useStore: BuilderStoreHook;
+  readOnly: boolean;
+  readOnlyReason?: string;
 }
 
 const BuilderContext = createContext<BuilderContextValue | null>(null);
@@ -31,11 +33,13 @@ const BuilderContext = createContext<BuilderContextValue | null>(null);
 export interface BuilderProviderProps {
   /** 当前页面的 builder store hook（如 useCreateComponentStore） */
   useStore: BuilderStoreHook;
+  readOnly?: boolean;
+  readOnlyReason?: string;
   children: React.ReactNode;
 }
 
-export const BuilderProvider: React.FC<BuilderProviderProps> = ({ useStore, children }) => (
-  <BuilderContext.Provider value={{ useStore }}>
+export const BuilderProvider: React.FC<BuilderProviderProps> = ({ useStore, readOnly = false, readOnlyReason, children }) => (
+  <BuilderContext.Provider value={{ useStore, readOnly, readOnlyReason }}>
     {children}
   </BuilderContext.Provider>
 );
@@ -50,4 +54,12 @@ export const useBuilderContext = (): BuilderContextValue => {
     throw new Error('useBuilderContext 必须在 <BuilderProvider> 内使用');
   }
   return ctx;
+};
+
+export const useBuilderAccess = () => {
+  const { readOnly, readOnlyReason } = useBuilderContext();
+  return {
+    readOnly,
+    readOnlyReason,
+  };
 };

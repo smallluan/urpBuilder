@@ -32,6 +32,8 @@ const resolveValidTemplateIdFromUrl = () => {
 const CreateComponent: React.FC = () => {
   const { user } = useAuth();
   const [mode, setMode] = useState<'component' | 'flow'>('component');
+  const [readOnly, setReadOnly] = useState(false);
+  const [readOnlyReason, setReadOnlyReason] = useState('');
   const loadedPageIdRef = useRef<string | null>(null);
   const setCurrentPageMeta = useCreateComponentStore((state) => state.setCurrentPageMeta);
 
@@ -54,9 +56,8 @@ const CreateComponent: React.FC = () => {
         const response = await getComponentTemplateDetail(pageId);
         const detail = response.data;
         if (detail.base?.ownerId && user?.id && detail.base.ownerId !== user.id) {
-          emitApiAlert('无权限', '当前组件不属于你，暂不允许进入编辑');
-          window.location.replace('/build-component');
-          return;
+          setReadOnly(true);
+          setReadOnlyReason('当前组件不属于你，已自动切换为只读查看。');
         }
         const template = detail?.template;
 
@@ -100,7 +101,7 @@ const CreateComponent: React.FC = () => {
   }, [setCurrentPageMeta, user?.id]);
 
   return (
-    <BuilderProvider useStore={useCreateComponentStore}>
+    <BuilderProvider useStore={useCreateComponentStore} readOnly={readOnly} readOnlyReason={readOnlyReason}>
       <BuilderShell header={<HeaderControls mode={mode} onChange={setMode} entityType="component" enableComponentContract />}>
         {mode === 'component' ? <ComponentLayout /> : <FlowLayout />}
       </BuilderShell>
