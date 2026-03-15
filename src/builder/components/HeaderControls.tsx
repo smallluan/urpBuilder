@@ -130,6 +130,19 @@ const toActionDescription = (action: UiHistoryAction) => {
     };
   }
 
+  if (action.type === 'move') {
+    return {
+      title: `移动组件：${action.nodeLabel}`,
+      subtitle: `${action.nodeType || '未知类型'} · ${action.nodeKey}`,
+      theme: 'primary' as const,
+      kind: '移动',
+      lines: [
+        `原位置：${action.fromParentKey} / ${action.fromIndex}`,
+        `新位置：${action.toParentKey} / ${action.toIndex}`,
+      ],
+    };
+  }
+
   if (action.type === 'update-label') {
     return {
       title: `修改组件名称：${action.nextLabel}`,

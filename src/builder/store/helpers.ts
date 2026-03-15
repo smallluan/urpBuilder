@@ -233,6 +233,47 @@ export const applyHistoryAction = (
       : removeNodeByKey(tree, action.nodeKey).tree;
   }
 
+  if (action.type === 'move') {
+    const movingKey = action.nodeKey;
+    const removed = removeNodeByKey(tree, movingKey);
+    if (!removed.removedNode) {
+      return tree;
+    }
+
+    const toParentKey = direction === 'undo' ? action.fromParentKey : action.toParentKey;
+    const requestedIndex = direction === 'undo' ? action.fromIndex : action.toIndex;
+    const nextSlotKey = direction === 'undo' ? action.prevSlotKey : action.nextSlotKey;
+
+    const targetParentNode = findNodeByKey(removed.tree, toParentKey);
+    if (!targetParentNode) {
+      return tree;
+    }
+
+    const siblingCount = targetParentNode.children?.length ?? 0;
+    let safeIndex = Math.max(0, Math.min(requestedIndex, siblingCount));
+    if (removed.parentKey === toParentKey && removed.index < safeIndex) {
+      safeIndex -= 1;
+    }
+
+    const movedNode = cloneDeep(removed.removedNode);
+    const currentProps = (movedNode.props ?? {}) as Record<string, unknown>;
+    if (nextSlotKey) {
+      movedNode.props = {
+        ...currentProps,
+        __slot: {
+          ...((currentProps.__slot ?? {}) as Record<string, unknown>),
+          value: nextSlotKey,
+        },
+      };
+    } else if (Object.prototype.hasOwnProperty.call(currentProps, '__slot')) {
+      const nextProps = { ...currentProps };
+      delete nextProps.__slot;
+      movedNode.props = nextProps;
+    }
+
+    return insertNodeAtParentIndex(removed.tree, toParentKey, safeIndex, movedNode);
+  }
+
   if (action.type === 'update-label') {
     return updateNodeByKey(tree, action.nodeKey, (target) => ({
       ...target,

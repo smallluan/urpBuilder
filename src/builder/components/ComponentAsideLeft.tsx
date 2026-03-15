@@ -242,6 +242,7 @@ const ComponentAsideLeft: React.FC = () => {
   const moveUiNode = useStore((state) => state.moveUiNode);
   const updateActiveNodeProp = useStore((state) => state.updateActiveNodeProp);
   const [dragOverNodeKey, setDragOverNodeKey] = useState<string | null>(null);
+  const [draggingTreeNodeKey, setDraggingTreeNodeKey] = useState<string | null>(null);
   const [expandedKeys, setExpandedKeys] = useState<string[]>(() => collectTreeKeys(uiPageData));
   const [contextMenuState, setContextMenuState] = useState<{
     visible: boolean;
@@ -301,7 +302,7 @@ const ComponentAsideLeft: React.FC = () => {
   };
 
   const handleTreeNodeDragOver = (event: React.DragEvent<HTMLDivElement>, node: UiTreeNode) => {
-    const draggedNodeKey = event.dataTransfer.getData(TREE_NODE_DRAG_KEY);
+    const draggedNodeKey = draggingTreeNodeKey;
     if (draggedNodeKey) {
       const destination = resolveTreeNodeMoveDestination(uiPageData, draggedNodeKey, node);
       if (!destination) {
@@ -343,11 +344,12 @@ const ComponentAsideLeft: React.FC = () => {
     event.stopPropagation();
     setDragOverNodeKey(null);
 
-    const draggedNodeKey = event.dataTransfer.getData(TREE_NODE_DRAG_KEY);
+    const draggedNodeKey = draggingTreeNodeKey || event.dataTransfer.getData(TREE_NODE_DRAG_KEY);
     if (draggedNodeKey) {
       const draggedNodePath = findNodePathByKey(uiPageData, draggedNodeKey);
       const draggedNode = draggedNodePath?.at(-1);
       if (!draggedNode || !isNodeDraggable(draggedNode, uiPageData.key)) {
+        setDraggingTreeNodeKey(null);
         return;
       }
 
@@ -358,6 +360,7 @@ const ComponentAsideLeft: React.FC = () => {
 
       moveUiNode(draggedNodeKey, destination.parentKey, destination.index, destination.slotKey);
       setActiveNode(draggedNodeKey);
+      setDraggingTreeNodeKey(null);
       return;
     }
 
@@ -420,6 +423,8 @@ const ComponentAsideLeft: React.FC = () => {
       setActiveNode(node.key);
     } catch {
       console.error(rawData);
+    } finally {
+      setDraggingTreeNodeKey(null);
     }
   };
 
@@ -465,8 +470,14 @@ const ComponentAsideLeft: React.FC = () => {
                   draggable={isNodeDraggable(node, uiPageData.key)}
                   onDragStart={(event) => {
                     event.stopPropagation();
+                    setDraggingTreeNodeKey(node.key);
                     event.dataTransfer.setData(TREE_NODE_DRAG_KEY, node.key);
+                    event.dataTransfer.setData('text/plain', node.key);
                     event.dataTransfer.effectAllowed = 'move';
+                  }}
+                  onDragEnd={() => {
+                    setDraggingTreeNodeKey(null);
+                    setDragOverNodeKey(null);
                   }}
                 >
                   {icon}

@@ -1256,6 +1256,8 @@ export const createBuilderStore = (options: CreateBuilderStoreOptions = {}) => {
 
         const movedNode = cloneDeep(removed.removedNode);
         const currentProps = (movedNode.props ?? {}) as Record<string, unknown>;
+        const previousSlotKeyRaw = (currentProps.__slot as { value?: unknown } | undefined)?.value;
+        const previousSlotKey = typeof previousSlotKeyRaw === 'string' ? previousSlotKeyRaw : undefined;
         if (slotKey) {
           movedNode.props = {
             ...currentProps,
@@ -1271,10 +1273,25 @@ export const createBuilderStore = (options: CreateBuilderStoreOptions = {}) => {
         }
 
         const nextTree = insertNodeAtParentIndex(removed.tree, parentKey, safeIndex, movedNode);
+        const action: UiHistoryAction = {
+          type: 'move',
+          nodeKey: movedNode.key,
+          nodeLabel: movedNode.label,
+          nodeType: movedNode.type,
+          fromParentKey: removed.parentKey,
+          fromIndex: removed.index,
+          toParentKey: parentKey,
+          toIndex: safeIndex,
+          prevSlotKey: previousSlotKey,
+          nextSlotKey: slotKey,
+          timestamp: Date.now(),
+        };
+        const nextHistory = pushHistoryAction(state.history.actions, state.history.pointer, action);
 
         return {
           uiPageData: nextTree,
           activeNode: resolveActiveNode(nextTree, state.activeNodeKey),
+          history: nextHistory,
         };
       }),
 

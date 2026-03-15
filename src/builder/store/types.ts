@@ -100,6 +100,20 @@ export interface RemoveHistoryAction {
   timestamp: number;
 }
 
+export interface MoveHistoryAction {
+  type: 'move';
+  nodeKey: string;
+  nodeLabel: string;
+  nodeType?: string;
+  fromParentKey: string;
+  fromIndex: number;
+  toParentKey: string;
+  toIndex: number;
+  prevSlotKey?: string;
+  nextSlotKey?: string;
+  timestamp: number;
+}
+
 export interface UpdateLabelHistoryAction {
   type: 'update-label';
   nodeKey: string;
@@ -154,6 +168,7 @@ export interface ReplaceLayoutHistoryAction {
 export type UiHistoryAction =
   | AddHistoryAction
   | RemoveHistoryAction
+  | MoveHistoryAction
   | UpdateLabelHistoryAction
   | UpdatePropHistoryAction
   | FlowEditHistoryAction
