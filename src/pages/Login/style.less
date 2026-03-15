@@ -1,0 +1,51 @@
+.login-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px;
+  background:
+    radial-gradient(circle at top left, rgba(0, 82, 217, 0.12), transparent 32%),
+    radial-gradient(circle at bottom right, rgba(20, 184, 166, 0.14), transparent 26%),
+    linear-gradient(135deg, #f4f7fb 0%, #eef5ff 48%, #f9fbfd 100%);
+
+  &__panel {
+    width: min(460px, 100%);
+    padding: 32px;
+    border-radius: 24px;
+    background: rgba(255, 255, 255, 0.92);
+    box-shadow: 0 24px 80px rgba(15, 23, 42, 0.12);
+    backdrop-filter: blur(16px);
+  }
+
+  &__brand {
+    display: flex;
+    gap: 16px;
+    align-items: center;
+    margin-bottom: 28px;
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: 28px;
+      color: #102a43;
+    }
+
+    p {
+      margin: 0;
+      color: #52606d;
+      line-height: 1.6;
+    }
+  }
+
+  &__logo {
+    width: 64px;
+    height: 64px;
+    object-fit: contain;
+  }
+
+  &__form {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+}

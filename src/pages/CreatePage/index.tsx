@@ -13,6 +13,7 @@ import type { BuiltInLayoutTemplateId, PageRouteConfig, PageRouteRecord, UiTreeN
 import { findNodeByKey, updateNodeByKey } from '../../utils/createComponentTree';
 import { useCreatePageStore } from './store';
 import PageRouteToolbar from './components/PageRouteToolbar.tsx';
+import { useAuth } from '../../auth/context';
 
 const resolveValidTemplateIdFromUrl = () => {
   const searchParams = new URLSearchParams(window.location.search);
@@ -175,6 +176,7 @@ const PageLayout: React.FC = () => {
 };
 
 const CreatePage: React.FC = () => {
+  const { user } = useAuth();
   const [mode, setMode] = useState<'component' | 'flow'>('component');
   const loadedPageIdRef = useRef<string | null>(null);
   const pageIdFromUrl = resolveValidTemplateIdFromUrl();
@@ -235,6 +237,11 @@ const CreatePage: React.FC = () => {
       try {
         const response = await getPageTemplateDetail(pageId);
         const detail = response.data;
+        if (detail.base?.ownerId && user?.id && detail.base.ownerId !== user.id) {
+          emitApiAlert('无权限', '当前页面不属于你，暂不允许进入编辑');
+          window.location.replace('/build-page');
+          return;
+        }
         const template = detail?.template;
 
         if (!template) {
@@ -309,7 +316,7 @@ const CreatePage: React.FC = () => {
     };
 
     void loadPageDetail();
-  }, [setCurrentPageMeta]);
+  }, [setCurrentPageMeta, user?.id]);
 
   return (
     <BuilderProvider useStore={useCreatePageStore}>

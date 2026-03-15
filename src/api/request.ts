@@ -1,6 +1,8 @@
 import axios, { AxiosError, type InternalAxiosRequestConfig } from 'axios';
 import { emitApiAlert } from './alertBus';
 import type { ApiResponse } from './types';
+import { emitUnauthorized } from '../auth/events';
+import { getAccessToken, migrateLegacyToken } from '../auth/storage';
 
 const API_TIMEOUT = 15000;
 
@@ -29,7 +31,7 @@ const requestClient = axios.create({
 
 requestClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
-    const token = localStorage.getItem('token');
+    const token = getAccessToken() || migrateLegacyToken();
 
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
@@ -55,6 +57,10 @@ requestClient.interceptors.response.use(
     return response;
   },
   (error: AxiosError<ApiResponse>) => {
+    if (error.response?.status === 401) {
+      emitUnauthorized();
+    }
+
     const errorMessage = resolveErrorMessage(error);
     emitApiAlert('接口请求失败', errorMessage);
     return Promise.reject(error);

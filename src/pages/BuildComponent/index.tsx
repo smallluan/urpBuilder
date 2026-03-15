@@ -5,12 +5,16 @@ import type { PrimaryTableCol } from 'tdesign-react/es/table/type';
 import { deleteComponentTemplate, getComponentBaseList } from '../../api/componentTemplate';
 import type { ComponentTemplateBaseInfo } from '../../api/types';
 import { emitApiAlert } from '../../api/alertBus';
+import { useAuth } from '../../auth/context';
 import './style.less';
 
 interface ComponentTemplateRow {
   id: string;
   pageId: string;
   pageName: string;
+  ownerId: string;
+  ownerName: string;
+  visibility: string;
   status: ComponentTemplateBaseInfo['status'];
   currentVersion: number;
   screenSize: string;
@@ -61,12 +65,14 @@ const toDisplayDate = (value?: unknown) => {
 };
 
 const BuildComponent: React.FC = () => {
+  const { user } = useAuth();
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(false);
   const [tableData, setTableData] = useState<ComponentTemplateRow[]>([]);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [total, setTotal] = useState(0);
+  const [scope, setScope] = useState<'mine' | 'all'>('mine');
   const [deleteTarget, setDeleteTarget] = useState<ComponentTemplateRow | null>(null);
   const [deleting, setDeleting] = useState(false);
 
@@ -75,12 +81,16 @@ const BuildComponent: React.FC = () => {
     try {
       const result = await getComponentBaseList({
         ...params,
+        mine: scope === 'mine',
       });
       const rawList = Array.isArray(result.data?.list) ? result.data.list : [];
       const nextList = rawList.map((item) => ({
         id: toSafeText(item.pageId),
         pageId: toSafeText(item.pageId),
         pageName: toSafeText(item.pageName),
+        ownerId: toSafeText(item.ownerId),
+        ownerName: toSafeText(item.ownerName || '-'),
+        visibility: item.visibility === 'public' ? '公开' : '私有',
         status: (item.status === 'published' ? 'published' : 'draft') as ComponentTemplateRow['status'],
         currentVersion: typeof item.currentVersion === 'number' ? item.currentVersion : Number(item.currentVersion) || 0,
         screenSize: item.screenSize === undefined ? '-' : toSafeText(item.screenSize),
@@ -96,7 +106,7 @@ const BuildComponent: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [scope]);
 
   useEffect(() => {
     fetchPageBaseList({
@@ -104,7 +114,9 @@ const BuildComponent: React.FC = () => {
       pageSize,
       pageName: query.trim() || undefined,
     });
-  }, [fetchPageBaseList, page, pageSize]);
+  }, [fetchPageBaseList, page, pageSize, scope]);
+
+  const canManageRow = (row: ComponentTemplateRow) => !row.ownerId || !user?.id || row.ownerId === user.id;
 
   const handleSearch = () => {
     setPage(1);
@@ -132,6 +144,11 @@ const BuildComponent: React.FC = () => {
   };
 
   const handleEdit = (row: ComponentTemplateRow) => {
+    if (!canManageRow(row)) {
+      emitApiAlert('无权限', '当前组件不属于你，暂不允许编辑');
+      return;
+    }
+
     if (!isValidTemplateId(row.pageId)) {
       emitApiAlert('操作失败', '当前记录缺少有效组件 ID，无法进入编辑');
       return;
@@ -142,6 +159,11 @@ const BuildComponent: React.FC = () => {
   };
 
   const handleDelete = (row: ComponentTemplateRow) => {
+    if (!canManageRow(row)) {
+      emitApiAlert('无权限', '当前组件不属于你，暂不允许删除');
+      return;
+    }
+
     setDeleteTarget(row);
   };
 
@@ -181,6 +203,8 @@ const BuildComponent: React.FC = () => {
   const buildColumns = useMemo<PrimaryTableCol<ComponentTemplateRow>[]>(
     () => [
       { colKey: 'pageName', title: '组件名称', minWidth: 180 },
+      { colKey: 'ownerName', title: '创建人', width: 140 },
+      { colKey: 'visibility', title: '可见性', width: 100 },
       { colKey: 'pageId', title: '组件ID', minWidth: 220 },
       {
         colKey: 'status',
@@ -205,14 +229,14 @@ const BuildComponent: React.FC = () => {
             <Button size="small" variant="outline" icon={<BrowseIcon />} onClick={() => handlePreview(row)}>
               预览
             </Button>
-            <Button size="small" variant="outline" icon={<EditIcon />} onClick={() => handleEdit(row)}>
+            <Button size="small" variant="outline" icon={<EditIcon />} disabled={!canManageRow(row)} onClick={() => handleEdit(row)}>
               修改
             </Button>
           </div>
         ),
       },
     ],
-    [],
+    [user?.id],
   );
 
   const pagination = useMemo(
@@ -248,6 +272,12 @@ const BuildComponent: React.FC = () => {
         </div>
 
         <div className="action-area">
+          <Button theme={scope === 'mine' ? 'primary' : 'default'} variant={scope === 'mine' ? 'base' : 'outline'} onClick={() => { setPage(1); setScope('mine'); }}>
+            我的组件
+          </Button>
+          <Button theme={scope === 'all' ? 'primary' : 'default'} variant={scope === 'all' ? 'base' : 'outline'} onClick={() => { setPage(1); setScope('all'); }}>
+            全部组件
+          </Button>
           <Button theme="default" variant="outline" onClick={handleSearch} icon={<SearchIcon />}>
             查询
           </Button>

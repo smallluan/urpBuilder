@@ -1,5 +1,6 @@
 import React, { lazy, Suspense } from 'react';
 import { createBrowserRouter } from 'react-router-dom';
+import { PublicOnlyRoute, RequireAuth } from './guards';
 
 const AppLayout = lazy(() => import('../components/Layout'));
 const Home = lazy(() => import('../pages/Home'));
@@ -10,6 +11,7 @@ const DataConstance = lazy(() => import('../pages/DataConstance'));
 const CreateComponent = lazy(() => import('../pages/CreateComponent'));
 const CreatePage = lazy(() => import('../pages/CreatePage'));
 const PreviewEngine = lazy(() => import('../pages/PreviewEngine'));
+const Login = lazy(() => import('../pages/Login'));
 
 const load = (el: React.ReactElement) => (
   <Suspense fallback={<div>加载中...</div>}>{el}</Suspense>
@@ -18,7 +20,7 @@ const load = (el: React.ReactElement) => (
 export const router = createBrowserRouter([
   {
     path: '/',
-    element: load(<AppLayout />),
+    element: <RequireAuth>{load(<AppLayout />)}</RequireAuth>,
     children: [
       {
         index: true,
@@ -44,12 +46,16 @@ export const router = createBrowserRouter([
   },
   // standalone pages (no layout)
   {
+    path: '/login',
+    element: <PublicOnlyRoute>{load(<Login />)}</PublicOnlyRoute>,
+  },
+  {
     path: '/create-component',
-    element: load(<CreateComponent />),
+    element: <RequireAuth>{load(<CreateComponent />)}</RequireAuth>,
   },
   {
     path: '/create-page',
-    element: load(<CreatePage />),
+    element: <RequireAuth>{load(<CreatePage />)}</RequireAuth>,
   },
   {
     path: '/preview-engine',

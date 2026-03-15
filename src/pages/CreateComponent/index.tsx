@@ -11,6 +11,7 @@ import { BuilderProvider } from '../../builder/context/BuilderContext';
 import { BuilderShell } from '../../builder/components/BuilderShell';
 import type { Edge, Node } from '@xyflow/react';
 import type { UiTreeNode, BuiltInLayoutTemplateId } from '../../builder/store/types';
+import { useAuth } from '../../auth/context';
 
 const resolveValidTemplateIdFromUrl = () => {
   const searchParams = new URLSearchParams(window.location.search);
@@ -29,6 +30,7 @@ const resolveValidTemplateIdFromUrl = () => {
 };
 
 const CreateComponent: React.FC = () => {
+  const { user } = useAuth();
   const [mode, setMode] = useState<'component' | 'flow'>('component');
   const loadedPageIdRef = useRef<string | null>(null);
   const setCurrentPageMeta = useCreateComponentStore((state) => state.setCurrentPageMeta);
@@ -51,6 +53,11 @@ const CreateComponent: React.FC = () => {
       try {
         const response = await getComponentTemplateDetail(pageId);
         const detail = response.data;
+        if (detail.base?.ownerId && user?.id && detail.base.ownerId !== user.id) {
+          emitApiAlert('无权限', '当前组件不属于你，暂不允许进入编辑');
+          window.location.replace('/build-component');
+          return;
+        }
         const template = detail?.template;
 
         if (!template) {
@@ -90,7 +97,7 @@ const CreateComponent: React.FC = () => {
     };
 
     void loadPageDetail();
-  }, [setCurrentPageMeta]);
+  }, [setCurrentPageMeta, user?.id]);
 
   return (
     <BuilderProvider useStore={useCreateComponentStore}>

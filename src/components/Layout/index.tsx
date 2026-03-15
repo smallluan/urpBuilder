@@ -1,5 +1,5 @@
 import React from 'react';
-import { Layout, Menu } from 'tdesign-react';
+import { Button, Layout, Menu } from 'tdesign-react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import {
   HomeIcon,
@@ -10,6 +10,7 @@ import {
   ApiIcon,
   SettingIcon
 } from 'tdesign-icons-react';
+import { useAuth } from '../../auth/context';
 import './style.less';
 
 const { Header, Aside, Content } = Layout;
@@ -18,6 +19,7 @@ const { MenuItem, SubMenu } = Menu;
 const AppLayout: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { user, logout } = useAuth();
 
   const menuItems = [
     {
@@ -91,6 +93,22 @@ const AppLayout: React.FC = () => {
       <Header className="layout-header">
         <div className="header-left">
           <img src="/urpBuilder.png" alt="URP" className="header-logo" />
+        </div>
+        <div className="header-right">
+          <div className="header-user">
+            <span className="header-user__label">当前用户</span>
+            <strong>{user?.nickname || user?.username || '未登录'}</strong>
+          </div>
+          <Button
+            theme="default"
+            variant="outline"
+            onClick={async () => {
+              await logout();
+              navigate('/login', { replace: true });
+            }}
+          >
+            退出登录
+          </Button>
         </div>
       </Header>
       <Layout>
