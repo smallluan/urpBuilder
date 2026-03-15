@@ -304,6 +304,7 @@ const HeaderControls: React.FC<Props> = ({
     const routePath = enablePageRouteConfig ? (activeRouteSnapshot?.routePath ?? activeRoutePath) : '';
     const previewUrl = new URL(routePath ? `/site-preview${routePath}` : '/preview-engine', window.location.origin);
     previewUrl.searchParams.set('snapshotKey', snapshotKey);
+    previewUrl.searchParams.set('entityType', entityType);
     if (currentPageId?.trim()) {
       previewUrl.searchParams.set('pageId', currentPageId.trim());
     }

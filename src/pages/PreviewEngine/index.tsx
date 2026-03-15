@@ -6,6 +6,7 @@ import { deserializePreviewSnapshot, type PreviewSnapshot } from './utils/snapsh
 import { createPreviewDataHub, type DataHubRouterState } from './runtime/dataHub';
 import { createPreviewFlowRuntime, type PreviewFlowRuntime } from './runtime/flowRuntime';
 import { getPageTemplateBaseList, getPageTemplateDetail } from '../../api/pageTemplate';
+import { getComponentTemplateDetail } from '../../api/componentTemplate';
 import type { UiTreeNode } from '../../builder/store/types';
 import './style.less';
 
@@ -65,6 +66,7 @@ const PreviewEngine: React.FC = () => {
   const snapshotKey = searchParams.get('snapshotKey');
   const pageId = normalizePageId(searchParams.get('pageId'));
   const scopeId = (searchParams.get('scopeId') || 'root').trim() || 'root';
+  const entityType = searchParams.get('entityType') === 'component' ? 'component' : 'page';
   const routePathFromLocation = location.pathname.startsWith(SITE_PREVIEW_PREFIX)
     ? normalizeRoutePath(location.pathname.slice(SITE_PREVIEW_PREFIX.length) || '/')
     : '';
@@ -84,7 +86,7 @@ const PreviewEngine: React.FC = () => {
   const [routeResolveError, setRouteResolveError] = React.useState<string>('');
 
   React.useEffect(() => {
-    if (parsedSnapshot || pageId || !routePathFromLocation) {
+    if (entityType === 'component' || parsedSnapshot || pageId || !routePathFromLocation) {
       setRouteResolveError('');
       return;
     }
@@ -112,7 +114,7 @@ const PreviewEngine: React.FC = () => {
         setResolvedPageId('');
         setRouteResolveError('页面解析失败，请稍后重试或在 URL 上追加 ?pageId=页面ID。');
       });
-  }, [pageId, parsedSnapshot, routePathFromLocation]);
+  }, [entityType, pageId, parsedSnapshot, routePathFromLocation]);
 
   React.useEffect(() => {
     const finalPageId = pageId || resolvedPageId;
@@ -120,7 +122,9 @@ const PreviewEngine: React.FC = () => {
       return;
     }
 
-    getPageTemplateDetail(finalPageId)
+    const getDetail = entityType === 'component' ? getComponentTemplateDetail : getPageTemplateDetail;
+
+    getDetail(finalPageId)
       .then((res) => {
         const template = res.data?.template;
         if (!template) return;
@@ -160,7 +164,7 @@ const PreviewEngine: React.FC = () => {
       .catch(() => {
         setRouteResolveError(`页面 ${finalPageId} 加载失败，请确认页面 ID 是否存在。`);
       });
-  }, [pageId, parsedSnapshot, resolvedPageId]);
+  }, [entityType, pageId, parsedSnapshot, resolvedPageId]);
 
   const snapshot: PreviewSnapshot = React.useMemo(
     () =>

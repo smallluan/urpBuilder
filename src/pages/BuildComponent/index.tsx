@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Input, Button, Dialog, Table } from 'tdesign-react';
+import { Input, Button, Dialog, Select, Table } from 'tdesign-react';
 import { AddIcon, SearchIcon, EditIcon, DeleteIcon, BrowseIcon } from 'tdesign-icons-react';
 import type { PrimaryTableCol } from 'tdesign-react/es/table/type';
 import { deleteComponentTemplate, getComponentBaseList } from '../../api/componentTemplate';
@@ -139,16 +139,11 @@ const BuildComponent: React.FC = () => {
       return;
     }
 
-    const previewUrl = `${window.location.origin}/preview-engine?pageId=${encodeURIComponent(row.pageId)}`;
+    const previewUrl = `${window.location.origin}/preview-engine?pageId=${encodeURIComponent(row.pageId)}&entityType=component`;
     window.open(previewUrl, '_blank');
   };
 
   const handleEdit = (row: ComponentTemplateRow) => {
-    if (!canManageRow(row)) {
-      emitApiAlert('无权限', '当前组件不属于你，暂不允许编辑');
-      return;
-    }
-
     if (!isValidTemplateId(row.pageId)) {
       emitApiAlert('操作失败', '当前记录缺少有效组件 ID，无法进入编辑');
       return;
@@ -159,11 +154,6 @@ const BuildComponent: React.FC = () => {
   };
 
   const handleDelete = (row: ComponentTemplateRow) => {
-    if (!canManageRow(row)) {
-      emitApiAlert('无权限', '当前组件不属于你，暂不允许删除');
-      return;
-    }
-
     setDeleteTarget(row);
   };
 
@@ -219,21 +209,28 @@ const BuildComponent: React.FC = () => {
       {
         colKey: 'operations',
         title: '操作',
-        width: 260,
+        width: 280,
         fixed: 'right',
-        cell: ({ row }) => (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Button size="small" variant="outline" icon={<DeleteIcon />} onClick={() => handleDelete(row)}>
-              删除
-            </Button>
-            <Button size="small" variant="outline" icon={<BrowseIcon />} onClick={() => handlePreview(row)}>
-              预览
-            </Button>
-            <Button size="small" variant="outline" icon={<EditIcon />} disabled={!canManageRow(row)} onClick={() => handleEdit(row)}>
-              修改
-            </Button>
-          </div>
-        ),
+        cell: ({ row }) => {
+          const manageable = canManageRow(row);
+          return (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Button size="small" variant="outline" icon={<BrowseIcon />} onClick={() => handlePreview(row)}>
+                预览
+              </Button>
+              {manageable ? (
+                <>
+                  <Button size="small" variant="outline" icon={<DeleteIcon />} onClick={() => handleDelete(row)}>
+                    删除
+                  </Button>
+                  <Button size="small" variant="outline" icon={<EditIcon />} onClick={() => handleEdit(row)}>
+                    修改
+                  </Button>
+                </>
+              ) : null}
+            </div>
+          );
+        },
       },
     ],
     [user?.id],
@@ -272,12 +269,19 @@ const BuildComponent: React.FC = () => {
         </div>
 
         <div className="action-area">
-          <Button theme={scope === 'mine' ? 'primary' : 'default'} variant={scope === 'mine' ? 'base' : 'outline'} onClick={() => { setPage(1); setScope('mine'); }}>
-            我的组件
-          </Button>
-          <Button theme={scope === 'all' ? 'primary' : 'default'} variant={scope === 'all' ? 'base' : 'outline'} onClick={() => { setPage(1); setScope('all'); }}>
-            全部组件
-          </Button>
+          <Select
+            value={scope}
+            options={[
+              { label: '我的组件', value: 'mine' },
+              { label: '全部组件', value: 'all' },
+            ]}
+            style={{ width: 140, marginRight: 8 }}
+            onChange={(value) => {
+              const nextScope = value === 'all' ? 'all' : 'mine';
+              setPage(1);
+              setScope(nextScope);
+            }}
+          />
           <Button theme="default" variant="outline" onClick={handleSearch} icon={<SearchIcon />}>
             查询
           </Button>
