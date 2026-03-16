@@ -12,12 +12,16 @@ import {
 import type { ComponentTemplateBaseInfo, ResourceVisibility, TemplateStatus } from '../../api/types';
 import { emitApiAlert } from '../../api/alertBus';
 import { useAuth } from '../../auth/context';
+import { useTeam } from '../../team/context';
 import './style.less';
 
 interface ComponentTemplateRow {
   id: string;
   pageId: string;
   pageName: string;
+  ownerType: '个人' | '团队';
+  ownerTeamId: string;
+  ownerTeamName: string;
   ownerId: string;
   ownerName: string;
   visibility: string;
@@ -89,13 +93,14 @@ const splitDateTimeText = (value: string) => {
 
 const BuildComponent: React.FC = () => {
   const { user } = useAuth();
+  const { currentTeamId, currentTeam } = useTeam();
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(false);
   const [tableData, setTableData] = useState<ComponentTemplateRow[]>([]);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [total, setTotal] = useState(0);
-  const [scope, setScope] = useState<'mine' | 'all'>('mine');
+  const [scope, setScope] = useState<'mine' | 'team' | 'all'>('mine');
   const [statusFilter, setStatusFilter] = useState<'all' | TemplateStatus>('all');
   const [visibilityFilter, setVisibilityFilter] = useState<'all' | ResourceVisibility>('all');
   const [publishingId, setPublishingId] = useState<string | null>(null);
@@ -107,17 +112,30 @@ const BuildComponent: React.FC = () => {
   const fetchPageBaseList = useCallback(async (params: { page: number; pageSize: number; pageName?: string }) => {
     setLoading(true);
     try {
-      const result = await getComponentBaseList({
+      const requestParams: Parameters<typeof getComponentBaseList>[0] = {
         ...params,
-        mine: scope === 'mine',
         status: statusFilter === 'all' ? undefined : statusFilter,
         visibility: visibilityFilter === 'all' ? undefined : visibilityFilter,
+      };
+
+      if (scope === 'mine') {
+        requestParams.mine = true;
+      } else if (scope === 'team' && currentTeamId) {
+        requestParams.ownerType = 'team';
+        requestParams.ownerTeamId = currentTeamId;
+      }
+
+      const result = await getComponentBaseList({
+        ...requestParams,
       });
       const rawList = Array.isArray(result.data?.list) ? result.data.list : [];
       const nextList = rawList.map((item) => ({
         id: toSafeText(item.pageId),
         pageId: toSafeText(item.pageId),
         pageName: toSafeText(item.pageName),
+        ownerType: (item.ownerType === 'team' ? '团队' : '个人') as ComponentTemplateRow['ownerType'],
+        ownerTeamId: toSafeText(item.ownerTeamId),
+        ownerTeamName: toSafeText(item.ownerTeamName || '-'),
         ownerId: toSafeText(item.ownerId),
         ownerName: toSafeText(item.ownerName || '-'),
         visibility: item.visibility === 'public' ? '公开' : '私有',
@@ -136,7 +154,7 @@ const BuildComponent: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [scope, statusFilter, visibilityFilter]);
+  }, [currentTeamId, scope, statusFilter, visibilityFilter]);
 
   useEffect(() => {
     fetchPageBaseList({
@@ -146,7 +164,17 @@ const BuildComponent: React.FC = () => {
     });
   }, [fetchPageBaseList, page, pageSize, scope, statusFilter, visibilityFilter]);
 
-  const canManageRow = (row: ComponentTemplateRow) => !row.ownerId || !user?.id || row.ownerId === user.id;
+  const canManageRow = (row: ComponentTemplateRow) => {
+    if (row.ownerType === '团队') {
+      const isCurrentTeamResource = row.ownerTeamId && currentTeamId && row.ownerTeamId === currentTeamId;
+      const canManageTeamResource = currentTeam?.role === 'owner' || currentTeam?.role === 'admin';
+      if (isCurrentTeamResource && canManageTeamResource) {
+        return true;
+      }
+    }
+
+    return !row.ownerId || !user?.id || row.ownerId === user.id;
+  };
 
   const handleSearch = () => {
     setPage(1);
@@ -297,11 +325,20 @@ const BuildComponent: React.FC = () => {
       {
         colKey: 'ownerName',
         title: '发布人',
-        width: 170,
+        width: 210,
         cell: ({ row }) => (
           <div className="table-owner-cell">
             <span className="table-owner-cell__icon"><UserIcon size="small" /></span>
-            <span className="table-owner-cell__name">{row.ownerName}</span>
+            <div className="table-owner-cell__name-group">
+              <span className="table-owner-cell__name">{row.ownerName}</span>
+              {row.ownerType === '团队' ? (
+                <Tag size="small" theme="primary" variant="light-outline">
+                  {row.ownerTeamName !== '-' ? row.ownerTeamName : '团队资源'}
+                </Tag>
+              ) : (
+                <Tag size="small" theme="default" variant="light-outline">个人</Tag>
+              )}
+            </div>
           </div>
         ),
       },
@@ -459,11 +496,17 @@ const BuildComponent: React.FC = () => {
             value={scope}
             options={[
               { label: '我的组件', value: 'mine' },
+              { label: currentTeam ? `当前团队（${currentTeam.name}）` : '当前团队', value: 'team' },
               { label: '全部组件', value: 'all' },
             ]}
             style={{ width: 140 }}
             onChange={(value) => {
-              const nextScope = value === 'all' ? 'all' : 'mine';
+              if (value === 'team' && !currentTeamId) {
+                emitApiAlert('筛选失败', '当前未选择团队');
+                return;
+              }
+
+              const nextScope = value === 'all' ? 'all' : value === 'team' ? 'team' : 'mine';
               setPage(1);
               setScope(nextScope);
             }}

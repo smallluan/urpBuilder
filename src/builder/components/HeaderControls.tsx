@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import cloneDeep from 'lodash/cloneDeep';
-import { Radio, Button, Space, Drawer, Timeline, Tag, Dialog, Input, Switch } from 'tdesign-react';
+import { Radio, Button, Space, Drawer, Timeline, Tag, Dialog, Input, Switch, Select } from 'tdesign-react';
 import { UploadIcon, ViewImageIcon, ArrowLeftIcon, ArrowRightIcon, HistoryIcon } from 'tdesign-icons-react';
 import { useBuilderAccess, useBuilderContext } from '../context/BuilderContext';
 import type { UiHistoryAction } from '../store/types';
@@ -10,6 +10,7 @@ import { savePageDraft, updatePageDraft } from '../../api/pageTemplate';
 import { saveComponentDraft, updateComponentDraft } from '../../api/componentTemplate';
 import { emitApiAlert } from '../../api/alertBus';
 import { findNodeByKey, updateNodeByKey } from '../../utils/createComponentTree';
+import { useTeam } from '../../team/context';
 
 type Props = {
   mode: 'component' | 'flow';
@@ -199,6 +200,7 @@ const HeaderControls: React.FC<Props> = ({
 }) => {
   const { useStore } = useBuilderContext();
   const { readOnly } = useBuilderAccess();
+  const { currentTeamId, currentTeam } = useTeam();
   const history = useStore((state) => state.history);
   const uiTreeData = useStore((state) => state.uiPageData);
   const flowNodes = useStore((state) => state.flowNodes);
@@ -227,6 +229,7 @@ const HeaderControls: React.FC<Props> = ({
   const [saveDialogVisible, setSaveDialogVisible] = useState(false);
   const [componentName, setComponentName] = useState('');
   const [componentId, setComponentId] = useState('');
+  const [ownerScope, setOwnerScope] = useState<'user' | 'team'>('user');
   const [saving, setSaving] = useState(false);
   const [pageSettingsVisible, setPageSettingsVisible] = useState(false);
   const [deleteRouteDialogVisible, setDeleteRouteDialogVisible] = useState(false);
@@ -319,6 +322,7 @@ const HeaderControls: React.FC<Props> = ({
   const handleOpenSaveDialog = () => {
     setComponentName(currentPageName || '');
     setComponentId(currentPageId || '');
+    setOwnerScope(currentTeamId ? 'team' : 'user');
     setSaveDialogVisible(true);
   };
 
@@ -462,6 +466,9 @@ const HeaderControls: React.FC<Props> = ({
       return;
     }
 
+    const resolvedOwnerType: 'user' | 'team' = ownerScope === 'team' && currentTeamId ? 'team' : 'user';
+    const resolvedOwnerTeamId: string | undefined = resolvedOwnerType === 'team' ? currentTeamId || undefined : undefined;
+
     setSaving(true);
 
     try {
@@ -508,6 +515,8 @@ const HeaderControls: React.FC<Props> = ({
             pageId,
             pageName,
             entityType: 'component' as const,
+            ownerType: resolvedOwnerType,
+            ownerTeamId: resolvedOwnerTeamId,
             visibility: (currentPageVisibility ?? 'private') as 'private' | 'public',
             screenSize,
             autoWidth,
@@ -526,6 +535,8 @@ const HeaderControls: React.FC<Props> = ({
             pageId,
             pageName,
             entityType: 'page' as const,
+            ownerType: resolvedOwnerType,
+            ownerTeamId: resolvedOwnerTeamId,
             visibility: (currentPageVisibility ?? 'private') as 'private' | 'public',
             screenSize,
             autoWidth,
@@ -639,6 +650,19 @@ const HeaderControls: React.FC<Props> = ({
               maxlength={64}
               clearable
               disabled={readOnly || isEditMode}
+            />
+          </div>
+
+          <div>
+            <div style={{ marginBottom: 6 }}>归属范围</div>
+            <Select
+              value={ownerScope}
+              disabled={readOnly || !currentTeamId}
+              options={[
+                { label: '个人资源', value: 'user' },
+                { label: currentTeam ? `当前团队（${currentTeam.name}）` : '当前团队', value: 'team' },
+              ]}
+              onChange={(value) => setOwnerScope(value === 'team' ? 'team' : 'user')}
             />
           </div>
 

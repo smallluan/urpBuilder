@@ -6,6 +6,7 @@ export interface ApiResponse<T = unknown> {
 
 export type TemplateStatus = 'draft' | 'published';
 export type ResourceVisibility = 'private' | 'public';
+export type ResourceOwnerType = 'user' | 'team';
 
 export interface RouteConfigDTO {
   routePath?: string;
@@ -21,8 +22,11 @@ export interface PageTemplateBaseInfo {
   entityType?: 'page';
   status: TemplateStatus;
   currentVersion: number;
+  ownerType?: ResourceOwnerType;
   ownerId?: string;
   ownerName?: string;
+  ownerTeamId?: string;
+  ownerTeamName?: string;
   visibility?: ResourceVisibility;
   screenSize?: string | number;
   autoWidth?: number;
@@ -36,8 +40,11 @@ export interface ComponentTemplateBaseInfo {
   entityType?: 'component';
   status: TemplateStatus;
   currentVersion: number;
+  ownerType?: ResourceOwnerType;
   ownerId?: string;
   ownerName?: string;
+  ownerTeamId?: string;
+  ownerTeamName?: string;
   visibility?: ResourceVisibility;
   screenSize?: string | number;
   autoWidth?: number;
@@ -136,6 +143,8 @@ export type PageTemplateListParams = {
   status?: TemplateStatus;
   routePath?: string;
   mine?: boolean;
+  ownerType?: ResourceOwnerType;
+  ownerTeamId?: string;
   ownerId?: string;
   visibility?: ResourceVisibility;
   page?: number;
@@ -146,6 +155,8 @@ export type ComponentTemplateListParams = {
   pageName?: string;
   status?: TemplateStatus;
   mine?: boolean;
+  ownerType?: ResourceOwnerType;
+  ownerTeamId?: string;
   ownerId?: string;
   visibility?: ResourceVisibility;
   page?: number;
