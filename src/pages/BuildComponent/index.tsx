@@ -9,10 +9,11 @@ import {
   updateComponentVisibility,
   withdrawComponentToDraft,
 } from '../../api/componentTemplate';
-import type { ComponentTemplateBaseInfo, ResourceVisibility, TemplateStatus } from '../../api/types';
+import type { ComponentTemplateBaseInfo, ResourceVisibility } from '../../api/types';
 import { emitApiAlert } from '../../api/alertBus';
 import { useAuth } from '../../auth/context';
 import { useTeam } from '../../team/context';
+import { useResourceFiltersStore } from '../../store/resourceFilters';
 import './style.less';
 
 interface ComponentTemplateRow {
@@ -93,21 +94,52 @@ const splitDateTimeText = (value: string) => {
 
 const BuildComponent: React.FC = () => {
   const { user } = useAuth();
-  const { currentTeamId, currentTeam } = useTeam();
-  const [query, setQuery] = useState('');
+  const { initialized: teamInitialized, currentTeamId, currentTeam } = useTeam();
+  const buildComponentFilters = useResourceFiltersStore((state) => state.buildComponent);
+  const setBuildComponentFilters = useResourceFiltersStore((state) => state.setBuildComponentFilters);
+
+  const query = buildComponentFilters.query;
+  const scope = buildComponentFilters.scope;
+  const statusFilter = buildComponentFilters.statusFilter;
+  const visibilityFilter = buildComponentFilters.visibilityFilter;
+  const pageSize = buildComponentFilters.pageSize;
+  const scopeTouched = buildComponentFilters.scopeTouched;
+
   const [loading, setLoading] = useState(false);
   const [tableData, setTableData] = useState<ComponentTemplateRow[]>([]);
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
   const [total, setTotal] = useState(0);
-  const [scope, setScope] = useState<'mine' | 'team' | 'all'>('mine');
-  const [statusFilter, setStatusFilter] = useState<'all' | TemplateStatus>('all');
-  const [visibilityFilter, setVisibilityFilter] = useState<'all' | ResourceVisibility>('all');
   const [publishingId, setPublishingId] = useState<string | null>(null);
   const [visibilityChangingId, setVisibilityChangingId] = useState<string | null>(null);
   const [withdrawingId, setWithdrawingId] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<ComponentTemplateRow | null>(null);
   const [deleting, setDeleting] = useState(false);
+
+  useEffect(() => {
+    if (!teamInitialized) {
+      return;
+    }
+
+    if (currentTeamId && !scopeTouched && scope !== 'team') {
+      setBuildComponentFilters({ scope: 'team' });
+      setPage(1);
+      return;
+    }
+
+    if (!currentTeamId && scope === 'team') {
+      setBuildComponentFilters({ scope: 'mine' });
+      setPage(1);
+      return;
+    }
+  }, [teamInitialized, currentTeamId, scope, scopeTouched, setBuildComponentFilters]);
+
+  useEffect(() => {
+    if (!currentTeamId || scope !== 'team') {
+      return;
+    }
+
+    setPage(1);
+  }, [currentTeamId, scope]);
 
   const fetchPageBaseList = useCallback(async (params: { page: number; pageSize: number; pageName?: string }) => {
     setLoading(true);
@@ -157,12 +189,16 @@ const BuildComponent: React.FC = () => {
   }, [currentTeamId, scope, statusFilter, visibilityFilter]);
 
   useEffect(() => {
+    if (!teamInitialized) {
+      return;
+    }
+
     fetchPageBaseList({
       page,
       pageSize,
       pageName: query.trim() || undefined,
     });
-  }, [fetchPageBaseList, page, pageSize, scope, statusFilter, visibilityFilter]);
+  }, [fetchPageBaseList, page, pageSize, scope, statusFilter, visibilityFilter, teamInitialized]);
 
   const canManageRow = (row: ComponentTemplateRow) => {
     if (row.ownerType === '团队') {
@@ -460,10 +496,10 @@ const BuildComponent: React.FC = () => {
       },
       onPageSizeChange: (nextPageSize: number) => {
         setPage(1);
-        setPageSize(nextPageSize);
+        setBuildComponentFilters({ pageSize: nextPageSize });
       },
     }),
-    [page, pageSize, total],
+    [page, pageSize, total, setBuildComponentFilters],
   );
 
   return (
@@ -474,7 +510,7 @@ const BuildComponent: React.FC = () => {
             <Input
               placeholder="搜索组件名称"
               value={query}
-              onChange={(val) => setQuery(String(val))}
+              onChange={(val) => setBuildComponentFilters({ query: String(val ?? '') })}
               suffix={<SearchIcon />}
               clearable
               onEnter={handleSearch}
@@ -508,7 +544,7 @@ const BuildComponent: React.FC = () => {
 
               const nextScope = value === 'all' ? 'all' : value === 'team' ? 'team' : 'mine';
               setPage(1);
-              setScope(nextScope);
+              setBuildComponentFilters({ scope: nextScope, scopeTouched: true });
             }}
           />
           <Select
@@ -522,7 +558,7 @@ const BuildComponent: React.FC = () => {
             onChange={(value) => {
               const nextStatus = value === 'published' ? 'published' : value === 'draft' ? 'draft' : 'all';
               setPage(1);
-              setStatusFilter(nextStatus);
+              setBuildComponentFilters({ statusFilter: nextStatus });
             }}
           />
           <Select
@@ -536,7 +572,7 @@ const BuildComponent: React.FC = () => {
             onChange={(value) => {
               const nextVisibility = value === 'public' ? 'public' : value === 'private' ? 'private' : 'all';
               setPage(1);
-              setVisibilityFilter(nextVisibility);
+              setBuildComponentFilters({ visibilityFilter: nextVisibility });
             }}
           />
           </div>

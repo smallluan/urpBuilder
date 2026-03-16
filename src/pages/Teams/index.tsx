@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Button, Dialog, Empty, Input, List, Select, Tag } from 'tdesign-react';
+import { Button, Dialog, Empty, Input, List, Select, Tabs, Tag } from 'tdesign-react';
 import { AddIcon, DeleteIcon, RefreshIcon, SearchIcon } from 'tdesign-icons-react';
 import { emitApiAlert } from '../../api/alertBus';
 import { useAuth } from '../../auth/context';
@@ -8,6 +8,7 @@ import type { TeamDetail, TeamMember, TeamUserCandidate } from '../../team/types
 import './style.less';
 
 const { ListItem } = List;
+const { TabPanel } = Tabs;
 
 const roleMap = {
   owner: { text: '拥有者', theme: 'primary' as const },
@@ -61,6 +62,8 @@ const TeamsPage: React.FC = () => {
   const [inviteCandidates, setInviteCandidates] = useState<TeamUserCandidate[]>([]);
   const [selectedCandidate, setSelectedCandidate] = useState<TeamUserCandidate | null>(null);
   const [inviteRole, setInviteRole] = useState<'admin' | 'member'>('member');
+  const [teamTab, setTeamTab] = useState<'joined' | 'created' | 'managed'>('joined');
+  const [teamSearchKeyword, setTeamSearchKeyword] = useState('');
 
   useEffect(() => {
     if (!currentTeamId) {
@@ -210,14 +213,46 @@ const TeamsPage: React.FC = () => {
     };
   }, [detail?.members]);
 
+  const filteredTeams = useMemo(() => {
+    const keyword = teamSearchKeyword.trim().toLowerCase();
+
+    return teams.filter((team) => {
+      if (teamTab === 'created') {
+        const isCreator = (team.ownerId && user?.id && team.ownerId === user.id) || team.role === 'owner';
+        if (!isCreator) {
+          return false;
+        }
+      } else if (teamTab === 'managed') {
+        const canManage = team.role === 'owner' || team.role === 'admin';
+        if (!canManage) {
+          return false;
+        }
+      }
+
+      if (!keyword) {
+        return true;
+      }
+
+      const name = String(team.name || '').toLowerCase();
+      const code = String(team.code || '').toLowerCase();
+      return name.includes(keyword) || code.includes(keyword);
+    });
+  }, [teamSearchKeyword, teamTab, teams, user?.id]);
+
+  const teamTabCount = useMemo(() => {
+    const createdCount = teams.filter((team) => ((team.ownerId && user?.id && team.ownerId === user.id) || team.role === 'owner')).length;
+    const managedCount = teams.filter((team) => team.role === 'owner' || team.role === 'admin').length;
+
+    return {
+      joined: teams.length,
+      created: createdCount,
+      managed: managedCount,
+    };
+  }, [teams, user?.id]);
+
   return (
     <div className="teams-page">
       <div className="teams-page__header">
-        <div className="teams-page__headline">
-          <span className="teams-page__eyebrow">Workspace</span>
-          <h2>团队</h2>
-          <p>维护当前协作空间与成员关系。</p>
-        </div>
         <div className="teams-page__header-actions">
           <Button size="small" variant="outline" icon={<RefreshIcon />} loading={loading} onClick={() => refreshTeams()}>
             刷新
@@ -233,12 +268,31 @@ const TeamsPage: React.FC = () => {
           <div className="teams-page__panel-header">
             <div>
               <div className="teams-page__panel-title">我的团队</div>
-              <div className="teams-page__panel-subtitle">{teams.length} 个协作空间</div>
             </div>
           </div>
-          {teams.length ? (
+          <div className="teams-page__team-filters">
+            <Tabs
+              size="medium"
+              className="teams-page__team-tabs"
+              value={teamTab}
+              onChange={(value) => setTeamTab(String(value) as 'joined' | 'created' | 'managed')}
+            >
+              <TabPanel value="joined" label={`我加入的 ${teamTabCount.joined}`} />
+              <TabPanel value="created" label={`我创建的 ${teamTabCount.created}`} />
+              <TabPanel value="managed" label={`我管理的 ${teamTabCount.managed}`} />
+            </Tabs>
+            <Input
+              size="small"
+              value={teamSearchKeyword}
+              placeholder="按名称或 Key 搜索"
+              suffix={<SearchIcon />}
+              clearable
+              onChange={(value) => setTeamSearchKeyword(String(value ?? ''))}
+            />
+          </div>
+          {filteredTeams.length ? (
             <List split={false} className="teams-page__team-list">
-              {teams.map((team) => {
+              {filteredTeams.map((team) => {
                 const active = team.id === currentTeamId;
                 return (
                   <ListItem key={team.id} className="teams-page__team-list-item">
@@ -264,7 +318,7 @@ const TeamsPage: React.FC = () => {
               })}
             </List>
           ) : (
-            <Empty description="还没有团队，先创建一个吧" />
+            <Empty description={teams.length ? '当前筛选条件下没有匹配团队' : '还没有团队，先创建一个吧'} />
           )}
         </section>
 
