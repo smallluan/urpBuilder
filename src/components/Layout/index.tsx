@@ -1,5 +1,5 @@
 import React from 'react';
-import { Dropdown, Layout, Menu, Select } from 'tdesign-react';
+import { Dropdown, Layout, Menu, Select, Dialog } from 'tdesign-react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import {
   HomeIcon,
@@ -22,12 +22,21 @@ const { MenuItem, SubMenu } = Menu;
 const AppLayout: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, logout } = useAuth();
+  const { user, logout, deleteAccount } = useAuth();
   const { teams, currentTeamId, selectTeam, loading: teamLoading } = useTeam();
+  const [deleteAccountVisible, setDeleteAccountVisible] = React.useState(false);
+  const [deletingAccount, setDeletingAccount] = React.useState(false);
 
   const displayName = user?.nickname || user?.username || '未登录';
   const userInitial = displayName.slice(0, 1).toUpperCase();
+  const roleSet = new Set((user?.roles ?? []).map((item) => String(item).toLowerCase()));
+  const isPlatformAdmin = roleSet.has('admin') || roleSet.has('super_admin') || roleSet.has('platform_admin') || roleSet.has('root');
   const userMenuOptions = [
+    {
+      content: '注销账号',
+      value: 'delete-account',
+      theme: 'warning' as const,
+    },
     {
       content: '退出登录',
       value: 'logout',
@@ -80,6 +89,13 @@ const AppLayout: React.FC = () => {
       icon: <UserIcon />,
       title: '团队协作',
     },
+    ...(isPlatformAdmin
+      ? [{
+        key: '/user-admin',
+        icon: <SettingIcon />,
+        title: '用户管理',
+      }]
+      : []),
   ];
 
   const handleMenuClick = (value: any) => {
@@ -87,12 +103,32 @@ const AppLayout: React.FC = () => {
   };
 
   const handleUserMenuClick = async (data: { value?: string | number | Record<string, any> }) => {
+    if (data.value === 'delete-account') {
+      setDeleteAccountVisible(true);
+      return;
+    }
+
     if (data.value !== 'logout') {
       return;
     }
 
     await logout();
     navigate('/login', { replace: true });
+  };
+
+  const handleConfirmDeleteAccount = async () => {
+    if (deletingAccount) {
+      return;
+    }
+
+    setDeletingAccount(true);
+    try {
+      await deleteAccount();
+      navigate('/login', { replace: true });
+    } finally {
+      setDeletingAccount(false);
+      setDeleteAccountVisible(false);
+    }
   };
 
   const renderMenuItems = (items: any[]) => {
@@ -170,6 +206,24 @@ const AppLayout: React.FC = () => {
           <Outlet />
         </Content>
       </Layout>
+
+      <Dialog
+        visible={deleteAccountVisible}
+        header="确认注销账号"
+        confirmBtn={{
+          theme: 'danger',
+          loading: deletingAccount,
+          content: '确认注销',
+        }}
+        cancelBtn={{
+          disabled: deletingAccount,
+          content: '取消',
+        }}
+        onClose={() => setDeleteAccountVisible(false)}
+        onConfirm={handleConfirmDeleteAccount}
+      >
+        <div>注销后账号及相关归属数据将不可恢复，请确认继续。</div>
+      </Dialog>
     </Layout>
   );
 };

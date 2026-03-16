@@ -4,7 +4,22 @@ export interface AuthUser {
   nickname?: string;
   email?: string;
   avatar?: string;
+  status?: 'active' | 'disabled' | 'deleted';
+  createdAt?: string;
+  updatedAt?: string;
   roles?: string[];
+}
+
+export interface AdminUserListParams {
+  keyword?: string;
+  status?: 'all' | 'active' | 'disabled' | 'deleted';
+  page?: number;
+  pageSize?: number;
+}
+
+export interface AdminUserListResult {
+  list: AuthUser[];
+  total: number;
 }
 
 export interface LoginPayload {
@@ -37,5 +52,6 @@ export interface AuthContextValue {
   login: (payload: LoginPayload) => Promise<AuthUser>;
   register: (payload: RegisterPayload) => Promise<AuthUser>;
   logout: () => Promise<void>;
+  deleteAccount: () => Promise<void>;
   refreshCurrentUser: () => Promise<AuthUser | null>;
 }

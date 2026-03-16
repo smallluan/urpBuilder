@@ -9,6 +9,7 @@ const BuildPage = lazy(() => import('../pages/BuildPage'));
 const DataApi = lazy(() => import('../pages/DataApi'));
 const DataConstance = lazy(() => import('../pages/DataConstance'));
 const Teams = lazy(() => import('../pages/Teams'));
+const UserAdmin = lazy(() => import('../pages/UserAdmin'));
 const CreateComponent = lazy(() => import('../pages/CreateComponent'));
 const CreatePage = lazy(() => import('../pages/CreatePage'));
 const PreviewEngine = lazy(() => import('../pages/PreviewEngine'));
@@ -47,6 +48,10 @@ export const router = createBrowserRouter([
       {
         path: 'teams',
         element: load(<Teams />),
+      },
+      {
+        path: 'user-admin',
+        element: load(<UserAdmin />),
       },
     ],
   },

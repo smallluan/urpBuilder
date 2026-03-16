@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
-import { getCurrentUser, loginByPassword, logoutCurrentSession, registerByPassword } from './api';
+import { deleteMyAccount, getCurrentUser, loginByPassword, logoutCurrentSession, registerByPassword } from './api';
 import { onUnauthorized } from './events';
 import { clearAuthSession, getAccessToken, getRefreshToken, migrateLegacyToken, persistAuthSession } from './storage';
 import type { AuthContextValue, AuthUser, LoginPayload, RegisterPayload } from './types';
@@ -98,6 +98,12 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
     }
   };
 
+  const deleteAccount = async () => {
+    await deleteMyAccount();
+    resetSession();
+    setInitialized(true);
+  };
+
   const value = useMemo<AuthContextValue>(() => ({
     initialized,
     authenticating,
@@ -106,6 +112,7 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
     login,
     register,
     logout,
+    deleteAccount,
     refreshCurrentUser,
   }), [authenticating, initialized, user]);
 
