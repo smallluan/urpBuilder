@@ -1,5 +1,5 @@
 import React from 'react';
-import { Button, Layout, Menu } from 'tdesign-react';
+import { Button, Layout, Menu, Select } from 'tdesign-react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import {
   HomeIcon,
@@ -8,9 +8,11 @@ import {
   CodeIcon,
   FileIcon,
   ApiIcon,
-  SettingIcon
+  SettingIcon,
+  UserIcon,
 } from 'tdesign-icons-react';
 import { useAuth } from '../../auth/context';
+import { useTeam } from '../../team/context';
 import './style.less';
 
 const { Header, Aside, Content } = Layout;
@@ -20,6 +22,7 @@ const AppLayout: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout } = useAuth();
+  const { teams, currentTeamId, selectTeam, loading: teamLoading } = useTeam();
 
   const menuItems = [
     {
@@ -61,6 +64,11 @@ const AppLayout: React.FC = () => {
         },
       ],
     },
+    {
+      key: '/teams',
+      icon: <UserIcon />,
+      title: '团队协作',
+    },
   ];
 
   const handleMenuClick = (value: any) => {
@@ -95,6 +103,28 @@ const AppLayout: React.FC = () => {
           <img src="/urpBuilder.png" alt="URP" className="header-logo" />
         </div>
         <div className="header-right">
+          <div className="header-team-switcher">
+            <span className="header-team-switcher__label">当前团队</span>
+            <Select
+              value={currentTeamId || undefined}
+              loading={teamLoading}
+              placeholder="选择团队"
+              style={{ width: 220 }}
+              options={teams.map((team) => ({
+                label: `${team.name}${team.role === 'owner' ? ' · 拥有者' : team.role === 'admin' ? ' · 管理员' : ''}`,
+                value: team.id,
+              }))}
+              onChange={(value) => {
+                const nextTeamId = String(value ?? '').trim();
+                if (nextTeamId) {
+                  selectTeam(nextTeamId);
+                }
+              }}
+            />
+            <Button size="small" variant="text" onClick={() => navigate('/teams')}>
+              管理团队
+            </Button>
+          </div>
           <div className="header-user">
             <span className="header-user__label">当前用户</span>
             <strong>{user?.nickname || user?.username || '未登录'}</strong>

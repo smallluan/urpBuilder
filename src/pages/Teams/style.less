@@ -1,0 +1,138 @@
+.teams-page {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+
+  &__header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+
+    h2 {
+      margin: 0;
+      color: #1f2329;
+      font-size: 28px;
+    }
+
+    p {
+      margin: 8px 0 0;
+      color: #6b7280;
+    }
+  }
+
+  &__header-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  &__body {
+    display: grid;
+    grid-template-columns: 320px minmax(0, 1fr);
+    gap: 20px;
+    min-height: 0;
+  }
+
+  &__sidebar,
+  &__main {
+    border-radius: 12px;
+  }
+
+  &__team-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  &__team-card {
+    width: 100%;
+    text-align: left;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    background: #fff;
+    padding: 14px;
+    cursor: pointer;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+
+    &:hover {
+      border-color: #b9c7ff;
+      box-shadow: 0 10px 24px rgba(31, 41, 55, 0.06);
+      transform: translateY(-1px);
+    }
+
+    &.is-active {
+      border-color: #3f7bff;
+      background: linear-gradient(180deg, #f7faff 0%, #ffffff 100%);
+    }
+  }
+
+  &__team-card-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: #111827;
+  }
+
+  &__team-card-meta {
+    margin-top: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    color: #6b7280;
+    font-size: 12px;
+  }
+
+  &__detail {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  &__stats {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  &__stat-item {
+    border: 1px solid #eef1f5;
+    border-radius: 12px;
+    padding: 14px 16px;
+    background: #fafbfd;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+
+    strong {
+      color: #111827;
+      font-size: 16px;
+    }
+  }
+
+  &__stat-label {
+    color: #6b7280;
+    font-size: 12px;
+  }
+
+  &__member-cell {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  &__member-name {
+    color: #111827;
+    font-weight: 600;
+  }
+
+  &__member-sub {
+    color: #6b7280;
+    font-size: 12px;
+  }
+
+  &__form {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+}

@@ -8,6 +8,7 @@ const BuildComponent = lazy(() => import('../pages/BuildComponent'));
 const BuildPage = lazy(() => import('../pages/BuildPage'));
 const DataApi = lazy(() => import('../pages/DataApi'));
 const DataConstance = lazy(() => import('../pages/DataConstance'));
+const Teams = lazy(() => import('../pages/Teams'));
 const CreateComponent = lazy(() => import('../pages/CreateComponent'));
 const CreatePage = lazy(() => import('../pages/CreatePage'));
 const PreviewEngine = lazy(() => import('../pages/PreviewEngine'));
@@ -42,6 +43,10 @@ export const router = createBrowserRouter([
       {
         path: 'data-constance',
         element: load(<DataConstance />),
+      },
+      {
+        path: 'teams',
+        element: load(<Teams />),
       },
     ],
   },
