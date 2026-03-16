@@ -32,12 +32,20 @@ const isLikelyPageItem = (item: PageBaseInfo) => {
 };
 
 export const savePageDraft = async (payload: SavePageDraftPayload) => {
-  const response = await requestClient.post<ApiResponse<{ version: number }>>('/page-template/draft', payload);
+  const response = await requestClient.post<ApiResponse<{ version: number }>>('/page-template/draft', payload, {
+    params: {
+      entityType: 'page',
+    },
+  });
   return response.data;
 };
 
 export const updatePageDraft = async (pageId: string, payload: UpdatePageDraftPayload) => {
-  const response = await requestClient.put<ApiResponse<{ version: number }>>(`/page-template/${pageId}`, payload);
+  const response = await requestClient.put<ApiResponse<{ version: number }>>(`/page-template/${pageId}`, payload, {
+    params: {
+      entityType: 'page',
+    },
+  });
   return response.data;
 };
 

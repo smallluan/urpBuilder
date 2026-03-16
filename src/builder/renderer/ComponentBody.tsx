@@ -147,7 +147,11 @@ const ComponentBody: React.FC = () => {
     const isHidden = ((activeNode.props?.visible as { value?: unknown } | undefined)?.value) === false;
     if (isHidden) {
       if (hiddenHintKeyRef.current !== activeNodeKey) {
-        MessagePlugin.info(`组件“${activeNode.label || activeNode.key}”当前为隐藏状态，请先开启 visible`);
+        MessagePlugin.info({
+          content: `组件“${activeNode.label || activeNode.key}”当前为隐藏状态，请先开启 visible`,
+          duration: 3500,
+          closeBtn: true,
+        });
         hiddenHintKeyRef.current = activeNodeKey;
       }
       return;

@@ -21,12 +21,20 @@ const isLikelyComponentItem = (item: PageBaseInfo) => {
 };
 
 export const saveComponentDraft = async (payload: SaveComponentDraftPayload) => {
-  const response = await requestClient.post<ApiResponse<{ version: number }>>('/page-template/draft', payload);
+  const response = await requestClient.post<ApiResponse<{ version: number }>>('/page-template/draft', payload, {
+    params: {
+      entityType: 'component',
+    },
+  });
   return response.data;
 };
 
 export const updateComponentDraft = async (componentId: string, payload: UpdateComponentDraftPayload) => {
-  const response = await requestClient.put<ApiResponse<{ version: number }>>(`/page-template/${componentId}`, payload);
+  const response = await requestClient.put<ApiResponse<{ version: number }>>(`/page-template/${componentId}`, payload, {
+    params: {
+      entityType: 'component',
+    },
+  });
   return response.data;
 };
 

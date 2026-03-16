@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Badge, Button, Drawer, MessagePlugin, Space, Tabs, Tag } from 'tdesign-react';
+import { Badge, Button, Dialog, Drawer, MessagePlugin, Space, Tabs, Tag } from 'tdesign-react';
 import { MailIcon, RefreshIcon } from 'tdesign-icons-react';
 import { emitApiAlert } from '../../api/alertBus';
 import { useAuth } from '../../auth/context';
@@ -106,9 +106,11 @@ const GlobalNoticeCenter: React.FC = () => {
   const { getMyInvitations, getMySentInvitations, respondInvitation, refreshTeams } = useTeam();
   const [visible, setVisible] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState<'unread' | 'read' | 'sent'>('unread');
   const [received, setReceived] = useState<TeamInvitation[]>([]);
   const [sent, setSent] = useState<TeamInvitation[]>([]);
   const [respondingId, setRespondingId] = useState<string | null>(null);
+  const [detailMessage, setDetailMessage] = useState<MessageItem | null>(null);
   const [pendingCount, setPendingCount] = useState(0);
   const [readIds, setReadIds] = useState<string[]>([]);
   const notifiedCountRef = useRef(0);
@@ -167,27 +169,23 @@ const GlobalNoticeCenter: React.FC = () => {
     return receivedMessages.filter((item) => item.status !== 'pending' || readIdSet.has(item.id));
   }, [readIdSet, receivedMessages]);
 
+
   const syncUnreadCount = useCallback((items: TeamInvitation[], knownReadIds = readIdSet) => {
     const nextCount = items.filter((item) => item.status === 'pending' && !knownReadIds.has(item.id)).length;
     setPendingCount(nextCount);
     return nextCount;
   }, [readIdSet]);
 
-  const refreshPendingSummary = useCallback(async (showToastForIncrease = false) => {
-    const mine = await getMyInvitations();
-    setReceived(mine);
-    const nextCount = syncUnreadCount(mine);
+  const notifyDimensionSummary = useCallback((mine: TeamInvitation[], mineSent: TeamInvitation[], unreadCount: number) => {
+    const readCount = Math.max(mine.length - unreadCount, 0);
+    MessagePlugin.info({
+      content: `消息中心：未读 ${unreadCount} · 已读 ${readCount} · 已发 ${mineSent.length}`,
+      duration: 3500,
+      closeBtn: true,
+    });
+  }, []);
 
-    const previousCount = notifiedCountRef.current;
-    if (showToastForIncrease && nextCount > previousCount) {
-      MessagePlugin.info(`你有 ${nextCount} 条未读消息`);
-    }
-    notifiedCountRef.current = nextCount;
-
-    return mine;
-  }, [getMyInvitations, syncUnreadCount]);
-
-  const loadMessages = useCallback(async () => {
+  const loadMessages = useCallback(async (options?: { notifySummary?: boolean; notifyIncrease?: boolean }) => {
     setLoading(true);
     try {
       const [mine, mySent] = await Promise.all([
@@ -197,47 +195,49 @@ const GlobalNoticeCenter: React.FC = () => {
       setReceived(mine);
       setSent(mySent);
       const nextCount = syncUnreadCount(mine);
+      const previousCount = notifiedCountRef.current;
+
+      if (options?.notifySummary) {
+        notifyDimensionSummary(mine, mySent, nextCount);
+      }
+
+      if (options?.notifyIncrease && nextCount > previousCount) {
+        MessagePlugin.info({
+          content: `你有新消息：当前未读 ${nextCount} 条，点击右上角消息中心查看`,
+          duration: 3500,
+          closeBtn: true,
+        });
+      }
+
       notifiedCountRef.current = nextCount;
     } finally {
       setLoading(false);
     }
-  }, [getMyInvitations, getMySentInvitations, syncUnreadCount]);
+  }, [getMyInvitations, getMySentInvitations, notifyDimensionSummary, syncUnreadCount]);
 
   useEffect(() => {
-    let active = true;
+    if (!user?.id) {
+      return undefined;
+    }
 
-    const bootstrap = async () => {
-      try {
-        const mine = await refreshPendingSummary(false);
-        if (!active) {
-          return;
-        }
-        const initialUnread = mine.filter((item) => item.status === 'pending' && !readIdSet.has(item.id)).length;
-        if (initialUnread > 0) {
-          MessagePlugin.info(`你有 ${initialUnread} 条未读消息`);
-        }
-      } catch {
-        // noop
-      }
-    };
-
-    bootstrap();
+    loadMessages({ notifySummary: true }).catch(() => {
+      // noop
+    });
 
     const timer = window.setInterval(() => {
-      refreshPendingSummary(true).catch(() => {
+      loadMessages({ notifyIncrease: true }).catch(() => {
         // noop
       });
     }, 30000);
 
     return () => {
-      active = false;
       window.clearInterval(timer);
     };
-  }, [readIdSet, refreshPendingSummary]);
+  }, [loadMessages, user?.id]);
 
   const openDrawer = async () => {
     setVisible(true);
-    await loadMessages();
+    await loadMessages({ notifySummary: false });
   };
 
   const updateReadState = (messageId: string, shouldRead: boolean) => {
@@ -292,15 +292,15 @@ const GlobalNoticeCenter: React.FC = () => {
         </div>
         <div className="global-notice-center__card-title">{message.title}</div>
         <div className="global-notice-center__card-desc">{message.description}</div>
-        <div className="global-notice-center__card-meta">
-          <span>发起人 {renderPerson(message.sourceName, message.sourceUserId)}</span>
-          <span>接收人 {renderPerson(message.targetName, message.targetUserId)}</span>
-          <span>角色 {roleTextMap[message.role]}</span>
+        <div className="global-notice-center__card-meta-line">
+          <span>{message.teamName}</span>
           <span>{formatTime(message.createdAt)}</span>
         </div>
         <div className="global-notice-center__card-footer">
-          <span className="global-notice-center__card-team">{message.teamName}</span>
           <Space size={8}>
+            <Button variant="text" size="small" onClick={() => setDetailMessage(message)}>
+              查看详情
+            </Button>
             {mode !== 'sent' ? (
               <Button variant="text" size="small" onClick={() => updateReadState(message.id, mode === 'unread')}>
                 {mode === 'unread' ? '标为已读' : '标为未读'}
@@ -350,14 +350,14 @@ const GlobalNoticeCenter: React.FC = () => {
               <div className="global-notice-center__drawer-title">消息中心</div>
               <div className="global-notice-center__drawer-subtitle">{pendingCount} 条未读</div>
             </div>
-            <Button variant="text" shape="circle" icon={<RefreshIcon />} loading={loading} onClick={loadMessages} />
+            <Button variant="text" shape="circle" icon={<RefreshIcon />} loading={loading} onClick={() => { loadMessages({ notifySummary: false }); }} />
           </div>
         )}
         onClose={() => setVisible(false)}
         footer={false}
         className="global-notice-center__drawer"
       >
-        <Tabs defaultValue="unread" size="medium" className="global-notice-center__tabs">
+        <Tabs value={activeTab} onChange={(value) => setActiveTab(String(value) as 'unread' | 'read' | 'sent')} size="medium" className="global-notice-center__tabs">
           <TabPanel value="unread" label={`未读 ${unreadMessages.length}`}>
             {renderMessageList(unreadMessages, 'unread')}
           </TabPanel>
@@ -369,6 +369,30 @@ const GlobalNoticeCenter: React.FC = () => {
           </TabPanel>
         </Tabs>
       </Drawer>
+
+      <Dialog
+        visible={Boolean(detailMessage)}
+        header="消息详情"
+        confirmBtn={{ content: '知道了' }}
+        cancelBtn={null}
+        onConfirm={() => setDetailMessage(null)}
+        onClose={() => setDetailMessage(null)}
+      >
+        {detailMessage ? (
+          <div className="global-notice-center__detail">
+            <div className="global-notice-center__detail-title">{detailMessage.title}</div>
+            <div className="global-notice-center__detail-desc">{detailMessage.description}</div>
+            <div className="global-notice-center__detail-grid">
+              <div>团队：{detailMessage.teamName}</div>
+              <div>角色：{roleTextMap[detailMessage.role]}</div>
+              <div>发起人：{renderPerson(detailMessage.sourceName, detailMessage.sourceUserId)}</div>
+              <div>接收人：{renderPerson(detailMessage.targetName, detailMessage.targetUserId)}</div>
+              <div>状态：{statusTextMap[detailMessage.status]}</div>
+              <div>时间：{formatTime(detailMessage.createdAt)}</div>
+            </div>
+          </div>
+        ) : null}
+      </Dialog>
     </>
   );
 };

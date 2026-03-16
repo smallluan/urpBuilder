@@ -25,13 +25,17 @@ const Register: React.FC = () => {
       return;
     }
 
-    await register({
-      username: username.trim(),
-      password,
-      nickname: nickname.trim() || undefined,
-    });
+    try {
+      await register({
+        username: username.trim(),
+        password,
+        nickname: nickname.trim() || undefined,
+      });
 
-    navigate('/build-page', { replace: true });
+      navigate('/build-page', { replace: true });
+    } catch {
+      // 全局提示由 request 拦截器统一处理
+    }
   };
 
   return (

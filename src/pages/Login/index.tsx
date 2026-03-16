@@ -23,13 +23,17 @@ const Login: React.FC = () => {
       return;
     }
 
-    await login({
-      username: username.trim(),
-      password,
-    });
+    try {
+      await login({
+        username: username.trim(),
+        password,
+      });
 
-    const nextPath = (location.state as LoginLocationState | null)?.from?.pathname || '/build-page';
-    navigate(nextPath, { replace: true });
+      const nextPath = (location.state as LoginLocationState | null)?.from?.pathname || '/build-page';
+      navigate(nextPath, { replace: true });
+    } catch {
+      // 全局提示由 request 拦截器统一处理
+    }
   };
 
   return (

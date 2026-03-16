@@ -6,8 +6,9 @@ import { useBuilderAccess, useBuilderContext } from '../context/BuilderContext';
 import type { UiHistoryAction } from '../store/types';
 import { serializePreviewSnapshot } from '../../pages/PreviewEngine/utils/snapshot';
 import { buildComponentContract } from '../flow/componentContract';
-import { savePageDraft, updatePageDraft } from '../../api/pageTemplate';
-import { saveComponentDraft, updateComponentDraft } from '../../api/componentTemplate';
+import { getPageTemplateBaseList, savePageDraft, updatePageDraft } from '../../api/pageTemplate';
+import { getComponentBaseList, saveComponentDraft, updateComponentDraft } from '../../api/componentTemplate';
+import type { ComponentTemplateListParams, PageTemplateListParams } from '../../api/types';
 import { emitApiAlert } from '../../api/alertBus';
 import { findNodeByKey, updateNodeByKey } from '../../utils/createComponentTree';
 import { useTeam } from '../../team/context';
@@ -53,6 +54,62 @@ const normalizeRoutePath = (value: string) => {
   }
 
   return text.startsWith('/') ? text : `/${text}`;
+};
+
+const SCOPED_ID_CHECK_PAGE_SIZE = 200;
+const SCOPED_ID_CHECK_MAX_PAGES = 10;
+
+const hasDuplicateScopedResourceId = async (
+  entityType: 'page' | 'component',
+  pageId: string,
+  ownerType: 'user' | 'team',
+  ownerTeamId?: string,
+) => {
+  let page = 1;
+
+  while (page <= SCOPED_ID_CHECK_MAX_PAGES) {
+    if (entityType === 'component') {
+      const params: ComponentTemplateListParams = {
+        page,
+        pageSize: SCOPED_ID_CHECK_PAGE_SIZE,
+        ownerType,
+        ...(ownerType === 'team' ? { ownerTeamId } : { mine: true }),
+      };
+
+      const result = await getComponentBaseList(params);
+      const list = Array.isArray(result.data?.list) ? result.data.list : [];
+      if (list.some((item) => String(item.pageId || '').trim() === pageId)) {
+        return true;
+      }
+
+      const total = typeof result.data?.total === 'number' ? result.data.total : Number(result.data?.total) || 0;
+      if (page * SCOPED_ID_CHECK_PAGE_SIZE >= total || list.length < SCOPED_ID_CHECK_PAGE_SIZE) {
+        return false;
+      }
+    } else {
+      const params: PageTemplateListParams = {
+        page,
+        pageSize: SCOPED_ID_CHECK_PAGE_SIZE,
+        ownerType,
+        ...(ownerType === 'team' ? { ownerTeamId } : { mine: true }),
+      };
+
+      const result = await getPageTemplateBaseList(params);
+      const list = Array.isArray(result.data?.list) ? result.data.list : [];
+      if (list.some((item) => String(item.pageId || '').trim() === pageId)) {
+        return true;
+      }
+
+      const total = typeof result.data?.total === 'number' ? result.data.total : Number(result.data?.total) || 0;
+      if (page * SCOPED_ID_CHECK_PAGE_SIZE >= total || list.length < SCOPED_ID_CHECK_PAGE_SIZE) {
+        return false;
+      }
+    }
+
+    page += 1;
+  }
+
+  return false;
 };
 
 const composeRouteUiTree = (
@@ -472,6 +529,23 @@ const HeaderControls: React.FC<Props> = ({
     setSaving(true);
 
     try {
+      if (!isEditMode) {
+        const hasDuplicate = await hasDuplicateScopedResourceId(
+          entityType,
+          pageId,
+          resolvedOwnerType,
+          resolvedOwnerTeamId,
+        );
+
+        if (hasDuplicate) {
+          emitApiAlert(
+            '保存失败',
+            `${saveEntityLabel} ID ${pageId} 在当前${resolvedOwnerType === 'team' ? '团队' : '个人'}作用域已存在，请更换 ID`,
+          );
+          return;
+        }
+      }
+
       const componentContract = enableComponentContract
         ? buildComponentContract(uiTreeData, flowNodes, flowEdges)
         : null;
