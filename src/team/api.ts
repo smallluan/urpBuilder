@@ -1,6 +1,9 @@
 import requestClient from '../api/request';
 import type { ApiResponse } from '../api/types';
 import type {
+  AdminTeamDisablePayload,
+  AdminTeamListParams,
+  AdminTeamListResult,
   CreateTeamPayload,
   InviteTeamMemberPayload,
   TeamDetail,
@@ -80,5 +83,27 @@ export const respondTeamInvitation = async (invitationId: string, action: 'accep
   const response = await requestClient.post<ApiResponse<null>>(`/team-invitations/${invitationId}/respond`, {
     action,
   });
+  return response.data;
+};
+
+export const getAdminTeams = async (params?: AdminTeamListParams) => {
+  const response = await requestClient.get<ApiResponse<AdminTeamListResult>>('/admin/teams', {
+    params,
+  });
+  return response.data.data;
+};
+
+export const adminDisableTeam = async (teamId: string, payload: AdminTeamDisablePayload) => {
+  const response = await requestClient.patch<ApiResponse<null>>(`/admin/teams/${teamId}/disable`, payload);
+  return response.data;
+};
+
+export const adminEnableTeam = async (teamId: string) => {
+  const response = await requestClient.patch<ApiResponse<null>>(`/admin/teams/${teamId}/enable`);
+  return response.data;
+};
+
+export const adminDeleteTeam = async (teamId: string) => {
+  const response = await requestClient.delete<ApiResponse<null>>(`/admin/teams/${teamId}`);
   return response.data;
 };

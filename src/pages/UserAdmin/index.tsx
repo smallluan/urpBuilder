@@ -1,9 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Button, Dialog, Empty, Input, Select, Table, Tag } from 'tdesign-react';
-import { DeleteIcon, RefreshIcon, SearchIcon, UserIcon } from 'tdesign-icons-react';
+import { DeleteIcon, LockOnIcon, RefreshIcon, SearchIcon, UserIcon } from 'tdesign-icons-react';
 import type { PrimaryTableCol } from 'tdesign-react/es/table/type';
-import { adminDeleteUserAccount, getAdminUserList } from '../../auth/api';
-import type { AdminUserListParams, AuthUser } from '../../auth/types';
+import { adminDeleteUserAccount, adminDisableUserAccount, adminEnableUserAccount, getAdminUserList } from '../../auth/api';
+import type { AdminUserDisablePayload, AdminUserListParams, AuthUser } from '../../auth/types';
 import { emitApiAlert } from '../../api/alertBus';
 import { useAuth } from '../../auth/context';
 import './style.less';
@@ -11,6 +11,8 @@ import './style.less';
 type UserRow = AuthUser & {
   displayName: string;
 };
+
+type DisablePresetUnit = 'hour' | 'day' | 'month';
 
 const formatDateText = (value?: string) => {
   if (!value) {
@@ -37,6 +39,40 @@ const resolveUserStatus = (value?: string) => {
   return { text: '正常', theme: 'success' as const };
 };
 
+const formatDisableDetail = (row: UserRow) => {
+  if (row.status !== 'disabled') {
+    return '-';
+  }
+
+  if (row.disableType === 'timed' && row.disabledUntil) {
+    return `定时至 ${formatDateText(row.disabledUntil)}`;
+  }
+
+  return '手动禁用';
+};
+
+const buildDisabledUntil = (mode: 'duration' | 'until', value: string, unit: DisablePresetUnit) => {
+  if (mode === 'until') {
+    return value ? new Date(value).toISOString() : '';
+  }
+
+  const amount = Number(value);
+  if (!Number.isFinite(amount) || amount <= 0) {
+    return '';
+  }
+
+  const target = new Date();
+  if (unit === 'hour') {
+    target.setHours(target.getHours() + amount);
+  } else if (unit === 'day') {
+    target.setDate(target.getDate() + amount);
+  } else {
+    target.setMonth(target.getMonth() + amount);
+  }
+
+  return target.toISOString();
+};
+
 const isPlatformAdmin = (roles?: string[]) => {
   const roleSet = new Set((roles ?? []).map((item) => item.toLowerCase()));
   return roleSet.has('admin') || roleSet.has('super_admin') || roleSet.has('platform_admin') || roleSet.has('root');
@@ -53,6 +89,16 @@ const UserAdminPage: React.FC = () => {
   const [total, setTotal] = useState(0);
   const [deleteTarget, setDeleteTarget] = useState<UserRow | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [disableTarget, setDisableTarget] = useState<UserRow | null>(null);
+  const [disableMode, setDisableMode] = useState<'manual' | 'timed'>('manual');
+  const [disableScheduleMode, setDisableScheduleMode] = useState<'duration' | 'until'>('duration');
+  const [disableDurationValue, setDisableDurationValue] = useState('1');
+  const [disableDurationUnit, setDisableDurationUnit] = useState<DisablePresetUnit>('day');
+  const [disableUntil, setDisableUntil] = useState('');
+  const [disableReason, setDisableReason] = useState('');
+  const [disabling, setDisabling] = useState(false);
+  const [enableTarget, setEnableTarget] = useState<UserRow | null>(null);
+  const [enabling, setEnabling] = useState(false);
 
   const canManageUsers = isPlatformAdmin(user?.roles);
 
@@ -121,6 +167,62 @@ const UserAdminPage: React.FC = () => {
     }
   };
 
+  const resetDisableForm = () => {
+    setDisableMode('manual');
+    setDisableScheduleMode('duration');
+    setDisableDurationValue('1');
+    setDisableDurationUnit('day');
+    setDisableUntil('');
+    setDisableReason('');
+  };
+
+  const handleConfirmDisable = async () => {
+    if (!disableTarget?.id || disabling) {
+      return;
+    }
+
+    const payload: AdminUserDisablePayload = {
+      mode: disableMode,
+      reason: disableReason.trim() || undefined,
+    };
+
+    if (disableMode === 'timed') {
+      const disabledUntil = buildDisabledUntil(disableScheduleMode, disableScheduleMode === 'until' ? disableUntil : disableDurationValue, disableDurationUnit);
+      if (!disabledUntil) {
+        emitApiAlert('禁用失败', '请填写有效的禁用时长或截止时间');
+        return;
+      }
+      payload.disabledUntil = disabledUntil;
+    }
+
+    setDisabling(true);
+    try {
+      await adminDisableUserAccount(disableTarget.id, payload);
+      emitApiAlert('操作成功', `账号 ${disableTarget.username} 已禁用`, 'success');
+      setDisableTarget(null);
+      resetDisableForm();
+      fetchUsers({ page, pageSize, keyword: query.trim() || undefined });
+    } finally {
+      setDisabling(false);
+    }
+  };
+
+  const handleConfirmEnable = async () => {
+    if (!enableTarget?.id || enabling) {
+      return;
+    }
+
+    setEnabling(true);
+    try {
+      await adminEnableUserAccount(enableTarget.id);
+      emitApiAlert('操作成功', `账号 ${enableTarget.username} 已恢复`, 'success');
+      setEnableTarget(null);
+      fetchUsers({ page, pageSize, keyword: query.trim() || undefined });
+    } finally {
+      setEnabling(false);
+    }
+  };
+
   const columns = useMemo<PrimaryTableCol<UserRow>[]>(() => [
     {
       colKey: 'displayName',
@@ -177,6 +279,12 @@ const UserAdminPage: React.FC = () => {
       },
     },
     {
+      colKey: 'disableDetail',
+      title: '禁用信息',
+      minWidth: 190,
+      cell: ({ row }) => formatDisableDetail(row),
+    },
+    {
       colKey: 'createdAt',
       title: '创建时间',
       minWidth: 180,
@@ -185,19 +293,43 @@ const UserAdminPage: React.FC = () => {
     {
       colKey: 'operations',
       title: '操作',
-      width: 140,
+      width: 320,
       fixed: 'right',
       cell: ({ row }) => (
-        <Button
-          size="small"
-          theme="danger"
-          variant="outline"
-          icon={<DeleteIcon />}
-          disabled={!canManageUsers || row.id === user?.id || row.status === 'deleted'}
-          onClick={() => setDeleteTarget(row)}
-        >
-          注销账号
-        </Button>
+        <div className="user-admin-page__action-row">
+          {row.status === 'disabled' ? (
+            <Button
+              size="small"
+              theme="success"
+              variant="outline"
+              disabled={!canManageUsers || row.id === user?.id}
+              onClick={() => setEnableTarget(row)}
+            >
+              解禁
+            </Button>
+          ) : (
+            <Button
+              size="small"
+              theme="warning"
+              variant="outline"
+              icon={<LockOnIcon />}
+              disabled={!canManageUsers || row.id === user?.id || row.status === 'deleted'}
+              onClick={() => setDisableTarget(row)}
+            >
+              禁用账号
+            </Button>
+          )}
+          <Button
+            size="small"
+            theme="danger"
+            variant="outline"
+            icon={<DeleteIcon />}
+            disabled={!canManageUsers || row.id === user?.id || row.status === 'deleted'}
+            onClick={() => setDeleteTarget(row)}
+          >
+            注销账号
+          </Button>
+        </div>
       ),
     },
   ], [canManageUsers, user?.id]);
@@ -273,6 +405,92 @@ const UserAdminPage: React.FC = () => {
           style={{ minWidth: '1120px' }}
         />
       </div>
+
+      <Dialog
+        visible={Boolean(disableTarget)}
+        header="禁用账号"
+        confirmBtn={{
+          theme: 'warning',
+          loading: disabling,
+          content: '确认禁用',
+        }}
+        cancelBtn={{
+          content: '取消',
+          disabled: disabling,
+        }}
+        onClose={() => {
+          setDisableTarget(null);
+          resetDisableForm();
+        }}
+        onConfirm={handleConfirmDisable}
+      >
+        <div className="user-admin-page__dialog-form">
+          <Select
+            value={disableMode}
+            options={[
+              { label: '手动禁用', value: 'manual' },
+              { label: '定时禁用', value: 'timed' },
+            ]}
+            onChange={(value) => setDisableMode(value === 'timed' ? 'timed' : 'manual')}
+          />
+          {disableMode === 'timed' ? (
+            <>
+              <Select
+                value={disableScheduleMode}
+                options={[
+                  { label: '按时长', value: 'duration' },
+                  { label: '截至指定时间', value: 'until' },
+                ]}
+                onChange={(value) => setDisableScheduleMode(value === 'until' ? 'until' : 'duration')}
+              />
+              {disableScheduleMode === 'duration' ? (
+                <div className="user-admin-page__duration-row">
+                  <Input value={disableDurationValue} onChange={(value) => setDisableDurationValue(String(value ?? ''))} />
+                  <Select
+                    value={disableDurationUnit}
+                    options={[
+                      { label: '小时', value: 'hour' },
+                      { label: '天', value: 'day' },
+                      { label: '月', value: 'month' },
+                    ]}
+                    onChange={(value) => setDisableDurationUnit(value === 'hour' || value === 'month' ? value : 'day')}
+                  />
+                </div>
+              ) : (
+                <input
+                  className="user-admin-page__native-datetime"
+                  type="datetime-local"
+                  value={disableUntil}
+                  onChange={(event) => setDisableUntil(event.target.value)}
+                />
+              )}
+            </>
+          ) : null}
+          <Input
+            value={disableReason}
+            placeholder="禁用原因（可选）"
+            onChange={(value) => setDisableReason(String(value ?? ''))}
+          />
+        </div>
+      </Dialog>
+
+      <Dialog
+        visible={Boolean(enableTarget)}
+        header="确认解禁账号"
+        confirmBtn={{
+          theme: 'success',
+          loading: enabling,
+          content: '确认解禁',
+        }}
+        cancelBtn={{
+          content: '取消',
+          disabled: enabling,
+        }}
+        onClose={() => setEnableTarget(null)}
+        onConfirm={handleConfirmEnable}
+      >
+        <div>确认恢复账号“{enableTarget?.username || '-'}”吗？</div>
+      </Dialog>
 
       <Dialog
         visible={Boolean(deleteTarget)}

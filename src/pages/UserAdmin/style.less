@@ -62,6 +62,42 @@
     gap: 6px;
   }
 
+  &__action-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  &__dialog-form {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  &__duration-row {
+    display: grid;
+    grid-template-columns: 1fr 120px;
+    gap: 8px;
+  }
+
+  &__native-datetime {
+    width: 100%;
+    min-height: 32px;
+    border: 1px solid #dcdcdc;
+    border-radius: 6px;
+    padding: 5px 12px;
+    font-size: 14px;
+    color: #111827;
+    background: #fff;
+    box-sizing: border-box;
+
+    &:focus {
+      outline: none;
+      border-color: #0052d9;
+      box-shadow: 0 0 0 2px rgba(0, 82, 217, 0.12);
+    }
+  }
+
   &--empty {
     padding: 24px 0;
   }

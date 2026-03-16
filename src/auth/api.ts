@@ -1,6 +1,7 @@
 import requestClient from '../api/request';
 import type { ApiResponse } from '../api/types';
 import type {
+  AdminUserDisablePayload,
   AdminUserListParams,
   AdminUserListResult,
   AuthSession,
@@ -44,5 +45,15 @@ export const getAdminUserList = async (params?: AdminUserListParams) => {
 
 export const adminDeleteUserAccount = async (userId: string) => {
   const response = await requestClient.delete<ApiResponse<null>>(`/admin/users/${userId}`);
+  return response.data;
+};
+
+export const adminDisableUserAccount = async (userId: string, payload: AdminUserDisablePayload) => {
+  const response = await requestClient.patch<ApiResponse<null>>(`/admin/users/${userId}/disable`, payload);
+  return response.data;
+};
+
+export const adminEnableUserAccount = async (userId: string) => {
+  const response = await requestClient.patch<ApiResponse<null>>(`/admin/users/${userId}/enable`);
   return response.data;
 };

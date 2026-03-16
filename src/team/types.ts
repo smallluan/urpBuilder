@@ -6,6 +6,10 @@ export interface TeamSummary {
   code?: string;
   description?: string;
   role: TeamRole;
+  status?: 'active' | 'disabled' | 'deleted';
+  disableType?: 'manual' | 'timed';
+  disabledUntil?: string;
+  disableReason?: string;
   memberCount: number;
   ownerId?: string;
   ownerName?: string;
@@ -77,4 +81,22 @@ export interface TeamContextValue {
   getMyInvitations: (status?: TeamInvitationStatus) => Promise<TeamInvitation[]>;
   getMySentInvitations: (status?: TeamInvitationStatus) => Promise<TeamInvitation[]>;
   respondInvitation: (invitationId: string, action: 'accept' | 'reject') => Promise<void>;
+}
+
+export interface AdminTeamListParams {
+  keyword?: string;
+  status?: 'all' | 'active' | 'disabled' | 'deleted';
+  page?: number;
+  pageSize?: number;
+}
+
+export interface AdminTeamListResult {
+  list: TeamSummary[];
+  total: number;
+}
+
+export interface AdminTeamDisablePayload {
+  mode: 'manual' | 'timed';
+  reason?: string;
+  disabledUntil?: string;
 }

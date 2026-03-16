@@ -5,6 +5,9 @@ export interface AuthUser {
   email?: string;
   avatar?: string;
   status?: 'active' | 'disabled' | 'deleted';
+  disableType?: 'manual' | 'timed';
+  disabledUntil?: string;
+  disableReason?: string;
   createdAt?: string;
   updatedAt?: string;
   roles?: string[];
@@ -20,6 +23,12 @@ export interface AdminUserListParams {
 export interface AdminUserListResult {
   list: AuthUser[];
   total: number;
+}
+
+export interface AdminUserDisablePayload {
+  mode: 'manual' | 'timed';
+  reason?: string;
+  disabledUntil?: string;
 }
 
 export interface LoginPayload {
