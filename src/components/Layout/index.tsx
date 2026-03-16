@@ -1,5 +1,5 @@
 import React from 'react';
-import { Button, Layout, Menu, Select } from 'tdesign-react';
+import { Dropdown, Layout, Menu, Select } from 'tdesign-react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import {
   HomeIcon,
@@ -13,6 +13,7 @@ import {
 } from 'tdesign-icons-react';
 import { useAuth } from '../../auth/context';
 import { useTeam } from '../../team/context';
+import GlobalNoticeCenter from '../GlobalNoticeCenter';
 import './style.less';
 
 const { Header, Aside, Content } = Layout;
@@ -23,6 +24,16 @@ const AppLayout: React.FC = () => {
   const location = useLocation();
   const { user, logout } = useAuth();
   const { teams, currentTeamId, selectTeam, loading: teamLoading } = useTeam();
+
+  const displayName = user?.nickname || user?.username || '未登录';
+  const userInitial = displayName.slice(0, 1).toUpperCase();
+  const userMenuOptions = [
+    {
+      content: '退出登录',
+      value: 'logout',
+      theme: 'error' as const,
+    },
+  ];
 
   const menuItems = [
     {
@@ -75,6 +86,15 @@ const AppLayout: React.FC = () => {
     navigate(value);
   };
 
+  const handleUserMenuClick = async (data: { value?: string | number | Record<string, any> }) => {
+    if (data.value !== 'logout') {
+      return;
+    }
+
+    await logout();
+    navigate('/login', { replace: true });
+  };
+
   const renderMenuItems = (items: any[]) => {
     return items.map((item) => {
       if (item.children) {
@@ -104,12 +124,11 @@ const AppLayout: React.FC = () => {
         </div>
         <div className="header-right">
           <div className="header-team-switcher">
-            <span className="header-team-switcher__label">当前团队</span>
             <Select
               value={currentTeamId || undefined}
               loading={teamLoading}
               placeholder="选择团队"
-              style={{ width: 220 }}
+              style={{ width: 200 }}
               options={teams.map((team) => ({
                 label: `${team.name}${team.role === 'owner' ? ' · 拥有者' : team.role === 'admin' ? ' · 管理员' : ''}`,
                 value: team.id,
@@ -121,24 +140,19 @@ const AppLayout: React.FC = () => {
                 }
               }}
             />
-            <Button size="small" variant="text" onClick={() => navigate('/teams')}>
-              管理团队
-            </Button>
           </div>
-          <div className="header-user">
-            <span className="header-user__label">当前用户</span>
-            <strong>{user?.nickname || user?.username || '未登录'}</strong>
-          </div>
-          <Button
-            theme="default"
-            variant="outline"
-            onClick={async () => {
-              await logout();
-              navigate('/login', { replace: true });
-            }}
+          <GlobalNoticeCenter />
+          <Dropdown
+            trigger="click"
+            options={userMenuOptions}
+            onClick={handleUserMenuClick}
+            popupProps={{ overlayClassName: 'header-user-menu' }}
           >
-            退出登录
-          </Button>
+            <button type="button" className="header-user-trigger">
+              <span className="header-user-trigger__avatar">{userInitial}</span>
+              <span className="header-user-trigger__name">{displayName}</span>
+            </button>
+          </Dropdown>
         </div>
       </Header>
       <Layout>

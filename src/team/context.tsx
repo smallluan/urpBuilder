@@ -3,9 +3,14 @@ import { useAuth } from '../auth/context';
 import {
   createTeam as createTeamRequest,
   getMyTeams,
+  getMyInvitations as getMyInvitationsRequest,
+  getMySentInvitations as getMySentInvitationsRequest,
   getTeamDetail as getTeamDetailRequest,
+  getTeamInvitations as getTeamInvitationsRequest,
   inviteTeamMember,
   removeTeamMember,
+  respondTeamInvitation,
+  searchTeamCandidates,
   setCurrentTeam as setCurrentTeamRequest,
 } from './api';
 import { getStoredCurrentTeamId, persistCurrentTeamId } from './storage';
@@ -13,6 +18,7 @@ import type {
   CreateTeamPayload,
   InviteTeamMemberPayload,
   TeamContextValue,
+  TeamInvitationStatus,
   TeamSummary,
 } from './types';
 
@@ -100,6 +106,30 @@ export const TeamProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
     await removeTeamMember(teamId, userId);
   };
 
+  const searchInviteCandidates = async (keyword: string) => {
+    if (!keyword.trim()) {
+      return [];
+    }
+
+    return searchTeamCandidates(keyword.trim());
+  };
+
+  const getTeamInvitations = async (teamId: string, status?: TeamInvitationStatus) => {
+    return getTeamInvitationsRequest(teamId, status);
+  };
+
+  const getMyInvitations = async (status?: TeamInvitationStatus) => {
+    return getMyInvitationsRequest(status);
+  };
+
+  const getMySentInvitations = async (status?: TeamInvitationStatus) => {
+    return getMySentInvitationsRequest(status);
+  };
+
+  const respondInvitation = async (invitationId: string, action: 'accept' | 'reject') => {
+    await respondTeamInvitation(invitationId, action);
+  };
+
   const currentTeam = useMemo(
     () => teams.find((item) => item.id === currentTeamId) ?? null,
     [currentTeamId, teams],
@@ -115,8 +145,13 @@ export const TeamProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
     refreshTeams,
     getTeamDetail,
     createTeam,
+    searchInviteCandidates,
     inviteMember,
     removeMember,
+    getTeamInvitations,
+    getMyInvitations,
+    getMySentInvitations,
+    respondInvitation,
   }), [initialized, loading, teams, currentTeamId, currentTeam]);
 
   return <TeamContext.Provider value={value}>{children}</TeamContext.Provider>;

@@ -31,8 +31,33 @@ export interface CreateTeamPayload {
 }
 
 export interface InviteTeamMemberPayload {
-  identity: string;
+  identity?: string;
+  inviteeUserId?: string;
   role?: Exclude<TeamRole, 'owner'>;
+}
+
+export type TeamInvitationStatus = 'pending' | 'accepted' | 'rejected' | 'canceled' | 'expired';
+
+export interface TeamInvitation {
+  id: string;
+  teamId: string;
+  teamName?: string;
+  inviteeUserId?: string;
+  inviteeIdentity?: string;
+  inviteeName?: string;
+  inviterId?: string;
+  inviterName?: string;
+  role: Exclude<TeamRole, 'owner'>;
+  status: TeamInvitationStatus;
+  createdAt?: string;
+  respondedAt?: string;
+}
+
+export interface TeamUserCandidate {
+  userId: string;
+  username: string;
+  nickname?: string;
+  email?: string;
 }
 
 export interface TeamContextValue {
@@ -45,6 +70,11 @@ export interface TeamContextValue {
   refreshTeams: () => Promise<void>;
   getTeamDetail: (teamId: string) => Promise<TeamDetail>;
   createTeam: (payload: CreateTeamPayload) => Promise<TeamDetail>;
+  searchInviteCandidates: (keyword: string) => Promise<TeamUserCandidate[]>;
   inviteMember: (teamId: string, payload: InviteTeamMemberPayload) => Promise<void>;
   removeMember: (teamId: string, userId: string) => Promise<void>;
+  getTeamInvitations: (teamId: string, status?: TeamInvitationStatus) => Promise<TeamInvitation[]>;
+  getMyInvitations: (status?: TeamInvitationStatus) => Promise<TeamInvitation[]>;
+  getMySentInvitations: (status?: TeamInvitationStatus) => Promise<TeamInvitation[]>;
+  respondInvitation: (invitationId: string, action: 'accept' | 'reject') => Promise<void>;
 }
