@@ -30,6 +30,27 @@ export interface TeamDetail extends TeamSummary {
   members: TeamMember[];
 }
 
+export type TeamAssetKind = 'page' | 'component' | 'document' | 'api';
+
+export interface TeamAssetItem {
+  id: string;
+  name: string;
+  kind: TeamAssetKind;
+  status?: string;
+  visibility?: 'private' | 'public';
+  updatedAt?: string;
+  ownerName?: string;
+  routePath?: string;
+}
+
+export interface TeamAssetSnapshot {
+  members: TeamMember[];
+  pages: TeamAssetItem[];
+  components: TeamAssetItem[];
+  documents: TeamAssetItem[];
+  apis: TeamAssetItem[];
+}
+
 export interface CreateTeamPayload {
   name: string;
   code?: string;

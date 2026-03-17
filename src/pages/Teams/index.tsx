@@ -3,8 +3,9 @@ import { Avatar, Button, Dialog, Empty, Input, List, Select, Tabs, Tag, Upload }
 import { AddIcon, DeleteIcon, RefreshIcon, SearchIcon } from 'tdesign-icons-react';
 import { emitApiAlert } from '../../api/alertBus';
 import { useAuth } from '../../auth/context';
+import { getTeamAssetSnapshot } from '../../team/api';
 import { useTeam } from '../../team/context';
-import type { TeamDetail, TeamMember, TeamUserCandidate } from '../../team/types';
+import type { TeamAssetItem, TeamAssetSnapshot, TeamDetail, TeamMember, TeamUserCandidate } from '../../team/types';
 import { fileToDataUrl, resolveTeamAvatar, resolveUserAvatar } from '../../utils/avatar';
 import './style.less';
 
@@ -28,6 +29,19 @@ const formatDateText = (value?: string) => {
   }
 
   return date.toLocaleDateString();
+};
+
+const formatDateTimeText = (value?: string) => {
+  if (!value) {
+    return '暂无记录';
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return date.toLocaleString();
 };
 
 const TeamsPage: React.FC = () => {
@@ -61,6 +75,15 @@ const TeamsPage: React.FC = () => {
   const [inviteRole, setInviteRole] = useState<'admin' | 'member'>('member');
   const [teamTab, setTeamTab] = useState<'joined' | 'created' | 'managed'>('joined');
   const [teamSearchKeyword, setTeamSearchKeyword] = useState('');
+  const [assetLoading, setAssetLoading] = useState(false);
+  const [assetTab, setAssetTab] = useState<'page' | 'component' | 'document' | 'api'>('page');
+  const [assetSnapshot, setAssetSnapshot] = useState<TeamAssetSnapshot>({
+    members: [],
+    pages: [],
+    components: [],
+    documents: [],
+    apis: [],
+  });
 
   useEffect(() => {
     if (!currentTeamId) {
@@ -88,6 +111,49 @@ const TeamsPage: React.FC = () => {
       active = false;
     };
   }, [currentTeamId, getTeamDetail]);
+
+  useEffect(() => {
+    if (!currentTeamId) {
+      setAssetSnapshot({
+        members: [],
+        pages: [],
+        components: [],
+        documents: [],
+        apis: [],
+      });
+      return;
+    }
+
+    let active = true;
+    const loadAssets = async () => {
+      setAssetLoading(true);
+      try {
+        const snapshot = await getTeamAssetSnapshot(currentTeamId);
+        if (active) {
+          setAssetSnapshot(snapshot);
+        }
+      } catch {
+        if (active) {
+          setAssetSnapshot({
+            members: [],
+            pages: [],
+            components: [],
+            documents: [],
+            apis: [],
+          });
+        }
+      } finally {
+        if (active) {
+          setAssetLoading(false);
+        }
+      }
+    };
+
+    loadAssets();
+    return () => {
+      active = false;
+    };
+  }, [currentTeamId]);
 
   const canManageMembers = (detail?.role ?? currentTeam?.role) === 'owner' || (detail?.role ?? currentTeam?.role) === 'admin';
 
@@ -243,6 +309,43 @@ const TeamsPage: React.FC = () => {
     };
   }, [detail?.members]);
 
+  const assetStats = useMemo(() => {
+    return {
+      members: detail?.memberCount ?? assetSnapshot.members.length,
+      pages: assetSnapshot.pages.length,
+      components: assetSnapshot.components.length,
+      documents: assetSnapshot.documents.length,
+      apis: assetSnapshot.apis.length,
+    };
+  }, [assetSnapshot, detail?.memberCount]);
+
+  const activeAssets = useMemo(() => {
+    if (assetTab === 'component') {
+      return assetSnapshot.components;
+    }
+    if (assetTab === 'document') {
+      return assetSnapshot.documents;
+    }
+    if (assetTab === 'api') {
+      return assetSnapshot.apis;
+    }
+    return assetSnapshot.pages;
+  }, [assetSnapshot, assetTab]);
+
+  const handleOpenAsset = (asset: TeamAssetItem) => {
+    if (asset.kind === 'page') {
+      window.open(`${window.location.origin}/create-page?id=${encodeURIComponent(asset.id)}`, '_blank');
+      return;
+    }
+
+    if (asset.kind === 'component') {
+      window.open(`${window.location.origin}/create-component?id=${encodeURIComponent(asset.id)}`, '_blank');
+      return;
+    }
+
+    emitApiAlert('敬请期待', '该资产类型即将接入在线查看能力');
+  };
+
   const filteredTeams = useMemo(() => {
     const keyword = teamSearchKeyword.trim().toLowerCase();
 
@@ -395,6 +498,67 @@ const TeamsPage: React.FC = () => {
                   <span>成员</span>
                   <strong>{memberStats.memberCount}</strong>
                 </div>
+              </section>
+
+              <section className="teams-page__section">
+                <div className="teams-page__section-header">
+                  <div>
+                    <div className="teams-page__section-title">团队资产</div>
+                    <div className="teams-page__section-subtitle">
+                      成员 {assetStats.members} · 页面 {assetStats.pages} · 组件 {assetStats.components} · 文档 {assetStats.documents} · 接口 {assetStats.apis}
+                    </div>
+                  </div>
+                  <div className="teams-page__asset-actions">
+                    <Button size="small" variant="outline" onClick={() => window.open(`${window.location.origin}/build-page`, '_blank')}>
+                      页面资产
+                    </Button>
+                    <Button size="small" variant="outline" onClick={() => window.open(`${window.location.origin}/build-component`, '_blank')}>
+                      组件资产
+                    </Button>
+                  </div>
+                </div>
+
+                <Tabs
+                  size="medium"
+                  value={assetTab}
+                  onChange={(value) => setAssetTab(String(value) as 'page' | 'component' | 'document' | 'api')}
+                >
+                  <TabPanel value="page" label={`页面 ${assetStats.pages}`} />
+                  <TabPanel value="component" label={`组件 ${assetStats.components}`} />
+                  <TabPanel value="document" label={`文档 ${assetStats.documents}`} />
+                  <TabPanel value="api" label={`接口 ${assetStats.apis}`} />
+                </Tabs>
+
+                {assetLoading ? <div className="teams-page__empty">资产加载中...</div> : null}
+                {!assetLoading ? (
+                  activeAssets.length ? (
+                    <div className="teams-page__asset-list">
+                      {activeAssets.map((asset) => (
+                        <article key={`${asset.kind}-${asset.id}`} className="teams-page__asset-card">
+                          <div className="teams-page__asset-card-head">
+                            <div className="teams-page__asset-card-main">
+                              <div className="teams-page__asset-card-title">{asset.name}</div>
+                              <div className="teams-page__asset-card-sub">ID: {asset.id}</div>
+                            </div>
+                            {asset.status ? (
+                              <Tag size="small" theme={asset.status === 'published' ? 'success' : 'warning'} variant="light">
+                                {asset.status === 'published' ? '已发布' : '草稿'}
+                              </Tag>
+                            ) : null}
+                          </div>
+                          <div className="teams-page__asset-card-foot">
+                            <span>更新于 {formatDateTimeText(asset.updatedAt)}</span>
+                            <Button size="small" variant="text" theme="primary" onClick={() => handleOpenAsset(asset)}>
+                              查看
+                            </Button>
+                          </div>
+                        </article>
+                      ))}
+                    </div>
+                  ) : (
+                    <Empty description="当前分类下还没有资产" />
+                  )
+                ) : null}
               </section>
 
               <section className="teams-page__section">

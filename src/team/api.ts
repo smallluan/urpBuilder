@@ -1,5 +1,7 @@
 import requestClient from '../api/request';
 import type { ApiResponse } from '../api/types';
+import { getComponentBaseList } from '../api/componentTemplate';
+import { getPageTemplateBaseList } from '../api/pageTemplate';
 import type {
   AdminTeamDisablePayload,
   AdminTeamListParams,
@@ -9,6 +11,8 @@ import type {
   TeamDetail,
   TeamInvitation,
   TeamInvitationStatus,
+  TeamAssetSnapshot,
+  TeamAssetItem,
   TeamSummary,
   TeamUserCandidate,
 } from './types';
@@ -106,4 +110,64 @@ export const adminEnableTeam = async (teamId: string) => {
 export const adminDeleteTeam = async (teamId: string) => {
   const response = await requestClient.delete<ApiResponse<null>>(`/admin/teams/${teamId}`);
   return response.data;
+};
+
+const mapTemplateAssetItem = (item: {
+  pageId?: string;
+  pageName?: string;
+  status?: string;
+  visibility?: 'private' | 'public';
+  updatedAt?: string;
+  ownerName?: string;
+  routeConfig?: { routePath?: string };
+}, kind: 'page' | 'component'): TeamAssetItem | null => {
+  const id = String(item.pageId || '').trim();
+  if (!id) {
+    return null;
+  }
+
+  return {
+    id,
+    name: String(item.pageName || id),
+    kind,
+    status: item.status,
+    visibility: item.visibility,
+    updatedAt: item.updatedAt,
+    ownerName: item.ownerName,
+    routePath: kind === 'page' ? item.routeConfig?.routePath : undefined,
+  };
+};
+
+export const getTeamAssetSnapshot = async (teamId: string): Promise<TeamAssetSnapshot> => {
+  const [detail, pageResult, componentResult] = await Promise.all([
+    getTeamDetail(teamId),
+    getPageTemplateBaseList({
+      ownerType: 'team',
+      ownerTeamId: teamId,
+      page: 1,
+      pageSize: 100,
+    }),
+    getComponentBaseList({
+      ownerType: 'team',
+      ownerTeamId: teamId,
+      page: 1,
+      pageSize: 100,
+    }),
+  ]);
+
+  const pages = (Array.isArray(pageResult.data?.list) ? pageResult.data.list : [])
+    .map((item) => mapTemplateAssetItem(item, 'page'))
+    .filter((item): item is TeamAssetItem => Boolean(item));
+
+  const components = (Array.isArray(componentResult.data?.list) ? componentResult.data.list : [])
+    .map((item) => mapTemplateAssetItem(item, 'component'))
+    .filter((item): item is TeamAssetItem => Boolean(item));
+
+  return {
+    members: Array.isArray(detail.members) ? detail.members : [],
+    pages,
+    components,
+    documents: [],
+    apis: [],
+  };
 };
