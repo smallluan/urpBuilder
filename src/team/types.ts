@@ -5,6 +5,7 @@ export interface TeamSummary {
   name: string;
   code?: string;
   description?: string;
+  avatar?: string;
   role: TeamRole;
   status?: 'active' | 'disabled' | 'deleted';
   disableType?: 'manual' | 'timed';
@@ -20,6 +21,7 @@ export interface TeamMember {
   username: string;
   nickname?: string;
   email?: string;
+  avatar?: string;
   role: TeamRole;
   joinedAt?: string;
 }
@@ -32,6 +34,8 @@ export interface CreateTeamPayload {
   name: string;
   code?: string;
   description?: string;
+  avatar?: string;
+  avatarSource?: 'preset' | 'upload';
 }
 
 export interface InviteTeamMemberPayload {

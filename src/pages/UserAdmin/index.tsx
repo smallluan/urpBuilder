@@ -1,11 +1,12 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Button, Dialog, Empty, Input, Select, Table, Tag } from 'tdesign-react';
-import { DeleteIcon, LockOnIcon, RefreshIcon, SearchIcon, UserIcon } from 'tdesign-icons-react';
+import { Avatar, Button, Dialog, Empty, Input, Select, Table, Tag } from 'tdesign-react';
+import { DeleteIcon, LockOnIcon, RefreshIcon, SearchIcon } from 'tdesign-icons-react';
 import type { PrimaryTableCol } from 'tdesign-react/es/table/type';
 import { adminDeleteUserAccount, adminDisableUserAccount, adminEnableUserAccount, getAdminUserList } from '../../auth/api';
 import type { AdminUserDisablePayload, AdminUserListParams, AuthUser } from '../../auth/types';
 import { emitApiAlert } from '../../api/alertBus';
 import { useAuth } from '../../auth/context';
+import { resolveUserAvatar } from '../../utils/avatar';
 import './style.less';
 
 type UserRow = AuthUser & {
@@ -230,7 +231,16 @@ const UserAdminPage: React.FC = () => {
       minWidth: 220,
       cell: ({ row }) => (
         <div className="user-admin-page__user-cell">
-          <span className="user-admin-page__user-icon"><UserIcon size="small" /></span>
+          <Avatar
+            className="user-admin-page__user-icon"
+            image={resolveUserAvatar({
+              id: row.id,
+              username: row.username,
+              nickname: row.nickname,
+              avatar: row.avatar,
+            })}
+            size="24px"
+          />
           <div className="user-admin-page__user-main">
             <span className="user-admin-page__user-name">{row.displayName}</span>
             <span className="user-admin-page__user-sub">{row.username}</span>

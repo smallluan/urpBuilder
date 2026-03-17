@@ -6,9 +6,11 @@ import type {
   AdminUserListResult,
   AuthSession,
   AuthUser,
+  ChangePasswordPayload,
   LoginPayload,
   LogoutPayload,
   RegisterPayload,
+  UpdateProfilePayload,
 } from './types';
 
 export const loginByPassword = async (payload: LoginPayload) => {
@@ -33,6 +35,16 @@ export const logoutCurrentSession = async (payload?: LogoutPayload) => {
 
 export const deleteMyAccount = async () => {
   const response = await requestClient.delete<ApiResponse<null>>('/auth/me');
+  return response.data;
+};
+
+export const updateMyProfile = async (payload: UpdateProfilePayload) => {
+  const response = await requestClient.patch<ApiResponse<AuthUser>>('/auth/me', payload);
+  return response.data.data;
+};
+
+export const changeMyPassword = async (payload: ChangePasswordPayload) => {
+  const response = await requestClient.patch<ApiResponse<null>>('/auth/password', payload);
   return response.data;
 };
 

@@ -1,28 +1,20 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Button, Dialog, Empty, Input, List, Select, Table, Tabs, Tag } from 'tdesign-react';
-import { AddIcon, DeleteIcon, LockOnIcon, RefreshIcon, SearchIcon } from 'tdesign-icons-react';
-import type { PrimaryTableCol } from 'tdesign-react/es/table/type';
+import { Avatar, Button, Dialog, Empty, Input, List, Select, Tabs, Tag, Upload } from 'tdesign-react';
+import { AddIcon, DeleteIcon, RefreshIcon, SearchIcon } from 'tdesign-icons-react';
 import { emitApiAlert } from '../../api/alertBus';
 import { useAuth } from '../../auth/context';
-import { adminDeleteTeam, adminDisableTeam, adminEnableTeam, getAdminTeams } from '../../team/api';
 import { useTeam } from '../../team/context';
-import type { AdminTeamDisablePayload, AdminTeamListParams, TeamDetail, TeamMember, TeamSummary, TeamUserCandidate } from '../../team/types';
+import type { TeamDetail, TeamMember, TeamUserCandidate } from '../../team/types';
+import { fileToDataUrl, resolveTeamAvatar, resolveUserAvatar } from '../../utils/avatar';
 import './style.less';
 
 const { ListItem } = List;
 const { TabPanel } = Tabs;
 
-type DisablePresetUnit = 'hour' | 'day' | 'month';
-
 const roleMap = {
   owner: { text: '拥有者', theme: 'primary' as const },
   admin: { text: '管理员', theme: 'warning' as const },
   member: { text: '成员', theme: 'default' as const },
-};
-
-const getInitials = (value?: string) => {
-  const normalized = String(value || '').trim().replace(/\s+/g, '');
-  return (normalized.slice(0, 2) || 'T').toUpperCase();
 };
 
 const formatDateText = (value?: string) => {
@@ -36,43 +28,6 @@ const formatDateText = (value?: string) => {
   }
 
   return date.toLocaleDateString();
-};
-
-const resolveStatusMeta = (status?: string) => {
-  if (status === 'disabled') {
-    return { text: '已禁用', theme: 'warning' as const };
-  }
-  if (status === 'deleted') {
-    return { text: '已删除', theme: 'danger' as const };
-  }
-  return { text: '正常', theme: 'success' as const };
-};
-
-const buildDisabledUntil = (mode: 'duration' | 'until', value: string, unit: DisablePresetUnit) => {
-  if (mode === 'until') {
-    return value ? new Date(value).toISOString() : '';
-  }
-
-  const amount = Number(value);
-  if (!Number.isFinite(amount) || amount <= 0) {
-    return '';
-  }
-
-  const target = new Date();
-  if (unit === 'hour') {
-    target.setHours(target.getHours() + amount);
-  } else if (unit === 'day') {
-    target.setDate(target.getDate() + amount);
-  } else {
-    target.setMonth(target.getMonth() + amount);
-  }
-
-  return target.toISOString();
-};
-
-const isPlatformAdmin = (roles?: string[]) => {
-  const roleSet = new Set((roles ?? []).map((item) => String(item).toLowerCase()));
-  return roleSet.has('admin') || roleSet.has('super_admin') || roleSet.has('platform_admin') || roleSet.has('root');
 };
 
 const TeamsPage: React.FC = () => {
@@ -99,33 +54,13 @@ const TeamsPage: React.FC = () => {
   const [teamName, setTeamName] = useState('');
   const [teamCode, setTeamCode] = useState('');
   const [teamDescription, setTeamDescription] = useState('');
+  const [teamAvatar, setTeamAvatar] = useState('');
   const [inviteIdentity, setInviteIdentity] = useState('');
   const [inviteCandidates, setInviteCandidates] = useState<TeamUserCandidate[]>([]);
   const [selectedCandidate, setSelectedCandidate] = useState<TeamUserCandidate | null>(null);
   const [inviteRole, setInviteRole] = useState<'admin' | 'member'>('member');
   const [teamTab, setTeamTab] = useState<'joined' | 'created' | 'managed'>('joined');
   const [teamSearchKeyword, setTeamSearchKeyword] = useState('');
-  const [adminTeamQuery, setAdminTeamQuery] = useState('');
-  const [adminTeamStatus, setAdminTeamStatus] = useState<'all' | 'active' | 'disabled' | 'deleted'>('all');
-  const [adminTeamLoading, setAdminTeamLoading] = useState(false);
-  const [adminTeams, setAdminTeams] = useState<TeamSummary[]>([]);
-  const [adminTeamPage, setAdminTeamPage] = useState(1);
-  const [adminTeamPageSize, setAdminTeamPageSize] = useState(10);
-  const [adminTeamTotal, setAdminTeamTotal] = useState(0);
-  const [disableTeamTarget, setDisableTeamTarget] = useState<TeamSummary | null>(null);
-  const [disableTeamMode, setDisableTeamMode] = useState<'manual' | 'timed'>('manual');
-  const [disableTeamScheduleMode, setDisableTeamScheduleMode] = useState<'duration' | 'until'>('duration');
-  const [disableTeamDurationValue, setDisableTeamDurationValue] = useState('1');
-  const [disableTeamDurationUnit, setDisableTeamDurationUnit] = useState<DisablePresetUnit>('day');
-  const [disableTeamUntil, setDisableTeamUntil] = useState('');
-  const [disableTeamReason, setDisableTeamReason] = useState('');
-  const [disablingTeam, setDisablingTeam] = useState(false);
-  const [enableTeamTarget, setEnableTeamTarget] = useState<TeamSummary | null>(null);
-  const [enablingTeam, setEnablingTeam] = useState(false);
-  const [deleteTeamTarget, setDeleteTeamTarget] = useState<TeamSummary | null>(null);
-  const [deletingTeam, setDeletingTeam] = useState(false);
-
-  const canGovernTeams = isPlatformAdmin(user?.roles);
 
   useEffect(() => {
     if (!currentTeamId) {
@@ -203,6 +138,8 @@ const TeamsPage: React.FC = () => {
         name,
         code: teamCode.trim() || undefined,
         description: teamDescription.trim() || undefined,
+        avatar: teamAvatar || undefined,
+        avatarSource: teamAvatar ? 'upload' : undefined,
       });
       setDetail(created);
       emitApiAlert('创建成功', `团队 ${created.name} 已创建`, 'success');
@@ -210,8 +147,39 @@ const TeamsPage: React.FC = () => {
       setTeamName('');
       setTeamCode('');
       setTeamDescription('');
+      setTeamAvatar('');
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleUploadTeamAvatar = async (files: any[]) => {
+    const file = files?.[0]?.raw as File | undefined;
+    if (!file) {
+      return;
+    }
+
+    if (!file.type.startsWith('image/')) {
+      emitApiAlert('上传失败', '仅支持图片文件');
+      return;
+    }
+
+    const maxSize = 2 * 1024 * 1024;
+    if (file.size > maxSize) {
+      emitApiAlert('上传失败', '头像大小不能超过 2MB');
+      return;
+    }
+
+    try {
+      const avatarData = await fileToDataUrl(file);
+      if (!avatarData) {
+        emitApiAlert('上传失败', '头像读取失败，请重试');
+        return;
+      }
+      setTeamAvatar(avatarData);
+      emitApiAlert('上传成功', '团队头像已设置', 'success');
+    } catch {
+      emitApiAlert('上传失败', '头像读取失败，请重试');
     }
   };
 
@@ -274,205 +242,6 @@ const TeamsPage: React.FC = () => {
       memberCount: members.filter((item) => item.role === 'member').length,
     };
   }, [detail?.members]);
-
-  const fetchAdminTeams = React.useCallback(async (params: { page: number; pageSize: number; keyword?: string }) => {
-    if (!canGovernTeams) {
-      setAdminTeams([]);
-      setAdminTeamTotal(0);
-      return;
-    }
-
-    setAdminTeamLoading(true);
-    try {
-      const requestParams: AdminTeamListParams = {
-        ...params,
-        status: adminTeamStatus,
-      };
-      const result = await getAdminTeams(requestParams);
-      setAdminTeams(Array.isArray(result?.list) ? result.list : []);
-      setAdminTeamTotal(typeof result?.total === 'number' ? result.total : 0);
-    } catch {
-      setAdminTeams([]);
-      setAdminTeamTotal(0);
-    } finally {
-      setAdminTeamLoading(false);
-    }
-  }, [adminTeamStatus, canGovernTeams]);
-
-  useEffect(() => {
-    fetchAdminTeams({
-      page: adminTeamPage,
-      pageSize: adminTeamPageSize,
-      keyword: adminTeamQuery.trim() || undefined,
-    });
-  }, [fetchAdminTeams, adminTeamPage, adminTeamPageSize, adminTeamStatus]);
-
-  const handleSearchAdminTeams = () => {
-    setAdminTeamPage(1);
-    fetchAdminTeams({
-      page: 1,
-      pageSize: adminTeamPageSize,
-      keyword: adminTeamQuery.trim() || undefined,
-    });
-  };
-
-  const resetDisableTeamForm = () => {
-    setDisableTeamMode('manual');
-    setDisableTeamScheduleMode('duration');
-    setDisableTeamDurationValue('1');
-    setDisableTeamDurationUnit('day');
-    setDisableTeamUntil('');
-    setDisableTeamReason('');
-  };
-
-  const handleConfirmDisableTeam = async () => {
-    if (!disableTeamTarget?.id || disablingTeam) {
-      return;
-    }
-
-    const payload: AdminTeamDisablePayload = {
-      mode: disableTeamMode,
-      reason: disableTeamReason.trim() || undefined,
-    };
-
-    if (disableTeamMode === 'timed') {
-      const disabledUntil = buildDisabledUntil(
-        disableTeamScheduleMode,
-        disableTeamScheduleMode === 'until' ? disableTeamUntil : disableTeamDurationValue,
-        disableTeamDurationUnit,
-      );
-      if (!disabledUntil) {
-        emitApiAlert('禁用失败', '请填写有效的禁用时长或截止时间');
-        return;
-      }
-      payload.disabledUntil = disabledUntil;
-    }
-
-    setDisablingTeam(true);
-    try {
-      await adminDisableTeam(disableTeamTarget.id, payload);
-      emitApiAlert('操作成功', `团队 ${disableTeamTarget.name} 已禁用`, 'success');
-      setDisableTeamTarget(null);
-      resetDisableTeamForm();
-      fetchAdminTeams({ page: adminTeamPage, pageSize: adminTeamPageSize, keyword: adminTeamQuery.trim() || undefined });
-    } finally {
-      setDisablingTeam(false);
-    }
-  };
-
-  const handleConfirmEnableTeam = async () => {
-    if (!enableTeamTarget?.id || enablingTeam) {
-      return;
-    }
-
-    setEnablingTeam(true);
-    try {
-      await adminEnableTeam(enableTeamTarget.id);
-      emitApiAlert('操作成功', `团队 ${enableTeamTarget.name} 已恢复`, 'success');
-      setEnableTeamTarget(null);
-      fetchAdminTeams({ page: adminTeamPage, pageSize: adminTeamPageSize, keyword: adminTeamQuery.trim() || undefined });
-    } finally {
-      setEnablingTeam(false);
-    }
-  };
-
-  const handleConfirmDeleteTeam = async () => {
-    if (!deleteTeamTarget?.id || deletingTeam) {
-      return;
-    }
-
-    setDeletingTeam(true);
-    try {
-      await adminDeleteTeam(deleteTeamTarget.id);
-      emitApiAlert('操作成功', `团队 ${deleteTeamTarget.name} 已删除`, 'success');
-      setDeleteTeamTarget(null);
-      fetchAdminTeams({ page: adminTeamPage, pageSize: adminTeamPageSize, keyword: adminTeamQuery.trim() || undefined });
-    } finally {
-      setDeletingTeam(false);
-    }
-  };
-
-  const adminTeamColumns = useMemo<PrimaryTableCol<TeamSummary>[]>(() => [
-    {
-      colKey: 'name',
-      title: '团队',
-      minWidth: 220,
-      cell: ({ row }) => (
-        <div className="teams-page__govern-team-cell">
-          <span className="teams-page__govern-team-avatar">{getInitials(row.name)}</span>
-          <div className="teams-page__govern-team-main">
-            <span className="teams-page__govern-team-name">{row.name}</span>
-            <span className="teams-page__govern-team-sub">{row.code || row.id}</span>
-          </div>
-        </div>
-      ),
-    },
-    {
-      colKey: 'ownerName',
-      title: '拥有者',
-      minWidth: 160,
-      cell: ({ row }) => row.ownerName || '-',
-    },
-    {
-      colKey: 'memberCount',
-      title: '成员数',
-      width: 100,
-    },
-    {
-      colKey: 'status',
-      title: '状态',
-      width: 120,
-      cell: ({ row }) => {
-        const status = resolveStatusMeta(row.status);
-        return <Tag size="small" theme={status.theme} variant="light">{status.text}</Tag>;
-      },
-    },
-    {
-      colKey: 'disableInfo',
-      title: '禁用信息',
-      minWidth: 180,
-      cell: ({ row }) => {
-        if (row.status !== 'disabled') {
-          return '-';
-        }
-        if (row.disableType === 'timed' && row.disabledUntil) {
-          return `定时至 ${formatDateText(row.disabledUntil)}`;
-        }
-        return '手动禁用';
-      },
-    },
-    {
-      colKey: 'operations',
-      title: '操作',
-      width: 320,
-      fixed: 'right',
-      cell: ({ row }) => (
-        <div className="teams-page__govern-action-row">
-          {row.status === 'disabled' ? (
-            <Button size="small" theme="success" variant="outline" onClick={() => setEnableTeamTarget(row)}>解禁</Button>
-          ) : (
-            <Button size="small" theme="warning" variant="outline" icon={<LockOnIcon />} onClick={() => setDisableTeamTarget(row)}>禁用</Button>
-          )}
-          <Button size="small" theme="danger" variant="outline" icon={<DeleteIcon />} disabled={row.status === 'deleted'} onClick={() => setDeleteTeamTarget(row)}>
-            删除
-          </Button>
-        </div>
-      ),
-    },
-  ], []);
-
-  const adminTeamPagination = useMemo(() => ({
-    current: adminTeamPage,
-    pageSize: adminTeamPageSize,
-    total: adminTeamTotal,
-    showJumper: true,
-    showPageSize: true,
-    onCurrentChange: (nextPage: number) => setAdminTeamPage(nextPage),
-    onPageSizeChange: (nextPageSize: number) => {
-      setAdminTeamPage(1);
-      setAdminTeamPageSize(nextPageSize);
-    },
-  }), [adminTeamPage, adminTeamPageSize, adminTeamTotal]);
 
   const filteredTeams = useMemo(() => {
     const keyword = teamSearchKeyword.trim().toLowerCase();
@@ -562,7 +331,7 @@ const TeamsPage: React.FC = () => {
                       className={`teams-page__team-card${active ? ' is-active' : ''}`}
                       onClick={() => selectTeam(team.id)}
                     >
-                      <span className="teams-page__team-card-avatar">{getInitials(team.name)}</span>
+                      <Avatar className="teams-page__team-card-avatar" image={resolveTeamAvatar({ id: team.id, name: team.name, code: team.code, avatar: team.avatar })} size="32px" />
                       <div className="teams-page__team-card-body">
                         <div className="teams-page__team-card-row">
                           <span className="teams-page__team-card-title">{team.name}</span>
@@ -588,7 +357,7 @@ const TeamsPage: React.FC = () => {
             <>
               <section className="teams-page__hero">
                 <div className="teams-page__hero-main">
-                  <span className="teams-page__hero-avatar">{getInitials(detail.name)}</span>
+                  <Avatar className="teams-page__hero-avatar" image={resolveTeamAvatar({ id: detail.id, name: detail.name, code: detail.code, avatar: detail.avatar })} size="42px" />
                   <div className="teams-page__hero-copy">
                     <div className="teams-page__hero-title-row">
                       <h3>{detail.name}</h3>
@@ -643,7 +412,16 @@ const TeamsPage: React.FC = () => {
                       return (
                         <article key={member.userId} className="teams-page__member-card">
                           <div className="teams-page__member-card-head">
-                            <span className="teams-page__member-avatar">{getInitials(member.nickname || member.username)}</span>
+                            <Avatar
+                              className="teams-page__member-avatar"
+                              image={resolveUserAvatar({
+                                id: member.userId,
+                                username: member.username,
+                                nickname: member.nickname,
+                                avatar: member.avatar,
+                              })}
+                              size="34px"
+                            />
                             <div className="teams-page__member-main">
                               <div className="teams-page__member-name-row">
                                 <span className="teams-page__member-name">{member.nickname || member.username}</span>
@@ -675,54 +453,6 @@ const TeamsPage: React.FC = () => {
                 ) : null}
               </section>
 
-              {canGovernTeams ? (
-                <section className="teams-page__section">
-                  <div className="teams-page__section-header">
-                    <div>
-                      <div className="teams-page__section-title">团队治理</div>
-                      <div className="teams-page__section-subtitle">平台管理员可禁用、解禁或删除团队</div>
-                    </div>
-                  </div>
-                  <div className="teams-page__govern-toolbar">
-                    <Input
-                      value={adminTeamQuery}
-                      placeholder="按团队名称或 Key 搜索"
-                      suffix={<SearchIcon />}
-                      clearable
-                      onChange={(value) => setAdminTeamQuery(String(value ?? ''))}
-                      onEnter={handleSearchAdminTeams}
-                    />
-                    <Select
-                      value={adminTeamStatus}
-                      style={{ width: 140 }}
-                      options={[
-                        { label: '全部状态', value: 'all' },
-                        { label: '正常', value: 'active' },
-                        { label: '已禁用', value: 'disabled' },
-                        { label: '已删除', value: 'deleted' },
-                      ]}
-                      onChange={(value) => {
-                        const nextStatus = value === 'active' || value === 'disabled' || value === 'deleted' ? value : 'all';
-                        setAdminTeamPage(1);
-                        setAdminTeamStatus(nextStatus);
-                      }}
-                    />
-                    <Button size="small" theme="default" variant="outline" icon={<SearchIcon />} onClick={handleSearchAdminTeams}>查询</Button>
-                    <Button size="small" theme="default" variant="outline" icon={<RefreshIcon />} onClick={() => fetchAdminTeams({ page: adminTeamPage, pageSize: adminTeamPageSize, keyword: adminTeamQuery.trim() || undefined })}>刷新</Button>
-                  </div>
-                  <div className="teams-page__govern-table-wrap">
-                    <Table
-                      rowKey="id"
-                      columns={adminTeamColumns}
-                      data={adminTeams}
-                      loading={adminTeamLoading}
-                      pagination={adminTeamPagination}
-                      style={{ minWidth: '1100px' }}
-                    />
-                  </div>
-                </section>
-              ) : null}
-
             </>
           ) : (
             <section className="teams-page__empty-panel">
@@ -737,10 +467,28 @@ const TeamsPage: React.FC = () => {
         header="创建团队"
         confirmBtn={{ content: '创建', loading: submitting }}
         cancelBtn={{ content: '取消', disabled: submitting }}
-        onClose={() => setCreateVisible(false)}
+        onClose={() => {
+          setCreateVisible(false);
+          setTeamAvatar('');
+        }}
         onConfirm={handleCreateTeam}
       >
         <div className="teams-page__form">
+          <div className="teams-page__team-avatar-row">
+            <Avatar className="teams-page__create-team-avatar" image={teamAvatar || resolveTeamAvatar({ name: teamName || 'new-team', code: teamCode })} size="52px" />
+            <Upload
+              autoUpload={false}
+              max={1}
+              accept="image/*"
+              showUploadProgress={false}
+              onSelectChange={handleUploadTeamAvatar}
+            >
+              <Button size="small" variant="outline" theme="default">上传团队头像</Button>
+            </Upload>
+            {teamAvatar ? (
+              <Button size="small" variant="text" theme="default" onClick={() => setTeamAvatar('')}>使用默认头像</Button>
+            ) : null}
+          </div>
           <Input value={teamName} placeholder="团队名称" onChange={(value) => setTeamName(String(value ?? ''))} />
           <Input value={teamCode} placeholder="团队编码（可选）" onChange={(value) => setTeamCode(String(value ?? ''))} />
           <Input value={teamDescription} placeholder="团队描述（可选）" onChange={(value) => setTeamDescription(String(value ?? ''))} />
@@ -804,84 +552,6 @@ const TeamsPage: React.FC = () => {
         </div>
       </Dialog>
 
-      <Dialog
-        visible={Boolean(disableTeamTarget)}
-        header="禁用团队"
-        confirmBtn={{ content: '确认禁用', theme: 'warning', loading: disablingTeam }}
-        cancelBtn={{ content: '取消', disabled: disablingTeam }}
-        onClose={() => {
-          setDisableTeamTarget(null);
-          resetDisableTeamForm();
-        }}
-        onConfirm={handleConfirmDisableTeam}
-      >
-        <div className="teams-page__form">
-          <Select
-            value={disableTeamMode}
-            options={[
-              { label: '手动禁用', value: 'manual' },
-              { label: '定时禁用', value: 'timed' },
-            ]}
-            onChange={(value) => setDisableTeamMode(value === 'timed' ? 'timed' : 'manual')}
-          />
-          {disableTeamMode === 'timed' ? (
-            <>
-              <Select
-                value={disableTeamScheduleMode}
-                options={[
-                  { label: '按时长', value: 'duration' },
-                  { label: '截至指定时间', value: 'until' },
-                ]}
-                onChange={(value) => setDisableTeamScheduleMode(value === 'until' ? 'until' : 'duration')}
-              />
-              {disableTeamScheduleMode === 'duration' ? (
-                <div className="teams-page__duration-row">
-                  <Input value={disableTeamDurationValue} onChange={(value) => setDisableTeamDurationValue(String(value ?? ''))} />
-                  <Select
-                    value={disableTeamDurationUnit}
-                    options={[
-                      { label: '小时', value: 'hour' },
-                      { label: '天', value: 'day' },
-                      { label: '月', value: 'month' },
-                    ]}
-                    onChange={(value) => setDisableTeamDurationUnit(value === 'hour' || value === 'month' ? value : 'day')}
-                  />
-                </div>
-              ) : (
-                <input
-                  className="teams-page__native-datetime"
-                  type="datetime-local"
-                  value={disableTeamUntil}
-                  onChange={(event) => setDisableTeamUntil(event.target.value)}
-                />
-              )}
-            </>
-          ) : null}
-          <Input value={disableTeamReason} placeholder="禁用原因（可选）" onChange={(value) => setDisableTeamReason(String(value ?? ''))} />
-        </div>
-      </Dialog>
-
-      <Dialog
-        visible={Boolean(enableTeamTarget)}
-        header="确认解禁团队"
-        confirmBtn={{ content: '确认解禁', theme: 'success', loading: enablingTeam }}
-        cancelBtn={{ content: '取消', disabled: enablingTeam }}
-        onClose={() => setEnableTeamTarget(null)}
-        onConfirm={handleConfirmEnableTeam}
-      >
-        <div>确认恢复团队“{enableTeamTarget?.name || '-'}”吗？</div>
-      </Dialog>
-
-      <Dialog
-        visible={Boolean(deleteTeamTarget)}
-        header="确认删除团队"
-        confirmBtn={{ content: '确认删除', theme: 'danger', loading: deletingTeam }}
-        cancelBtn={{ content: '取消', disabled: deletingTeam }}
-        onClose={() => setDeleteTeamTarget(null)}
-        onConfirm={handleConfirmDeleteTeam}
-      >
-        <div>确认删除团队“{deleteTeamTarget?.name || '-'}”吗？该操作不可恢复。</div>
-      </Dialog>
     </div>
   );
 };

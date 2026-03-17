@@ -1,5 +1,5 @@
 import React from 'react';
-import { Dropdown, Layout, Menu, Select, Dialog } from 'tdesign-react';
+import { Avatar, Dropdown, Layout, Menu, Select, Dialog } from 'tdesign-react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import {
   HomeIcon,
@@ -13,6 +13,7 @@ import {
 } from 'tdesign-icons-react';
 import { useAuth } from '../../auth/context';
 import { useTeam } from '../../team/context';
+import { resolveUserAvatar } from '../../utils/avatar';
 import GlobalNoticeCenter from '../GlobalNoticeCenter';
 import './style.less';
 
@@ -28,7 +29,12 @@ const AppLayout: React.FC = () => {
   const [deletingAccount, setDeletingAccount] = React.useState(false);
 
   const displayName = user?.nickname || user?.username || '未登录';
-  const userInitial = displayName.slice(0, 1).toUpperCase();
+  const userAvatar = resolveUserAvatar({
+    id: user?.id,
+    username: user?.username,
+    nickname: user?.nickname,
+    avatar: user?.avatar,
+  });
   const roleSet = new Set((user?.roles ?? []).map((item) => String(item).toLowerCase()));
   const isPlatformAdmin = roleSet.has('admin') || roleSet.has('super_admin') || roleSet.has('platform_admin') || roleSet.has('root');
   const userMenuOptions = [
@@ -89,11 +95,28 @@ const AppLayout: React.FC = () => {
       icon: <UserIcon />,
       title: '团队协作',
     },
+    {
+      key: '/profile',
+      icon: <UserIcon />,
+      title: '个人信息',
+    },
     ...(isPlatformAdmin
       ? [{
-        key: '/user-admin',
+        key: 'admin',
         icon: <SettingIcon />,
-        title: '用户管理',
+        title: '管理员',
+        children: [
+          {
+            key: '/user-admin',
+            icon: <UserIcon />,
+            title: '用户管理',
+          },
+          {
+            key: '/team-admin',
+            icon: <SettingIcon />,
+            title: '团队管理',
+          },
+        ],
       }]
       : []),
   ];
@@ -185,7 +208,7 @@ const AppLayout: React.FC = () => {
             popupProps={{ overlayClassName: 'header-user-menu' }}
           >
             <button type="button" className="header-user-trigger">
-              <span className="header-user-trigger__avatar">{userInitial}</span>
+              <Avatar className="header-user-trigger__avatar" image={userAvatar} size="24px" shape="round" />
               <span className="header-user-trigger__name">{displayName}</span>
             </button>
           </Dropdown>
@@ -197,7 +220,7 @@ const AppLayout: React.FC = () => {
             value={location.pathname}
             onChange={handleMenuClick}
             className="sidebar-menu"
-            defaultExpanded={['build', 'data']}
+            defaultExpanded={['build', 'data', 'admin']}
           >
             {renderMenuItems(menuItems)}
           </Menu>

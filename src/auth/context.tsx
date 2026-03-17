@@ -1,8 +1,8 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
-import { deleteMyAccount, getCurrentUser, loginByPassword, logoutCurrentSession, registerByPassword } from './api';
+import { changeMyPassword, deleteMyAccount, getCurrentUser, loginByPassword, logoutCurrentSession, registerByPassword, updateMyProfile } from './api';
 import { onUnauthorized } from './events';
 import { clearAuthSession, getAccessToken, getRefreshToken, migrateLegacyToken, persistAuthSession } from './storage';
-import type { AuthContextValue, AuthUser, LoginPayload, RegisterPayload } from './types';
+import type { AuthContextValue, AuthUser, ChangePasswordPayload, LoginPayload, RegisterPayload, UpdateProfilePayload } from './types';
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
@@ -87,6 +87,16 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
     }
   };
 
+  const updateProfile = async (payload: UpdateProfilePayload) => {
+    const nextUser = await updateMyProfile(payload);
+    setUser(nextUser);
+    return nextUser;
+  };
+
+  const changePassword = async (payload: ChangePasswordPayload) => {
+    await changeMyPassword(payload);
+  };
+
   const logout = async () => {
     try {
       const refreshToken = getRefreshToken();
@@ -111,6 +121,8 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
     user,
     login,
     register,
+    updateProfile,
+    changePassword,
     logout,
     deleteAccount,
     refreshCurrentUser,

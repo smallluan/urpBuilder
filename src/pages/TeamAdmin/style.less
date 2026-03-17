@@ -1,4 +1,4 @@
-.user-admin-page {
+.team-admin-page {
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -13,49 +13,53 @@
   &__table-wrap {
     border: 1px solid #edf1f5;
     border-radius: 10px;
-    background: #fff;
     overflow: auto;
-  }
-
-  &__table {
     background: #fff;
   }
 
-  &__user-cell {
+  &__team-cell {
     display: flex;
     align-items: center;
     gap: 8px;
   }
 
-  &__user-icon {
-    width: 24px;
-    height: 24px;
-    border-radius: 999px;
+  &__team-avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
     overflow: hidden;
+    flex: 0 0 auto;
   }
 
-  &__user-main {
+  &__team-main {
     min-width: 0;
     display: flex;
     flex-direction: column;
     gap: 2px;
   }
 
-  &__user-name {
+  &__team-name {
     font-size: 13px;
     font-weight: 600;
     color: #111827;
   }
 
-  &__user-sub {
+  &__team-sub {
     font-size: 11px;
     color: #8b95a7;
   }
 
-  &__role-list {
-    display: flex;
-    flex-wrap: wrap;
+  &__owner-cell {
+    display: inline-flex;
+    align-items: center;
     gap: 6px;
+  }
+
+  &__owner-icon {
+    width: 22px;
+    height: 22px;
+    border-radius: 999px;
+    overflow: hidden;
   }
 
   &__action-row {
@@ -96,5 +100,12 @@
 
   &--empty {
     padding: 24px 0;
+  }
+
+  @media (max-width: 960px) {
+    &__toolbar,
+    &__duration-row {
+      grid-template-columns: 1fr;
+    }
   }
 }

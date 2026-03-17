@@ -40,6 +40,21 @@ export interface RegisterPayload {
   username: string;
   password: string;
   nickname?: string;
+  avatar?: string;
+  avatarSource?: 'preset' | 'upload';
+  avatarSeed?: string;
+}
+
+export interface UpdateProfilePayload {
+  nickname?: string;
+  avatar?: string;
+  avatarSource?: 'preset' | 'upload';
+  avatarSeed?: string;
+}
+
+export interface ChangePasswordPayload {
+  currentPassword: string;
+  newPassword: string;
 }
 
 export interface AuthSession {
@@ -60,6 +75,8 @@ export interface AuthContextValue {
   user: AuthUser | null;
   login: (payload: LoginPayload) => Promise<AuthUser>;
   register: (payload: RegisterPayload) => Promise<AuthUser>;
+  updateProfile: (payload: UpdateProfilePayload) => Promise<AuthUser>;
+  changePassword: (payload: ChangePasswordPayload) => Promise<void>;
   logout: () => Promise<void>;
   deleteAccount: () => Promise<void>;
   refreshCurrentUser: () => Promise<AuthUser | null>;
