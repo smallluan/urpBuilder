@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../auth/context';
 import {
   createTeam as createTeamRequest,
@@ -13,7 +13,13 @@ import {
   searchTeamCandidates,
   setCurrentTeam as setCurrentTeamRequest,
 } from './api';
-import { getStoredCurrentTeamId, persistCurrentTeamId } from './storage';
+import {
+  getStoredCurrentTeamId,
+  getStoredWorkspaceMode,
+  persistCurrentTeamId,
+  persistWorkspaceMode,
+  type WorkspaceMode,
+} from './storage';
 import type {
   CreateTeamPayload,
   InviteTeamMemberPayload,
@@ -43,12 +49,20 @@ export const TeamProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
   const [loading, setLoading] = useState(false);
   const [teams, setTeams] = useState<TeamSummary[]>([]);
   const [currentTeamId, setCurrentTeamId] = useState<string | null>(null);
+  const [workspaceMode, setWorkspaceModeState] = useState<WorkspaceMode>(() => getStoredWorkspaceMode());
+
+  const setWorkspaceMode = useCallback((mode: WorkspaceMode) => {
+    setWorkspaceModeState(mode);
+    persistWorkspaceMode(mode);
+  }, []);
 
   const refreshTeams = async () => {
     if (!isAuthenticated || !user?.id) {
       setTeams([]);
       setCurrentTeamId(null);
       persistCurrentTeamId(null);
+      setWorkspaceModeState('personal');
+      persistWorkspaceMode('personal');
       return;
     }
 
@@ -59,6 +73,15 @@ export const TeamProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
       const nextCurrentTeamId = resolveNextCurrentTeamId(nextTeams, currentTeamId);
       setCurrentTeamId(nextCurrentTeamId);
       persistCurrentTeamId(nextCurrentTeamId);
+
+      if (!nextTeams.length) {
+        setWorkspaceModeState('personal');
+        persistWorkspaceMode('personal');
+      } else {
+        const storedMode = getStoredWorkspaceMode();
+        const nextMode: WorkspaceMode = storedMode === 'team' ? 'team' : 'personal';
+        setWorkspaceModeState(nextMode);
+      }
     } finally {
       setLoading(false);
       setInitialized(true);
@@ -74,6 +97,8 @@ export const TeamProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
       setTeams([]);
       setCurrentTeamId(null);
       persistCurrentTeamId(null);
+      setWorkspaceModeState('personal');
+      persistWorkspaceMode('personal');
       setInitialized(true);
       return;
     }
@@ -85,6 +110,8 @@ export const TeamProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
     await setCurrentTeamRequest(teamId);
     setCurrentTeamId(teamId);
     persistCurrentTeamId(teamId);
+    setWorkspaceModeState('team');
+    persistWorkspaceMode('team');
   };
 
   const getTeamDetail = async (teamId: string) => getTeamDetailRequest(teamId);
@@ -95,6 +122,8 @@ export const TeamProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
     setTeams(nextTeams);
     setCurrentTeamId(team.id);
     persistCurrentTeamId(team.id);
+    setWorkspaceModeState('team');
+    persistWorkspaceMode('team');
     return team;
   };
 
@@ -141,6 +170,8 @@ export const TeamProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
     teams,
     currentTeamId,
     currentTeam,
+    workspaceMode,
+    setWorkspaceMode,
     selectTeam,
     refreshTeams,
     getTeamDetail,
@@ -152,7 +183,7 @@ export const TeamProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
     getMyInvitations,
     getMySentInvitations,
     respondInvitation,
-  }), [initialized, loading, teams, currentTeamId, currentTeam]);
+  }), [initialized, loading, teams, currentTeamId, currentTeam, workspaceMode, setWorkspaceMode]);
 
   return <TeamContext.Provider value={value}>{children}</TeamContext.Provider>;
 };

@@ -116,16 +116,14 @@ const resolveContributorName = (item: ResourceContributor) => item.nickname || i
 
 const BuildComponent: React.FC = () => {
   const { user } = useAuth();
-  const { initialized: teamInitialized, currentTeamId, currentTeam } = useTeam();
+  const { initialized: teamInitialized, currentTeamId, currentTeam, workspaceMode } = useTeam();
   const buildComponentFilters = useResourceFiltersStore((state) => state.buildComponent);
   const setBuildComponentFilters = useResourceFiltersStore((state) => state.setBuildComponentFilters);
 
   const query = buildComponentFilters.query;
-  const scope = buildComponentFilters.scope;
   const statusFilter = buildComponentFilters.statusFilter;
   const visibilityFilter = buildComponentFilters.visibilityFilter;
   const pageSize = buildComponentFilters.pageSize;
-  const scopeTouched = buildComponentFilters.scopeTouched;
 
   const [loading, setLoading] = useState(false);
   const [tableData, setTableData] = useState<ComponentTemplateRow[]>([]);
@@ -143,26 +141,8 @@ const BuildComponent: React.FC = () => {
       return;
     }
 
-    if (currentTeamId && !scopeTouched && scope !== 'team') {
-      setBuildComponentFilters({ scope: 'team' });
-      setPage(1);
-      return;
-    }
-
-    if (!currentTeamId && scope === 'team') {
-      setBuildComponentFilters({ scope: 'mine' });
-      setPage(1);
-      return;
-    }
-  }, [teamInitialized, currentTeamId, scope, scopeTouched, setBuildComponentFilters]);
-
-  useEffect(() => {
-    if (!currentTeamId || scope !== 'team') {
-      return;
-    }
-
     setPage(1);
-  }, [currentTeamId, scope]);
+  }, [teamInitialized, workspaceMode, currentTeamId]);
 
   const fetchPageBaseList = useCallback(async (params: { page: number; pageSize: number; pageName?: string }) => {
     setLoading(true);
@@ -173,11 +153,15 @@ const BuildComponent: React.FC = () => {
         visibility: visibilityFilter === 'all' ? undefined : visibilityFilter,
       };
 
-      if (scope === 'mine') {
+      if (workspaceMode === 'personal') {
         requestParams.mine = true;
-      } else if (scope === 'team' && currentTeamId) {
+      } else if (currentTeamId) {
         requestParams.ownerType = 'team';
         requestParams.ownerTeamId = currentTeamId;
+      } else {
+        setTableData([]);
+        setTotal(0);
+        return;
       }
 
       const result = await getComponentBaseList({
@@ -212,7 +196,7 @@ const BuildComponent: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [currentTeamId, scope, statusFilter, visibilityFilter]);
+  }, [currentTeamId, workspaceMode, statusFilter, visibilityFilter]);
 
   useEffect(() => {
     if (!teamInitialized) {
@@ -224,7 +208,7 @@ const BuildComponent: React.FC = () => {
       pageSize,
       pageName: query.trim() || undefined,
     });
-  }, [fetchPageBaseList, page, pageSize, scope, statusFilter, visibilityFilter, teamInitialized]);
+  }, [fetchPageBaseList, page, pageSize, statusFilter, visibilityFilter, teamInitialized]);
 
   const canManageRow = (row: ComponentTemplateRow) => {
     if (row.ownerType === '团队') {
@@ -489,25 +473,6 @@ const BuildComponent: React.FC = () => {
 
         <div className="toolbar-row toolbar-row--filters">
           <div className="filter-area">
-          <Select
-            value={scope}
-            options={[
-              { label: '我的组件', value: 'mine' },
-              { label: currentTeam ? `当前团队（${currentTeam.name}）` : '当前团队', value: 'team' },
-              { label: '全部组件', value: 'all' },
-            ]}
-            style={{ width: 140 }}
-            onChange={(value) => {
-              if (value === 'team' && !currentTeamId) {
-                emitApiAlert('筛选失败', '当前未选择团队');
-                return;
-              }
-
-              const nextScope = value === 'all' ? 'all' : value === 'team' ? 'team' : 'mine';
-              setPage(1);
-              setBuildComponentFilters({ scope: nextScope, scopeTouched: true });
-            }}
-          />
           <Select
             value={statusFilter}
             options={[

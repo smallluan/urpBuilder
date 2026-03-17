@@ -118,16 +118,14 @@ const resolveContributorName = (item: ResourceContributor) => item.nickname || i
 
 const BuildPage: React.FC = () => {
   const { user } = useAuth();
-  const { initialized: teamInitialized, currentTeamId, currentTeam } = useTeam();
+  const { initialized: teamInitialized, currentTeamId, currentTeam, workspaceMode } = useTeam();
   const buildPageFilters = useResourceFiltersStore((state) => state.buildPage);
   const setBuildPageFilters = useResourceFiltersStore((state) => state.setBuildPageFilters);
 
   const query = buildPageFilters.query;
-  const scope = buildPageFilters.scope;
   const statusFilter = buildPageFilters.statusFilter;
   const visibilityFilter = buildPageFilters.visibilityFilter;
   const pageSize = buildPageFilters.pageSize;
-  const scopeTouched = buildPageFilters.scopeTouched;
 
   const [loading, setLoading] = useState(false);
   const [tableData, setTableData] = useState<PageTemplateRow[]>([]);
@@ -145,26 +143,8 @@ const BuildPage: React.FC = () => {
       return;
     }
 
-    if (currentTeamId && !scopeTouched && scope !== 'team') {
-      setBuildPageFilters({ scope: 'team' });
-      setPage(1);
-      return;
-    }
-
-    if (!currentTeamId && scope === 'team') {
-      setBuildPageFilters({ scope: 'mine' });
-      setPage(1);
-      return;
-    }
-  }, [teamInitialized, currentTeamId, scope, scopeTouched, setBuildPageFilters]);
-
-  useEffect(() => {
-    if (!currentTeamId || scope !== 'team') {
-      return;
-    }
-
     setPage(1);
-  }, [currentTeamId, scope]);
+  }, [teamInitialized, workspaceMode, currentTeamId]);
 
   const fetchPageList = useCallback(async (params: { page: number; pageSize: number; pageName?: string }) => {
     setLoading(true);
@@ -175,11 +155,15 @@ const BuildPage: React.FC = () => {
         visibility: visibilityFilter === 'all' ? undefined : visibilityFilter,
       };
 
-      if (scope === 'mine') {
+      if (workspaceMode === 'personal') {
         requestParams.mine = true;
-      } else if (scope === 'team' && currentTeamId) {
+      } else if (currentTeamId) {
         requestParams.ownerType = 'team';
         requestParams.ownerTeamId = currentTeamId;
+      } else {
+        setTableData([]);
+        setTotal(0);
+        return;
       }
 
       const result = await getPageTemplateBaseList({
@@ -216,7 +200,7 @@ const BuildPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [currentTeamId, scope, statusFilter, visibilityFilter]);
+  }, [currentTeamId, workspaceMode, statusFilter, visibilityFilter]);
 
   useEffect(() => {
     if (!teamInitialized) {
@@ -228,7 +212,7 @@ const BuildPage: React.FC = () => {
       pageSize,
       pageName: query.trim() || undefined,
     });
-  }, [fetchPageList, page, pageSize, scope, statusFilter, visibilityFilter, teamInitialized]);
+  }, [fetchPageList, page, pageSize, statusFilter, visibilityFilter, teamInitialized]);
 
   const canManageRow = (row: PageTemplateRow) => {
     if (row.ownerType === '团队') {
@@ -495,25 +479,6 @@ const BuildPage: React.FC = () => {
 
         <div className="toolbar-row toolbar-row--filters">
           <div className="filter-area">
-          <Select
-            value={scope}
-            options={[
-              { label: '我的页面', value: 'mine' },
-              { label: currentTeam ? `当前团队（${currentTeam.name}）` : '当前团队', value: 'team' },
-              { label: '全部页面', value: 'all' },
-            ]}
-            style={{ width: 140 }}
-            onChange={(value) => {
-              if (value === 'team' && !currentTeamId) {
-                emitApiAlert('筛选失败', '当前未选择团队');
-                return;
-              }
-
-              const nextScope = value === 'all' ? 'all' : value === 'team' ? 'team' : 'mine';
-              setPage(1);
-              setBuildPageFilters({ scope: nextScope, scopeTouched: true });
-            }}
-          />
           <Select
             value={statusFilter}
             options={[

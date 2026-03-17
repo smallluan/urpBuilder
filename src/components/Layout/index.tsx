@@ -1,10 +1,11 @@
 import React from 'react';
-import { Avatar, Dropdown, Layout, Menu, Select, Dialog, Space, Row } from 'tdesign-react';
+import { Avatar, Button, Dropdown, Layout, Dialog, Popup, Space, Row } from 'tdesign-react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import {
+  AddIcon,
+  ChevronDownIcon,
   HomeIcon,
   AppIcon,
-  DataBaseIcon,
   CodeIcon,
   FileIcon,
   ApiIcon,
@@ -13,18 +14,30 @@ import {
 } from 'tdesign-icons-react';
 import { useAuth } from '../../auth/context';
 import { useTeam } from '../../team/context';
-import { resolveUserAvatar } from '../../utils/avatar';
+import { resolveTeamAvatar, resolveUserAvatar } from '../../utils/avatar';
 import GlobalNoticeCenter from '../GlobalNoticeCenter';
 import './style.less';
 
 const { Header, Aside, Content } = Layout;
-const { MenuItem, SubMenu } = Menu;
+
+type FlatMenuSection = {
+  title: string;
+  items: Array<{ key: string; icon: React.ReactElement; title: string }>;
+};
 
 const AppLayout: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout, deleteAccount } = useAuth();
-  const { teams, currentTeamId, selectTeam, loading: teamLoading } = useTeam();
+  const {
+    teams,
+    currentTeam,
+    currentTeamId,
+    selectTeam,
+    workspaceMode,
+    setWorkspaceMode,
+    loading: teamLoading,
+  } = useTeam();
   const [deleteAccountVisible, setDeleteAccountVisible] = React.useState(false);
   const [deletingAccount, setDeletingAccount] = React.useState(false);
 
@@ -50,62 +63,66 @@ const AppLayout: React.FC = () => {
     },
   ];
 
-  const menuItems = [
-    {
-      key: '/',
-      icon: <HomeIcon />,
-      title: '首页',
-    },
-    {
-      key: 'build',
-      icon: <AppIcon />,
-      title: '构建应用',
-      children: [
-        {
-          key: '/build-component',
-          icon: <CodeIcon />,
-          title: '构建组件',
-        },
-        {
-          key: '/build-page',
-          icon: <FileIcon />,
-          title: '构建页面',
-        },
-      ],
-    },
-    {
-      key: 'data',
-      icon: <DataBaseIcon />,
-      title: '数据管理',
-      children: [
-        {
-          key: '/data-constance',
-          icon: <SettingIcon />,
-          title: '常量管理',
-        },
-        {
-          key: '/data-api',
-          icon: <ApiIcon />,
-          title: 'API管理',
-        },
-      ],
-    },
-    {
-      key: '/teams',
-      icon: <UserIcon />,
-      title: '团队协作',
-    },
-    {
-      key: '/profile',
-      icon: <UserIcon />,
-      title: '个人信息',
-    },
-    ...(isPlatformAdmin
-      ? [{
-        key: 'admin',
-        icon: <SettingIcon />,
+  const menuSections = React.useMemo<FlatMenuSection[]>(() => {
+    const baseSections: FlatMenuSection[] = [
+      {
+        title: '总览',
+        items: [
+          {
+            key: '/',
+            icon: <HomeIcon />,
+            title: '首页',
+          },
+        ],
+      },
+      {
+        title: '构建应用',
+        items: [
+          {
+            key: '/build-component',
+            icon: <CodeIcon />,
+            title: '构建组件',
+          },
+          {
+            key: '/build-page',
+            icon: <FileIcon />,
+            title: '构建页面',
+          },
+        ],
+      },
+      {
+        title: '数据管理',
+        items: [
+          {
+            key: '/data-constance',
+            icon: <SettingIcon />,
+            title: '常量管理',
+          },
+          {
+            key: '/data-api',
+            icon: <ApiIcon />,
+            title: 'API管理',
+          },
+        ],
+      },
+      {
+        title: '团队空间',
+        items: workspaceMode === 'team'
+          ? [
+            {
+              key: '/teams',
+              icon: <AppIcon />,
+              title: '团队看板',
+            },
+          ]
+          : [],
+      },
+    ];
+
+    if (isPlatformAdmin) {
+      baseSections.push({
         title: '管理员',
-        children: [
+        items: [
           {
             key: '/user-admin',
             icon: <UserIcon />,
@@ -117,12 +134,28 @@ const AppLayout: React.FC = () => {
             title: '团队管理',
           },
         ],
-      }]
-      : []),
-  ];
+      });
+    }
+
+    return baseSections.filter((section) => section.items.length > 0);
+  }, [isPlatformAdmin, workspaceMode]);
+
+  const currentSpaceLabel = workspaceMode === 'team' ? (currentTeam?.name || '团队空间') : '个人空间';
 
   const handleMenuClick = (value: any) => {
     navigate(value);
+  };
+
+  const handleOpenCreateTeam = () => {
+    setWorkspaceMode('team');
+    navigate('/teams?create=1');
+  };
+
+  const handleSwitchPersonalSpace = () => {
+    setWorkspaceMode('personal');
+    if (location.pathname === '/teams') {
+      navigate('/');
+    }
   };
 
   const handleUserMenuClick = async (data: { value?: string | number | Record<string, any> }) => {
@@ -154,25 +187,51 @@ const AppLayout: React.FC = () => {
     }
   };
 
-  const renderMenuItems = (items: any[]) => {
-    return items.map((item) => {
-      if (item.children) {
-        return (
-          <SubMenu key={item.key} title={item.title} icon={item.icon}>
-            {item.children.map((child: any) => (
-              <MenuItem key={child.key} value={child.key} icon={child.icon}>
-                {child.title}
-              </MenuItem>
-            ))}
-          </SubMenu>
-        );
-      }
-      return (
-        <MenuItem key={item.key} value={item.key} icon={item.icon}>
-          {item.title}
-        </MenuItem>
-      );
-    });
+  const renderSpacePopup = () => {
+    return (
+      <div className="space-switcher-popup">
+        <div className="space-switcher-popup__section-title">个人空间</div>
+        <button type="button" className={`space-item${workspaceMode === 'personal' ? ' is-active' : ''}`} onClick={handleSwitchPersonalSpace}>
+          <Avatar size="30px" className="space-item__avatar" image={userAvatar}>{displayName.slice(0, 1)}</Avatar>
+          <div className="space-item__meta">
+            <span className="space-item__name">个人空间</span>
+            <span className="space-item__sub">{displayName}</span>
+          </div>
+        </button>
+
+        <div className="space-switcher-popup__section-title">团队空间</div>
+        <div className="space-switcher-popup__team-list">
+          {teams.length ? teams.map((team) => {
+            const active = workspaceMode === 'team' && team.id === currentTeamId;
+            return (
+              <button
+                key={team.id}
+                type="button"
+                className={`space-item${active ? ' is-active' : ''}`}
+                onClick={async () => {
+                  await selectTeam(team.id);
+                  navigate('/teams');
+                }}
+              >
+                <Avatar
+                  size="30px"
+                  className="space-item__avatar"
+                  image={resolveTeamAvatar({ id: team.id, name: team.name, code: team.code, avatar: team.avatar })}
+                >
+                  {team.name.slice(0, 1)}
+                </Avatar>
+                <div className="space-item__meta">
+                  <span className="space-item__name">{team.name}</span>
+                  <span className="space-item__sub">{team.role === 'owner' ? '拥有者' : team.role === 'admin' ? '管理员' : '成员'}</span>
+                </div>
+              </button>
+            );
+          }) : <div className="space-switcher-popup__empty">暂无团队，先创建一个吧</div>}
+        </div>
+
+        <Button block variant="outline" icon={<AddIcon />} onClick={handleOpenCreateTeam}>创建新团队</Button>
+      </div>
+    );
   };
 
   return (
@@ -181,31 +240,55 @@ const AppLayout: React.FC = () => {
         width="300px"
         className="sidebar"
       >
-        <Menu
-          value={location.pathname}
-          onChange={handleMenuClick}
-          className="sidebar-menu"
-          logo={
-            <Select
-                value={currentTeamId || undefined}
-                loading={teamLoading}
-                placeholder="选择团队"
-                style={{ width: 200 }}
-                options={teams.map((team) => ({
-                  label: `${team.name}${team.role === 'owner' ? ' · 拥有者' : team.role === 'admin' ? ' · 管理员' : ''}`,
-                  value: team.id,
-                }))}
-                onChange={(value) => {
-                  const nextTeamId = String(value ?? '').trim();
-                  if (nextTeamId) {
-                    selectTeam(nextTeamId);
-                  }
-                }}
-              />
-          }
-        >
-          {renderMenuItems(menuItems)}
-        </Menu>
+        <div className="sidebar-space-switcher-wrap">
+          <Popup trigger="click" placement="bottom-left" showArrow={false} content={renderSpacePopup()}>
+            <button type="button" className="sidebar-space-switcher" disabled={teamLoading}>
+              <Space size={8} align="center">
+                <Avatar
+                  size="30px"
+                  className="sidebar-space-switcher__avatar"
+                  image={workspaceMode === 'team'
+                    ? resolveTeamAvatar({
+                      id: currentTeam?.id,
+                      name: currentTeam?.name,
+                      code: currentTeam?.code,
+                      avatar: currentTeam?.avatar,
+                    })
+                    : userAvatar}
+                >
+                  {currentSpaceLabel.slice(0, 1)}
+                </Avatar>
+                <span className="sidebar-space-switcher__label">{currentSpaceLabel}</span>
+                <ChevronDownIcon size="16" />
+              </Space>
+            </button>
+          </Popup>
+        </div>
+
+        <div className="sidebar-flat-menu">
+          {menuSections.map((section) => (
+            <div key={section.title} className="sidebar-section">
+              <div className="sidebar-section__title">{section.title}</div>
+              <div className="sidebar-section__items">
+                {section.items.map((item) => {
+                  const active = location.pathname === item.key || location.pathname.startsWith(`${item.key}/`);
+                  return (
+                    <Button
+                      key={item.key}
+                      variant={active ? 'base' : 'text'}
+                      theme={active ? 'primary' : 'default'}
+                      className={`sidebar-menu-button${active ? ' is-active' : ''}`}
+                      icon={item.icon}
+                      onClick={() => handleMenuClick(item.key)}
+                    >
+                      {item.title}
+                    </Button>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
       </Aside>
 
       <Layout className="layout-main">

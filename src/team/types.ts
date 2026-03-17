@@ -1,4 +1,5 @@
 export type TeamRole = 'owner' | 'admin' | 'member';
+export type WorkspaceMode = 'personal' | 'team';
 
 export interface TeamSummary {
   id: string;
@@ -95,6 +96,8 @@ export interface TeamContextValue {
   teams: TeamSummary[];
   currentTeamId: string | null;
   currentTeam: TeamSummary | null;
+  workspaceMode: WorkspaceMode;
+  setWorkspaceMode: (mode: WorkspaceMode) => void;
   selectTeam: (teamId: string) => Promise<void>;
   refreshTeams: () => Promise<void>;
   getTeamDetail: (teamId: string) => Promise<TeamDetail>;

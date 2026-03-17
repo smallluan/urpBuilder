@@ -4,12 +4,11 @@ import { PublicOnlyRoute, RequireAuth } from './guards';
 
 const AppLayout = lazy(() => import('../components/Layout'));
 const Home = lazy(() => import('../pages/Home'));
-const BuildComponent = lazy(() => import('../pages/BuildComponent'));
-const BuildPage = lazy(() => import('../pages/BuildPage'));
+const BuildComponent = lazy(() => import('../pages/BuildComponent/index'));
+const BuildPage = lazy(() => import('../pages/BuildPage/index'));
 const DataApi = lazy(() => import('../pages/DataApi'));
 const DataConstance = lazy(() => import('../pages/DataConstance'));
 const Teams = lazy(() => import('../pages/Teams'));
-const UserProfile = lazy(() => import('../pages/UserProfile'));
 const UserAdmin = lazy(() => import('../pages/UserAdmin'));
 const TeamAdmin = lazy(() => import('../pages/TeamAdmin'));
 const CreateComponent = lazy(() => import('../pages/CreateComponent'));
@@ -50,10 +49,6 @@ export const router = createBrowserRouter([
       {
         path: 'teams',
         element: load(<Teams />),
-      },
-      {
-        path: 'profile',
-        element: load(<UserProfile />),
       },
       {
         path: 'user-admin',

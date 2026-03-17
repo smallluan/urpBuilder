@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Badge, Button, Dialog, Drawer, MessagePlugin, Space, Tabs, Tag } from 'tdesign-react';
-import { Icon, MailIcon, RefreshIcon } from 'tdesign-icons-react';
+import { MailIcon, RefreshIcon } from 'tdesign-icons-react';
 import { emitApiAlert } from '../../api/alertBus';
 import { useAuth } from '../../auth/context';
 import { useTeam } from '../../team/context';

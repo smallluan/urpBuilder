@@ -43,6 +43,10 @@
     grid-template-columns: 320px minmax(0, 1fr);
     gap: 14px;
     min-height: 0;
+
+    &--single {
+      grid-template-columns: minmax(0, 1fr);
+    }
   }
 
   &__main-column {
@@ -422,6 +426,12 @@
     gap: 10px;
     font-size: 11px;
     color: #98a2b3;
+  }
+
+  &__empty-actions {
+    margin-top: 10px;
+    display: flex;
+    justify-content: center;
   }
 
   &__govern-toolbar {

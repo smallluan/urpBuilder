@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Avatar, Button, Dialog, Empty, Input, List, Select, Tabs, Tag, Upload } from 'tdesign-react';
-import { AddIcon, DeleteIcon, RefreshIcon, SearchIcon } from 'tdesign-icons-react';
+import { Avatar, Button, Dialog, Empty, Input, Select, Tabs, Tag, Upload } from 'tdesign-react';
+import { DeleteIcon, RefreshIcon, SearchIcon } from 'tdesign-icons-react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { emitApiAlert } from '../../api/alertBus';
 import { useAuth } from '../../auth/context';
 import { getTeamAssetSnapshot } from '../../team/api';
@@ -9,7 +10,6 @@ import type { TeamAssetItem, TeamAssetSnapshot, TeamDetail, TeamMember, TeamUser
 import { fileToDataUrl, resolveTeamAvatar, resolveUserAvatar } from '../../utils/avatar';
 import './style.less';
 
-const { ListItem } = List;
 const { TabPanel } = Tabs;
 
 const roleMap = {
@@ -45,13 +45,16 @@ const formatDateTimeText = (value?: string) => {
 };
 
 const TeamsPage: React.FC = () => {
+  const location = useLocation();
+  const navigate = useNavigate();
   const { user } = useAuth();
   const {
     teams,
     currentTeamId,
     currentTeam,
+    workspaceMode,
+    setWorkspaceMode,
     loading,
-    selectTeam,
     refreshTeams,
     getTeamDetail,
     createTeam,
@@ -73,8 +76,6 @@ const TeamsPage: React.FC = () => {
   const [inviteCandidates, setInviteCandidates] = useState<TeamUserCandidate[]>([]);
   const [selectedCandidate, setSelectedCandidate] = useState<TeamUserCandidate | null>(null);
   const [inviteRole, setInviteRole] = useState<'admin' | 'member'>('member');
-  const [teamTab, setTeamTab] = useState<'joined' | 'created' | 'managed'>('joined');
-  const [teamSearchKeyword, setTeamSearchKeyword] = useState('');
   const [assetLoading, setAssetLoading] = useState(false);
   const [assetTab, setAssetTab] = useState<'page' | 'component' | 'document' | 'api'>('page');
   const [assetSnapshot, setAssetSnapshot] = useState<TeamAssetSnapshot>({
@@ -156,6 +157,18 @@ const TeamsPage: React.FC = () => {
   }, [currentTeamId]);
 
   const canManageMembers = (detail?.role ?? currentTeam?.role) === 'owner' || (detail?.role ?? currentTeam?.role) === 'admin';
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.get('create') !== '1') {
+      return;
+    }
+
+    setCreateVisible(true);
+    params.delete('create');
+    const nextSearch = params.toString();
+    navigate(nextSearch ? `/teams?${nextSearch}` : '/teams', { replace: true });
+  }, [location.search, navigate]);
 
   useEffect(() => {
     if (!inviteVisible) {
@@ -346,43 +359,6 @@ const TeamsPage: React.FC = () => {
     emitApiAlert('敬请期待', '该资产类型即将接入在线查看能力');
   };
 
-  const filteredTeams = useMemo(() => {
-    const keyword = teamSearchKeyword.trim().toLowerCase();
-
-    return teams.filter((team) => {
-      if (teamTab === 'created') {
-        const isCreator = (team.ownerId && user?.id && team.ownerId === user.id) || team.role === 'owner';
-        if (!isCreator) {
-          return false;
-        }
-      } else if (teamTab === 'managed') {
-        const canManage = team.role === 'owner' || team.role === 'admin';
-        if (!canManage) {
-          return false;
-        }
-      }
-
-      if (!keyword) {
-        return true;
-      }
-
-      const name = String(team.name || '').toLowerCase();
-      const code = String(team.code || '').toLowerCase();
-      return name.includes(keyword) || code.includes(keyword);
-    });
-  }, [teamSearchKeyword, teamTab, teams, user?.id]);
-
-  const teamTabCount = useMemo(() => {
-    const createdCount = teams.filter((team) => ((team.ownerId && user?.id && team.ownerId === user.id) || team.role === 'owner')).length;
-    const managedCount = teams.filter((team) => team.role === 'owner' || team.role === 'admin').length;
-
-    return {
-      joined: teams.length,
-      created: createdCount,
-      managed: managedCount,
-    };
-  }, [teams, user?.id]);
-
   return (
     <div className="teams-page">
       <div className="teams-page__header">
@@ -390,74 +366,36 @@ const TeamsPage: React.FC = () => {
           <Button size="small" variant="outline" icon={<RefreshIcon />} loading={loading} onClick={() => refreshTeams()}>
             刷新
           </Button>
-          <Button size="small" theme="primary" icon={<AddIcon />} onClick={() => setCreateVisible(true)}>
-            新建团队
-          </Button>
         </div>
       </div>
 
-      <div className="teams-page__body">
-        <section className="teams-page__sidebar">
-          <div className="teams-page__panel-header">
-            <div>
-              <div className="teams-page__panel-title">我的团队</div>
-            </div>
-          </div>
-          <div className="teams-page__team-filters">
-            <Tabs
-              size="medium"
-              className="teams-page__team-tabs"
-              value={teamTab}
-              onChange={(value) => setTeamTab(String(value) as 'joined' | 'created' | 'managed')}
-            >
-              <TabPanel value="joined" label={`我加入的 ${teamTabCount.joined}`} />
-              <TabPanel value="created" label={`我创建的 ${teamTabCount.created}`} />
-              <TabPanel value="managed" label={`我管理的 ${teamTabCount.managed}`} />
-            </Tabs>
-            <Input
-              size="small"
-              value={teamSearchKeyword}
-              placeholder="按名称或 Key 搜索"
-              suffix={<SearchIcon />}
-              clearable
-              onChange={(value) => setTeamSearchKeyword(String(value ?? ''))}
-            />
-          </div>
-          {filteredTeams.length ? (
-            <List split={false} className="teams-page__team-list">
-              {filteredTeams.map((team) => {
-                const active = team.id === currentTeamId;
-                return (
-                  <ListItem key={team.id} className="teams-page__team-list-item">
-                    <button
-                      type="button"
-                      className={`teams-page__team-card${active ? ' is-active' : ''}`}
-                      onClick={() => selectTeam(team.id)}
-                    >
-                      <Avatar className="teams-page__team-card-avatar" image={resolveTeamAvatar({ id: team.id, name: team.name, code: team.code, avatar: team.avatar })} size="32px" />
-                      <div className="teams-page__team-card-body">
-                        <div className="teams-page__team-card-row">
-                          <span className="teams-page__team-card-title">{team.name}</span>
-                          {active ? <span className="teams-page__team-card-current">当前</span> : null}
-                        </div>
-                        <div className="teams-page__team-card-meta">
-                          <span>{roleMap[team.role].text}</span>
-                          <span>{team.memberCount} 人</span>
-                        </div>
-                      </div>
-                    </button>
-                  </ListItem>
-                );
-              })}
-            </List>
-          ) : (
-            <Empty description={teams.length ? '当前筛选条件下没有匹配团队' : '还没有团队，先创建一个吧'} />
-          )}
-        </section>
-
+      <div className="teams-page__body teams-page__body--single">
         <section className="teams-page__main-column">
-          {detail ? (
-            <>
+          {workspaceMode !== 'team' ? (
+            <section className="teams-page__empty-panel">
+              <Empty description="当前为个人空间，请先切换到团队空间查看团队看板" />
+              <div className="teams-page__empty-actions">
+                <Button size="small" theme="primary" onClick={() => setWorkspaceMode('team')} disabled={!teams.length}>
+                  切换到团队空间
+                </Button>
+              </div>
+            </section>
+          ) : null}
+
+          {workspaceMode === 'team' && !currentTeamId ? (
+            <section className="teams-page__empty-panel">
+              <Empty description="你还没有可用团队，先创建一个团队吧" />
+              <div className="teams-page__empty-actions">
+                <Button size="small" theme="primary" onClick={() => setCreateVisible(true)}>
+                  创建团队
+                </Button>
+              </div>
+            </section>
+          ) : null}
+
+          {workspaceMode === 'team' && currentTeamId ? (
+            detail ? (
+              <>
               <section className="teams-page__hero">
                 <div className="teams-page__hero-main">
                   <Avatar className="teams-page__hero-avatar" image={resolveTeamAvatar({ id: detail.id, name: detail.name, code: detail.code, avatar: detail.avatar })} size="42px" />
@@ -617,12 +555,13 @@ const TeamsPage: React.FC = () => {
                 ) : null}
               </section>
 
-            </>
-          ) : (
-            <section className="teams-page__empty-panel">
-              <Empty description="请选择一个团队" />
-            </section>
-          )}
+              </>
+            ) : (
+              <section className="teams-page__empty-panel">
+                <Empty description="请选择一个团队" />
+              </section>
+            )
+          ) : null}
         </section>
       </div>
 

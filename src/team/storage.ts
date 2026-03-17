@@ -1,4 +1,7 @@
 const CURRENT_TEAM_STORAGE_KEY = 'urp-builder.current-team-id';
+const WORKSPACE_MODE_STORAGE_KEY = 'urp-builder.workspace-mode';
+
+export type WorkspaceMode = 'personal' | 'team';
 
 export const getStoredCurrentTeamId = () => {
   try {
@@ -16,6 +19,23 @@ export const persistCurrentTeamId = (teamId: string | null) => {
     }
 
     window.localStorage.removeItem(CURRENT_TEAM_STORAGE_KEY);
+  } catch {
+    // noop
+  }
+};
+
+export const getStoredWorkspaceMode = (): WorkspaceMode => {
+  try {
+    const raw = window.localStorage.getItem(WORKSPACE_MODE_STORAGE_KEY);
+    return raw === 'team' ? 'team' : 'personal';
+  } catch {
+    return 'personal';
+  }
+};
+
+export const persistWorkspaceMode = (mode: WorkspaceMode) => {
+  try {
+    window.localStorage.setItem(WORKSPACE_MODE_STORAGE_KEY, mode);
   } catch {
     // noop
   }
