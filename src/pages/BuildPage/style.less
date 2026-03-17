@@ -67,149 +67,187 @@
     border: 1px solid #edf1f6;
     border-radius: 6px;
     overflow: auto;
-    scrollbar-width: thin;
-    scrollbar-color: #d9deea transparent;
 
-    &::-webkit-scrollbar {
-      width: 4px;
-      height: 4px;
-    }
-
-    &::-webkit-scrollbar-thumb {
-      border-radius: 999px;
-      background: #d9deea;
-    }
-
-    &::-webkit-scrollbar-track {
-      background: transparent;
-    }
-
-    .list-table {
+    .empty-state {
       flex: 1;
-      min-height: 0;
+      min-height: 320px;
       display: flex;
-      flex-direction: column;
-      border: none;
-      background: transparent;
+      align-items: center;
+      justify-content: center;
+      color: #8b92a1;
+      font-size: 13px;
+    }
 
-      .t-table__content,
-      .scrollbar {
-        flex: 1;
-        min-height: 0;
-        scrollbar-width: thin;
-        scrollbar-color: #c9d2e5 transparent;
+    .card-grid-row {
+      margin-bottom: 6px;
+    }
+
+    .resource-card {
+      height: 100%;
+
+      .t-card__body {
+        padding: 12px;
       }
 
-      .t-table__content::-webkit-scrollbar,
-      .scrollbar::-webkit-scrollbar {
-        width: 3px;
-        height: 3px;
+      &__title-wrap {
+        min-width: 0;
       }
 
-      .t-table__content::-webkit-scrollbar-thumb,
-      .scrollbar::-webkit-scrollbar-thumb {
-        border-radius: 999px;
-        background: #c9d2e5;
-      }
-
-      .t-table__content::-webkit-scrollbar-track,
-      .scrollbar::-webkit-scrollbar-track {
-        background: transparent;
-      }
-
-      .t-table__pagination {
-        margin-top: auto;
-        padding: 10px 4px 0;
-        border-top: 1px solid #edf1f6;
-        background: #fff;
-      }
-
-      .t-table__header th {
-        background: #fafbfd;
-        color: #4f566b;
+      &__title {
+        font-size: 14px;
         font-weight: 600;
+        color: #111827;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
       }
 
-      .t-table__body tr {
-        transition: background-color 0.2s ease;
+      &__tags {
+        display: flex;
+        flex-wrap: wrap;
+      }
 
-        &:hover {
-          background: #fafbfd;
+      &__meta {
+        .meta-item {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          font-size: 12px;
+          color: #5f6b7a;
         }
       }
 
-      .t-table__cell {
-        border-bottom-color: #edf1f6;
+      &__description {
+        color: #6b7280;
+        font-size: 12px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      &__foot {
+        margin-top: 2px;
+      }
+
+      &__time-text {
+        color: #8b92a1;
+        font-size: 12px;
+      }
+
+      &__more-button {
+        min-width: 28px;
+        padding: 0 6px;
+        color: #667085;
+        font-size: 16px;
       }
     }
 
-    .table-entity-cell {
+    .participant-avatars-trigger {
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+    }
+
+    .team-tag-popup-trigger {
+      cursor: pointer;
+    }
+
+    .participant-list {
+      width: 260px;
+      max-height: 220px;
+      overflow: auto;
+    }
+
+    .team-popup {
+      max-width: 240px;
+      color: #4b5563;
+      font-size: 12px;
+    }
+
+    .simple-popup-empty {
+      padding: 8px 10px;
+      color: #8b92a1;
+      font-size: 12px;
+    }
+
+    .card-action-popup {
+      min-width: 148px;
+      padding: 6px;
       display: flex;
       flex-direction: column;
       gap: 2px;
 
-      &__title {
-        font-weight: 600;
-        color: #1f2329;
-      }
-
-      &__sub {
-        color: #8b92a1;
+      &__item {
+        border: 0;
+        background: transparent;
+        text-align: left;
+        padding: 8px 10px;
+        border-radius: 8px;
+        color: #344054;
         font-size: 12px;
+        cursor: pointer;
+
+        &:hover {
+          background: #f5f8ff;
+        }
+
+        &.is-primary {
+          color: #2f5cf3;
+        }
+
+        &.is-danger {
+          color: #d14343;
+        }
       }
     }
 
-    .table-owner-cell {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-
-      &__name-group {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-      }
-
-      &__icon {
-        width: 20px;
-        height: 20px;
-        border-radius: 999px;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        background: #eef3ff;
-        color: #3f7bff;
-      }
-
-      &__name {
-        color: #2b2f36;
-        font-weight: 500;
-      }
+    .pagination-wrap {
+      margin-top: 12px;
+      padding-top: 10px;
+      border-top: 1px solid #edf1f6;
+      display: flex;
+      justify-content: flex-end;
     }
 
-    .table-id-chip {
-      display: inline-block;
-      padding: 2px 8px;
-      border-radius: 999px;
-      background: #f3f5f9;
-      color: #4f566b;
-      font-size: 12px;
-      line-height: 18px;
-    }
-
-    .table-time-cell {
-      display: inline-flex;
+    .detail-dialog {
+      display: flex;
       flex-direction: column;
-      gap: 2px;
+      gap: 8px;
 
-      &__date {
-        color: #1f2329;
-        font-weight: 500;
+      .detail-row {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 10px;
+        font-size: 13px;
+
+        span {
+          color: #8b92a1;
+          white-space: nowrap;
+        }
+
+        strong {
+          color: #1f2329;
+          font-weight: 500;
+          text-align: right;
+          word-break: break-all;
+        }
+
+        &--description {
+          align-items: flex-start;
+        }
       }
 
-      &__time {
-        color: #8b92a1;
-        font-size: 12px;
+      .detail-scroll-content {
+        display: inline-block;
+        max-height: 96px;
+        overflow: auto;
+        padding-right: 4px;
+      }
+
+      .participants-detail-trigger {
+        color: #2f5cf3;
+        cursor: pointer;
       }
     }
   }

@@ -196,6 +196,7 @@ export interface BuilderStore {
   autoWidth: number;
   currentPageId: string;
   currentPageName: string;
+  currentPageDescription: string;
   currentPageVisibility: BuilderResourceVisibility;
   pageRouteConfig: PageRouteConfig | null;
   pageRoutes: PageRouteRecord[];
@@ -223,7 +224,12 @@ export interface BuilderStore {
   // Actions — 视图环境
   setScreenSize: (screenSize: ScreenSize) => void;
   setAutoWidth: (width: number) => void;
-  setCurrentPageMeta: (payload: { pageId?: string; pageName?: string; visibility?: BuilderResourceVisibility }) => void;
+  setCurrentPageMeta: (payload: {
+    pageId?: string;
+    pageName?: string;
+    description?: string;
+    visibility?: BuilderResourceVisibility;
+  }) => void;
   setPageRouteConfig: (config: PageRouteConfig | null | ((previous: PageRouteConfig | null) => PageRouteConfig | null)) => void;
   setPageRoutes: (routes: PageRouteRecord[], activeRouteId?: string | null) => void;
   addPageRoute: (route?: Partial<PageRouteRecord>) => string;

@@ -4,6 +4,7 @@ import { SearchIcon } from 'tdesign-icons-react';
 import { Boxes } from 'lucide-react';
 import DragableWrapper from '../../components/DragableWrapper';
 import { getComponentBaseList, getComponentTemplateDetail } from '../../api/componentTemplate';
+import { useTeam } from '../../team/context';
 import { resolveExposedLifecycles, resolveExposedPropSchemas } from '../../utils/customComponentRuntime';
 
 interface CustomComponentSchema {
@@ -20,6 +21,7 @@ interface SavedComponentPanelProps {
 }
 
 const SavedComponentPanel: React.FC<SavedComponentPanelProps> = ({ selectedName, onSelect, active = true }) => {
+  const { currentTeamId } = useTeam();
   const [keyword, setKeyword] = useState('');
   const [category, setCategory] = useState('all');
   const [customComponentSchemas, setCustomComponentSchemas] = useState<CustomComponentSchema[]>([]);
@@ -38,8 +40,35 @@ const SavedComponentPanel: React.FC<SavedComponentPanelProps> = ({ selectedName,
 
     const buildCustomComponentSchemas = async () => {
       try {
-        const baseListResult = await getComponentBaseList({ page: 1, pageSize: 50 });
-        const list = Array.isArray(baseListResult.data?.list) ? baseListResult.data.list : [];
+        const queryTasks: Array<ReturnType<typeof getComponentBaseList>> = [
+          getComponentBaseList({ page: 1, pageSize: 100, mine: true, status: 'published' }),
+        ];
+
+        if (currentTeamId) {
+          queryTasks.push(
+            getComponentBaseList({
+              page: 1,
+              pageSize: 100,
+              status: 'published',
+              ownerType: 'team',
+              ownerTeamId: currentTeamId,
+            }),
+          );
+        }
+
+        const baseResults = await Promise.all(queryTasks);
+        const listMap = new Map<string, any>();
+        baseResults.forEach((result) => {
+          const items = Array.isArray(result.data?.list) ? result.data.list : [];
+          items.forEach((item) => {
+            const key = String(item.pageId || '').trim();
+            if (!key) {
+              return;
+            }
+            listMap.set(key, item);
+          });
+        });
+        const list = Array.from(listMap.values());
 
         const details = await Promise.all(
           list.map(async (item) => {
@@ -110,7 +139,7 @@ const SavedComponentPanel: React.FC<SavedComponentPanelProps> = ({ selectedName,
     return () => {
       cancelled = true;
     };
-  }, [active]);
+  }, [active, currentTeamId]);
 
   const filteredCustomComponentSchemas = useMemo(() => {
     const text = keyword.trim().toLowerCase();

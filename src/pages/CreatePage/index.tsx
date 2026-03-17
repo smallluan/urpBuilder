@@ -284,6 +284,7 @@ const CreatePage: React.FC = () => {
         setCurrentPageMeta({
           pageId: detail.base?.pageId ?? pageId,
           pageName: detail.base?.pageName ?? '',
+          description: detail.base?.description ?? '',
           visibility: detail.base?.visibility === 'public' ? 'public' : 'private',
         });
 

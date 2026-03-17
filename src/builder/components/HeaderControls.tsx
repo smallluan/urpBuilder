@@ -1,13 +1,13 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import cloneDeep from 'lodash/cloneDeep';
-import { Radio, Button, Space, Drawer, Timeline, Tag, Dialog, Input, Switch, Select } from 'tdesign-react';
+import { Radio, Button, Space, Drawer, Timeline, Tag, Dialog, Input, Switch, Select, Textarea } from 'tdesign-react';
 import { UploadIcon, ViewImageIcon, ArrowLeftIcon, ArrowRightIcon, HistoryIcon } from 'tdesign-icons-react';
 import { useBuilderAccess, useBuilderContext } from '../context/BuilderContext';
 import type { UiHistoryAction } from '../store/types';
 import { serializePreviewSnapshot } from '../../pages/PreviewEngine/utils/snapshot';
 import { buildComponentContract } from '../flow/componentContract';
 import { getPageTemplateBaseList, savePageDraft, updatePageDraft } from '../../api/pageTemplate';
-import { getComponentBaseList, saveComponentDraft, updateComponentDraft } from '../../api/componentTemplate';
+import { getComponentBaseList, getComponentTemplateDetail, saveComponentDraft, updateComponentDraft } from '../../api/componentTemplate';
 import type { ComponentTemplateListParams, PageTemplateListParams } from '../../api/types';
 import { emitApiAlert } from '../../api/alertBus';
 import { findNodeByKey, updateNodeByKey } from '../../utils/createComponentTree';
@@ -58,6 +58,8 @@ const normalizeRoutePath = (value: string) => {
 
 const SCOPED_ID_CHECK_PAGE_SIZE = 200;
 const SCOPED_ID_CHECK_MAX_PAGES = 10;
+const MAX_TEAM_COMPONENT_VALIDATION_COUNT = 60;
+const RESOURCE_DESCRIPTION_MAX_LENGTH = 300;
 
 const hasDuplicateScopedResourceId = async (
   entityType: 'page' | 'component',
@@ -110,6 +112,68 @@ const hasDuplicateScopedResourceId = async (
   }
 
   return false;
+};
+
+const collectCustomComponentIdsFromTree = (root: unknown, bucket: Set<string>) => {
+  if (!root || typeof root !== 'object') {
+    return;
+  }
+
+  const node = root as {
+    type?: unknown;
+    props?: Record<string, unknown>;
+    children?: unknown[];
+  };
+
+  const componentIdMeta = node.props?.__componentId as { value?: unknown } | undefined;
+  const componentId = String(componentIdMeta?.value ?? '').trim();
+  if ((node.type === 'CustomComponent' || componentId) && componentId) {
+    bucket.add(componentId);
+  }
+
+  if (Array.isArray(node.children)) {
+    node.children.forEach((child) => collectCustomComponentIdsFromTree(child, bucket));
+  }
+};
+
+const collectAllUsedCustomComponentIds = (
+  uiTree: unknown,
+  routes: Array<{ uiTree?: unknown }> = [],
+  sharedTree?: unknown,
+) => {
+  const ids = new Set<string>();
+  collectCustomComponentIdsFromTree(uiTree, ids);
+  routes.forEach((route) => {
+    collectCustomComponentIdsFromTree(route?.uiTree, ids);
+  });
+  if (sharedTree) {
+    collectCustomComponentIdsFromTree(sharedTree, ids);
+  }
+  return ids;
+};
+
+const resolveTeamOwnedCustomComponents = async (componentIds: string[]) => {
+  const result = await Promise.all(
+    componentIds.map(async (componentId) => {
+      try {
+        const detail = await getComponentTemplateDetail(componentId);
+        const base = detail.data?.base;
+        if (base?.ownerType !== 'team') {
+          return null;
+        }
+
+        return {
+          pageId: String(base.pageId || componentId),
+          pageName: String(base.pageName || componentId),
+          ownerTeamName: String(base.ownerTeamName || '团队资源'),
+        };
+      } catch {
+        return null;
+      }
+    }),
+  );
+
+  return result.filter((item): item is { pageId: string; pageName: string; ownerTeamName: string } => Boolean(item));
 };
 
 const composeRouteUiTree = (
@@ -266,6 +330,7 @@ const HeaderControls: React.FC<Props> = ({
   const autoWidth = useStore((state) => state.autoWidth);
   const currentPageId = useStore((state) => state.currentPageId);
   const currentPageName = useStore((state) => state.currentPageName);
+  const currentPageDescription = useStore((state) => state.currentPageDescription);
   const currentPageVisibility = useStore((state) => state.currentPageVisibility);
   const pageRouteConfig = useStore((state) => state.pageRouteConfig);
   const pageRoutes = useStore((state) => state.pageRoutes);
@@ -286,6 +351,7 @@ const HeaderControls: React.FC<Props> = ({
   const [saveDialogVisible, setSaveDialogVisible] = useState(false);
   const [componentName, setComponentName] = useState('');
   const [componentId, setComponentId] = useState('');
+  const [componentDescription, setComponentDescription] = useState('');
   const [ownerScope, setOwnerScope] = useState<'user' | 'team'>('user');
   const [saving, setSaving] = useState(false);
   const [pageSettingsVisible, setPageSettingsVisible] = useState(false);
@@ -379,6 +445,7 @@ const HeaderControls: React.FC<Props> = ({
   const handleOpenSaveDialog = () => {
     setComponentName(currentPageName || '');
     setComponentId(currentPageId || '');
+    setComponentDescription(currentPageDescription || '');
     setOwnerScope(currentTeamId ? 'team' : 'user');
     setSaveDialogVisible(true);
   };
@@ -507,6 +574,7 @@ const HeaderControls: React.FC<Props> = ({
   const handleSave = async () => {
     const pageName = componentName.trim();
     const pageId = componentId.trim();
+    const pageDescription = componentDescription.trim();
 
     if (!pageName) {
       emitApiAlert('保存失败', `请输入${saveEntityLabel}名称`);
@@ -529,6 +597,33 @@ const HeaderControls: React.FC<Props> = ({
     setSaving(true);
 
     try {
+      if (resolvedOwnerType === 'user') {
+        const usedComponentIds = Array.from(
+          collectAllUsedCustomComponentIds(
+            uiTreeData,
+            enablePageRouteConfig ? pageRoutes : [],
+            enablePageRouteConfig ? sharedUiTree : null,
+          ),
+        ).slice(0, MAX_TEAM_COMPONENT_VALIDATION_COUNT);
+
+        if (usedComponentIds.length > 0) {
+          const teamOwnedComponents = await resolveTeamOwnedCustomComponents(usedComponentIds);
+
+          if (teamOwnedComponents.length > 0) {
+            const conflictNames = teamOwnedComponents
+              .slice(0, 3)
+              .map((item) => `${item.pageName}（${item.ownerTeamName}）`)
+              .join('、');
+
+            emitApiAlert(
+              '保存失败',
+              `当前${saveEntityLabel}使用了团队组件：${conflictNames}${teamOwnedComponents.length > 3 ? ' 等' : ''}。请将归属范围改为“当前团队”后再保存。`,
+            );
+            return;
+          }
+        }
+      }
+
       if (!isEditMode) {
         const hasDuplicate = await hasDuplicateScopedResourceId(
           entityType,
@@ -588,6 +683,7 @@ const HeaderControls: React.FC<Props> = ({
           base: {
             pageId,
             pageName,
+            description: pageDescription || undefined,
             entityType: 'component' as const,
             ownerType: resolvedOwnerType,
             ownerTeamId: resolvedOwnerTeamId,
@@ -608,6 +704,7 @@ const HeaderControls: React.FC<Props> = ({
           base: {
             pageId,
             pageName,
+            description: pageDescription || undefined,
             entityType: 'page' as const,
             ownerType: resolvedOwnerType,
             ownerTeamId: resolvedOwnerTeamId,
@@ -628,6 +725,7 @@ const HeaderControls: React.FC<Props> = ({
       setCurrentPageMeta({
         pageId,
         pageName,
+        description: pageDescription,
         visibility: (currentPageVisibility ?? 'private') as 'private' | 'public',
       });
       emitApiAlert('保存成功', `${saveEntityLabel} ${pageName} 已保存`, 'success');
@@ -724,6 +822,19 @@ const HeaderControls: React.FC<Props> = ({
               maxlength={64}
               clearable
               disabled={readOnly || isEditMode}
+            />
+          </div>
+
+          <div>
+            <div style={{ marginBottom: 6 }}>描述（非必填，最多 {RESOURCE_DESCRIPTION_MAX_LENGTH} 字）</div>
+            <Textarea
+              value={componentDescription}
+              placeholder="请输入资源描述"
+              maxlength={RESOURCE_DESCRIPTION_MAX_LENGTH}
+              maxcharacter={RESOURCE_DESCRIPTION_MAX_LENGTH}
+              autosize={{ minRows: 3, maxRows: 5 }}
+              onChange={(value) => setComponentDescription(String(value ?? ''))}
+              disabled={readOnly}
             />
           </div>
 

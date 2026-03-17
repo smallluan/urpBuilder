@@ -1,7 +1,21 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Input, Button, Dialog, Select, Table, Tag } from 'tdesign-react';
-import { AddIcon, SearchIcon, EditIcon, DeleteIcon, BrowseIcon, UserIcon } from 'tdesign-icons-react';
-import type { PrimaryTableCol } from 'tdesign-react/es/table/type';
+import {
+  Avatar,
+  Button,
+  Card,
+  Col,
+  Dialog,
+  Input,
+  List,
+  Pagination,
+  Popup,
+  Row,
+  Select,
+  Space,
+  Tag,
+} from 'tdesign-react';
+import { AddIcon, SearchIcon, UserIcon } from 'tdesign-icons-react';
+import ListItemMeta from 'tdesign-react/es/list/ListItemMeta';
 import {
   deletePageTemplate,
   getPageTemplateBaseList,
@@ -10,16 +24,20 @@ import {
   withdrawPageToDraft,
 } from '../../api/pageTemplate';
 import type { PageTemplateBaseInfo, ResourceVisibility } from '../../api/types';
+import type { ResourceContributor, ResourceTeamSummary } from '../../api/types';
 import { emitApiAlert } from '../../api/alertBus';
 import { useAuth } from '../../auth/context';
 import { useTeam } from '../../team/context';
 import { useResourceFiltersStore } from '../../store/resourceFilters';
 import './style.less';
 
+const { ListItem } = List;
+
 interface PageTemplateRow {
   id: string;
   pageId: string;
   pageName: string;
+  description: string;
   ownerType: '个人' | '团队';
   ownerTeamId: string;
   ownerTeamName: string;
@@ -33,6 +51,8 @@ interface PageTemplateRow {
   menuTitle: string;
   useLayout: string;
   updatedAt: string;
+  contributors: ResourceContributor[];
+  teamSummary?: ResourceTeamSummary;
 }
 
 const isValidTemplateId = (value: string) => {
@@ -94,6 +114,8 @@ const splitDateTimeText = (value: string) => {
   };
 };
 
+const resolveContributorName = (item: ResourceContributor) => item.nickname || item.username || item.userId;
+
 const BuildPage: React.FC = () => {
   const { user } = useAuth();
   const { initialized: teamInitialized, currentTeamId, currentTeam } = useTeam();
@@ -115,6 +137,7 @@ const BuildPage: React.FC = () => {
   const [visibilityChangingId, setVisibilityChangingId] = useState<string | null>(null);
   const [withdrawingId, setWithdrawingId] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<PageTemplateRow | null>(null);
+  const [detailTarget, setDetailTarget] = useState<PageTemplateRow | null>(null);
   const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
@@ -167,6 +190,7 @@ const BuildPage: React.FC = () => {
         id: toSafeText(item.pageId),
         pageId: toSafeText(item.pageId),
         pageName: toSafeText(item.pageName),
+        description: String(item.description || '').trim(),
         ownerType: (item.ownerType === 'team' ? '团队' : '个人') as PageTemplateRow['ownerType'],
         ownerTeamId: toSafeText(item.ownerTeamId),
         ownerTeamName: toSafeText(item.ownerTeamName || '-'),
@@ -180,6 +204,8 @@ const BuildPage: React.FC = () => {
         menuTitle: toSafeText(item.routeConfig?.menuTitle || '-'),
         useLayout: item.routeConfig?.useLayout === false ? '否' : '是',
         updatedAt: toDisplayDate(item.updatedAt),
+        contributors: Array.isArray(item.contributors) ? item.contributors : [],
+        teamSummary: item.teamSummary,
       }));
 
       setTableData(nextList);
@@ -351,146 +377,79 @@ const BuildPage: React.FC = () => {
     }
   };
 
-  const buildColumns = useMemo<PrimaryTableCol<PageTemplateRow>[]>(
-    () => [
-      {
-        colKey: 'pageName',
-        title: '页面名称',
-        minWidth: 220,
-        cell: ({ row }) => (
-          <div className="table-entity-cell">
-            <span className="table-entity-cell__title">{row.pageName}</span>
-            <span className="table-entity-cell__sub">{row.pageTitle !== '-' ? row.pageTitle : '未设置页面标题'}</span>
-          </div>
-        ),
-      },
-      {
-        colKey: 'ownerName',
-        title: '发布人',
-        width: 210,
-        cell: ({ row }) => (
-          <div className="table-owner-cell">
-            <span className="table-owner-cell__icon"><UserIcon size="small" /></span>
-            <div className="table-owner-cell__name-group">
-              <span className="table-owner-cell__name">{row.ownerName}</span>
-              {row.ownerType === '团队' ? (
-                <Tag size="small" theme="primary" variant="light-outline">
-                  {row.ownerTeamName !== '-' ? row.ownerTeamName : '团队资源'}
-                </Tag>
-              ) : (
-                <Tag size="small" theme="default" variant="light-outline">个人</Tag>
-              )}
-            </div>
-          </div>
-        ),
-      },
-      {
-        colKey: 'visibility',
-        title: '可见性',
-        width: 120,
-        cell: ({ row }) => (
-          <Tag size="small" theme={row.visibility === '公开' ? 'primary' : 'default'} variant="light">
-            {row.visibility}
-          </Tag>
-        ),
-      },
-      {
-        colKey: 'pageId',
-        title: '页面ID',
-        minWidth: 220,
-        cell: ({ row }) => <span className="table-id-chip">{row.pageId}</span>,
-      },
-      {
-        colKey: 'status',
-        title: '状态',
-        width: 110,
-        cell: ({ row }) => (
-          <Tag size="small" theme={row.status === 'published' ? 'success' : 'warning'} variant="light">
-            {row.status === 'published' ? '已发布' : '草稿'}
-          </Tag>
-        ),
-      },
-      { colKey: 'currentVersion', title: '当前版本', width: 110 },
-      { colKey: 'routePath', title: '路由路径', minWidth: 180 },
-      { colKey: 'pageTitle', title: '页面标题', minWidth: 160 },
-      { colKey: 'menuTitle', title: '菜单名称', minWidth: 160 },
-      { colKey: 'useLayout', title: '主布局', width: 100 },
-      {
-        colKey: 'updatedAt',
-        title: '更新时间',
-        minWidth: 190,
-        cell: ({ row }) => {
-          const { date, time } = splitDateTimeText(row.updatedAt);
-          return (
-            <div className="table-time-cell">
-              <span className="table-time-cell__date">{date}</span>
-              {time ? <span className="table-time-cell__time">{time}</span> : null}
-            </div>
-          );
-        },
-      },
-      {
-        colKey: 'operations',
-        title: '操作',
-        width: 520,
-        fixed: 'right',
-        cell: ({ row }) => {
-          const manageable = canManageRow(row);
-          const isPublished = row.status === 'published';
-          const isPublic = row.visibility === '公开';
-          return (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <Button size="small" variant="outline" icon={<BrowseIcon />} onClick={() => handlePreview(row)}>
-                预览
-              </Button>
-              {manageable ? (
-                <>
-                  {!isPublished ? (
-                    <Button
-                      size="small"
-                      theme="primary"
-                      variant="outline"
-                      loading={publishingId === row.pageId}
-                      onClick={() => handlePublish(row)}
-                    >
-                      发布
-                    </Button>
-                  ) : null}
-                  {isPublished ? (
-                    <>
-                      <Button
-                        size="small"
-                        variant="outline"
-                        loading={visibilityChangingId === row.pageId}
-                        onClick={() => handleToggleVisibility(row)}
-                      >
-                        {isPublic ? '设为私有' : '设为公开'}
-                      </Button>
-                      <Button
-                        size="small"
-                        variant="outline"
-                        loading={withdrawingId === row.pageId}
-                        onClick={() => handleWithdrawToDraft(row)}
-                      >
-                        收回为草稿
-                      </Button>
-                    </>
-                  ) : null}
-                  <Button size="small" variant="outline" icon={<DeleteIcon />} onClick={() => handleDelete(row)}>
-                    删除
-                  </Button>
-                  <Button size="small" variant="outline" icon={<EditIcon />} onClick={() => handleEdit(row)}>
-                    修改
-                  </Button>
-                </>
-              ) : null}
-            </div>
-          );
-        },
-      },
-    ],
-    [publishingId, user?.id, visibilityChangingId, withdrawingId],
-  );
+  const renderActionPopup = (row: PageTemplateRow) => {
+    const manageable = canManageRow(row);
+    const isPublished = row.status === 'published';
+    const isPublic = row.visibility === '公开';
+
+    return (
+      <div className="card-action-popup">
+        <button type="button" className="card-action-popup__item" onClick={() => handlePreview(row)}>
+          预览
+        </button>
+        <button type="button" className="card-action-popup__item" onClick={() => setDetailTarget(row)}>
+          查看详情
+        </button>
+        {manageable && !isPublished ? (
+          <button type="button" className="card-action-popup__item is-primary" onClick={() => handlePublish(row)}>
+            发布
+          </button>
+        ) : null}
+        {manageable && isPublished ? (
+          <button type="button" className="card-action-popup__item" onClick={() => handleToggleVisibility(row)}>
+            {isPublic ? '设为私有' : '设为公开'}
+          </button>
+        ) : null}
+        {manageable && isPublished ? (
+          <button type="button" className="card-action-popup__item" onClick={() => handleWithdrawToDraft(row)}>
+            收回为草稿
+          </button>
+        ) : null}
+        {manageable ? (
+          <button type="button" className="card-action-popup__item" onClick={() => handleEdit(row)}>
+            修改
+          </button>
+        ) : null}
+        {manageable ? (
+          <button type="button" className="card-action-popup__item is-danger" onClick={() => handleDelete(row)}>
+            删除
+          </button>
+        ) : null}
+      </div>
+    );
+  };
+
+  const renderContributorsPopup = (contributors: ResourceContributor[]) => {
+    if (!contributors.length) {
+      return <div className="simple-popup-empty">暂无参与者记录</div>;
+    }
+
+    return (
+      <List className="participant-list" split>
+        {contributors.map((contributor) => (
+          <ListItem key={contributor.userId || contributor.username}>
+            <ListItemMeta
+              image={<Avatar size="28px" image={contributor.avatar}>{String(resolveContributorName(contributor) || '-').slice(0, 1)}</Avatar>}
+              title={resolveContributorName(contributor)}
+              description={contributor.role || contributor.lastActiveAt || '参与建设'}
+            />
+          </ListItem>
+        ))}
+      </List>
+    );
+  };
+
+  const renderTeamPopup = (row: PageTemplateRow) => {
+    const summary = row.teamSummary;
+
+    return (
+      <Space direction="vertical" size={6} className="team-popup">
+        <strong>{summary?.name || row.ownerTeamName || '当前团队'}</strong>
+        <span>{summary?.description || '暂无团队简介'}</span>
+        <span>成员数：{summary?.memberCount ?? '-'}</span>
+      </Space>
+    );
+  };
 
   const pagination = useMemo(
     () => ({
@@ -588,16 +547,143 @@ const BuildPage: React.FC = () => {
       </div>
 
       <div className="table-wrapper">
-        <Table
-          className="list-table"
-          columns={buildColumns}
-          data={tableData}
-          rowKey="id"
-          loading={loading}
-          pagination={pagination}
-          style={{ minWidth: '1440px' }}
-        />
+        {loading ? <div className="empty-state">加载中...</div> : null}
+        {!loading ? (
+          tableData.length ? (
+            <Row gutter={[12, 12]} className="card-grid-row">
+              {tableData.map((row) => {
+                const { date, time } = splitDateTimeText(row.updatedAt);
+                const descriptionText = row.description || '暂无描述';
+
+                return (
+                  <Col key={row.id} xs={12} sm={6} lg={4} xl={3}>
+                    <Card className="resource-card" bordered>
+                      <Space direction="vertical" size={8} style={{ width: '100%' }}>
+                        <Row justify="space-between" align="middle">
+                          <Col flex="auto" className="resource-card__title-wrap">
+                            <div className="resource-card__title" title={row.pageName}>{row.pageName}</div>
+                          </Col>
+                          <Col flex="none">
+                            <Button size="small" variant="text" theme="primary" onClick={() => setDetailTarget(row)}>详情</Button>
+                          </Col>
+                        </Row>
+
+                        <Space size={6} className="resource-card__tags">
+                          <Tag size="small" theme={row.status === 'published' ? 'success' : 'warning'} variant="light">
+                            {row.status === 'published' ? '已发布' : '草稿'}
+                          </Tag>
+                          <Tag size="small" theme={row.visibility === '公开' ? 'primary' : 'default'} variant="light">
+                            {row.visibility}
+                          </Tag>
+                          <Tag size="small" variant="light-outline">v{row.currentVersion}</Tag>
+                        </Space>
+
+                        <Space size={6} className="resource-card__meta">
+                          <span className="meta-item"><UserIcon size="14" /> {row.ownerName || '-'}</span>
+                          <Popup trigger="hover" placement="top" showArrow content={renderTeamPopup(row)}>
+                            <Tag size="small" variant="light-outline" className="team-tag-popup-trigger">
+                              {row.ownerType === '团队' ? (row.ownerTeamName !== '-' ? row.ownerTeamName : '团队资源') : '个人资源'}
+                            </Tag>
+                          </Popup>
+                        </Space>
+
+                        <div className="resource-card__description" title={descriptionText}>{descriptionText}</div>
+
+                        <Row justify="space-between" align="middle" className="resource-card__foot">
+                          <Col flex="auto" className="resource-card__time-text">{date}{time ? ` ${time}` : ''}</Col>
+                          <Col flex="none">
+                            <Space size={6} align="center">
+                              <Popup trigger="hover" placement="top-right" showArrow content={renderContributorsPopup(row.contributors)}>
+                                <div className="participant-avatars-trigger">
+                                  <Avatar.Group max={4} cascading="right-up" size="24px">
+                                    {row.contributors.map((item) => (
+                                      <Avatar key={item.userId || item.username} image={item.avatar}>
+                                        {String(resolveContributorName(item) || '-').slice(0, 1)}
+                                      </Avatar>
+                                    ))}
+                                  </Avatar.Group>
+                                </div>
+                              </Popup>
+
+                              <Popup trigger="click" placement="top-right" showArrow={false} content={renderActionPopup(row)}>
+                                <Button size="small" variant="text" shape="square" className="resource-card__more-button">⋮</Button>
+                              </Popup>
+                            </Space>
+                          </Col>
+                        </Row>
+                      </Space>
+                    </Card>
+                  </Col>
+                );
+              })}
+            </Row>
+          ) : (
+            <div className="empty-state">暂无页面数据</div>
+          )
+        ) : null}
+
+        <div className="pagination-wrap">
+          <Pagination
+            current={pagination.current}
+            pageSize={pagination.pageSize}
+            total={pagination.total}
+            showJumper={pagination.showJumper}
+            showPageSize={pagination.showPageSize}
+            onCurrentChange={pagination.onCurrentChange}
+            onPageSizeChange={pagination.onPageSizeChange}
+          />
+        </div>
       </div>
+
+      <Dialog
+        visible={Boolean(detailTarget)}
+        header="页面详情"
+        confirmBtn={{ content: '关闭' }}
+        cancelBtn={null}
+        onConfirm={() => setDetailTarget(null)}
+        onClose={() => setDetailTarget(null)}
+      >
+        <div className="detail-dialog">
+          <div className="detail-row"><span>页面名称</span><strong>{detailTarget?.pageName || '-'}</strong></div>
+          <div className="detail-row"><span>页面 ID</span><strong>{detailTarget?.pageId || '-'}</strong></div>
+          <div className="detail-row"><span>发布人</span><strong>{detailTarget?.ownerName || '-'}</strong></div>
+          <div className="detail-row">
+            <span>所属范围</span>
+            <strong>
+              {detailTarget?.ownerType === '团队' ? (
+                <Popup trigger="hover" placement="top-right" showArrow content={detailTarget ? renderTeamPopup(detailTarget) : null}>
+                  <Tag size="small" variant="light-outline" className="team-tag-popup-trigger">{detailTarget?.ownerTeamName || '团队资源'}</Tag>
+                </Popup>
+              ) : '个人资源'}
+            </strong>
+          </div>
+          <div className="detail-row"><span>状态</span><strong>{detailTarget?.status === 'published' ? '已发布' : '草稿'}</strong></div>
+          <div className="detail-row"><span>可见性</span><strong>{detailTarget?.visibility || '-'}</strong></div>
+          <div className="detail-row"><span>当前版本</span><strong>{detailTarget?.currentVersion ?? '-'}</strong></div>
+          <div className="detail-row detail-row--description">
+            <span>描述</span>
+            <strong className="detail-scroll-content">{detailTarget?.description || '暂无描述'}</strong>
+          </div>
+          <div className="detail-row">
+            <span>参与者</span>
+            <strong>
+              <Popup
+                trigger="click"
+                placement="top-right"
+                showArrow
+                content={renderContributorsPopup(detailTarget?.contributors || [])}
+              >
+                <span className="participants-detail-trigger">查看列表（{detailTarget?.contributors?.length || 0}）</span>
+              </Popup>
+            </strong>
+          </div>
+          <div className="detail-row"><span>路由路径</span><strong>{detailTarget?.routePath || '-'}</strong></div>
+          <div className="detail-row"><span>页面标题</span><strong>{detailTarget?.pageTitle || '-'}</strong></div>
+          <div className="detail-row"><span>菜单标题</span><strong>{detailTarget?.menuTitle || '-'}</strong></div>
+          <div className="detail-row"><span>主布局</span><strong>{detailTarget?.useLayout || '-'}</strong></div>
+          <div className="detail-row"><span>更新时间</span><strong>{detailTarget?.updatedAt || '-'}</strong></div>
+        </div>
+      </Dialog>
 
       <Dialog
         visible={Boolean(deleteTarget)}

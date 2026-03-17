@@ -8,6 +8,24 @@ export type TemplateStatus = 'draft' | 'published';
 export type ResourceVisibility = 'private' | 'public';
 export type ResourceOwnerType = 'user' | 'team';
 
+export interface ResourceContributor {
+  userId: string;
+  username: string;
+  nickname?: string;
+  avatar?: string;
+  role?: string;
+  contributionCount?: number;
+  lastActiveAt?: string;
+}
+
+export interface ResourceTeamSummary {
+  id?: string;
+  name?: string;
+  description?: string;
+  avatar?: string;
+  memberCount?: number;
+}
+
 export interface RouteConfigDTO {
   routePath?: string;
   routeName?: string;
@@ -19,6 +37,7 @@ export interface RouteConfigDTO {
 export interface PageTemplateBaseInfo {
   pageId: string;
   pageName: string;
+  description?: string;
   entityType?: 'page';
   status: TemplateStatus;
   currentVersion: number;
@@ -32,11 +51,14 @@ export interface PageTemplateBaseInfo {
   autoWidth?: number;
   updatedAt?: string;
   routeConfig?: RouteConfigDTO;
+  contributors?: ResourceContributor[];
+  teamSummary?: ResourceTeamSummary;
 }
 
 export interface ComponentTemplateBaseInfo {
   pageId: string;
   pageName: string;
+  description?: string;
   entityType?: 'component';
   status: TemplateStatus;
   currentVersion: number;
@@ -49,6 +71,8 @@ export interface ComponentTemplateBaseInfo {
   screenSize?: string | number;
   autoWidth?: number;
   updatedAt?: string;
+  contributors?: ResourceContributor[];
+  teamSummary?: ResourceTeamSummary;
 }
 
 export type PageBaseInfo = PageTemplateBaseInfo | ComponentTemplateBaseInfo;

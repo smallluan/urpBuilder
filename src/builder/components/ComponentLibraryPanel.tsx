@@ -32,6 +32,7 @@ import componentCatalog from '../../config/componentCatalog';
 import { componentLibraryEntries, groupedComponentTypes, type ComponentLibraryCategory, type ComponentLibraryEntry, type ComponentLibraryGroupEntry } from '../../config/componentLibrary';
 import DragableWrapper from '../../components/DragableWrapper';
 import { getComponentBaseList, getComponentTemplateDetail } from '../../api/componentTemplate';
+import { useTeam } from '../../team/context';
 import { resolveExposedLifecycles, resolveExposedPropSchemas } from '../../utils/customComponentRuntime';
 
 interface CustomComponentSchema {
@@ -254,6 +255,7 @@ const getPopupNodeKindLabel = (type: string): string => {
 };
 
 const ComponentLibraryPanel: React.FC<ComponentLibraryPanelProps> = ({ selectedName, onSelect, hideSavedComponents = false }) => {
+  const { currentTeamId } = useTeam();
   const [keyword, setKeyword] = useState('');
   const [openedGroupKey, setOpenedGroupKey] = useState<string | null>(null);
   const [customComponentSchemas, setCustomComponentSchemas] = useState<CustomComponentSchema[]>([]);
@@ -366,8 +368,35 @@ const ComponentLibraryPanel: React.FC<ComponentLibraryPanelProps> = ({ selectedN
 
     const buildCustomComponentSchemas = async () => {
       try {
-        const baseListResult = await getComponentBaseList({ page: 1, pageSize: 50 });
-        const list = Array.isArray(baseListResult.data?.list) ? baseListResult.data.list : [];
+        const queryTasks: Array<ReturnType<typeof getComponentBaseList>> = [
+          getComponentBaseList({ page: 1, pageSize: 100, mine: true, status: 'published' }),
+        ];
+
+        if (currentTeamId) {
+          queryTasks.push(
+            getComponentBaseList({
+              page: 1,
+              pageSize: 100,
+              status: 'published',
+              ownerType: 'team',
+              ownerTeamId: currentTeamId,
+            }),
+          );
+        }
+
+        const baseResults = await Promise.all(queryTasks);
+        const listMap = new Map<string, any>();
+        baseResults.forEach((result) => {
+          const items = Array.isArray(result.data?.list) ? result.data.list : [];
+          items.forEach((item) => {
+            const key = String(item.pageId || '').trim();
+            if (!key) {
+              return;
+            }
+            listMap.set(key, item);
+          });
+        });
+        const list = Array.from(listMap.values());
 
         const details = await Promise.all(
           list.map(async (item) => {
@@ -438,7 +467,7 @@ const ComponentLibraryPanel: React.FC<ComponentLibraryPanelProps> = ({ selectedN
     return () => {
       cancelled = true;
     };
-  }, [hideSavedComponents]);
+  }, [hideSavedComponents, currentTeamId]);
 
   const filteredCustomComponentSchemas = useMemo(() => {
     const text = keyword.trim().toLowerCase();
