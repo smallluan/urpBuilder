@@ -1,5 +1,11 @@
 .app-layout {
   height: 100vh;
+  overflow: hidden;
+
+  .layout-main {
+    min-width: 0;
+    height: 100vh;
+  }
 
   .layout-header {
     padding: 0 20px;
@@ -116,12 +122,15 @@
   }
 
   .layout-content {
+    flex: 1;
+    min-height: 0;
     padding: 24px;
     background: #f5f5f5;
     overflow: auto;
   }
 
   .sidebar {
+    height: 100vh;
     .sidebar-logo {
       padding: 16px 0;
       text-align: center;
@@ -131,7 +140,8 @@
     }
 
     .sidebar-menu {
-      height: calc(100vh - 60px);
+      width: 100% !important;
+      height: 100vh;
       overflow: auto;
     }
   }

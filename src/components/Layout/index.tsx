@@ -1,5 +1,5 @@
 import React from 'react';
-import { Avatar, Dropdown, Layout, Menu, Select, Dialog } from 'tdesign-react';
+import { Avatar, Dropdown, Layout, Menu, Select, Dialog, Space, Row } from 'tdesign-react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import {
   HomeIcon,
@@ -177,54 +177,55 @@ const AppLayout: React.FC = () => {
 
   return (
     <Layout className="app-layout">
-      <Header className="layout-header">
-        <div className="header-left">
-          <img src="/urpBuilder.png" alt="URP" className="header-logo" />
-        </div>
-        <div className="header-right">
-          <div className="header-team-switcher">
+      <Aside
+        width="300px"
+        className="sidebar"
+      >
+        <Menu
+          value={location.pathname}
+          onChange={handleMenuClick}
+          className="sidebar-menu"
+          logo={
             <Select
-              value={currentTeamId || undefined}
-              loading={teamLoading}
-              placeholder="选择团队"
-              style={{ width: 200 }}
-              options={teams.map((team) => ({
-                label: `${team.name}${team.role === 'owner' ? ' · 拥有者' : team.role === 'admin' ? ' · 管理员' : ''}`,
-                value: team.id,
-              }))}
-              onChange={(value) => {
-                const nextTeamId = String(value ?? '').trim();
-                if (nextTeamId) {
-                  selectTeam(nextTeamId);
-                }
-              }}
-            />
+                value={currentTeamId || undefined}
+                loading={teamLoading}
+                placeholder="选择团队"
+                style={{ width: 200 }}
+                options={teams.map((team) => ({
+                  label: `${team.name}${team.role === 'owner' ? ' · 拥有者' : team.role === 'admin' ? ' · 管理员' : ''}`,
+                  value: team.id,
+                }))}
+                onChange={(value) => {
+                  const nextTeamId = String(value ?? '').trim();
+                  if (nextTeamId) {
+                    selectTeam(nextTeamId);
+                  }
+                }}
+              />
+          }
+        >
+          {renderMenuItems(menuItems)}
+        </Menu>
+      </Aside>
+
+      <Layout className="layout-main">
+        <Header className="layout-header">
+          <div className="header-left">
+            <img src="/urpBuilder.png" alt="URP" className="header-logo" />
           </div>
-          <GlobalNoticeCenter />
-          <Dropdown
-            trigger="click"
-            options={userMenuOptions}
-            onClick={handleUserMenuClick}
-            popupProps={{ overlayClassName: 'header-user-menu' }}
-          >
-            <button type="button" className="header-user-trigger">
-              <Avatar className="header-user-trigger__avatar" image={userAvatar} size="24px" shape="round" />
-              <span className="header-user-trigger__name">{displayName}</span>
-            </button>
-          </Dropdown>
-        </div>
-      </Header>
-      <Layout>
-        <Aside width="240px" className="sidebar">
-          <Menu
-            value={location.pathname}
-            onChange={handleMenuClick}
-            className="sidebar-menu"
-            defaultExpanded={['build', 'data', 'admin']}
-          >
-            {renderMenuItems(menuItems)}
-          </Menu>
-        </Aside>
+          <Row style={{alignItems: 'center', gap: 24}}>
+            <GlobalNoticeCenter />
+            <Dropdown
+              trigger="click"
+              options={userMenuOptions}
+              onClick={handleUserMenuClick}
+              popupProps={{ overlayClassName: 'header-user-menu' }}
+            >
+              <Avatar size="36px" shape="circle">{displayName[0]}</Avatar>
+            </Dropdown>
+          </Row>
+        </Header>
+
         <Content className="layout-content">
           <Outlet />
         </Content>

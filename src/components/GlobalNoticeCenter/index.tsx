@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Badge, Button, Dialog, Drawer, MessagePlugin, Space, Tabs, Tag } from 'tdesign-react';
-import { MailIcon, RefreshIcon } from 'tdesign-icons-react';
+import { Icon, MailIcon, RefreshIcon } from 'tdesign-icons-react';
 import { emitApiAlert } from '../../api/alertBus';
 import { useAuth } from '../../auth/context';
 import { useTeam } from '../../team/context';
@@ -337,9 +337,8 @@ const GlobalNoticeCenter: React.FC = () => {
   return (
     <>
       <Badge count={pendingCount} className="global-notice-center__badge">
-        <Button variant="text" shape="circle" icon={<MailIcon />} title="消息中心" onClick={openDrawer} />
+        <MailIcon size={20} onClick={openDrawer}/>
       </Badge>
-
       <Drawer
         visible={visible}
         placement="right"
