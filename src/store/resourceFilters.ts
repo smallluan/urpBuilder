@@ -2,15 +2,11 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { ResourceVisibility, TemplateStatus } from '../api/types';
 
-export type ResourceScope = 'mine' | 'team' | 'all';
-
 export interface ResourceFilterSlice {
   query: string;
-  scope: ResourceScope;
   statusFilter: 'all' | TemplateStatus;
   visibilityFilter: 'all' | ResourceVisibility;
   pageSize: number;
-  scopeTouched: boolean;
 }
 
 interface ResourceFiltersState {
@@ -22,11 +18,9 @@ interface ResourceFiltersState {
 
 const createDefaultFilters = (): ResourceFilterSlice => ({
   query: '',
-  scope: 'mine',
   statusFilter: 'all',
   visibilityFilter: 'all',
   pageSize: 10,
-  scopeTouched: false,
 });
 
 export const useResourceFiltersStore = create<ResourceFiltersState>()(
@@ -50,7 +44,7 @@ export const useResourceFiltersStore = create<ResourceFiltersState>()(
         })),
     }),
     {
-      name: 'urp-builder:resource-filters:v1',
+      name: 'urp-builder:resource-filters:v2',
     },
   ),
 );
