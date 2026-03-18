@@ -124,8 +124,8 @@ const ComponentBody: React.FC = () => {
       height: '100%',
       backgroundColor: '#fff',
       margin: '0 auto',
-      transition: 'width 0.3s ease',
-      boxSizing: 'content-box', // Ensure border doesn't eat into width if strict specific
+      transition: 'width 0.2s ease',
+      boxSizing: 'content-box',
       display: 'flex',
       overflow: 'auto',
       position: 'relative'

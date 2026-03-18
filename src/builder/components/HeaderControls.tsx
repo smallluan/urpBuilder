@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import cloneDeep from 'lodash/cloneDeep';
-import { Radio, Button, Space, Drawer, Timeline, Tag, Dialog, Input, Switch, Select, Textarea } from 'tdesign-react';
+import { Radio, Button, Space, Drawer, Timeline, Tag, Dialog, Input, Switch, Textarea } from 'tdesign-react';
 import { UploadIcon, ViewImageIcon, ArrowLeftIcon, ArrowRightIcon, HistoryIcon } from 'tdesign-icons-react';
 import { useBuilderAccess, useBuilderContext } from '../context/BuilderContext';
 import type { UiHistoryAction } from '../store/types';
@@ -74,8 +74,9 @@ const hasDuplicateScopedResourceId = async (
       const params: ComponentTemplateListParams = {
         page,
         pageSize: SCOPED_ID_CHECK_PAGE_SIZE,
-        ownerType,
-        ...(ownerType === 'team' ? { ownerTeamId } : { mine: true }),
+        ...(ownerType === 'team'
+          ? { ownerType: 'team' as const, ownerTeamId }
+          : { mine: true }),
       };
 
       const result = await getComponentBaseList(params);
@@ -92,8 +93,9 @@ const hasDuplicateScopedResourceId = async (
       const params: PageTemplateListParams = {
         page,
         pageSize: SCOPED_ID_CHECK_PAGE_SIZE,
-        ownerType,
-        ...(ownerType === 'team' ? { ownerTeamId } : { mine: true }),
+        ...(ownerType === 'team'
+          ? { ownerType: 'team' as const, ownerTeamId }
+          : { mine: true }),
       };
 
       const result = await getPageTemplateBaseList(params);
@@ -321,7 +323,7 @@ const HeaderControls: React.FC<Props> = ({
 }) => {
   const { useStore } = useBuilderContext();
   const { readOnly } = useBuilderAccess();
-  const { currentTeamId, currentTeam } = useTeam();
+  const { currentTeamId, currentTeam, workspaceMode } = useTeam();
   const history = useStore((state) => state.history);
   const uiTreeData = useStore((state) => state.uiPageData);
   const flowNodes = useStore((state) => state.flowNodes);
@@ -352,7 +354,6 @@ const HeaderControls: React.FC<Props> = ({
   const [componentName, setComponentName] = useState('');
   const [componentId, setComponentId] = useState('');
   const [componentDescription, setComponentDescription] = useState('');
-  const [ownerScope, setOwnerScope] = useState<'user' | 'team'>('user');
   const [saving, setSaving] = useState(false);
   const [pageSettingsVisible, setPageSettingsVisible] = useState(false);
   const [deleteRouteDialogVisible, setDeleteRouteDialogVisible] = useState(false);
@@ -446,7 +447,6 @@ const HeaderControls: React.FC<Props> = ({
     setComponentName(currentPageName || '');
     setComponentId(currentPageId || '');
     setComponentDescription(currentPageDescription || '');
-    setOwnerScope(currentTeamId ? 'team' : 'user');
     setSaveDialogVisible(true);
   };
 
@@ -591,8 +591,13 @@ const HeaderControls: React.FC<Props> = ({
       return;
     }
 
-    const resolvedOwnerType: 'user' | 'team' = ownerScope === 'team' && currentTeamId ? 'team' : 'user';
+    const resolvedOwnerType: 'user' | 'team' = workspaceMode === 'team' ? 'team' : 'user';
     const resolvedOwnerTeamId: string | undefined = resolvedOwnerType === 'team' ? currentTeamId || undefined : undefined;
+
+    if (resolvedOwnerType === 'team' && !resolvedOwnerTeamId) {
+      emitApiAlert('保存失败', '当前为团队空间，但未选择团队，请先在侧边栏选择团队后再保存');
+      return;
+    }
 
     setSaving(true);
 
@@ -617,7 +622,7 @@ const HeaderControls: React.FC<Props> = ({
 
             emitApiAlert(
               '保存失败',
-              `当前${saveEntityLabel}使用了团队组件：${conflictNames}${teamOwnedComponents.length > 3 ? ' 等' : ''}。请将归属范围改为“当前团队”后再保存。`,
+              `当前${saveEntityLabel}使用了团队组件：${conflictNames}${teamOwnedComponents.length > 3 ? ' 等' : ''}。请先切换到团队空间后再保存。`,
             );
             return;
           }
@@ -840,14 +845,9 @@ const HeaderControls: React.FC<Props> = ({
 
           <div>
             <div style={{ marginBottom: 6 }}>归属范围</div>
-            <Select
-              value={ownerScope}
-              disabled={readOnly || !currentTeamId}
-              options={[
-                { label: '个人资源', value: 'user' },
-                { label: currentTeam ? `当前团队（${currentTeam.name}）` : '当前团队', value: 'team' },
-              ]}
-              onChange={(value) => setOwnerScope(value === 'team' ? 'team' : 'user')}
+            <Input
+              readonly
+              value={workspaceMode === 'team' ? (currentTeam ? `当前团队（${currentTeam.name}）` : '当前团队') : '个人资源'}
             />
           </div>
 

@@ -1229,6 +1229,14 @@ export const createBuilderStore = (options: CreateBuilderStoreOptions = {}) => {
         };
       }),
 
+    /**
+     * 移动一个节点的位置（拖拽/排序）
+     * @param nodeKey - 被操作的目标节点的 key
+     * @param targetParentKey - 目标节点原父节点的 key
+     * @param targetIndex - 移动后在父元素内部的索引
+     * @param slotKey 
+     * @returns 
+     */
     moveUiNode: (nodeKey, targetParentKey, targetIndex, slotKey) =>
       set((state) => {
         const sourceKey = String(nodeKey ?? '').trim();
@@ -1250,9 +1258,10 @@ export const createBuilderStore = (options: CreateBuilderStoreOptions = {}) => {
         const siblingCount = targetParentNode.children?.length ?? 0;
         const requestedIndex = Number.isFinite(targetIndex) ? Math.trunc(targetIndex) : siblingCount;
         let safeIndex = Math.max(0, Math.min(requestedIndex, siblingCount));
-        if (removed.parentKey === parentKey && removed.index < safeIndex) {
-          safeIndex -= 1;
-        }
+        // 这块校验是不是多余了
+        // if (removed.parentKey === parentKey && removed.index < safeIndex) {
+        //   safeIndex -= 1;
+        // }
 
         if (removed.parentKey === parentKey && removed.index === safeIndex) {
           return state;

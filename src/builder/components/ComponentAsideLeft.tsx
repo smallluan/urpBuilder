@@ -1,8 +1,9 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import cloneDeep from 'lodash/cloneDeep';
-import { Button, Input, Tree } from 'tdesign-react';
+import { Button, Divider, Input, Row, Space, Tree, Typography, MessagePlugin } from 'tdesign-react';
+const { Text } = Typography;
 import type { TreeInstanceFunctions } from 'tdesign-react';
-import { SearchIcon } from 'tdesign-icons-react';
+import { Icon, SearchIcon } from 'tdesign-icons-react';
 import { ArrowDown, ArrowUp, GripHorizontal, LayoutGrid, Minus, Palette, PlusSquare, Trash2 } from 'lucide-react';
 import { useBuilderAccess, useBuilderContext } from '../context/BuilderContext';
 import type { UiTreeNode } from '../store/types';
@@ -298,6 +299,7 @@ const ComponentAsideLeft: React.FC = () => {
 
   const handleDeleteNode = (nodeKey: string) => {
     if (!nodeKey || nodeKey === uiPageData.key) {
+      MessagePlugin.info('I am duration 20s Message', 20 * 1000)
       closeContextMenu();
       return;
     }
@@ -641,6 +643,135 @@ const ComponentAsideLeft: React.FC = () => {
               style={{ left: contextMenuState.x, top: contextMenuState.y }}
               onMouseDown={(event) => event.stopPropagation()}
             >
+              <Row className="tree-node-context-menu-item" justify='space-between' align='center'>
+                <Space style={{ alignItems: 'center' }} size={12} align='center'>
+                  <Icon size={16} name="copy"/>
+                  <Text>复制</Text>
+                </Space>
+                <Text>Ctrl+C</Text>
+              </Row>
+              <Row className="tree-node-context-menu-item" justify='space-between' align='center'>
+                <Space style={{ alignItems: 'center' }} size={12} align='center'>
+                  <Icon size={16} name="clipboard-paste"/>
+                  <Text>粘贴</Text>
+                </Space>
+                <Text>Ctrl+V</Text>
+              </Row>
+              <Row className="tree-node-context-menu-item" justify='space-between' align='center'>
+                <Space style={{ alignItems: 'center' }} size={12} align='center'>
+                  <Icon size={16} name="clipboard-paste"/>
+                  <Text>剪切</Text>
+                </Space>
+                <Text>Ctrl+X</Text>
+              </Row>
+              <Divider size={4}/>
+              <Row className="tree-node-context-menu-item" justify='space-between' align='center'>
+                <Space style={{ alignItems: 'center' }} size={12} align='center'>
+                  <Icon size={16} name="clipboard-paste"/>
+                  <Text>清空内部</Text>
+                </Space>
+              </Row>
+              <div
+                onClick={() => handleDeleteNode(contextMenuNode.key)}
+              >
+                <Row className="tree-node-context-menu-item" justify='space-between' align='center'>
+                  <Space style={{ alignItems: 'center' }} size={12} align='center'>
+                    <Icon size={16} name="clipboard-paste"/>
+                    <Text>删除元素</Text>
+                  </Space>
+                </Row>
+              </div>
+              <Divider size={4}/>
+              <div
+                onClick={() => {
+                  if (!contextMenuNode || !contextMenuNodeSiblingInfo) {
+                    return;
+                  }
+
+                  moveUiNode(
+                    contextMenuNode.key,
+                    contextMenuNodeSiblingInfo.parentKey,
+                    0,
+                  );
+                  setActiveNode(contextMenuNode.key);
+                  closeContextMenu();
+                }}
+              >
+                <Row className="tree-node-context-menu-item" justify='space-between' align='center'>
+                  <Space style={{ alignItems: 'center' }} size={12} align='center'>
+                    <Icon size={16} name="chevron-up-double"/>
+                    <Text>移到顶部</Text>
+                  </Space>
+                </Row>
+              </div>
+              <div
+                onClick={() => {
+                  if (!contextMenuNode || !contextMenuNodeSiblingInfo) {
+                    return;
+                  }
+
+                  moveUiNode(
+                    contextMenuNode.key,
+                    contextMenuNodeSiblingInfo.parentKey,
+                    contextMenuNodeSiblingInfo.siblingCount - 1,
+                  );
+                  setActiveNode(contextMenuNode.key);
+                  closeContextMenu();
+                }}
+              >
+                <Row className="tree-node-context-menu-item" justify='space-between' align='center'>
+                  <Space style={{ alignItems: 'center' }} size={12} align='center'>
+                    <Icon size={16} name="chevron-down-double"/>
+                    <Text>移到底部</Text>
+                  </Space>
+                </Row>
+              </div>
+              <div
+                onClick={() => {
+                  if (!contextMenuNode || !contextMenuNodeSiblingInfo) {
+                    return;
+                  }
+
+                  moveUiNode(
+                    contextMenuNode.key,
+                    contextMenuNodeSiblingInfo.parentKey,
+                    contextMenuNodeSiblingInfo.index - 1,
+                  );
+                  setActiveNode(contextMenuNode.key);
+                  closeContextMenu();
+                }}
+              >
+                <Row className="tree-node-context-menu-item" justify='space-between' align='center'>
+                  <Space style={{ alignItems: 'center' }} size={12} align='center'>
+                    <Icon size={16} name="chevron-up"/>
+                    <Text>向上移动</Text>
+                  </Space>
+                </Row>
+              </div>
+              <div
+                onClick={() => {
+                  if (!contextMenuNode || !contextMenuNodeSiblingInfo) {
+                    return;
+                  }
+
+                  moveUiNode(
+                    contextMenuNode.key,
+                    contextMenuNodeSiblingInfo.parentKey,
+                    contextMenuNodeSiblingInfo.index + 1,
+                  );
+                  setActiveNode(contextMenuNode.key);
+                  closeContextMenu();
+                }}
+              >
+                <Row className="tree-node-context-menu-item" justify='space-between' align='center'>
+                  <Space style={{ alignItems: 'center' }} size={12} align='center'>
+                    <Icon size={16} name="chevron-down"/>
+                    <Text>向下移动</Text>
+                  </Space>
+                </Row>
+              </div>
+              <Divider size={4}/>
+
               <NodeStyleDrawer
                 targetKey={contextMenuNode.key}
                 value={(contextMenuNode.props?.__style as { value?: Record<string, unknown> } | undefined)?.value}
@@ -687,65 +818,6 @@ const ComponentAsideLeft: React.FC = () => {
                 </Button>
               ) : null}
 
-              <Button
-                size="small"
-                variant="text"
-                theme="default"
-                className="tree-node-context-action"
-                icon={<ArrowUp size={14} />}
-                disabled={readOnly || !canMoveUp || !contextMenuNodeSiblingInfo || !contextMenuNode}
-                onClick={() => {
-                  if (!contextMenuNode || !contextMenuNodeSiblingInfo) {
-                    return;
-                  }
-
-                  moveUiNode(
-                    contextMenuNode.key,
-                    contextMenuNodeSiblingInfo.parentKey,
-                    contextMenuNodeSiblingInfo.index - 1,
-                  );
-                  setActiveNode(contextMenuNode.key);
-                  closeContextMenu();
-                }}
-              >
-                向上移动
-              </Button>
-
-              <Button
-                size="small"
-                variant="text"
-                theme="default"
-                className="tree-node-context-action"
-                icon={<ArrowDown size={14} />}
-                disabled={readOnly || !canMoveDown || !contextMenuNodeSiblingInfo || !contextMenuNode}
-                onClick={() => {
-                  if (!contextMenuNode || !contextMenuNodeSiblingInfo) {
-                    return;
-                  }
-
-                  moveUiNode(
-                    contextMenuNode.key,
-                    contextMenuNodeSiblingInfo.parentKey,
-                    contextMenuNodeSiblingInfo.index + 1,
-                  );
-                  setActiveNode(contextMenuNode.key);
-                  closeContextMenu();
-                }}
-              >
-                向下移动
-              </Button>
-
-              <Button
-                size="small"
-                variant="text"
-                theme="danger"
-                className="tree-node-context-action tree-node-context-action--danger"
-                icon={<Trash2 size={14} />}
-                disabled={readOnly || contextMenuNode.key === uiPageData.key || isSlotNode(contextMenuNode)}
-                onClick={() => handleDeleteNode(contextMenuNode.key)}
-              >
-                删除该节点
-              </Button>
             </div>
           ) : null}
         </div>
