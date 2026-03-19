@@ -72,8 +72,8 @@ const normalizeTemplateRoutes = (template: Record<string, unknown>, fallbackRout
     routeConfig: fallbackRouteConfig ?? {
       routePath: '/',
       routeName: 'root',
-      pageTitle: '默认路由',
-      menuTitle: '默认路由',
+      pageTitle: '/',
+      menuTitle: '/',
       useLayout: true,
     },
     uiTree: (template.uiTree as UiTreeNode) ?? { key: '__root__', label: '该页面', props: {}, children: [] },

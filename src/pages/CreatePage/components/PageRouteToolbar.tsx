@@ -91,15 +91,15 @@ const PageRouteToolbar: React.FC = () => {
   return (
     <div className="page-route-toolbar">
       <Select
+        size='small'
         className="page-route-toolbar__select"
         value={activePageRouteId ?? undefined}
-        options={pageRoutes.map((route, index) => ({
-          label: `${index === 0 ? '[默认] ' : ''}${route.routeConfig.menuTitle || route.routeConfig.pageTitle || route.routeConfig.routeName} · ${route.routeConfig.routePath || '/'}`,
+        options={pageRoutes.map((route) => ({
+          label: `${route.routeConfig.menuTitle || route.routeConfig.pageTitle || route.routeConfig.routeName} · ${route.routeConfig.routePath || '/'}`,
           value: route.routeId,
         }))}
         onChange={(value) => switchPageRoute(String(value ?? ''))}
       />
-      <Tag size="small" theme="primary" variant="light">{activeRoute?.routeConfig.routePath || '/'}</Tag>
       {routeOutlets.length > 0 ? (
         <Select
           className="page-route-toolbar__select"

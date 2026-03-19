@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { Button, Dialog, Input, Space, Select, Typography } from 'tdesign-react';
+import { Button, Dialog, Input, Space, Select, Typography, Tag, Divider } from 'tdesign-react';
 import ComponentBody from '../renderer/ComponentBody';
 import SCREEN_SIZES from '../config/screenSizes';
 import { useBuilderAccess, useBuilderContext } from '../context/BuilderContext';
 import { BUILT_IN_LAYOUT_TEMPLATES, type BuiltInLayoutTemplateId } from '../config/layoutTemplates';
 import { getBreakpointByWidth, resolveBuilderViewportWidth } from '../utils/gridResponsive';
+import { Layout } from 'lucide-react';
 
 const { Text } = Typography;
 
@@ -93,35 +94,39 @@ const ComponentMainBody: React.FC<{ toolbarExtra?: React.ReactNode }> = ({ toolb
     <main className="main-body">
       <div className="component-main-toolbar">
         <div className="component-main-toolbar__row">
+
+          <Divider layout="vertical"/>
           <Space size={8} align="center" className="component-main-toolbar__group">
-          <Text style={{ fontSize: '12px' }}>开发尺寸：</Text>
-          <Select
-            style={{ width: '200px' }}
-            options={SCREEN_SIZES}
-            value={screenSize}
-            onChange={(value) => handleSelectChange(value as string | number)}
-            disabled={readOnly}
-          />
-          <Input
-            type="number"
-            style={{ width: '100px' }}
-            value={draftInputValue}
-            disabled={readOnly || inputDisabled}
-            onChange={(value) => setDraftInputValue(String(value ?? ''))}
-            onBlur={(value) => handleInputBlur(String(value ?? ''))}
-          />
-          <Text style={{ fontSize: '12px', color: '#8b92a1' }}>当前断点：{simulatorBreakpoint}</Text>
+            <Select
+              size='small'
+              style={{ width: '120px' }}
+              options={SCREEN_SIZES}
+              value={screenSize}
+              onChange={(value) => handleSelectChange(value as string | number)}
+              disabled={readOnly}
+            />
+            <Input
+              size='small'
+              type="number"
+              style={{ width: '80px' }}
+              value={draftInputValue}
+              disabled={readOnly || inputDisabled}
+              onChange={(value) => setDraftInputValue(String(value ?? ''))}
+              onBlur={(value) => handleInputBlur(String(value ?? ''))}
+            />
+            <Tag theme="primary" variant="light-outline">当前断点：{simulatorBreakpoint}</Tag>
           </Space>
+          <Divider layout="vertical"/>
           {toolbarExtra ? <div className="component-main-toolbar__extra">{toolbarExtra}</div> : null}
+          <Divider layout="vertical"/>
           <Button
-            size="medium"
+            size="small"
             theme="default"
             variant="outline"
             disabled={readOnly}
+            icon={<Layout/>}
             onClick={() => setLayoutDialogVisible(true)}
-          >
-            选择布局
-          </Button>
+          />
         </div>
       </div>
 
