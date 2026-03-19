@@ -1,626 +1,288 @@
 .teams-page {
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  color: #1f2329;
+  gap: 16px;
+  padding: 20px;
+  color: var(--td-font-gray-1);
+  background: var(--td-gray-color-1);
+  min-height: calc(100vh - 100px);
 
   &__header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 16px;
   }
 
-  &__headline h2 {
-    margin: 0;
-    font-size: 22px;
-    line-height: 1.1;
-    font-weight: 700;
-  }
-
-  &__headline p {
-    margin: 6px 0 0;
-    font-size: 13px;
-    color: #8b95a7;
-  }
-
-  &__eyebrow {
-    font-size: 11px;
-    font-weight: 600;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: #98a2b3;
-  }
-
-  &__header-actions {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  &__body {
-    display: grid;
-    grid-template-columns: 320px minmax(0, 1fr);
-    gap: 14px;
-    min-height: 0;
-
-    &--single {
-      grid-template-columns: minmax(0, 1fr);
-    }
-  }
-
-  &__main-column {
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-  }
-
-  &__sidebar,
-  &__hero,
-  &__section,
   &__empty-panel {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 400px;
     background: #fff;
-    border: 1px solid #edf1f5;
-    border-radius: 10px;
-  }
-
-  &__sidebar {
-
-    padding: 8px;
-    align-self: start;
-  }
-
-  &__panel-header,
-  &__section-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-  }
-
-  &__panel-header {
-    padding: 8px 8px 6px;
-  }
-
-  &__panel-title,
-  &__section-title {
-    font-size: 14px;
-    font-weight: 600;
-    color: #111827;
-  }
-
-  &__panel-subtitle,
-  &__section-subtitle {
-    margin-top: 2px;
-    font-size: 11px;
-    color: #98a2b3;
-  }
-
-  &__team-list {
-    background: transparent;
-  }
-
-  &__team-filters {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    padding: 0 8px 8px;
-  }
-
-  &__team-tabs {
-    .t-tabs__nav-wrap {
-      margin-bottom: 0;
-    }
-
-    .t-tabs__nav-item {
-      padding: 0 8px;
-      font-size: 11px;
-    }
-  }
-
-  &__team-list-item {
-    padding: 0 !important;
-    border: 0 !important;
-  }
-
-  &__team-card {
-    width: 100%;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    text-align: left;
-    border: 1px solid transparent;
     border-radius: 8px;
-    background: transparent;
-    padding: 8px;
-    cursor: pointer;
-    transition: background-color 0.2s ease, border-color 0.2s ease;
-
-    &:hover {
-      background: #f7f9fc;
-    }
-
-    &.is-active {
-      border-color: #d7e3ff;
-      background: #f5f8ff;
-    }
-  }
-
-  &__team-card-avatar,
-  &__hero-avatar,
-  &__member-avatar {
-    border-radius: 12px;
-    overflow: hidden;
-    flex: 0 0 auto;
-  }
-
-  &__team-card-avatar {
-    width: 32px;
-    height: 32px;
-    border-radius: 8px;
-  }
-
-  &__hero-avatar {
-    width: 42px;
-    height: 42px;
-    border-radius: 10px;
-  }
-
-  &__team-card-body {
-    min-width: 0;
-    flex: 1;
-  }
-
-  &__team-card-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-  }
-
-  &__team-card-title {
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    font-size: 13px;
-    font-weight: 600;
-    color: #111827;
-  }
-
-  &__team-card-current {
-    font-size: 10px;
-    color: #315efb;
-  }
-
-  &__team-card-meta {
-    margin-top: 2px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    color: #8b95a7;
-    font-size: 11px;
-  }
-
-  &__hero {
-    padding: 14px 16px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-  }
-
-  &__hero-main {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    min-width: 0;
-  }
-
-  &__hero-avatar {
-    width: 48px;
-    height: 48px;
-    border-radius: 12px;
-    background: linear-gradient(135deg, #eff5ff 0%, #e8f0ff 100%);
-    color: #315efb;
-    font-size: 16px;
-  }
-
-  &__hero-copy {
-    min-width: 0;
-
-    h3 {
-      margin: 0;
-      font-size: 18px;
-      line-height: 1.2;
-      color: #111827;
-    }
-
-    p {
-      margin: 4px 0 0;
-      font-size: 12px;
-      line-height: 1.4;
-      color: #8b95a7;
-    }
-  }
-
-  &__hero-title-row {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
-  }
-
-  &__hero-meta {
-    margin-top: 8px;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-
-    span {
-      display: inline-flex;
-      align-items: center;
-      height: 24px;
-      padding: 0 8px;
-      border-radius: 999px;
-      background: #f5f7fa;
-      font-size: 11px;
-      color: #7b8794;
-    }
-  }
-
-  &__hero-actions {
-    flex: 0 0 auto;
-  }
-
-  &__metrics {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 10px;
-  }
-
-  &__metric-item {
-    padding: 10px 12px;
-    border: 1px solid #edf1f5;
-    border-radius: 10px;
-    background: #fff;
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-
-    span {
-      font-size: 11px;
-      color: #8b95a7;
-    }
-
-    strong {
-      font-size: 16px;
-      font-weight: 700;
-      color: #111827;
-    }
-  }
-
-  &__section {
-    padding: 12px 14px;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-  }
-
-  &__asset-actions {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  &__asset-list {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 10px;
-  }
-
-  &__asset-card {
-    border: 1px solid #edf1f5;
-    border-radius: 10px;
-    background: #fcfdff;
-    padding: 10px;
-  }
-
-  &__asset-card-head {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-  }
-
-  &__asset-card-main {
-    min-width: 0;
-    flex: 1;
-  }
-
-  &__asset-card-title {
-    color: #111827;
-    font-weight: 600;
-    font-size: 13px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  &__asset-card-sub {
-    margin-top: 2px;
-    color: #8b95a7;
-    font-size: 11px;
-  }
-
-  &__asset-card-foot {
-    margin-top: 8px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 10px;
-    font-size: 11px;
-    color: #98a2b3;
-  }
-
-  &__member-grid {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 10px;
-  }
-
-  &__member-card {
-    border: 1px solid #edf1f5;
-    border-radius: 10px;
-    background: #fcfdff;
-  }
-
-  &__member-card {
-    padding: 10px;
-  }
-
-  &__member-card-head {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-
-  &__member-avatar {
-    width: 34px;
-    height: 34px;
-    border-radius: 8px;
-    overflow: hidden;
-  }
-
-  &__member-main {
-    min-width: 0;
-    flex: 1;
-  }
-
-  &__member-name {
-    color: #111827;
-    font-weight: 600;
-    font-size: 13px;
-  }
-
-  &__member-name-row {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    flex-wrap: wrap;
-  }
-
-  &__member-sub {
-    margin: 2px 0 0;
-    color: #8b95a7;
-    font-size: 11px;
-    line-height: 1.3;
-  }
-
-  &__member-foot {
-    margin-top: 8px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 10px;
-    font-size: 11px;
-    color: #98a2b3;
   }
 
   &__empty-actions {
-    margin-top: 10px;
+    margin-top: 16px;
     display: flex;
     justify-content: center;
+    gap: 12px;
   }
 
-  &__govern-toolbar {
-    display: grid;
-    grid-template-columns: minmax(260px, 1fr) 140px auto auto;
-    gap: 8px;
-    align-items: center;
-  }
-
-  &__govern-table-wrap {
-    border: 1px solid #edf1f5;
-    border-radius: 10px;
-    overflow: auto;
+  .tile-hero {
+    padding: 20px;
     background: #fff;
-  }
-
-  &__govern-team-cell {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  &__govern-team-avatar {
-    width: 28px;
-    height: 28px;
     border-radius: 8px;
-    background: #eef4ff;
-    color: #315efb;
-    font-size: 11px;
-    font-weight: 700;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    flex: 0 0 auto;
-  }
-
-  &__govern-team-main {
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-  }
-
-  &__govern-team-name {
-    font-size: 13px;
-    font-weight: 600;
-    color: #111827;
-  }
-
-  &__govern-team-sub {
-    font-size: 11px;
-    color: #8b95a7;
-  }
-
-  &__govern-action-row {
     display: flex;
     align-items: center;
-    gap: 8px;
-  }
+    gap: 20px;
 
-  &__duration-row {
-    display: grid;
-    grid-template-columns: 1fr 120px;
-    gap: 8px;
-  }
+    &__avatar {
+      width: 56px;
+      height: 56px;
+      border-radius: 10px;
+      flex-shrink: 0;
+    }
 
-  &__native-datetime {
-    width: 100%;
-    min-height: 32px;
-    border: 1px solid #dcdcdc;
-    border-radius: 6px;
-    padding: 5px 12px;
-    font-size: 14px;
-    color: #111827;
-    background: #fff;
-    box-sizing: border-box;
+    &__info {
+      flex: 1;
+      min-width: 0;
+    }
 
-    &:focus {
-      outline: none;
-      border-color: #0052d9;
-      box-shadow: 0 0 0 2px rgba(0, 82, 217, 0.12);
+    &__title-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    &__name {
+      font-size: 18px;
+      font-weight: 600;
+      margin: 0;
+    }
+
+    &__desc {
+      margin: 4px 0 0;
+      font-size: 13px;
+      color: var(--td-font-gray-4);
+    }
+
+    &__meta {
+      margin-top: 8px;
+      display: flex;
+      gap: 8px;
+    }
+
+    &__meta-item {
+      font-size: 12px;
+      color: var(--td-font-gray-4);
     }
   }
 
-  &__form {
+  .tile-stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+
+    &__item {
+      padding: 16px;
+      background: #fff;
+      border-radius: 8px;
+      text-align: center;
+    }
+
+    &__value {
+      font-size: 22px;
+      font-weight: 600;
+    }
+
+    &__label {
+      margin-top: 4px;
+      font-size: 12px;
+      color: var(--td-font-gray-4);
+    }
+  }
+
+  .tile-section {
+    padding: 16px;
+    background: #fff;
+    border-radius: 8px;
+
+    &__header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+
+    &__title {
+      font-size: 14px;
+      font-weight: 600;
+      margin: 0;
+    }
+  }
+
+  .asset-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+
+    &__item {
+      padding: 12px;
+      border: 1px solid var(--td-gray-color-4);
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+
+      &:hover {
+        border-color: var(--td-brand-color);
+      }
+    }
+
+    &__title {
+      font-size: 13px;
+      font-weight: 500;
+    }
+
+    &__id {
+      margin-top: 2px;
+      font-size: 11px;
+      color: var(--td-font-gray-4);
+    }
+
+    &__foot {
+      margin-top: 8px;
+      font-size: 11px;
+      color: var(--td-font-gray-4);
+    }
+  }
+
+  .member-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+
+    &__item {
+      padding: 10px;
+      border: 1px solid var(--td-gray-color-4);
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      transition: all 0.15s ease;
+
+      &:hover {
+        border-color: var(--td-brand-color);
+      }
+    }
+
+    &__avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 6px;
+      flex-shrink: 0;
+    }
+
+    &__info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    &__name {
+      font-size: 12px;
+      font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    &__email {
+      font-size: 11px;
+      color: var(--td-font-gray-4);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+  }
+
+  .form {
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 16px;
   }
 
   &__team-avatar-row {
     display: flex;
     align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
+    gap: 12px;
   }
 
   &__create-team-avatar {
-    width: 52px;
-    height: 52px;
-    border-radius: 12px;
-    overflow: hidden;
+    width: 48px;
+    height: 48px;
+    border-radius: 8px;
   }
 
   &__candidate-list {
     max-height: 180px;
     overflow: auto;
-    border: 1px solid #e5e7eb;
-    border-radius: 10px;
+    border: 1px solid var(--td-gray-color-4);
+    border-radius: 6px;
     background: #fff;
     padding: 6px;
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
   }
 
   &__candidate-item {
     border: 0;
     background: transparent;
     text-align: left;
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    padding: 8px 10px;
-    border-radius: 8px;
+    padding: 8px;
+    border-radius: 4px;
     cursor: pointer;
 
     &:hover {
-      background: #f5f8ff;
-    }
-
-    &.is-active {
-      background: #edf3ff;
+      background: var(--td-gray-color-2);
     }
   }
 
   &__candidate-name {
-    color: #111827;
-    font-weight: 600;
+    font-size: 13px;
+    font-weight: 500;
   }
 
   &__candidate-sub {
-    color: #6b7280;
-    font-size: 12px;
+    font-size: 11px;
+    color: var(--td-font-gray-4);
   }
 
-  &__hint {
-    color: #8b95a7;
-    font-size: 12px;
-  }
-
-  &__empty,
-  &__empty-panel {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 160px;
-    color: #98a2b3;
-    font-size: 13px;
-  }
-
-  &__empty-panel {
-    min-height: 420px;
-  }
-
-  @media (max-width: 1200px) {
-    &__asset-list,
-    &__member-grid {
-      grid-template-columns: 1fr;
+  @media (max-width: 1100px) {
+    .tile-stats,
+    .asset-grid,
+    .member-grid {
+      grid-template-columns: repeat(3, 1fr);
     }
   }
 
-  @media (max-width: 960px) {
-    &__body {
-      grid-template-columns: 1fr;
-    }
+  @media (max-width: 800px) {
+    padding: 12px;
 
-    &__govern-toolbar,
-    &__duration-row {
-      grid-template-columns: 1fr;
-    }
-
-    &__hero,
-    &__member-foot {
+    .tile-hero {
       flex-direction: column;
       align-items: flex-start;
     }
 
-    &__metrics {
+    .tile-stats,
+    .asset-grid,
+    .member-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+
+  @media (max-width: 500px) {
+    .tile-stats,
+    .asset-grid,
+    .member-grid {
       grid-template-columns: 1fr;
     }
   }

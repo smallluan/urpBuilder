@@ -191,22 +191,21 @@ const AppLayout: React.FC = () => {
     return (
       <div className="space-switcher-popup">
         <div className="space-switcher-popup__section-title">个人空间</div>
-        <button type="button" className={`space-item${workspaceMode === 'personal' ? ' is-active' : ''}`} onClick={handleSwitchPersonalSpace}>
+        <div className={`space-item${workspaceMode === 'personal' ? ' is-active' : ''}`} onClick={handleSwitchPersonalSpace}>
           <Avatar size="30px" className="space-item__avatar" image={userAvatar}>{displayName.slice(0, 1)}</Avatar>
           <div className="space-item__meta">
             <span className="space-item__name">个人空间</span>
             <span className="space-item__sub">{displayName}</span>
           </div>
-        </button>
+        </div>
 
         <div className="space-switcher-popup__section-title">团队空间</div>
         <div className="space-switcher-popup__team-list">
           {teams.length ? teams.map((team) => {
             const active = workspaceMode === 'team' && team.id === currentTeamId;
             return (
-              <button
+              <div
                 key={team.id}
-                type="button"
                 className={`space-item${active ? ' is-active' : ''}`}
                 onClick={async () => {
                   await selectTeam(team.id);
@@ -224,7 +223,7 @@ const AppLayout: React.FC = () => {
                   <span className="space-item__name">{team.name}</span>
                   <span className="space-item__sub">{team.role === 'owner' ? '拥有者' : team.role === 'admin' ? '管理员' : '成员'}</span>
                 </div>
-              </button>
+              </div>
             );
           }) : <div className="space-switcher-popup__empty">暂无团队，先创建一个吧</div>}
         </div>
@@ -242,7 +241,7 @@ const AppLayout: React.FC = () => {
       >
         <div className="sidebar-space-switcher-wrap">
           <Popup trigger="click" placement="bottom-left" showArrow={false} content={renderSpacePopup()}>
-            <button type="button" className="sidebar-space-switcher" disabled={teamLoading}>
+            <div className="sidebar-space-switcher">
               <Space size={8} align="center">
                 <Avatar
                   size="30px"
@@ -261,7 +260,7 @@ const AppLayout: React.FC = () => {
                 <span className="sidebar-space-switcher__label">{currentSpaceLabel}</span>
                 <ChevronDownIcon size="16" />
               </Space>
-            </button>
+            </div>
           </Popup>
         </div>
 
@@ -276,7 +275,7 @@ const AppLayout: React.FC = () => {
                     <Button
                       key={item.key}
                       variant={active ? 'base' : 'text'}
-                      theme={active ? 'primary' : 'default'}
+                      theme='default'
                       className={`sidebar-menu-button${active ? ' is-active' : ''}`}
                       icon={item.icon}
                       onClick={() => handleMenuClick(item.key)}
