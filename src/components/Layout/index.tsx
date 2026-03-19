@@ -1,5 +1,5 @@
 import React from 'react';
-import { Avatar, Button, Dropdown, Layout, Dialog, Popup, Space, Row } from 'tdesign-react';
+import { Avatar, Button, Layout, Popup, Space, Row } from 'tdesign-react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import {
   AddIcon,
@@ -16,6 +16,7 @@ import { useAuth } from '../../auth/context';
 import { useTeam } from '../../team/context';
 import { resolveTeamAvatar, resolveUserAvatar } from '../../utils/avatar';
 import GlobalNoticeCenter from '../GlobalNoticeCenter';
+import AccountInfoPopup from './components/AccountInfoPopup';
 import './style.less';
 
 const { Header, Aside, Content } = Layout;
@@ -28,7 +29,7 @@ type FlatMenuSection = {
 const AppLayout: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, logout, deleteAccount } = useAuth();
+  const { user } = useAuth();
   const {
     teams,
     currentTeam,
@@ -36,10 +37,8 @@ const AppLayout: React.FC = () => {
     selectTeam,
     workspaceMode,
     setWorkspaceMode,
-    loading: teamLoading,
+    loading,
   } = useTeam();
-  const [deleteAccountVisible, setDeleteAccountVisible] = React.useState(false);
-  const [deletingAccount, setDeletingAccount] = React.useState(false);
 
   const displayName = user?.nickname || user?.username || '未登录';
   const userAvatar = resolveUserAvatar({
@@ -50,18 +49,6 @@ const AppLayout: React.FC = () => {
   });
   const roleSet = new Set((user?.roles ?? []).map((item) => String(item).toLowerCase()));
   const isPlatformAdmin = roleSet.has('admin') || roleSet.has('super_admin') || roleSet.has('platform_admin') || roleSet.has('root');
-  const userMenuOptions = [
-    {
-      content: '注销账号',
-      value: 'delete-account',
-      theme: 'warning' as const,
-    },
-    {
-      content: '退出登录',
-      value: 'logout',
-      theme: 'error' as const,
-    },
-  ];
 
   const menuSections = React.useMemo<FlatMenuSection[]>(() => {
     const baseSections: FlatMenuSection[] = [
@@ -158,34 +145,6 @@ const AppLayout: React.FC = () => {
     }
   };
 
-  const handleUserMenuClick = async (data: { value?: string | number | Record<string, any> }) => {
-    if (data.value === 'delete-account') {
-      setDeleteAccountVisible(true);
-      return;
-    }
-
-    if (data.value !== 'logout') {
-      return;
-    }
-
-    await logout();
-    navigate('/login', { replace: true });
-  };
-
-  const handleConfirmDeleteAccount = async () => {
-    if (deletingAccount) {
-      return;
-    }
-
-    setDeletingAccount(true);
-    try {
-      await deleteAccount();
-      navigate('/login', { replace: true });
-    } finally {
-      setDeletingAccount(false);
-      setDeleteAccountVisible(false);
-    }
-  };
 
   const renderSpacePopup = () => {
     return (
@@ -295,16 +254,14 @@ const AppLayout: React.FC = () => {
           <div className="header-left">
             <img src="/urpBuilder.png" alt="URP" className="header-logo" />
           </div>
-          <Row style={{alignItems: 'center', gap: 24}}>
+          <Row className="header-right" style={{alignItems: 'center', gap: 24}}>
             <GlobalNoticeCenter />
-            <Dropdown
+            <Popup
               trigger="click"
-              options={userMenuOptions}
-              onClick={handleUserMenuClick}
-              popupProps={{ overlayClassName: 'header-user-menu' }}
+              content={<AccountInfoPopup/>}
             >
-              <Avatar size="36px" shape="circle">{displayName[0]}</Avatar>
-            </Dropdown>
+              <Avatar className='user-avatar' size="36px" shape="circle">{displayName.slice(0, 2)}</Avatar>
+            </Popup>
           </Row>
         </Header>
 
@@ -312,24 +269,6 @@ const AppLayout: React.FC = () => {
           <Outlet />
         </Content>
       </Layout>
-
-      <Dialog
-        visible={deleteAccountVisible}
-        header="确认注销账号"
-        confirmBtn={{
-          theme: 'danger',
-          loading: deletingAccount,
-          content: '确认注销',
-        }}
-        cancelBtn={{
-          disabled: deletingAccount,
-          content: '取消',
-        }}
-        onClose={() => setDeleteAccountVisible(false)}
-        onConfirm={handleConfirmDeleteAccount}
-      >
-        <div>注销后账号及相关归属数据将不可恢复，请确认继续。</div>
-      </Dialog>
     </Layout>
   );
 };

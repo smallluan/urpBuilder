@@ -1,0 +1,53 @@
+.account-info {
+  width: 280px;
+  padding: 8px 4px 4px 0px;
+  border-radius: 4px;
+  box-sizing: border-box;
+
+  .t-space-item {
+    width: 100%
+  }
+
+  .cell-item {
+    display: flex;
+    align-items: center;
+    padding: 6px 8px;
+    border-radius: 4px;
+    color: #a6a6a6;
+    transition: background-color .2s ease-in-out;
+    cursor: pointer;
+    
+    &:hover {
+      background-color: #f3f3f3;
+    }
+
+    &_left {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      font-size: 12px;
+
+      .label {
+        color: #181818;
+      }
+      .icon {
+        margin-right: 8px;
+      }
+    }
+  }
+
+  .action-btns {
+    border-top: 1px solid #f3f3f3;
+
+    .btn-deleteAccount,
+    .btn-logout {
+      font-size: 12px;
+      margin-top: 8px;
+      width: 50%;
+    }
+
+    .btn-deleteAccount {
+      border-right: 1px solid #f3f3f3;
+    }
+  }
+}
