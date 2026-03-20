@@ -1049,7 +1049,13 @@ export const createBuilderStore = (options: CreateBuilderStoreOptions = {}) => {
         const parentNode = findNodeByKey(state.uiPageData, parentKey);
         if (!parentNode) return state;
 
-        const newNode = toUiTreeNode(componentData);
+        const rawNode = componentData as Partial<UiTreeNode>;
+        const newNode =
+          rawNode
+          && typeof rawNode.key === 'string'
+          && typeof rawNode.label === 'string'
+            ? (cloneDeep(rawNode) as UiTreeNode)
+            : toUiTreeNode(componentData);
         if (slotKey) {
           const currentProps = (newNode.props ?? {}) as Record<string, unknown>;
           newNode.props = {

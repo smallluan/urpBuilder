@@ -1,16 +1,307 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import cloneDeep from 'lodash/cloneDeep';
-import { Button, MessagePlugin } from 'tdesign-react';
-import { Palette, PlusSquare, Trash2 } from 'lucide-react';
+import { Button, Divider, MessagePlugin, Row, Space, Typography } from 'tdesign-react';
+import { Icon } from 'tdesign-icons-react';
+import { Palette, PlusSquare } from 'lucide-react';
+import type { Edge, Node as FlowNode } from '@xyflow/react';
+import { v4 as uuidv4 } from 'uuid';
 import { useBuilderAccess, useBuilderContext } from '../context/BuilderContext';
 import DropArea from '../../components/DropArea';
 import { LIST_TEMPLATE_ALLOWED_TYPES } from '../../constants/componentBuilder';
 import { findNodePathByKey } from '../utils/tree';
 import NodeStyleDrawer from '../components/NodeStyleDrawer';
 import componentCatalog from '../../config/componentCatalog';
-import { isSlotNode } from '../utils/slot';
+import { getNodeSlotKey, isSlotNode } from '../utils/slot';
+import { getTabsPanelSlotKey, normalizeTabsList, normalizeTabsValue } from '../utils/tabs';
+import {
+  clearTreeClipboard,
+  getTreeClipboard,
+  setTreeClipboard,
+  subscribeTreeClipboard,
+  type TreeClipboardPayload,
+} from '../utils/treeClipboard';
+
+const { Text } = Typography;
 
 const GRID_COL_COMPONENT_SCHEMA = componentCatalog.find((item) => item.type === 'Grid.Col');
+
+const CONTAINER_NODE_TYPES = new Set([
+  'Space',
+  'Steps',
+  'Drawer',
+  'Upload',
+  'Menu',
+  'HeadMenu',
+  'Menu.Submenu',
+  'Grid.Row',
+  'Grid.Col',
+  'Layout',
+  'Layout.Header',
+  'Layout.Content',
+  'Layout.Aside',
+  'Layout.Footer',
+]);
+
+interface TreeNodeDropTarget {
+  parentKey: string;
+  slotKey?: string;
+}
+
+interface NodeSiblingInfo {
+  parentKey: string;
+  index: number;
+  siblingCount: number;
+}
+
+const collectTreeKeySet = (node: any, collector = new Set<string>()): Set<string> => {
+  collector.add(node.key);
+  (node.children ?? []).forEach((child: any) => collectTreeKeySet(child, collector));
+  return collector;
+};
+
+const parseNodeSourceKey = (node: FlowNode): string => {
+  const nodeData = (node.data ?? {}) as { sourceKey?: unknown; sourceRef?: unknown };
+  if (typeof nodeData.sourceKey === 'string' && nodeData.sourceKey.trim()) {
+    return nodeData.sourceKey.trim();
+  }
+
+  const sourceRef = typeof nodeData.sourceRef === 'string' ? nodeData.sourceRef.trim() : '';
+  if (sourceRef.startsWith('root::')) {
+    return sourceRef.slice('root::'.length).trim();
+  }
+
+  return '';
+};
+
+const resolveClipboardFlowSnapshot = (
+  flowNodes: FlowNode[],
+  flowEdges: Edge[],
+  subtreeKeys: Set<string>,
+): { flowNodes: FlowNode[]; flowEdges: Edge[] } => {
+  const selectedNodes = flowNodes.filter((node) => {
+    if (node.type !== 'componentNode' && node.type !== 'propExposeNode') {
+      return false;
+    }
+    const sourceKey = parseNodeSourceKey(node);
+    return !!sourceKey && subtreeKeys.has(sourceKey);
+  });
+
+  const selectedNodeIds = new Set(selectedNodes.map((node) => node.id));
+  const selectedEdges = flowEdges.filter(
+    (edge) => selectedNodeIds.has(edge.source) || selectedNodeIds.has(edge.target),
+  );
+
+  return {
+    flowNodes: cloneDeep(selectedNodes),
+    flowEdges: cloneDeep(selectedEdges),
+  };
+};
+
+const buildUniqueKey = (rawBase: string, usedKeys: Set<string>) => {
+  const safeBase = (rawBase || 'node').replace(/[^A-Za-z0-9_-]/g, '_') || 'node';
+  if (!usedKeys.has(safeBase)) {
+    usedKeys.add(safeBase);
+    return safeBase;
+  }
+
+  let index = 1;
+  while (index < 1000000) {
+    const suffix = index === 1 ? '_copy' : `_copy${index}`;
+    const candidate = `${safeBase}${suffix}`;
+    if (!usedKeys.has(candidate)) {
+      usedKeys.add(candidate);
+      return candidate;
+    }
+    index += 1;
+  }
+
+  const fallback = `${safeBase}_${uuidv4().slice(0, 8)}`;
+  usedKeys.add(fallback);
+  return fallback;
+};
+
+const remapClipboardTreeKeys = (
+  node: any,
+  existingKeys: Set<string>,
+): { tree: any; keyMap: Map<string, string> } => {
+  const keyMap = new Map<string, string>();
+
+  const walk = (target: any): any => {
+    const cloned = cloneDeep(target);
+    const nextKey = buildUniqueKey(cloned.key, existingKeys);
+    keyMap.set(target.key, nextKey);
+    cloned.key = nextKey;
+    cloned.children = (cloned.children ?? []).map((child: any, index: number) => walk((target.children ?? [])[index] ?? child));
+    return cloned;
+  };
+
+  return {
+    tree: walk(node),
+    keyMap,
+  };
+};
+
+const remapClipboardFlowSnapshot = (
+  flowNodes: FlowNode[],
+  flowEdges: Edge[],
+  keyMap: Map<string, string>,
+): { flowNodes: FlowNode[]; flowEdges: Edge[] } => {
+  const nodeIdMap = new Map<string, string>();
+
+  const nextFlowNodes = flowNodes.map((node) => {
+    const nextId = uuidv4();
+    nodeIdMap.set(node.id, nextId);
+    const nextNode = cloneDeep(node);
+    const rawData = (nextNode.data ?? {}) as Record<string, unknown>;
+
+    const nextSourceKey = typeof rawData.sourceKey === 'string'
+      ? keyMap.get(rawData.sourceKey) ?? rawData.sourceKey
+      : rawData.sourceKey;
+    const nextSourceRef = typeof rawData.sourceRef === 'string' && rawData.sourceRef.startsWith('root::')
+      ? `root::${keyMap.get(rawData.sourceRef.slice('root::'.length)) ?? rawData.sourceRef.slice('root::'.length)}`
+      : rawData.sourceRef;
+
+    const nextSourceNodeId = typeof rawData.sourceNodeId === 'string'
+      ? nodeIdMap.get(rawData.sourceNodeId) ?? rawData.sourceNodeId
+      : rawData.sourceNodeId;
+    const nextUpstreamNodeId = typeof rawData.upstreamNodeId === 'string'
+      ? nodeIdMap.get(rawData.upstreamNodeId) ?? rawData.upstreamNodeId
+      : rawData.upstreamNodeId;
+
+    nextNode.id = nextId;
+    nextNode.data = {
+      ...rawData,
+      sourceKey: nextSourceKey,
+      sourceRef: nextSourceRef,
+      sourceNodeId: nextSourceNodeId,
+      upstreamNodeId: nextUpstreamNodeId,
+    };
+
+    return nextNode;
+  });
+
+  const nextFlowNodeIds = new Set(nextFlowNodes.map((node) => node.id));
+  const nextFlowEdges = flowEdges
+    .map((edge) => {
+      const nextSource = nodeIdMap.get(edge.source) ?? edge.source;
+      const nextTarget = nodeIdMap.get(edge.target) ?? edge.target;
+      return {
+        ...cloneDeep(edge),
+        id: uuidv4(),
+        source: nextSource,
+        target: nextTarget,
+      };
+    })
+    .filter((edge) => nextFlowNodeIds.has(edge.source) && nextFlowNodeIds.has(edge.target));
+
+  return {
+    flowNodes: nextFlowNodes,
+    flowEdges: nextFlowEdges,
+  };
+};
+
+const isListItemTemplateDroppable = (node: any, root: any) => {
+  if (node.type !== 'List.Item') {
+    return false;
+  }
+
+  const path = findNodePathByKey(root, node.key);
+  const listAncestor = path?.slice().reverse().find((item) => item.type === 'List');
+  if (!listAncestor) {
+    return false;
+  }
+
+  return Boolean((listAncestor.props?.customTemplateEnabled as { value?: unknown } | undefined)?.value);
+};
+
+const getCardPreferredSlotNode = (node: any) => {
+  const slotChildren = (node.children ?? []).filter((child: any) => isSlotNode(child));
+  const bodySlot = slotChildren.find((child: any) => getNodeSlotKey(child) === 'body');
+  return bodySlot ?? slotChildren[0];
+};
+
+const getTabsPreferredSlotNode = (node: any) => {
+  const tabsList = normalizeTabsList((node.props?.list as { value?: unknown } | undefined)?.value);
+  const controlledValue = normalizeTabsValue((node.props?.value as { value?: unknown } | undefined)?.value);
+  const defaultValue = normalizeTabsValue((node.props?.defaultValue as { value?: unknown } | undefined)?.value);
+  const targetValue = controlledValue ?? defaultValue ?? tabsList[0]?.value;
+  const targetSlotKey = targetValue ? getTabsPanelSlotKey(targetValue) : '';
+  const slotChildren = (node.children ?? []).filter((child: any) => isSlotNode(child));
+
+  if (!targetSlotKey) {
+    return slotChildren[0];
+  }
+
+  const matched = slotChildren.find((child: any) => getNodeSlotKey(child) === targetSlotKey);
+  return matched ?? slotChildren[0];
+};
+
+const getTreeNodeDropTarget = (node: any, root: any): TreeNodeDropTarget | null => {
+  if (isSlotNode(node)) {
+    return {
+      parentKey: node.key,
+      slotKey: getNodeSlotKey(node),
+    };
+  }
+
+  if (!node.type || CONTAINER_NODE_TYPES.has(node.type)) {
+    return {
+      parentKey: node.key,
+    };
+  }
+
+  if (isListItemTemplateDroppable(node, root)) {
+    return {
+      parentKey: node.key,
+    };
+  }
+
+  if (node.type === 'Card') {
+    const preferredSlotNode = getCardPreferredSlotNode(node);
+    if (!preferredSlotNode) {
+      return null;
+    }
+
+    return {
+      parentKey: preferredSlotNode.key,
+      slotKey: getNodeSlotKey(preferredSlotNode),
+    };
+  }
+
+  if (node.type === 'Tabs') {
+    const preferredSlotNode = getTabsPreferredSlotNode(node);
+    if (!preferredSlotNode) {
+      return null;
+    }
+
+    return {
+      parentKey: preferredSlotNode.key,
+      slotKey: getNodeSlotKey(preferredSlotNode),
+    };
+  }
+
+  return null;
+};
+
+const getNodeSiblingInfo = (root: any, nodeKey: string): NodeSiblingInfo | null => {
+  const path = findNodePathByKey(root, nodeKey);
+  if (!path || path.length < 2) {
+    return null;
+  }
+
+  const parentNode = path[path.length - 2];
+  const siblings = parentNode.children ?? [];
+  const index = siblings.findIndex((item: any) => item.key === nodeKey);
+  if (index < 0) {
+    return null;
+  }
+
+  return {
+    parentKey: parentNode.key,
+    index,
+    siblingCount: siblings.length,
+  };
+};
 
 const ComponentBody: React.FC = () => {
   const { useStore } = useBuilderContext();
@@ -22,6 +313,10 @@ const ComponentBody: React.FC = () => {
   const setActiveNode = useStore((state) => state.setActiveNode);
   const removeFromUiPageData = useStore((state) => state.removeFromUiPageData);
   const insertToUiPageData = useStore((state) => state.insertToUiPageData);
+  const moveUiNode = useStore((state) => state.moveUiNode);
+  const flowNodes = useStore((state) => state.flowNodes);
+  const flowEdges = useStore((state) => state.flowEdges);
+  const recordFlowEditHistory = useStore((state) => state.recordFlowEditHistory);
   const updateActiveNodeProp = useStore((state) => state.updateActiveNodeProp);
   const hiddenHintKeyRef = useRef<string | null>(null);
   const pulseCleanupRef = useRef<(() => void) | null>(null);
@@ -37,6 +332,7 @@ const ComponentBody: React.FC = () => {
     y: 0,
   });
   const contextMenuRef = useRef<HTMLDivElement | null>(null);
+  const [treeClipboard, setTreeClipboardState] = useState<TreeClipboardPayload | null>(() => getTreeClipboard());
 
   const closeContextMenu = () => {
     setContextMenuState((previous) => {
@@ -233,6 +529,132 @@ const ComponentBody: React.FC = () => {
     return path[path.length - 1];
   }, [contextMenuState.nodeKey, uiPageData]);
 
+  const contextMenuNodeSiblingInfo = useMemo(() => {
+    if (!contextMenuNode) {
+      return null;
+    }
+
+    return getNodeSiblingInfo(uiPageData, contextMenuNode.key);
+  }, [contextMenuNode, uiPageData]);
+
+  const canOperateNode = (node: any) => {
+    if (!node) {
+      return false;
+    }
+
+    return node.key !== uiPageData.key && !isSlotNode(node);
+  };
+
+  const copyNodeToClipboard = (targetNode: any, mode: 'copy' | 'cut') => {
+    if (!canOperateNode(targetNode)) {
+      MessagePlugin.warning('当前节点不支持该操作');
+      return false;
+    }
+
+    const subtreeKeys = collectTreeKeySet(targetNode);
+    const flowSnapshot = resolveClipboardFlowSnapshot(flowNodes, flowEdges, subtreeKeys);
+    setTreeClipboard({
+      mode,
+      node: cloneDeep(targetNode),
+      flowNodes: flowSnapshot.flowNodes,
+      flowEdges: flowSnapshot.flowEdges,
+      createdAt: Date.now(),
+    });
+    return true;
+  };
+
+  const handleCopyNode = (targetNode: any) => {
+    if (!targetNode) {
+      return;
+    }
+
+    if (copyNodeToClipboard(targetNode, 'copy')) {
+      MessagePlugin.success('已复制节点');
+    }
+    closeContextMenu();
+  };
+
+  const handleCutNode = (targetNode: any) => {
+    if (!targetNode) {
+      return;
+    }
+
+    if (!copyNodeToClipboard(targetNode, 'cut')) {
+      closeContextMenu();
+      return;
+    }
+
+    removeFromUiPageData(targetNode.key);
+    MessagePlugin.success('已剪切节点');
+    closeContextMenu();
+  };
+
+  const resolvePasteTarget = (targetNode: any): TreeNodeDropTarget | null => {
+    if (!targetNode) {
+      return null;
+    }
+
+    return getTreeNodeDropTarget(targetNode, uiPageData);
+  };
+
+  const handlePasteNode = (targetNode: any) => {
+    const clipboard = treeClipboard;
+    if (!clipboard || !targetNode) {
+      closeContextMenu();
+      return;
+    }
+
+    const dropTarget = resolvePasteTarget(targetNode);
+    if (!dropTarget) {
+      MessagePlugin.warning('当前节点不支持粘贴，请选择容器节点或插槽节点');
+      closeContextMenu();
+      return;
+    }
+
+    const usedKeys = collectTreeKeySet(uiPageData);
+    const { tree: pastedTree, keyMap } = remapClipboardTreeKeys(clipboard.node, usedKeys);
+    const remappedFlow = remapClipboardFlowSnapshot(clipboard.flowNodes, clipboard.flowEdges, keyMap);
+
+    const prevFlowNodes = flowNodes;
+    const prevFlowEdges = flowEdges;
+    const nextFlowNodes = [...flowNodes, ...remappedFlow.flowNodes];
+    const nextFlowEdges = [...flowEdges, ...remappedFlow.flowEdges];
+
+    insertToUiPageData(dropTarget.parentKey, pastedTree as Record<string, unknown>, dropTarget.slotKey);
+    if (remappedFlow.flowNodes.length > 0 || remappedFlow.flowEdges.length > 0) {
+      recordFlowEditHistory('粘贴节点并同步流程', prevFlowNodes, prevFlowEdges, nextFlowNodes, nextFlowEdges);
+    }
+    setActiveNode(pastedTree.key);
+
+    if (clipboard.mode === 'cut') {
+      clearTreeClipboard();
+    }
+
+    MessagePlugin.success('粘贴成功');
+    closeContextMenu();
+  };
+
+  const handleClearNodeChildren = (targetNode: any) => {
+    if (!targetNode) {
+      return;
+    }
+
+    const children = targetNode.children ?? [];
+    if (children.length === 0) {
+      MessagePlugin.info('当前节点内部为空');
+      closeContextMenu();
+      return;
+    }
+
+    children.forEach((child: any) => {
+      removeFromUiPageData(child.key);
+    });
+
+    setActiveNode(targetNode.key);
+    MessagePlugin.success('已清空内部元素');
+    closeContextMenu();
+  };
+
   const handleDeleteNode = (nodeKey: string) => {
     if (readOnly) {
       closeContextMenu();
@@ -266,7 +688,7 @@ const ComponentBody: React.FC = () => {
     setActiveNode(nodeKey);
 
     const menuWidth = 190;
-    const menuHeight = 132;
+    const menuHeight = 280;
     const viewportWidth = window.innerWidth;
     const viewportHeight = window.innerHeight;
     const x = Math.max(8, Math.min(event.clientX, viewportWidth - menuWidth - 8));
@@ -286,7 +708,7 @@ const ComponentBody: React.FC = () => {
     }
 
     const handleWindowMouseDown = (event: MouseEvent) => {
-      if (contextMenuRef.current?.contains(event.target as Node)) {
+      if (contextMenuRef.current?.contains(event.target as globalThis.Node | null)) {
         return;
       }
       closeContextMenu();
@@ -308,6 +730,38 @@ const ComponentBody: React.FC = () => {
     };
   }, [contextMenuState.visible]);
 
+  useEffect(() => {
+    const unsubscribe = subscribeTreeClipboard((value) => {
+      setTreeClipboardState(value);
+    });
+
+    return () => {
+      unsubscribe();
+    };
+  }, []);
+
+  const canCopyContextMenuNode = canOperateNode(contextMenuNode);
+  const canCutContextMenuNode = canOperateNode(contextMenuNode);
+  const canDeleteContextMenuNode = canOperateNode(contextMenuNode);
+  const canPasteToContextMenuNode = Boolean(contextMenuNode && treeClipboard && resolvePasteTarget(contextMenuNode));
+  const canClearContextMenuNodeChildren = Boolean((contextMenuNode?.children ?? []).length > 0);
+  const canMoveToTop = Boolean(
+    contextMenuNode && contextMenuNodeSiblingInfo && canOperateNode(contextMenuNode) && contextMenuNodeSiblingInfo.index > 0,
+  );
+  const canMoveToBottom = Boolean(
+    contextMenuNode
+    && contextMenuNodeSiblingInfo
+    && canOperateNode(contextMenuNode)
+    && contextMenuNodeSiblingInfo.index < contextMenuNodeSiblingInfo.siblingCount - 1,
+  );
+  const canMoveUp = canMoveToTop;
+  const canMoveDown = canMoveToBottom;
+
+  const getMenuItemStyle = (enabled: boolean): React.CSSProperties => ({
+    opacity: enabled ? 1 : 0.45,
+    pointerEvents: enabled ? 'auto' : 'none',
+  });
+
   return (
     <div className="component-body">
       <div className="simulator-container" data-builder-scroll-container="true" style={simulatorStyle} onContextMenu={handleCanvasContextMenu}>
@@ -326,6 +780,165 @@ const ComponentBody: React.FC = () => {
             style={{ left: contextMenuState.x, top: contextMenuState.y }}
             onMouseDown={(event) => event.stopPropagation()}
           >
+            <div
+              style={getMenuItemStyle(canCopyContextMenuNode)}
+              onClick={() => {
+                if (!canCopyContextMenuNode) {
+                  return;
+                }
+                handleCopyNode(contextMenuNode);
+              }}
+            >
+              <Row className="tree-node-context-menu-item" justify='space-between' align='center'>
+                <Space style={{ alignItems: 'center' }} size={12} align='center'>
+                  <Icon size={16} name="copy"/>
+                  <Text>复制</Text>
+                </Space>
+                <Text>Ctrl+C</Text>
+              </Row>
+            </div>
+            <div
+              style={getMenuItemStyle(canPasteToContextMenuNode)}
+              onClick={() => {
+                if (!canPasteToContextMenuNode) {
+                  return;
+                }
+                handlePasteNode(contextMenuNode);
+              }}
+            >
+              <Row className="tree-node-context-menu-item" justify='space-between' align='center'>
+                <Space style={{ alignItems: 'center' }} size={12} align='center'>
+                  <Icon size={16} name="clipboard-paste"/>
+                  <Text>粘贴</Text>
+                </Space>
+                <Text>Ctrl+V</Text>
+              </Row>
+            </div>
+            <div
+              style={getMenuItemStyle(canCutContextMenuNode)}
+              onClick={() => {
+                if (!canCutContextMenuNode) {
+                  return;
+                }
+                handleCutNode(contextMenuNode);
+              }}
+            >
+              <Row className="tree-node-context-menu-item" justify='space-between' align='center'>
+                <Space style={{ alignItems: 'center' }} size={12} align='center'>
+                  <Icon size={16} name="cut"/>
+                  <Text>剪切</Text>
+                </Space>
+                <Text>Ctrl+X</Text>
+              </Row>
+            </div>
+            <Divider size={4}/>
+            <div
+              style={getMenuItemStyle(canClearContextMenuNodeChildren)}
+              onClick={() => {
+                if (!canClearContextMenuNodeChildren) {
+                  return;
+                }
+                handleClearNodeChildren(contextMenuNode);
+              }}
+            >
+              <Row className="tree-node-context-menu-item" justify='space-between' align='center'>
+                <Space style={{ alignItems: 'center' }} size={12} align='center'>
+                  <Icon size={16} name="clear"/>
+                  <Text>清空内部</Text>
+                </Space>
+              </Row>
+            </div>
+            <div
+              style={getMenuItemStyle(canDeleteContextMenuNode)}
+              onClick={() => {
+                if (!canDeleteContextMenuNode) {
+                  return;
+                }
+                handleDeleteNode(contextMenuNode.key);
+              }}
+            >
+              <Row className="tree-node-context-menu-item" justify='space-between' align='center'>
+                <Space style={{ alignItems: 'center' }} size={12} align='center'>
+                  <Icon size={16} name="delete"/>
+                  <Text>删除元素</Text>
+                </Space>
+              </Row>
+            </div>
+            <Divider size={4}/>
+            <div
+              style={getMenuItemStyle(canMoveToTop)}
+              onClick={() => {
+                if (!contextMenuNode || !contextMenuNodeSiblingInfo || !canMoveToTop) {
+                  return;
+                }
+                moveUiNode(contextMenuNode.key, contextMenuNodeSiblingInfo.parentKey, 0);
+                setActiveNode(contextMenuNode.key);
+                closeContextMenu();
+              }}
+            >
+              <Row className="tree-node-context-menu-item" justify='space-between' align='center'>
+                <Space style={{ alignItems: 'center' }} size={12} align='center'>
+                  <Icon size={16} name="chevron-up-double"/>
+                  <Text>移到顶部</Text>
+                </Space>
+              </Row>
+            </div>
+            <div
+              style={getMenuItemStyle(canMoveToBottom)}
+              onClick={() => {
+                if (!contextMenuNode || !contextMenuNodeSiblingInfo || !canMoveToBottom) {
+                  return;
+                }
+                moveUiNode(contextMenuNode.key, contextMenuNodeSiblingInfo.parentKey, contextMenuNodeSiblingInfo.siblingCount - 1);
+                setActiveNode(contextMenuNode.key);
+                closeContextMenu();
+              }}
+            >
+              <Row className="tree-node-context-menu-item" justify='space-between' align='center'>
+                <Space style={{ alignItems: 'center' }} size={12} align='center'>
+                  <Icon size={16} name="chevron-down-double"/>
+                  <Text>移到底部</Text>
+                </Space>
+              </Row>
+            </div>
+            <div
+              style={getMenuItemStyle(canMoveUp)}
+              onClick={() => {
+                if (!contextMenuNode || !contextMenuNodeSiblingInfo || !canMoveUp) {
+                  return;
+                }
+                moveUiNode(contextMenuNode.key, contextMenuNodeSiblingInfo.parentKey, contextMenuNodeSiblingInfo.index - 1);
+                setActiveNode(contextMenuNode.key);
+                closeContextMenu();
+              }}
+            >
+              <Row className="tree-node-context-menu-item" justify='space-between' align='center'>
+                <Space style={{ alignItems: 'center' }} size={12} align='center'>
+                  <Icon size={16} name="chevron-up"/>
+                  <Text>向上移动</Text>
+                </Space>
+              </Row>
+            </div>
+            <div
+              style={getMenuItemStyle(canMoveDown)}
+              onClick={() => {
+                if (!contextMenuNode || !contextMenuNodeSiblingInfo || !canMoveDown) {
+                  return;
+                }
+                moveUiNode(contextMenuNode.key, contextMenuNodeSiblingInfo.parentKey, contextMenuNodeSiblingInfo.index + 1);
+                setActiveNode(contextMenuNode.key);
+                closeContextMenu();
+              }}
+            >
+              <Row className="tree-node-context-menu-item" justify='space-between' align='center'>
+                <Space style={{ alignItems: 'center' }} size={12} align='center'>
+                  <Icon size={16} name="chevron-down"/>
+                  <Text>向下移动</Text>
+                </Space>
+              </Row>
+            </div>
+            <Divider size={4}/>
+
             <NodeStyleDrawer
               targetKey={contextMenuNode.key}
               value={(contextMenuNode.props?.__style as { value?: Record<string, unknown> } | undefined)?.value}
@@ -371,18 +984,6 @@ const ComponentBody: React.FC = () => {
                 添加栅格列
               </Button>
             ) : null}
-
-            <Button
-              size="small"
-              variant="text"
-              theme="danger"
-              className="tree-node-context-action tree-node-context-action--danger"
-              icon={<Trash2 size={14} />}
-              disabled={contextMenuNode.key === uiPageData.key || isSlotNode(contextMenuNode)}
-              onClick={() => handleDeleteNode(contextMenuNode.key)}
-            >
-              删除该节点
-            </Button>
           </div>
         ) : null}
       </div>

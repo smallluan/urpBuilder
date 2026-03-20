@@ -15,6 +15,13 @@ import componentCatalog from '../../config/componentCatalog';
 import { LIST_TEMPLATE_ALLOWED_TYPES } from '../../constants/componentBuilder';
 import { findNodePathByKey } from '../utils/tree';
 import { getTabsPanelSlotKey, normalizeTabsList, normalizeTabsValue } from '../utils/tabs';
+import {
+  clearTreeClipboard,
+  getTreeClipboard,
+  setTreeClipboard,
+  subscribeTreeClipboard,
+  type TreeClipboardPayload,
+} from '../utils/treeClipboard';
 
 interface RenderUiTreeNode extends Omit<UiTreeNode, 'label' | 'children'> {
   label: React.ReactNode;
@@ -64,14 +71,6 @@ interface TreeNodeMoveDestination {
   parentKey: string;
   index: number;
   slotKey?: string;
-}
-
-interface TreeClipboardPayload {
-  mode: 'copy' | 'cut';
-  node: UiTreeNode;
-  flowNodes: FlowNode[];
-  flowEdges: Edge[];
-  createdAt: number;
 }
 
 const collectTreeKeys = (node: UiTreeNode): string[] => {
@@ -414,7 +413,7 @@ const ComponentAsideLeft: React.FC = () => {
   const flowEdges = useStore((state) => state.flowEdges);
   const recordFlowEditHistory = useStore((state) => state.recordFlowEditHistory);
   const updateActiveNodeProp = useStore((state) => state.updateActiveNodeProp);
-  const [treeClipboard, setTreeClipboard] = useState<TreeClipboardPayload | null>(null);
+  const [treeClipboard, setTreeClipboardState] = useState<TreeClipboardPayload | null>(() => getTreeClipboard());
   const [dragOverNodeKey, setDragOverNodeKey] = useState<string | null>(null);
   const [draggingTreeNodeKey, setDraggingTreeNodeKey] = useState<string | null>(null);
   const [expandedKeys, setExpandedKeys] = useState<string[]>(() => collectTreeKeys(uiPageData));
@@ -477,6 +476,28 @@ const ComponentAsideLeft: React.FC = () => {
     }
 
     removeFromUiPageData(nodeKey);
+    closeContextMenu();
+  };
+
+  const handleClearNodeChildren = (targetNode: UiTreeNode | null) => {
+    if (!targetNode) {
+      return;
+    }
+
+    const children = targetNode.children ?? [];
+    if (children.length === 0) {
+      MessagePlugin.info('当前节点内部为空');
+      closeContextMenu();
+      return;
+    }
+
+    const childKeys = children.map((child) => child.key);
+    childKeys.forEach((childKey) => {
+      removeFromUiPageData(childKey);
+    });
+
+    setActiveNode(targetNode.key);
+    MessagePlugin.success('已清空内部元素');
     closeContextMenu();
   };
 
@@ -578,7 +599,7 @@ const ComponentAsideLeft: React.FC = () => {
     setActiveNode(pastedTree.key);
 
     if (treeClipboard.mode === 'cut') {
-      setTreeClipboard(null);
+      clearTreeClipboard();
     }
 
     MessagePlugin.success('粘贴成功');
@@ -816,6 +837,27 @@ const ComponentAsideLeft: React.FC = () => {
   const canCopyContextMenuNode = canOperateNode(contextMenuNode);
   const canCutContextMenuNode = canOperateNode(contextMenuNode);
   const canPasteToContextMenuNode = Boolean(contextMenuNode && treeClipboard && resolvePasteTarget(contextMenuNode));
+  const canDeleteContextMenuNode = canOperateNode(contextMenuNode);
+  const canClearContextMenuNodeChildren = Boolean((contextMenuNode?.children ?? []).length > 0);
+  const canMoveToTop = Boolean(
+    contextMenuNode
+    && contextMenuNodeSiblingInfo
+    && canOperateNode(contextMenuNode)
+    && contextMenuNodeSiblingInfo.index > 0,
+  );
+  const canMoveToBottom = Boolean(
+    contextMenuNode
+    && contextMenuNodeSiblingInfo
+    && canOperateNode(contextMenuNode)
+    && contextMenuNodeSiblingInfo.index < contextMenuNodeSiblingInfo.siblingCount - 1,
+  );
+  const canMoveUp = canMoveToTop;
+  const canMoveDown = canMoveToBottom;
+
+  const getMenuItemStyle = (enabled: boolean): React.CSSProperties => ({
+    opacity: enabled ? 1 : 0.45,
+    pointerEvents: enabled ? 'auto' : 'none',
+  });
 
   const treeData = useMemo(() => [uiPageDataWithWrappedLabel], [uiPageDataWithWrappedLabel]);
   const treeRef = useRef<TreeInstanceFunctions<any>>(null);
@@ -881,6 +923,16 @@ const ComponentAsideLeft: React.FC = () => {
       window.removeEventListener('resize', closeContextMenu);
     };
   }, [contextMenuState.visible]);
+
+  useEffect(() => {
+    const unsubscribe = subscribeTreeClipboard((value) => {
+      setTreeClipboardState(value);
+    });
+
+    return () => {
+      unsubscribe();
+    };
+  }, []);
 
   useEffect(() => {
     if (readOnly) {
@@ -961,6 +1013,7 @@ const ComponentAsideLeft: React.FC = () => {
               onMouseDown={(event) => event.stopPropagation()}
             >
               <div
+                style={getMenuItemStyle(canCopyContextMenuNode)}
                 onClick={() => {
                   if (!canCopyContextMenuNode) {
                     return;
@@ -977,6 +1030,7 @@ const ComponentAsideLeft: React.FC = () => {
                 </Row>
               </div>
               <div
+                style={getMenuItemStyle(canPasteToContextMenuNode)}
                 onClick={() => {
                   if (!canPasteToContextMenuNode) {
                     return;
@@ -993,6 +1047,7 @@ const ComponentAsideLeft: React.FC = () => {
                 </Row>
               </div>
               <div
+                style={getMenuItemStyle(canCutContextMenuNode)}
                 onClick={() => {
                   if (!canCutContextMenuNode) {
                     return;
@@ -1009,26 +1064,45 @@ const ComponentAsideLeft: React.FC = () => {
                 </Row>
               </div>
               <Divider size={4}/>
-              <Row className="tree-node-context-menu-item" justify='space-between' align='center'>
-                <Space style={{ alignItems: 'center' }} size={12} align='center'>
-                  <Icon size={16} name="clipboard-paste"/>
-                  <Text>清空内部</Text>
-                </Space>
-              </Row>
               <div
-                onClick={() => handleDeleteNode(contextMenuNode.key)}
+                style={getMenuItemStyle(canClearContextMenuNodeChildren)}
+                onClick={() => {
+                  if (!canClearContextMenuNodeChildren) {
+                    return;
+                  }
+
+                  handleClearNodeChildren(contextMenuNode);
+                }}
               >
                 <Row className="tree-node-context-menu-item" justify='space-between' align='center'>
                   <Space style={{ alignItems: 'center' }} size={12} align='center'>
-                    <Icon size={16} name="clipboard-paste"/>
+                    <Icon size={16} name="clear"/>
+                    <Text>清空内部</Text>
+                  </Space>
+                </Row>
+              </div>
+              <div
+                style={getMenuItemStyle(canDeleteContextMenuNode)}
+                onClick={() => {
+                  if (!canDeleteContextMenuNode) {
+                    return;
+                  }
+
+                  handleDeleteNode(contextMenuNode.key);
+                }}
+              >
+                <Row className="tree-node-context-menu-item" justify='space-between' align='center'>
+                  <Space style={{ alignItems: 'center' }} size={12} align='center'>
+                    <Icon size={16} name="delete"/>
                     <Text>删除元素</Text>
                   </Space>
                 </Row>
               </div>
               <Divider size={4}/>
               <div
+                style={getMenuItemStyle(canMoveToTop)}
                 onClick={() => {
-                  if (!contextMenuNode || !contextMenuNodeSiblingInfo) {
+                  if (!contextMenuNode || !contextMenuNodeSiblingInfo || !canMoveToTop) {
                     return;
                   }
 
@@ -1049,8 +1123,9 @@ const ComponentAsideLeft: React.FC = () => {
                 </Row>
               </div>
               <div
+                style={getMenuItemStyle(canMoveToBottom)}
                 onClick={() => {
-                  if (!contextMenuNode || !contextMenuNodeSiblingInfo) {
+                  if (!contextMenuNode || !contextMenuNodeSiblingInfo || !canMoveToBottom) {
                     return;
                   }
 
@@ -1071,8 +1146,9 @@ const ComponentAsideLeft: React.FC = () => {
                 </Row>
               </div>
               <div
+                style={getMenuItemStyle(canMoveUp)}
                 onClick={() => {
-                  if (!contextMenuNode || !contextMenuNodeSiblingInfo) {
+                  if (!contextMenuNode || !contextMenuNodeSiblingInfo || !canMoveUp) {
                     return;
                   }
 
@@ -1093,8 +1169,9 @@ const ComponentAsideLeft: React.FC = () => {
                 </Row>
               </div>
               <div
+                style={getMenuItemStyle(canMoveDown)}
                 onClick={() => {
-                  if (!contextMenuNode || !contextMenuNodeSiblingInfo) {
+                  if (!contextMenuNode || !contextMenuNodeSiblingInfo || !canMoveDown) {
                     return;
                   }
 
