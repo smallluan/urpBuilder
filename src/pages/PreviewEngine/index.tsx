@@ -1,6 +1,7 @@
 import React from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import type { Edge, Node } from '@xyflow/react';
+import cloneDeep from 'lodash/cloneDeep';
 import PreviewRenderer from './components/PreviewRenderer';
 import { deserializePreviewSnapshot, type PreviewSnapshot } from './utils/snapshot';
 import { createPreviewDataHub, type DataHubRouterState } from './runtime/dataHub';
@@ -8,6 +9,7 @@ import { createPreviewFlowRuntime, type PreviewFlowRuntime } from './runtime/flo
 import { getPageTemplateBaseList, getPageTemplateDetail } from '../../api/pageTemplate';
 import { getComponentTemplateDetail } from '../../api/componentTemplate';
 import type { UiTreeNode } from '../../builder/store/types';
+import { findNodeByKey, updateNodeByKey } from '../../utils/createComponentTree';
 import './style.less';
 
 const EMPTY_ROOT: UiTreeNode = { key: '__root__', type: 'root', label: '', props: {}, children: [] };
@@ -54,6 +56,87 @@ const normalizeRouteConfig = (value: unknown): {
     pageTitle: typeof raw.pageTitle === 'string' ? raw.pageTitle : '',
     menuTitle: typeof raw.menuTitle === 'string' ? raw.menuTitle : '',
     useLayout: raw.useLayout !== false,
+  };
+};
+
+const findFirstRouteOutletKey = (root: UiTreeNode): string | null => {
+  if (root.type === 'RouteOutlet') {
+    return root.key;
+  }
+
+  for (const child of root.children ?? []) {
+    const found = findFirstRouteOutletKey(child);
+    if (found) {
+      return found;
+    }
+  }
+
+  return null;
+};
+
+const resolveEffectiveOutletKey = (tree: UiTreeNode, preferredKey: string | null): string | null => {
+  if (preferredKey) {
+    const target = findNodeByKey(tree, preferredKey);
+    if (target?.type === 'RouteOutlet') {
+      return preferredKey;
+    }
+  }
+
+  return findFirstRouteOutletKey(tree);
+};
+
+const composeRouteUiTree = (
+  privateTree: UiTreeNode,
+  sharedUiTree: UiTreeNode | null,
+  outletKey: string | null,
+): UiTreeNode => {
+  if (!sharedUiTree || !outletKey) {
+    return cloneDeep(privateTree);
+  }
+
+  const sharedOutlet = findNodeByKey(sharedUiTree, outletKey);
+  if (!sharedOutlet) {
+    return cloneDeep(privateTree);
+  }
+
+  const privateOutlet = findNodeByKey(privateTree, outletKey);
+  const outletChildren = privateOutlet?.type === 'RouteOutlet'
+    ? cloneDeep(privateOutlet.children ?? [])
+    : [];
+
+  return updateNodeByKey(cloneDeep(sharedUiTree), outletKey, (target) => ({
+    ...target,
+    children: outletChildren,
+  }));
+};
+
+const composeRouteFlow = (
+  privateNodes: Node[],
+  privateEdges: Edge[],
+  sharedNodes: Node[],
+  sharedEdges: Edge[],
+): { flowNodes: Node[]; flowEdges: Edge[] } => {
+  const mergedNodes = new Map<string, Node>();
+  sharedNodes.forEach((node) => mergedNodes.set(node.id, cloneDeep(node)));
+  privateNodes.forEach((node) => mergedNodes.set(node.id, cloneDeep(node)));
+  const flowNodes = Array.from(mergedNodes.values());
+  const flowNodeIds = new Set(flowNodes.map((node) => node.id));
+
+  const mergedEdges = new Map<string, Edge>();
+  sharedEdges.forEach((edge) => {
+    if (flowNodeIds.has(edge.source) && flowNodeIds.has(edge.target)) {
+      mergedEdges.set(edge.id, cloneDeep(edge));
+    }
+  });
+  privateEdges.forEach((edge) => {
+    if (flowNodeIds.has(edge.source) && flowNodeIds.has(edge.target)) {
+      mergedEdges.set(edge.id, cloneDeep(edge));
+    }
+  });
+
+  return {
+    flowNodes,
+    flowEdges: Array.from(mergedEdges.values()),
   };
 };
 
@@ -129,20 +212,60 @@ const PreviewEngine: React.FC = () => {
         const template = res.data?.template;
         if (!template) return;
 
+        const pageConfig = (template.pageConfig ?? {}) as Record<string, unknown>;
         const routeConfig = normalizeRouteConfig((template.pageConfig ?? {}).routeConfig);
         const pageTitle = typeof routeConfig?.pageTitle === 'string' ? routeConfig.pageTitle.trim() : '';
         if (pageTitle) {
           document.title = pageTitle;
         }
 
+        const sharedUiTree = pageConfig.sharedUiTree && typeof pageConfig.sharedUiTree === 'object' && !Array.isArray(pageConfig.sharedUiTree)
+          ? (pageConfig.sharedUiTree as UiTreeNode)
+          : (Array.isArray(pageConfig.sharedUiChildren)
+            ? ({
+              key: '__root__',
+              type: 'root',
+              label: '',
+              props: {},
+              children: pageConfig.sharedUiChildren as UiTreeNode[],
+            } as UiTreeNode)
+            : null);
+        const sharedFlowNodes = Array.isArray(pageConfig.sharedFlowNodes)
+          ? (pageConfig.sharedFlowNodes as Node[])
+          : [];
+        const sharedFlowEdges = Array.isArray(pageConfig.sharedFlowEdges)
+          ? (pageConfig.sharedFlowEdges as Edge[])
+          : [];
+
         const routeSnapshots = Array.isArray(template.routes)
-          ? template.routes.map((route, index) => ({
-              routeId: typeof route.routeId === 'string' ? route.routeId : `route-${index + 1}`,
-              routePath: normalizeRoutePath(route.routeConfig?.routePath ?? (index === 0 ? '/' : `/route-${index + 1}`)),
-              uiTreeData: (route.uiTree as unknown as UiTreeNode) ?? EMPTY_ROOT,
-              flowNodes: (route.flowNodes as unknown as Node[]) ?? [],
-              flowEdges: (route.flowEdges as unknown as Edge[]) ?? [],
-            }))
+          ? template.routes.map((route, index) => {
+              const privateUiTree = (route.uiTree as unknown as UiTreeNode) ?? EMPTY_ROOT;
+              const privateFlowNodes = Array.isArray(route.flowNodes)
+                ? (route.flowNodes as Node[])
+                : [];
+              const privateFlowEdges = Array.isArray(route.flowEdges)
+                ? (route.flowEdges as Edge[])
+                : [];
+              const activeRouteOutletKey = resolveEffectiveOutletKey(
+                privateUiTree,
+                typeof pageConfig.activeRouteOutletKey === 'string' ? pageConfig.activeRouteOutletKey : null,
+              );
+              const composedUiTree = composeRouteUiTree(privateUiTree, sharedUiTree, activeRouteOutletKey);
+              const composedFlow = composeRouteFlow(
+                privateFlowNodes,
+                privateFlowEdges,
+                sharedFlowNodes,
+                sharedFlowEdges,
+              );
+
+              return {
+                routeId: typeof route.routeId === 'string' ? route.routeId : `route-${index + 1}`,
+                routePath: normalizeRoutePath(route.routeConfig?.routePath ?? (index === 0 ? '/' : `/route-${index + 1}`)),
+                uiTreeData: composedUiTree,
+                flowNodes: composedFlow.flowNodes,
+                flowEdges: composedFlow.flowEdges,
+              };
+            })
           : [];
 
         const defaultRoutePath = routeSnapshots[0]?.routePath
