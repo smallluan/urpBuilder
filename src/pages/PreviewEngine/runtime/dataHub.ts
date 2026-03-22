@@ -1,5 +1,7 @@
 import cloneDeep from 'lodash/cloneDeep';
 import type { UiTreeNode } from '../../../builder/store/types';
+import requestClient from '../../../api/request';
+import { getAccessToken, migrateLegacyToken } from '../../../auth/storage';
 
 const DEFAULT_SCOPE_ID = 'root';
 
@@ -42,7 +44,7 @@ export interface DataHubCloudInvokeOptions {
 }
 
 export interface DataHubCloudContext {
-  invoke: (functionName: string, payload?: unknown, options?: DataHubCloudInvokeOptions) => Promise<unknown>;
+  invoke: (functionIdOrName: string, payload?: unknown, options?: DataHubCloudInvokeOptions) => Promise<unknown>;
 }
 
 export interface DataHubCodeContext {
@@ -161,52 +163,35 @@ export class PreviewDataHub {
       subscribe: () => () => {},
     };
     this.cloudContext = options?.cloud ?? {
-      invoke: async (functionName, payload, invokeOptions) => {
-        const normalizedName = String(functionName ?? '').trim();
-        if (!normalizedName) {
-          throw new Error('cloud.invoke 需要提供函数名');
+      invoke: async (functionIdOrName, payload, invokeOptions) => {
+        const identifier = String(functionIdOrName ?? '').trim();
+        if (!identifier) {
+          throw new Error('cloud.invoke 需要提供函数标识（id 或名称）');
         }
 
-        const endpoint = String(invokeOptions?.endpoint ?? '/cloud-functions/invoke').trim() || '/cloud-functions/invoke';
         const timeoutMs = Number.isFinite(Number(invokeOptions?.timeoutMs))
           ? Math.max(100, Math.round(Number(invokeOptions?.timeoutMs)))
           : 10000;
-
-        const controller = new AbortController();
-        const timeoutId = window.setTimeout(() => controller.abort(), timeoutMs);
+        const customHeaders = (invokeOptions?.headers ?? {}) as Record<string, string>;
+        const token = getAccessToken() || migrateLegacyToken();
+        const hasAuthHeader = Boolean(customHeaders.Authorization || customHeaders.authorization);
+        const requestHeaders = hasAuthHeader
+          ? customHeaders
+          : (token ? { ...customHeaders, Authorization: `Bearer ${token}` } : customHeaders);
 
         try {
-          const response = await fetch(endpoint, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              ...(invokeOptions?.headers ?? {}),
-            },
-            body: JSON.stringify({
-              name: normalizedName,
-              payload: payload ?? {},
-            }),
-            signal: controller.signal,
+          const response = await requestClient.post('/cloud-functions/' + encodeURIComponent(identifier) + '/execute', {
+            payload: payload ?? {},
+          }, {
+            timeout: timeoutMs,
+            headers: requestHeaders,
           });
-          const rawText = await response.text();
-          const parsed = rawText ? (() => {
-            try {
-              return JSON.parse(rawText);
-            } catch {
-              return rawText;
-            }
-          })() : null;
-
-          if (!response.ok) {
-            throw new Error(`云函数调用失败(${response.status}): ${typeof parsed === 'string' ? parsed : JSON.stringify(parsed)}`);
-          }
-
-          if (parsed && typeof parsed === 'object' && !Array.isArray(parsed) && 'data' in (parsed as Record<string, unknown>)) {
-            return (parsed as Record<string, unknown>).data;
-          }
-          return parsed;
-        } finally {
-          window.clearTimeout(timeoutId);
+          return (response.data as { data?: unknown })?.data;
+        } catch (error) {
+          const message = (error as { response?: { data?: { message?: string } }; message?: string })?.response?.data?.message
+            || (error as { message?: string })?.message
+            || '云函数调用失败';
+          throw new Error(message);
         }
       },
     };

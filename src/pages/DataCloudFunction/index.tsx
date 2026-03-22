@@ -889,8 +889,8 @@ const DataCloudFunction: React.FC = () => {
     setCodeEditorVisible(true);
   };
 
-  const handleSaveFunction = async () => {
-    if (!activeFunctionDetail?.id || !functionDraft || savingFunction) return;
+  const saveFunctionDraft = async (showSuccessMessage = true) => {
+    if (!activeFunctionDetail?.id || !functionDraft || savingFunction) return null;
     setSavingFunction(true);
     try {
       const updated = await updateCloudFunction(
@@ -905,21 +905,32 @@ const DataCloudFunction: React.FC = () => {
         accessContext,
       );
       setActiveFunctionDetail(updated);
-      MessagePlugin.success('云函数已保存');
+      if (showSuccessMessage) {
+        MessagePlugin.success('云函数已保存');
+      }
       void loadFunctions();
+      return updated;
     } finally {
       setSavingFunction(false);
     }
   };
 
+  const handleSaveFunction = async () => {
+    await saveFunctionDraft(true);
+  };
+
   const handleDeployFunction = async () => {
-    if (!activeFunctionDetail?.id || deployingFunction) return;
+    if (!activeFunctionDetail?.id || deployingFunction || savingFunction) return;
     setDeployingFunction(true);
     try {
-      await deployCloudFunction(activeFunctionDetail.id, accessContext);
+      const saved = await saveFunctionDraft(false);
+      if (!saved?.id) {
+        return;
+      }
+      await deployCloudFunction(saved.id, accessContext);
       MessagePlugin.success('部署任务已提交');
       void loadFunctions();
-      void loadFunctionDetail(activeFunctionDetail.id);
+      void loadFunctionDetail(saved.id);
     } finally {
       setDeployingFunction(false);
     }

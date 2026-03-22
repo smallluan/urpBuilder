@@ -222,13 +222,44 @@ Query 参数：
 }
 ```
 
+## 5.6 执行云函数（代码节点调用）
+
+- **Method**: `POST`
+- **Path**: `/cloud-functions/{functionId}/execute`
+- **说明**：`{functionId}` 支持传函数 `id` 或函数 `name`（同空间下唯一）。
+
+```json
+{
+  "payload": {
+    "userId": 1
+  }
+}
+```
+
+返回示例：
+
+```json
+{
+  "code": 0,
+  "message": "ok",
+  "data": {
+    "executionId": "exec_9f12ab34cd56ef78ab90",
+    "functionId": "fn_1234567890abcdef",
+    "functionName": "getUserProfile",
+    "durationMs": 12,
+    "output": {
+      "success": true
+    }
+  }
+}
+```
+
 ---
 
 ## 6. 推荐补充 API（建议）
 
-- `DELETE /cloud-functions/{functionId}`（删除函数）
-- `GET /cloud-functions/{functionId}/deployments`（部署记录）
-- `GET /cloud-functions/{functionId}/deployments/{deploymentId}/logs`（部署日志）
+- `GET /cloud-function-logs?functionId=&page=&pageSize=`（执行日志分页查询，可用于控制台“调用日志”）
+- `POST /cloud-functions/{functionId}/rollback`（按 deploymentId 回滚）
 
 ---
 

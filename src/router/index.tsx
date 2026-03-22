@@ -84,7 +84,7 @@ export const router = createBrowserRouter([
   },
   {
     path: '/preview-engine',
-    element: load(<PreviewEngine />),
+    element: <RequireAuth>{load(<PreviewEngine />)}</RequireAuth>,
   },
   {
     path: '/site-preview/*',
