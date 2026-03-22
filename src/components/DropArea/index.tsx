@@ -68,6 +68,7 @@ export default function DropArea({
 }: DropAreaProps) {
   const { useStore } = useBuilderContext();
   const [isDragOver, setIsDragOver] = useState(false);
+  const dragDisabled = disabled || !onDropData;
   const childrenLength = React.Children.count(children);
   const activeNodeKey = useStore((state) => state.activeNodeKey);
   const setActiveNode = useStore((state) => state.setActiveNode);
@@ -75,7 +76,7 @@ export default function DropArea({
 
   // 拖拽经过时允许放置，并切换高亮态
   const handleDragOver = (event: DragEvent<HTMLDivElement>) => {
-    if (disabled) {
+    if (dragDisabled) {
       return;
     }
 
@@ -87,7 +88,7 @@ export default function DropArea({
 
   // 鼠标离开放置区时取消高亮
   const handleDragLeave = (event: DragEvent<HTMLDivElement>) => {
-    if (disabled) {
+    if (dragDisabled) {
       return;
     }
 
@@ -98,7 +99,7 @@ export default function DropArea({
 
   // 放置时解析 dataTransfer 数据并通过回调抛给上层处理
   const handleDrop = (event: DragEvent<HTMLDivElement>) => {
-    if (disabled) {
+    if (dragDisabled) {
       return;
     }
 

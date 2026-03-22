@@ -13,6 +13,7 @@ import { createPropAccessors } from './propAccessors';
 import { buildMenuNodesRenderer } from './componentHelpers';
 import { registry } from './registries';
 import {
+  applyInstanceSlotsToTemplate,
   applyExposedPropsToTemplate,
   cloneTemplateUiTree,
   getNodeStringProp,
@@ -28,7 +29,7 @@ interface CommonComponentProps {
   lockActivationToOwner?: boolean;
 }
 
-const BuilderCustomComponentRenderer: React.FC<{ node: UiTreeNode }> = ({ node }) => {
+const BuilderCustomComponentRenderer: React.FC<{ node: UiTreeNode; onDropData?: UiDropDataHandler }> = ({ node, onDropData }) => {
   const [templateTree, setTemplateTree] = React.useState<UiTreeNode | null>(null);
   const [loading, setLoading] = React.useState(false);
 
@@ -57,8 +58,9 @@ const BuilderCustomComponentRenderer: React.FC<{ node: UiTreeNode }> = ({ node }
           return;
         }
 
-        const injectedTree = applyExposedPropsToTemplate(node, root, detail);
-        const namespaced = namespaceUiTreeKeys(injectedTree, `cc-${node.key}`);
+        const exposedPatchedTree = applyExposedPropsToTemplate(node, root, detail);
+        const slotPatchedTree = applyInstanceSlotsToTemplate(node, exposedPatchedTree);
+        const namespaced = namespaceUiTreeKeys(slotPatchedTree, `cc-${node.key}`);
         setTemplateTree(namespaced);
       })
       .finally(() => {
@@ -91,6 +93,7 @@ const BuilderCustomComponentRenderer: React.FC<{ node: UiTreeNode }> = ({ node }
           key={child.key}
           type={child.type}
           data={child}
+          onDropData={onDropData}
           activationOwnerKey={node.key}
           lockActivationToOwner
         />
@@ -181,15 +184,45 @@ export default function CommonComponent(properties: CommonComponentProps) {
   const cardHeaderSlotNode = getCardSlotNode('header');
   const cardBodySlotNode = getCardSlotNode('body');
   const hasCardSlotStructure = Boolean(cardHeaderSlotNode && cardBodySlotNode);
+  const ownerDropDataHandler = React.useMemo<UiDropDataHandler | undefined>(() => {
+    if (!lockActivationToOwner || !activationOwnerKey || !onDropData) {
+      return onDropData;
+    }
+
+    return (dropData, _parent, options) => {
+      const slotKey = options?.slotKey;
+      if (!slotKey) {
+        return;
+      }
+
+      onDropData(dropData, { key: activationOwnerKey, type: 'CustomComponent' } as UiTreeNode, { slotKey });
+    };
+  }, [activationOwnerKey, lockActivationToOwner, onDropData]);
 
   // Early returns
   if (isSlotNode(data)) {
+    const slotKey = getNodeSlotKey(data);
     return (
       <DropArea
         data={data}
-        onDropData={lockActivationToOwner ? undefined : onDropData}
+        onDropData={ownerDropDataHandler}
+        dropSlotKey={slotKey}
         emptyText="拖拽组件到此插槽"
-        disabled={lockActivationToOwner}
+        disabled={lockActivationToOwner && !slotKey}
+        selectable={!lockActivationToOwner}
+      />
+    );
+  }
+
+  if (normalizedType === 'ComponentSlotOutlet') {
+    const slotKey = getStringProp('slotKey') || 'default';
+    return (
+      <DropArea
+        data={data}
+        onDropData={ownerDropDataHandler}
+        dropSlotKey={slotKey}
+        emptyText={getStringProp('emptyText') || '拖拽组件到此插槽'}
+        disabled={lockActivationToOwner && !slotKey}
         selectable={!lockActivationToOwner}
       />
     );
@@ -209,7 +242,7 @@ export default function CommonComponent(properties: CommonComponentProps) {
         }}
         data-builder-node-key={data?.key || undefined}
       >
-        <BuilderCustomComponentRenderer node={data as UiTreeNode} />
+        <BuilderCustomComponentRenderer node={data as UiTreeNode} onDropData={onDropData} />
       </div>
     );
   }

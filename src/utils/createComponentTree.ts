@@ -242,6 +242,56 @@ const buildInitialChildren = (type: string, props?: Record<string, unknown>): Ui
     return createDefaultMenuChildren();
   }
 
+  if (type === 'CustomComponent') {
+    const rawSlots = (props?.__slots as { value?: unknown } | undefined)?.value ?? props?.__slots;
+    const slotItems = (() => {
+      if (Array.isArray(rawSlots)) {
+        return rawSlots;
+      }
+
+      if (typeof rawSlots === 'string') {
+        const text = rawSlots.trim();
+        if (!text) {
+          return [] as unknown[];
+        }
+
+        try {
+          const parsed = JSON.parse(text);
+          return Array.isArray(parsed) ? parsed : [];
+        } catch {
+          return [] as unknown[];
+        }
+      }
+
+      return [] as unknown[];
+    })();
+    const normalized = slotItems
+      .map((item) => {
+        if (!item || typeof item !== 'object') {
+          return null;
+        }
+
+        const record = item as Record<string, unknown>;
+        const key = String(record.key ?? '').trim();
+        const label = String(record.label ?? '').trim();
+        if (!key) {
+          return null;
+        }
+
+        return {
+          key,
+          label: label || `插槽：${key}`,
+        };
+      })
+      .filter((item): item is { key: string; label: string } => !!item);
+
+    if (normalized.length === 0) {
+      return [];
+    }
+
+    return normalized.map((item) => createSlotNode(item.key, item.label));
+  }
+
   return [];
 };
 

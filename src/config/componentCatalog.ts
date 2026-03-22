@@ -755,6 +755,27 @@ const componentCatalog = [
     }
   },
   {
+    type: 'ComponentSlotOutlet',
+    name: '组件插槽',
+    props: {
+      slotKey: {
+        name: '插槽标识',
+        value: 'default',
+        editType: 'input',
+      },
+      slotLabel: {
+        name: '插槽标题',
+        value: '默认插槽',
+        editType: 'input',
+      },
+      emptyText: {
+        name: '空态文案',
+        value: '拖拽组件到此插槽',
+        editType: 'input',
+      },
+    },
+  },
+  {
     type: 'List',
     name: '列表',
     props: {

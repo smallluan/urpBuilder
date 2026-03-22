@@ -11,6 +11,7 @@ import { getTabsSlotNodeByValue, normalizeTabsList, normalizeTabsValue } from '.
 import { createPreviewDataHub } from '../runtime/dataHub';
 import { createPreviewFlowRuntime, type PreviewFlowRuntime } from '../runtime/flowRuntime';
 import {
+  applyInstanceSlotsToTemplate,
   applyExposedPropsToTemplate,
   cloneTemplateUiTree,
   getNodeStringProp,
@@ -945,7 +946,8 @@ function PreviewCustomComponentRenderer({
           return;
         }
 
-        const injectedTree = applyExposedPropsToTemplate(node, root, detail);
+        const exposedPatchedTree = applyExposedPropsToTemplate(node, root, detail);
+        const injectedTree = applyInstanceSlotsToTemplate(node, exposedPatchedTree);
         const flowNodes = (detail?.template?.flowNodes as unknown as Node[]) ?? [];
         const flowEdges = (detail?.template?.flowEdges as unknown as Edge[]) ?? [];
         const exposedLifecycles = resolveExposedLifecycles(detail);
@@ -2501,6 +2503,8 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) 
           <PreviewCustomComponentRenderer node={node} onLifecycle={onLifecycle} />
         </div>
       );
+    case 'ComponentSlotOutlet':
+      return <>{renderChildren(node, onLifecycle)}</>;
     default:
       return <>{renderChildren(node, onLifecycle)}</>;
   }

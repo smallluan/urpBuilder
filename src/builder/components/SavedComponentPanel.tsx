@@ -5,7 +5,7 @@ import { Boxes } from 'lucide-react';
 import DragableWrapper from '../../components/DragableWrapper';
 import { getComponentBaseList, getComponentTemplateDetail } from '../../api/componentTemplate';
 import { useTeam } from '../../team/context';
-import { resolveExposedLifecycles, resolveExposedPropSchemas } from '../../utils/customComponentRuntime';
+import { resolveComponentSlots, resolveExposedLifecycles, resolveExposedPropSchemas } from '../../utils/customComponentRuntime';
 
 interface CustomComponentSchema {
   name: string;
@@ -91,6 +91,7 @@ const SavedComponentPanel: React.FC<SavedComponentPanelProps> = ({ selectedName,
           .map(({ base, detail }) => {
             const exposedPropSchemas = resolveExposedPropSchemas(detail);
             const exposedLifecycles = resolveExposedLifecycles(detail);
+            const componentSlots = resolveComponentSlots(detail);
 
             const props = {
               __componentId: {
@@ -102,6 +103,11 @@ const SavedComponentPanel: React.FC<SavedComponentPanelProps> = ({ selectedName,
                 name: '组件名称',
                 value: String(base.pageName ?? base.pageId ?? '自定义组件'),
                 editType: 'input',
+              },
+              __slots: {
+                name: '插槽定义',
+                value: componentSlots,
+                editType: 'jsonCode',
               },
               ...Object.fromEntries(
                 exposedPropSchemas.map((item) => [

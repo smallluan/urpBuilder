@@ -45,6 +45,7 @@ const CONTAINER_NODE_TYPES = new Set([
   'Layout.Content',
   'Layout.Aside',
   'Layout.Footer',
+  'ComponentSlotOutlet',
 ]);
 
 const MENU_NODE_TYPES = new Set(['Menu.Submenu', 'Menu.Item']);

@@ -2,6 +2,7 @@ import cloneDeep from 'lodash/cloneDeep';
 import { getComponentTemplateDetail } from '../api/componentTemplate';
 import type { ComponentDetail } from '../api/types';
 import type { UiTreeNode } from '../builder/store/types';
+import { getNodeSlotKey, isSlotNode } from '../builder/utils/slot';
 
 interface ComponentContract {
   exposedProps?: Array<string | {
@@ -32,6 +33,11 @@ interface ExposedPropRefItem {
 interface ExposedLifecycleRefItem {
   lifetime: string;
   key?: string;
+}
+
+export interface ComponentSlotSchemaItem {
+  key: string;
+  label: string;
 }
 
 const tryParseJsonObject = (value: unknown): Record<string, unknown> | null => {
@@ -492,6 +498,93 @@ export const namespaceUiTreeKeys = (root: UiTreeNode, namespace: string): UiTree
   walkTree(nextRoot, (node) => {
     const originalKey = String(node.key ?? '').trim();
     node.key = `${normalizedNs}:${originalKey}`;
+  });
+
+  return nextRoot;
+};
+
+const getSlotKeyFromOutletNode = (node: UiTreeNode): string => {
+  const slotKey = getNodeStringProp(node, 'slotKey');
+  return slotKey || 'default';
+};
+
+const getSlotLabelFromOutletNode = (node: UiTreeNode, slotKey: string): string => {
+  const slotLabel = getNodeStringProp(node, 'slotLabel');
+  return slotLabel || `插槽：${slotKey}`;
+};
+
+export const resolveComponentSlots = (detail: ComponentDetail | null): ComponentSlotSchemaItem[] => {
+  const root = cloneTemplateUiTree(detail);
+  if (!root) {
+    return [];
+  }
+
+  const slotMap = new Map<string, ComponentSlotSchemaItem>();
+  walkTree(root, (node) => {
+    if (String(node.type ?? '').trim() !== 'ComponentSlotOutlet') {
+      return;
+    }
+
+    const slotKey = getSlotKeyFromOutletNode(node);
+    const slotLabel = getSlotLabelFromOutletNode(node, slotKey);
+    if (!slotMap.has(slotKey)) {
+      slotMap.set(slotKey, {
+        key: slotKey,
+        label: slotLabel,
+      });
+    }
+  });
+
+  return Array.from(slotMap.values());
+};
+
+const resolveInstanceSlotChildrenMap = (instanceNode: UiTreeNode): Map<string, UiTreeNode[]> => {
+  const result = new Map<string, UiTreeNode[]>();
+  const pushChildren = (slotKey: string, children: UiTreeNode[]) => {
+    if (!slotKey) {
+      return;
+    }
+
+    const previous = result.get(slotKey) ?? [];
+    result.set(slotKey, [...previous, ...cloneDeep(children)]);
+  };
+
+  (instanceNode.children ?? []).forEach((child) => {
+    if (isSlotNode(child)) {
+      const slotKey = getNodeSlotKey(child) ?? '';
+      pushChildren(slotKey, child.children ?? []);
+      return;
+    }
+
+    const slotValue = (child.props?.__slot as { value?: unknown } | undefined)?.value;
+    const slotKey = typeof slotValue === 'string' ? slotValue.trim() : '';
+    if (slotKey) {
+      pushChildren(slotKey, [child]);
+    }
+  });
+
+  return result;
+};
+
+export const applyInstanceSlotsToTemplate = (instanceNode: UiTreeNode, templateRoot: UiTreeNode): UiTreeNode => {
+  const slotChildrenMap = resolveInstanceSlotChildrenMap(instanceNode);
+  if (slotChildrenMap.size === 0) {
+    return templateRoot;
+  }
+
+  const nextRoot = cloneDeep(templateRoot);
+  walkTree(nextRoot, (node) => {
+    if (String(node.type ?? '').trim() !== 'ComponentSlotOutlet') {
+      return;
+    }
+
+    const slotKey = getSlotKeyFromOutletNode(node);
+    const injectedChildren = slotChildrenMap.get(slotKey);
+    if (!injectedChildren) {
+      return;
+    }
+
+    node.children = cloneDeep(injectedChildren);
   });
 
   return nextRoot;

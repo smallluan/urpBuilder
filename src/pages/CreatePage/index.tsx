@@ -322,7 +322,7 @@ const CreatePage: React.FC = () => {
   }, [setCurrentPageMeta, user?.id]);
 
   return (
-    <BuilderProvider useStore={useCreatePageStore} readOnly={readOnly} readOnlyReason={readOnlyReason}>
+    <BuilderProvider useStore={useCreatePageStore} readOnly={readOnly} readOnlyReason={readOnlyReason} entityType="page">
       <BuilderShell header={<HeaderControls mode={mode} onChange={setMode} designLabel="页面" saveEntityLabel="页面" entityType="page" enablePageRouteConfig />}>
         {mode === 'component' ? <PageLayout /> : <FlowLayout />}
       </BuilderShell>

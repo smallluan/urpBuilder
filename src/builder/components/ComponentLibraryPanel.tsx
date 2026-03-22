@@ -33,7 +33,8 @@ import { componentLibraryEntries, groupedComponentTypes, type ComponentLibraryCa
 import DragableWrapper from '../../components/DragableWrapper';
 import { getComponentBaseList, getComponentTemplateDetail } from '../../api/componentTemplate';
 import { useTeam } from '../../team/context';
-import { resolveExposedLifecycles, resolveExposedPropSchemas } from '../../utils/customComponentRuntime';
+import { resolveComponentSlots, resolveExposedLifecycles, resolveExposedPropSchemas } from '../../utils/customComponentRuntime';
+import { useBuilderContext } from '../context/BuilderContext';
 
 interface CustomComponentSchema {
   name: string;
@@ -121,6 +122,7 @@ const getCategoryByType = (type: string): ComponentLibraryCategory => {
     || type.startsWith('Layout.')
     || type === 'Layout'
     || type === 'RouteOutlet'
+    || type === 'ComponentSlotOutlet'
   ) {
     return 'layout';
   }
@@ -184,6 +186,7 @@ const getIconByType = (type: string) => {
     'Grid.Row': Rows3,
     'Grid.Col': Columns3,
     RouteOutlet: RectangleHorizontal,
+    ComponentSlotOutlet: RectangleHorizontal,
     Card: RectangleHorizontal,
     Image: ImageIcon,
     Avatar: UserRound,
@@ -255,6 +258,7 @@ const getPopupNodeKindLabel = (type: string): string => {
 };
 
 const ComponentLibraryPanel: React.FC<ComponentLibraryPanelProps> = ({ selectedName, onSelect, hideSavedComponents = false }) => {
+  const { entityType } = useBuilderContext();
   const { currentTeamId } = useTeam();
   const [keyword, setKeyword] = useState('');
   const [openedGroupKey, setOpenedGroupKey] = useState<string | null>(null);
@@ -276,6 +280,9 @@ const ComponentLibraryPanel: React.FC<ComponentLibraryPanelProps> = ({ selectedN
     const plainEntries: ComponentLibraryEntry[] = componentCatalog
       .filter((component) => {
         const type = String(component.type ?? '');
+        if (type === 'ComponentSlotOutlet' && entityType !== 'component') {
+          return false;
+        }
         return !HIDDEN_COMPONENT_TYPES.has(type) && !groupedComponentTypes.has(type);
       })
       .map((component) => ({
@@ -287,7 +294,7 @@ const ComponentLibraryPanel: React.FC<ComponentLibraryPanelProps> = ({ selectedN
       }));
 
     return [...componentLibraryEntries, ...plainEntries];
-  }, []);
+  }, [entityType]);
 
   const filteredEntries = useMemo(() => {
     const text = keyword.trim();
@@ -419,6 +426,7 @@ const ComponentLibraryPanel: React.FC<ComponentLibraryPanelProps> = ({ selectedN
           .map(({ base, detail }) => {
             const exposedPropSchemas = resolveExposedPropSchemas(detail);
             const exposedLifecycles = resolveExposedLifecycles(detail);
+            const componentSlots = resolveComponentSlots(detail);
 
             const props = {
               __componentId: {
@@ -430,6 +438,11 @@ const ComponentLibraryPanel: React.FC<ComponentLibraryPanelProps> = ({ selectedN
                 name: '组件名称',
                 value: String(base.pageName ?? base.pageId ?? '自定义组件'),
                 editType: 'input',
+              },
+              __slots: {
+                name: '插槽定义',
+                value: componentSlots,
+                editType: 'jsonCode',
               },
               ...Object.fromEntries(
                 exposedPropSchemas.map((item) => [

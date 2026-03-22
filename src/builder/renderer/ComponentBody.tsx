@@ -40,6 +40,7 @@ const CONTAINER_NODE_TYPES = new Set([
   'Layout.Content',
   'Layout.Aside',
   'Layout.Footer',
+  'ComponentSlotOutlet',
 ]);
 
 interface TreeNodeDropTarget {

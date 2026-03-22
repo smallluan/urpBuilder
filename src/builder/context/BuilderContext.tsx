@@ -21,11 +21,13 @@ import type { StoreApi, UseBoundStore } from 'zustand';
 import type { BuilderStore } from '../store/types';
 
 type BuilderStoreHook = UseBoundStore<StoreApi<BuilderStore>>;
+export type BuilderEntityType = 'component' | 'page';
 
 interface BuilderContextValue {
   useStore: BuilderStoreHook;
   readOnly: boolean;
   readOnlyReason?: string;
+  entityType: BuilderEntityType;
 }
 
 const BuilderContext = createContext<BuilderContextValue | null>(null);
@@ -35,11 +37,18 @@ export interface BuilderProviderProps {
   useStore: BuilderStoreHook;
   readOnly?: boolean;
   readOnlyReason?: string;
+  entityType?: BuilderEntityType;
   children: React.ReactNode;
 }
 
-export const BuilderProvider: React.FC<BuilderProviderProps> = ({ useStore, readOnly = false, readOnlyReason, children }) => (
-  <BuilderContext.Provider value={{ useStore, readOnly, readOnlyReason }}>
+export const BuilderProvider: React.FC<BuilderProviderProps> = ({
+  useStore,
+  readOnly = false,
+  readOnlyReason,
+  entityType = 'component',
+  children,
+}) => (
+  <BuilderContext.Provider value={{ useStore, readOnly, readOnlyReason, entityType }}>
     {children}
   </BuilderContext.Provider>
 );
