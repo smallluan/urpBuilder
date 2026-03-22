@@ -1,12 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Avatar, Button, Dialog, Empty, Input, Tabs, Tag, Upload } from 'tdesign-react';
-import { AddIcon, DeleteIcon, LinkIcon, RefreshIcon, FileIcon, ApiIcon } from 'tdesign-icons-react';
+import { AddIcon, DeleteIcon, RefreshIcon } from 'tdesign-icons-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { emitApiAlert } from '../../api/alertBus';
 import { useAuth } from '../../auth/context';
 import { getTeamAssetSnapshot } from '../../team/api';
 import { useTeam } from '../../team/context';
-import type { TeamAssetItem, TeamAssetSnapshot, TeamDetail, TeamMember, TeamUserCandidate } from '../../team/types';
+import type { TeamAssetItem, TeamAssetSnapshot, TeamDetail, TeamMember } from '../../team/types';
 import { fileToDataUrl, resolveTeamAvatar, resolveUserAvatar } from '../../utils/avatar';
 import './style.less';
 
@@ -16,12 +16,6 @@ const roleMap = {
   owner: { text: '拥有者', theme: 'primary' as const },
   admin: { text: '管理员', theme: 'warning' as const },
   member: { text: '成员', theme: 'default' as const },
-};
-
-const formatDateText = (value?: string) => {
-  if (!value) return '暂无记录';
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString();
 };
 
 const formatDateTimeText = (value?: string) => {
@@ -44,23 +38,16 @@ const TeamsPage: React.FC = () => {
     refreshTeams,
     getTeamDetail,
     createTeam,
-    searchInviteCandidates,
-    inviteMember,
     removeMember,
   } = useTeam();
   const [detailLoading, setDetailLoading] = useState(false);
   const [detail, setDetail] = useState<TeamDetail | null>(null);
   const [createVisible, setCreateVisible] = useState(false);
-  const [inviteVisible, setInviteVisible] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [teamName, setTeamName] = useState('');
   const [teamCode, setTeamCode] = useState('');
   const [teamDescription, setTeamDescription] = useState('');
   const [teamAvatar, setTeamAvatar] = useState('');
-  const [inviteIdentity, setInviteIdentity] = useState('');
-  const [inviteCandidates, setInviteCandidates] = useState<TeamUserCandidate[]>([]);
-  const [selectedCandidate, setSelectedCandidate] = useState<TeamUserCandidate | null>(null);
-  const [inviteRole, setInviteRole] = useState<'admin' | 'member'>('member');
   const [assetLoading, setAssetLoading] = useState(false);
   const [assetTab, setAssetTab] = useState<'page' | 'component' | 'document' | 'api'>('page');
   const [assetSnapshot, setAssetSnapshot] = useState<TeamAssetSnapshot>({
@@ -121,27 +108,6 @@ const TeamsPage: React.FC = () => {
     navigate(params.toString() ? `/teams?${params.toString()}` : '/teams', { replace: true });
   }, [location.search, navigate]);
 
-  useEffect(() => {
-    if (!inviteVisible) {
-      setInviteCandidates([]);
-      setSelectedCandidate(null);
-      return;
-    }
-    const keyword = inviteIdentity.trim();
-    if (!keyword || keyword.length < 2) {
-      setInviteCandidates([]);
-      return;
-    }
-    let active = true;
-    const timer = window.setTimeout(async () => {
-      try {
-        const result = await searchInviteCandidates(keyword);
-        if (active) setInviteCandidates(result);
-      } catch { /* ignore */ }
-    }, 260);
-    return () => { active = false; window.clearTimeout(timer); };
-  }, [inviteIdentity, inviteVisible, searchInviteCandidates]);
-
   const handleCreateTeam = async () => {
     const name = teamName.trim();
     if (!name) {
@@ -191,32 +157,6 @@ const TeamsPage: React.FC = () => {
       emitApiAlert('上传成功', '团队头像已设置', 'success');
     } catch {
       emitApiAlert('上传失败', '头像读取失败，请重试');
-    }
-  };
-
-  const handleInviteMember = async () => {
-    if (!currentTeamId) return;
-    const identity = inviteIdentity.trim();
-    if (!identity && !selectedCandidate?.userId) {
-      emitApiAlert('邀请失败', '请输入用户名或邮箱');
-      return;
-    }
-    setSubmitting(true);
-    try {
-      await inviteMember(currentTeamId, {
-        identity: selectedCandidate ? (selectedCandidate.email || selectedCandidate.username) : identity,
-        inviteeUserId: selectedCandidate?.userId,
-        role: inviteRole,
-      });
-      const displayName = selectedCandidate?.nickname || selectedCandidate?.username || identity;
-      emitApiAlert('邀请已发送', `已向 ${displayName} 发送入队邀请，等待对方确认`, 'success');
-      setInviteVisible(false);
-      setInviteIdentity('');
-      setInviteRole('member');
-      setInviteCandidates([]);
-      setSelectedCandidate(null);
-    } finally {
-      setSubmitting(false);
     }
   };
 
@@ -311,11 +251,7 @@ const TeamsPage: React.FC = () => {
                 <span className="tile-hero__meta-item">{detail.memberCount} 位成员</span>
               </div>
             </div>
-            {canManageMembers && (
-              <Button size="small" theme="primary" onClick={() => setInviteVisible(true)}>
-                邀请成员
-              </Button>
-            )}
+            {canManageMembers ? null : null}
           </div>
 
           <div className="tile-stats">

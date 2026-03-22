@@ -37,7 +37,6 @@ const AppLayout: React.FC = () => {
     selectTeam,
     workspaceMode,
     setWorkspaceMode,
-    loading,
   } = useTeam();
 
   const displayName = user?.nickname || user?.username || '未登录';

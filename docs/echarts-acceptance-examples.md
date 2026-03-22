@@ -121,3 +121,18 @@ return {
 3. `GaugeChart` 显示 `valueField + min/max/splitNumber`，隐藏无关字段。
 4. `CandlestickChart` 显示 `open/close/low/high` 映射字段。
 5. `MapChart` 显示 `mapName + name/value` 字段并可预览。
+
+## 7. 回归基线（本轮）
+
+执行时间：2026-03-22
+
+- 构建验证：`npm run build` 通过。
+- 组件清单验证：`componentCatalog` 已注册 18 种图表组件。
+- 搭建态验证：`dataComponents` 的 `CHART_TYPE_BY_COMPONENT` 已覆盖 18 种图表。
+- 预览态验证：`PreviewRenderer` 图表分支 `case` 已覆盖 18 种图表。
+- 数据源验证：`resolveDataBySourceConfig` 覆盖 `static/constant/dataTable/cloudFunction` 四类来源。
+- 流程联动验证：`flowRuntime` 代码节点返回对象时产出 `patch`，组件节点消费 `patch` 并调用 `applyComponentPatch`。
+- 高风险图专项：
+  - `MapChart`：运行时会注册 `china` 地图（`ensureBuiltInChinaMap`）。
+  - `SankeyChart`：无结构化数据时回退到 `source/target/value` 兜底样本。
+  - `GraphChart`：按 `categories + categoryIndex` 生成节点分类，避免类别字段导致空图。

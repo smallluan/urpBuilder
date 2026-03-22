@@ -1,13 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { Button, Dialog, Input, Space, Select, Typography, Tag, Divider } from 'tdesign-react';
+import { Button, Dialog, Input, Space, Select, Tag, Divider } from 'tdesign-react';
 import ComponentBody from '../renderer/ComponentBody';
 import SCREEN_SIZES from '../config/screenSizes';
 import { useBuilderAccess, useBuilderContext } from '../context/BuilderContext';
 import { BUILT_IN_LAYOUT_TEMPLATES, type BuiltInLayoutTemplateId } from '../config/layoutTemplates';
 import { getBreakpointByWidth, resolveBuilderViewportWidth } from '../utils/gridResponsive';
 import { Layout } from 'lucide-react';
-
-const { Text } = Typography;
 
 const ComponentMainBody: React.FC<{ toolbarExtra?: React.ReactNode }> = ({ toolbarExtra }) => {
   const { useStore } = useBuilderContext();

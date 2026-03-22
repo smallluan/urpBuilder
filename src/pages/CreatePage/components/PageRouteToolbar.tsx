@@ -1,5 +1,5 @@
 import React from 'react';
-import { Button, Select, Tag } from 'tdesign-react';
+import { Button, Select } from 'tdesign-react';
 import { AddIcon, SettingIcon } from 'tdesign-icons-react';
 import { useBuilderContext } from '../../../builder/context/BuilderContext';
 import type { UiTreeNode } from '../../../builder/store/types';
@@ -35,7 +35,6 @@ const PageRouteToolbar: React.FC = () => {
   const switchPageRoute = useStore((state) => state.switchPageRoute);
   const setActiveRouteOutletKey = useStore((state) => state.setActiveRouteOutletKey);
 
-  const activeRoute = pageRoutes.find((item) => item.routeId === activePageRouteId) ?? null;
   const routeOutlets = React.useMemo(() => collectRouteOutlets(uiPageData), [uiPageData]);
 
   const handleCreateRoute = () => {
