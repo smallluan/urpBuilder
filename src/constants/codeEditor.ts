@@ -116,6 +116,24 @@ export const CODE_EDITOR_JS_GLOBAL_COMPLETIONS: Completion[] = [
     info: '监听路由状态变化，返回取消监听函数。',
   },
   {
+    label: 'dataHub.cloud',
+    type: 'variable',
+    detail: '云函数调用上下文',
+    info: '在代码节点中调用云函数，默认使用 /cloud-functions/invoke 接口。',
+  },
+  {
+    label: 'dataHub.cloud.invoke',
+    type: 'function',
+    detail: "(functionName, payload?, options?) => Promise<unknown>",
+    info: "调用云函数，示例：await dataHub.cloud.invoke('getUserProfile', { userId: 1 })。",
+  },
+  {
+    label: "await dataHub.cloud.invoke('getUserProfile', { userId: 1 })",
+    type: 'snippet',
+    detail: '异步调用云函数',
+    info: '推荐在 async 代码节点里 await 调用，再 return patch 向下游传递。',
+  },
+  {
     label: 'ctx',
     type: 'variable',
     detail: '当前触发上下文',

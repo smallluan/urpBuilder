@@ -90,6 +90,11 @@ const AppLayout: React.FC = () => {
             icon: <ApiIcon />,
             title: 'API管理',
           },
+          {
+            key: '/data-cloud-function',
+            icon: <CodeIcon />,
+            title: '云函数',
+          },
         ],
       },
       {

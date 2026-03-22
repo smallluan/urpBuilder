@@ -8,6 +8,7 @@ const BuildComponent = lazy(() => import('../pages/BuildComponent/index'));
 const BuildPage = lazy(() => import('../pages/BuildPage/index'));
 const DataApi = lazy(() => import('../pages/DataApi'));
 const DataConstance = lazy(() => import('../pages/DataConstance'));
+const DataCloudFunction = lazy(() => import('../pages/DataCloudFunction'));
 const Teams = lazy(() => import('../pages/Teams'));
 const UserAdmin = lazy(() => import('../pages/UserAdmin'));
 const TeamAdmin = lazy(() => import('../pages/TeamAdmin'));
@@ -45,6 +46,10 @@ export const router = createBrowserRouter([
       {
         path: 'data-constance',
         element: load(<DataConstance />),
+      },
+      {
+        path: 'data-cloud-function',
+        element: load(<DataCloudFunction />),
       },
       {
         path: 'teams',

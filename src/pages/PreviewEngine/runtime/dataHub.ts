@@ -35,6 +35,16 @@ export interface DataHubRouterContext {
   subscribe: (handler: (state: DataHubRouterState) => void) => () => void;
 }
 
+export interface DataHubCloudInvokeOptions {
+  endpoint?: string;
+  timeoutMs?: number;
+  headers?: Record<string, string>;
+}
+
+export interface DataHubCloudContext {
+  invoke: (functionName: string, payload?: unknown, options?: DataHubCloudInvokeOptions) => Promise<unknown>;
+}
+
 export interface DataHubCodeContext {
   scopeId: string;
   composeRef: (componentKey: string) => string;
@@ -44,6 +54,7 @@ export interface DataHubCodeContext {
   getComponentProp: (componentKey: string, propKey: string) => unknown;
   getAllComponentStates: () => ComponentStateRecord[];
   router: DataHubRouterContext;
+  cloud: DataHubCloudContext;
 }
 
 type DataHubEventHandler = (payload: unknown) => void;
@@ -129,7 +140,9 @@ export class PreviewDataHub {
 
   private readonly routerContext: DataHubRouterContext;
 
-  constructor(uiTreeData: UiTreeNode, options?: { scopeId?: string; router?: DataHubRouterContext }) {
+  private readonly cloudContext: DataHubCloudContext;
+
+  constructor(uiTreeData: UiTreeNode, options?: { scopeId?: string; router?: DataHubRouterContext; cloud?: DataHubCloudContext }) {
     this.treeRoot = cloneDeep(uiTreeData);
     this.scopeId = String(options?.scopeId ?? DEFAULT_SCOPE_ID).trim() || DEFAULT_SCOPE_ID;
     const nodeMaps = collectNodeMaps(this.treeRoot, this.scopeId);
@@ -146,6 +159,56 @@ export class PreviewDataHub {
         window.history.back();
       },
       subscribe: () => () => {},
+    };
+    this.cloudContext = options?.cloud ?? {
+      invoke: async (functionName, payload, invokeOptions) => {
+        const normalizedName = String(functionName ?? '').trim();
+        if (!normalizedName) {
+          throw new Error('cloud.invoke 需要提供函数名');
+        }
+
+        const endpoint = String(invokeOptions?.endpoint ?? '/cloud-functions/invoke').trim() || '/cloud-functions/invoke';
+        const timeoutMs = Number.isFinite(Number(invokeOptions?.timeoutMs))
+          ? Math.max(100, Math.round(Number(invokeOptions?.timeoutMs)))
+          : 10000;
+
+        const controller = new AbortController();
+        const timeoutId = window.setTimeout(() => controller.abort(), timeoutMs);
+
+        try {
+          const response = await fetch(endpoint, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              ...(invokeOptions?.headers ?? {}),
+            },
+            body: JSON.stringify({
+              name: normalizedName,
+              payload: payload ?? {},
+            }),
+            signal: controller.signal,
+          });
+          const rawText = await response.text();
+          const parsed = rawText ? (() => {
+            try {
+              return JSON.parse(rawText);
+            } catch {
+              return rawText;
+            }
+          })() : null;
+
+          if (!response.ok) {
+            throw new Error(`云函数调用失败(${response.status}): ${typeof parsed === 'string' ? parsed : JSON.stringify(parsed)}`);
+          }
+
+          if (parsed && typeof parsed === 'object' && !Array.isArray(parsed) && 'data' in (parsed as Record<string, unknown>)) {
+            return (parsed as Record<string, unknown>).data;
+          }
+          return parsed;
+        } finally {
+          window.clearTimeout(timeoutId);
+        }
+      },
     };
   }
 
@@ -289,6 +352,7 @@ export class PreviewDataHub {
       getComponentProp: (componentKey, propKey) => this.getComponentProp(componentKey, propKey),
       getAllComponentStates: () => this.getAllComponentStates(),
       router: this.routerContext,
+      cloud: this.cloudContext,
     };
   }
 
@@ -299,7 +363,7 @@ export class PreviewDataHub {
 
 export const createPreviewDataHub = (
   uiTreeData: UiTreeNode,
-  options?: { scopeId?: string; router?: DataHubRouterContext },
+  options?: { scopeId?: string; router?: DataHubRouterContext; cloud?: DataHubCloudContext },
 ) =>
   new PreviewDataHub(uiTreeData, options);
 
