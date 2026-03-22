@@ -66,6 +66,7 @@ export interface CreateBuilderStoreOptions {
 
 const DEFAULT_ROOT_NODE: UiTreeNode = {
   key: uuidv4(),
+  type: 'root',
   label: '根节点',
   children: [],
   props: {},

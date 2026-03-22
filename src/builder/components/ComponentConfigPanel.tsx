@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { Button, ColorPicker, Dialog, Empty, Input, InputNumber, Popup, Select, Slider, Space, Switch, Table, Tag, Typography } from 'tdesign-react';
-import { HelpCircleIcon } from 'tdesign-icons-react';
+import { Button, Collapse, ColorPicker, Dialog, Empty, Input, InputNumber, Popup, Select, Slider, Space, Switch, Table, Tag, Tabs, Typography, Row, Divider } from 'tdesign-react';
+import { HelpCircleIcon, LayoutIcon } from 'tdesign-icons-react';
 import { useBuilderAccess, useBuilderContext } from '../context/BuilderContext';
 import type { UiTreeNode } from '../store/types';
-import NodeStyleDrawer from './NodeStyleDrawer';
+import { NodeStylePanel } from './NodeStylePanel';
 import { isSlotNode } from '../utils/slot';
 import CodeEditorDialog, { type CodeEditorValue } from './CodeEditorDialog';
 import { findNodePathByKey } from '../utils/tree';
@@ -25,6 +25,7 @@ import {
 import componentCatalog from '../../config/componentCatalog';
 import { createDefaultTabsList, normalizeTabsList } from '../utils/tabs';
 import { loadCustomComponentDetail, resolveExposedPropSchemas } from '../../utils/customComponentRuntime';
+import { getPropSection, sortSectionKeys } from '../utils/propConfigGroups';
 
 type EditType = 'switch' | 'input' | 'inputNumber' | 'select' | 'iconSelect' | 'swiperImages' | 'tabsConfig' | 'jsonCode';
 
@@ -104,6 +105,8 @@ const normalizeTabsRows = (value: unknown): TabsRow[] => {
 interface ComponentPropSchema {
   name?: string;
   value?: unknown;
+  /** 配置面板分组标题；未设置时按 propKey 自动归类 */
+  group?: string;
   editType?: EditType | string;
   editInput?: EditType | string;
   payload?: {
@@ -285,6 +288,7 @@ const ComponentConfigPanel: React.FC = () => {
     note: '',
     code: '[]',
   });
+  const [configMainTab, setConfigMainTab] = useState<'props' | 'style'>('props');
 
   const propsMap = React.useMemo(() => {
     const activeProps = (activeNode?.props ?? {}) as Record<string, ComponentPropSchema>;
@@ -400,6 +404,19 @@ const ComponentConfigPanel: React.FC = () => {
     return merged;
   }, [customComponentFallbackProps, sortedEditableProps]);
 
+  const groupedEditableProps = React.useMemo(() => {
+    const map = new Map<string, Array<[string, ComponentPropSchema]>>();
+    mergedEditableProps.forEach(([propKey, schema]) => {
+      const section = getPropSection(propKey, schema, activeNode?.type);
+      if (!map.has(section)) {
+        map.set(section, []);
+      }
+      map.get(section)!.push([propKey, schema]);
+    });
+    const keys = sortSectionKeys(Array.from(map.keys()));
+    return keys.map((key) => [key, map.get(key)!] as [string, Array<[string, ComponentPropSchema]>]);
+  }, [activeNode?.type, mergedEditableProps]);
+
   const isNodeInsideListTemplate = Boolean(listItemAncestor && activeNode && activeNode.type !== 'List.Item');
   const bindableProps = activeNode?.type ? (LIST_BINDABLE_PROP_OPTIONS[activeNode.type] ?? []) : [];
   const listBindingSchema = propsMap.__listBinding;
@@ -438,6 +455,10 @@ const ComponentConfigPanel: React.FC = () => {
     setInputDrafts(nextInputDrafts);
     setNumberDrafts(nextNumberDrafts);
   }, [activeNode?.key, activeNode?.label, activeNode?.props]);
+
+  useEffect(() => {
+    setConfigMainTab('props');
+  }, [activeNode?.key]);
 
   useEffect(() => {
     let cancelled = false;
@@ -508,6 +529,7 @@ const ComponentConfigPanel: React.FC = () => {
     if (editType === 'switch') {
       return (
         <Switch
+          size='small'
           value={Boolean(currentValue)}
           onChange={(value) => updateActiveNodeProp(propKey, Boolean(value))}
         />
@@ -567,6 +589,7 @@ const ComponentConfigPanel: React.FC = () => {
 
       return (
         <Select
+          size='small'
           options={options}
           value={currentValue as string | number | undefined}
           onChange={(value) => updateActiveNodeProp(propKey, value)}
@@ -581,6 +604,7 @@ const ComponentConfigPanel: React.FC = () => {
 
       return (
         <Select
+          size='small'
           clearable
           filterable
           options={options}
@@ -700,6 +724,7 @@ const ComponentConfigPanel: React.FC = () => {
 
     return (
       <Input
+        size='small'
         clearable
         value={draftValue}
         onChange={(value) => {
@@ -871,9 +896,13 @@ const ComponentConfigPanel: React.FC = () => {
     <div className="right-panel-body">
       {readOnlyBanner}
       <div className={readOnly ? 'builder-readonly-surface' : ''}>
-      <div className="config-form">
-        <Typography.Title level="h6" className="config-title">组件配置</Typography.Title>
-
+      <Tabs
+        className="config-panel-main-tabs"
+        value={configMainTab}
+        onChange={(v) => setConfigMainTab(String(v) === 'style' ? 'style' : 'props')}
+      >
+        <Tabs.TabPanel value="props" label="属性" destroyOnHide={false}>
+      <div className="config-form"> 
         <div className="config-row">
           <span className="config-label">组件名称</span>
           <Input
@@ -883,12 +912,14 @@ const ComponentConfigPanel: React.FC = () => {
             placeholder="请输入组件名称"
             onChange={(value) => setLabelDraft(String(value ?? ''))}
             onBlur={() => updateActiveNodeLabel(labelDraft)}
+            size='small'
           />
         </div>
 
         <div className="config-row">
           <span className="config-label">组件标识</span>
           <Input
+            size='small'
             className="config-editor"
             clearable
             value={keyDraft}
@@ -907,23 +938,37 @@ const ComponentConfigPanel: React.FC = () => {
           <span className="config-label" style={{ color: keyError ? '#d54941' : '#8b92a1' }}>{keyHintText}</span>
         </div>
 
-        <div className="config-row">
-          <span className="config-label">通用样式</span>
-          <div className="config-editor">
-            <NodeStyleDrawer
-              targetKey={activeNode.key}
-              value={styleValue}
-              onChange={(nextStyle: Record<string, unknown>) => updateActiveNodeProp('__style', nextStyle)}
-            />
-          </div>
-        </div>
-
-        {mergedEditableProps.map(([propKey, schema]) => (
-          <div key={propKey} className="config-row">
-            <span className="config-label">{schema.name ?? propKey}</span>
-            <div className="config-editor">{renderEditor(propKey, schema)}</div>
-          </div>
-        ))}
+        <Collapse
+          className="config-props-collapse config-props-collapse--airy"
+          borderless
+          defaultExpandAll
+          expandIconPlacement="right"
+          expandOnRowClick
+        >
+          {groupedEditableProps.map(([sectionTitle, rows]) => (
+            <Collapse.Panel
+              key={sectionTitle}
+              value={sectionTitle}
+              header={
+                <span className="config-props-section-head">
+                  <span className="config-props-section-head__icon" aria-hidden>
+                    <LayoutIcon size="14px" />
+                  </span>
+                  <span className="config-props-section-head__text">{sectionTitle}</span>
+                </span>
+              }
+            >
+              <div className="config-props-group">
+                {rows.map(([propKey, schema]) => (
+                  <Row key={propKey} className="config-row" justify="space-between">
+                    <span className="config-label">{schema.name ?? propKey}</span>
+                    <div className="config-editor">{renderEditor(propKey, schema)}</div>
+                  </Row>
+                ))}
+              </div>
+            </Collapse.Panel>
+          ))}
+        </Collapse>
 
         {activeNode.type === 'Progress' ? (
           <>
@@ -996,6 +1041,18 @@ const ComponentConfigPanel: React.FC = () => {
           </>
         ) : null}
       </div>
+        </Tabs.TabPanel>
+        <Tabs.TabPanel value="style" label="样式" destroyOnHide={false}>
+          <div className="config-panel-style-tab">
+            <NodeStylePanel
+              compact
+              targetKey={activeNode.key}
+              value={styleValue}
+              onChange={(nextStyle: Record<string, unknown>) => updateActiveNodeProp('__style', nextStyle)}
+            />
+          </div>
+        </Tabs.TabPanel>
+      </Tabs>
 
       <Dialog
         visible={swiperDialogVisible}

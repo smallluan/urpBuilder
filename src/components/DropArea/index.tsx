@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, type CSSProperties } from 'react';
 import type { DragEvent } from 'react';
 import { AddCircleIcon } from 'tdesign-icons-react';
 import './index.less';
@@ -120,6 +120,16 @@ export default function DropArea({
     }
   };
 
+  const mergedSurfaceStyle = useMemo((): CSSProperties | undefined => {
+    const raw = (data?.props?.__style as { value?: unknown } | undefined)?.value;
+    const fromNode =
+      raw && typeof raw === 'object' && !Array.isArray(raw) ? (raw as CSSProperties) : undefined;
+    if (!fromNode && !style) {
+      return undefined;
+    }
+    return { ...(style ?? {}), ...(fromNode ?? {}) };
+  }, [data?.props?.__style, style]);
+
   const dropAreaClassName = useMemo(() => {
     const dragOverClass = isDragOver ? ' drop-area-active' : '';
     const selectedClass = isNodeActive ? ' drop-area-selected' : '';
@@ -155,7 +165,7 @@ export default function DropArea({
       data-builder-node-key={data?.key || undefined}
       data-active={isNodeActive ? 'true' : 'false'}
       className={dropAreaClassName}
-      style={style}
+      style={mergedSurfaceStyle}
     >
       {childrenLength ? (
         React.Children.map(children, (child) => {

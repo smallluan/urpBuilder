@@ -422,7 +422,9 @@
         .config-editor {
           width: 120px;
           flex: 0 0 auto;
-          margin-left: auto;
+          display: flex;
+          align-items: center;
+          justify-content: flex-end;
         }
       }
     }
@@ -1390,14 +1392,16 @@
 
       .config-label {
         font-size: 12px;
-        color: #999;
+        color: #3e3e3e;
         flex: 1 1 auto;
       }
 
       .config-editor {
         width: 120px;
         flex: 0 0 auto;
-        margin-left: auto;
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
       }
     }
   }
@@ -1917,6 +1921,114 @@
 .style-drawer-editor {
   width: 200px;
   flex: 0 0 auto;
+}
+
+.config-panel-main-tabs {
+  width: 100%;
+
+  .t-tabs__nav {
+    margin-bottom: 8px;
+  }
+}
+
+/* 属性分组折叠：无框、白底、小标题常规字重，简约精致（根节点即 .t-collapse） */
+.config-props-collapse.t-collapse {
+  margin-top: 6px;
+  border: none !important;
+  background: transparent;
+  box-shadow: none !important;
+}
+
+.config-props-collapse {
+  .t-collapse-panel {
+    margin: 0 0 12px;
+    border: none !important;
+    border-radius: 0;
+    background: #fff;
+    box-shadow: none !important;
+
+    &:last-child {
+      margin-bottom: 0;
+    }
+  }
+
+  .t-collapse-panel__header {
+    padding: 3px 2px 6px;
+    min-height: 0;
+    font-size: 11px;
+    font-weight: 400;
+    line-height: 16px;
+    color: #8b92a1;
+    letter-spacing: 0.02em;
+    background: #fff !important;
+    border: none !important;
+    box-shadow: none !important;
+  }
+
+  .t-collapse-panel__icon {
+    color: #b0b7c1;
+    font-size: 12px;
+  }
+
+  .t-collapse-panel__body,
+  .t-collapse-panel__content {
+    padding: 2px 2px 0 !important;
+    background: #fff !important;
+    border: none !important;
+  }
+}
+
+/* 折叠分组：呼吸感（modifier，不覆盖上方基础色与边框） */
+.config-props-collapse.config-props-collapse--airy {
+  .t-collapse-panel {
+    margin: 0 0 18px;
+  }
+
+  .t-collapse-panel__header {
+    padding: 8px 4px 10px;
+  }
+
+  .t-collapse-panel__body,
+  .t-collapse-panel__content {
+    padding: 10px 4px 6px !important;
+  }
+
+  .config-props-group {
+    gap: 10px;
+  }
+}
+
+/* 分组标题：图标 + 与表单项 label 区分的层级 */
+.config-props-collapse .config-props-section-head {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.config-props-collapse .config-props-section-head__icon {
+  display: inline-flex;
+  flex-shrink: 0;
+  color: #9aa3ad;
+  line-height: 1;
+}
+
+.config-props-collapse .config-props-section-head__icon .t-icon {
+  font-size: 14px;
+}
+
+.config-props-collapse .config-props-section-head__text {
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 18px;
+  color: #2f3540;
+  letter-spacing: 0.01em;
+}
+
+.config-props-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
 }
 
 .node-style-drawer {

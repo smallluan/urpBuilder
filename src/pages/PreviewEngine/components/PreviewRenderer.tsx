@@ -2556,6 +2556,12 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) 
       );
     case 'ComponentSlotOutlet':
       return <>{renderChildren(node, onLifecycle)}</>;
+    case 'root':
+      return (
+        <div style={mergeStyle()} className="preview-page-root" data-preview-page-root>
+          {renderChildren(node, onLifecycle)}
+        </div>
+      );
     default:
       return <>{renderChildren(node, onLifecycle)}</>;
   }

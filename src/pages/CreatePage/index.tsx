@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import './style.less';
 import type { Edge, Node } from '@xyflow/react';
 import { getPageTemplateDetail } from '../../api/pageTemplate';
 import { emitApiAlert } from '../../api/alertBus';
