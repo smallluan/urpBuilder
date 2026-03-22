@@ -392,6 +392,8 @@ const PreviewEngine: React.FC = () => {
     });
   }, [routerState]);
 
+  // 在 effect 里创建 DataHub/runtime，避免在 render 里用 useMemo 重建 hub（会用快照树覆盖掉补丁态，导致抽屉/点击等全部失效）。
+  // 子组件的 useEffect 先于父组件执行，故 emitLifecycle 需推迟到微任务，保证 runtimeRef 已赋值。
   React.useEffect(() => {
     const hub = createPreviewDataHub(effectiveUiTree, { scopeId, router: routerContext });
     const runtime = createPreviewFlowRuntime(effectiveFlowNodes, effectiveFlowEdges, hub);
@@ -413,7 +415,9 @@ const PreviewEngine: React.FC = () => {
   }, [effectiveFlowEdges, effectiveFlowNodes, effectiveUiTree, routerContext, scopeId]);
 
   const handleLifecycle = React.useCallback((componentKey: string, lifetime: string, payload?: unknown) => {
-    runtimeRef.current?.emitLifecycle(componentKey, lifetime, payload);
+    queueMicrotask(() => {
+      runtimeRef.current?.emitLifecycle(componentKey, lifetime, payload);
+    });
   }, []);
 
   return (
@@ -435,9 +439,7 @@ const PreviewEngine: React.FC = () => {
             <div className="preview-route-status__desc">页面中暂无可渲染组件，请先在搭建器中添加内容。</div>
           </div>
         ) : (
-          (renderTree.children ?? []).map((child) => (
-            <PreviewRenderer key={child.key} node={child} onLifecycle={handleLifecycle} />
-          ))
+          <PreviewRenderer key={renderTree.key} node={renderTree} onLifecycle={handleLifecycle} />
         )}
       </div>
     </div>

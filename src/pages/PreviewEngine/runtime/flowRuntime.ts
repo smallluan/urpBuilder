@@ -458,7 +458,24 @@ export class PreviewFlowRuntime {
       return input;
     }
 
-    if (!selectedLifetimes.includes(input.lifetime)) {
+    const incoming = String(input.lifetime ?? '');
+    const matchesSelected = selectedLifetimes.some((selected) => {
+      if (selected === incoming) {
+        return true;
+      }
+
+      // 与画布/文档中常用命名对齐：运行时统一发 onMounted，过滤里若只写了 onMount 也应命中。
+      if (
+        (selected === 'onMount' && incoming === 'onMounted')
+        || (selected === 'onMounted' && incoming === 'onMount')
+      ) {
+        return true;
+      }
+
+      return false;
+    });
+
+    if (!matchesSelected) {
       return null;
     }
 

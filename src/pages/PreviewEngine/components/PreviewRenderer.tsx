@@ -25,6 +25,42 @@ interface PreviewRendererProps {
   onLifecycle?: ComponentLifecycleHandler;
 }
 
+/** 与数组引用无关的稳定 key，避免父级重渲染时 lifetimes 新数组引用导致 mount effect 反复执行。 */
+function getLifetimesContentKey(node: UiTreeNode): string {
+  if (!Array.isArray(node.lifetimes)) {
+    return '';
+  }
+
+  return node.lifetimes.map((item) => String(item)).sort().join('\u0001');
+}
+
+/** 节点展示数据是否变化（忽略 props/children 引用抖动导致误触发 onUpdated）。 */
+function getPreviewNodeRevisionKey(node: UiTreeNode): string {
+  try {
+    return JSON.stringify({
+      key: node.key,
+      label: node.label,
+      type: node.type,
+      props: node.props,
+      childKeys: (node.children ?? []).map((c) => c.key),
+    });
+  } catch {
+    return `${node.key}:${String(node.label)}:${String(node.type)}:${(node.children ?? []).map((c) => c.key).join(',')}`;
+  }
+}
+
+function shouldEmitCoreLifetime(lifetimes: string[], lifetime: string): boolean {
+  if (lifetimes.includes(lifetime)) {
+    return true;
+  }
+
+  if (lifetimes.length > 0) {
+    return false;
+  }
+
+  return CORE_LIFETIMES.includes(lifetime);
+}
+
 const getProp = (node: UiTreeNode, propName: string) => {
   const prop = node?.props?.[propName] as { value?: unknown } | undefined;
   return prop?.value;
@@ -999,30 +1035,32 @@ function PreviewCustomComponentRenderer({
   }, [runtimeSeed]);
 
   const handleInnerLifecycle = React.useCallback<ComponentLifecycleHandler>((componentKey, lifetime, payload) => {
-    runtimeRef.current?.emitLifecycle(componentKey, lifetime, payload);
+    queueMicrotask(() => {
+      runtimeRef.current?.emitLifecycle(componentKey, lifetime, payload);
 
-    const emittedLifetime = String(lifetime ?? '').trim();
-    if (!onLifecycle || !emittedLifetime) {
-      return;
-    }
+      const emittedLifetime = String(lifetime ?? '').trim();
+      if (!onLifecycle || !emittedLifetime) {
+        return;
+      }
 
-    const lifecycleMappings = runtimeSeed?.lifecycleMappings ?? [];
-    const mappedKeys = lifecycleMappings
-      .filter((item) => item.lifetime === emittedLifetime)
-      .map((item) => String(item.key || item.lifetime).trim())
-      .filter(Boolean);
+      const lifecycleMappings = runtimeSeed?.lifecycleMappings ?? [];
+      const mappedKeys = lifecycleMappings
+        .filter((item) => item.lifetime === emittedLifetime)
+        .map((item) => String(item.key || item.lifetime).trim())
+        .filter(Boolean);
 
-    const targetLifecycles = mappedKeys.length > 0
-      ? Array.from(new Set(mappedKeys))
-      : (exposedLifecycleSet.has(emittedLifetime) ? [emittedLifetime] : []);
+      const targetLifecycles = mappedKeys.length > 0
+        ? Array.from(new Set(mappedKeys))
+        : (exposedLifecycleSet.has(emittedLifetime) ? [emittedLifetime] : []);
 
-    targetLifecycles.forEach((targetLifetime) => {
-      onLifecycle(node.key, targetLifetime, {
-        from: 'custom-component',
-        componentId,
-        componentKey,
-        originalLifetime: emittedLifetime,
-        payload,
+      targetLifecycles.forEach((targetLifetime) => {
+        onLifecycle(node.key, targetLifetime, {
+          from: 'custom-component',
+          componentId,
+          componentKey,
+          originalLifetime: emittedLifetime,
+          payload,
+        });
       });
     });
   }, [componentId, exposedLifecycleSet, node.key, onLifecycle, runtimeSeed?.lifecycleMappings]);
@@ -1062,8 +1100,15 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) 
   const isSwitchControlled = isSwitchNode ? getBooleanProp(node, 'controlled') !== false : false;
   const controlledSwitchValue = isSwitchNode ? Boolean(getBooleanProp(node, 'value')) : false;
   const switchDefaultValue = isSwitchNode ? Boolean(getBooleanProp(node, 'defaultValue')) : false;
-  const lifetimes = Array.isArray(node.lifetimes) ? node.lifetimes.map((item) => String(item)) : [];
-  const didUpdateReadyRef = React.useRef(false);
+  const lifetimesContentKey = getLifetimesContentKey(node);
+  const lifetimes = React.useMemo(
+    () => (Array.isArray(node.lifetimes) ? node.lifetimes.map((item) => String(item)) : []),
+    [lifetimesContentKey],
+  );
+  const lifetimesRef = React.useRef(lifetimes);
+  lifetimesRef.current = lifetimes;
+  const nodeRevisionKey = getPreviewNodeRevisionKey(node);
+  const previousRevisionKeyRef = React.useRef<string | undefined>(undefined);
   const [uncontrolledSwitchValue, setUncontrolledSwitchValue] = React.useState<boolean>(switchDefaultValue);
   const didInitControlledSwitchValueRef = React.useRef(false);
   const lastControlledSwitchValueRef = React.useRef<boolean | undefined>(undefined);
@@ -1074,63 +1119,69 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) 
     (lifetime: string) => lifetimes.includes(lifetime),
     [lifetimes],
   );
-  const hasCoreLifetime = React.useCallback(
-    (lifetime: string) => {
-      if (hasLifetime(lifetime)) {
-        return true;
-      }
+  // 挂载/卸载：仅依赖 node 身份与回调，避免因 lifetimes 数组引用抖动而误触发「整轮卸载再挂载」。
+  React.useLayoutEffect(() => {
+    if (!onLifecycle) {
+      return;
+    }
 
-      if (lifetimes.length > 0) {
-        return false;
-      }
+    const lt = lifetimesRef.current;
+    if (shouldEmitCoreLifetime(lt, 'onInit')) {
+      onLifecycle(node.key, 'onInit', { nodeType: node.type });
+    }
 
-      return CORE_LIFETIMES.includes(lifetime);
-    },
-    [hasLifetime, lifetimes],
-  );
+    if (shouldEmitCoreLifetime(lt, 'onBeforeMount')) {
+      onLifecycle(node.key, 'onBeforeMount', { nodeType: node.type });
+    }
+  }, [node.key, node.type, onLifecycle]);
 
   React.useEffect(() => {
     if (!onLifecycle) {
       return;
     }
 
-    if (hasCoreLifetime('onInit')) {
-      onLifecycle(node.key, 'onInit', { nodeType: node.type });
-    }
-    if (hasCoreLifetime('onBeforeMount')) {
-      onLifecycle(node.key, 'onBeforeMount', { nodeType: node.type });
-    }
-    if (hasCoreLifetime('onMounted')) {
+    const lt = lifetimesRef.current;
+    if (shouldEmitCoreLifetime(lt, 'onMounted')) {
       onLifecycle(node.key, 'onMounted', { nodeType: node.type });
     }
 
     return () => {
-      if (hasCoreLifetime('onBeforeUnmount')) {
+      const ltCleanup = lifetimesRef.current;
+      if (shouldEmitCoreLifetime(ltCleanup, 'onBeforeUnmount')) {
         onLifecycle(node.key, 'onBeforeUnmount', { nodeType: node.type });
       }
-      if (hasCoreLifetime('onUnmounted')) {
+
+      if (shouldEmitCoreLifetime(ltCleanup, 'onUnmounted')) {
         onLifecycle(node.key, 'onUnmounted', { nodeType: node.type });
       }
     };
-  }, [hasCoreLifetime, node.key, node.type, onLifecycle]);
+  }, [node.key, node.type, onLifecycle]);
 
-  React.useEffect(() => {
+  React.useLayoutEffect(() => {
     if (!onLifecycle) {
       return;
     }
 
-    if (!didUpdateReadyRef.current) {
-      didUpdateReadyRef.current = true;
+    const prev = previousRevisionKeyRef.current;
+    if (prev === undefined) {
+      previousRevisionKeyRef.current = nodeRevisionKey;
       return;
     }
 
-    if (hasCoreLifetime('onBeforeUpdate')) {
+    if (prev === nodeRevisionKey) {
+      return;
+    }
+
+    previousRevisionKeyRef.current = nodeRevisionKey;
+    const lt = lifetimesRef.current;
+    if (shouldEmitCoreLifetime(lt, 'onBeforeUpdate')) {
       onLifecycle(node.key, 'onBeforeUpdate', { nodeType: node.type });
     }
-    if (hasCoreLifetime('onUpdated')) {
+
+    if (shouldEmitCoreLifetime(lt, 'onUpdated')) {
       onLifecycle(node.key, 'onUpdated', { nodeType: node.type });
     }
-  }, [hasCoreLifetime, node.children, node.key, node.label, node.props, node.type, onLifecycle]);
+  }, [nodeRevisionKey, node.key, node.type, onLifecycle]);
 
   const visible = getBooleanProp(node, 'visible');
   const controlledDrawerVisible = isDrawerNode ? visible === true : false;
