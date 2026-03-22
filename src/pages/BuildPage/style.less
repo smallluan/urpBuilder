@@ -1,6 +1,6 @@
 .build-page {
-  height: 100%;
-  min-height: 0;
+  height: calc(100vh - 108px);
+  min-height: 620px;
   display: flex;
   flex-direction: column;
 
@@ -66,7 +66,13 @@
     padding: 12px;
     border: 1px solid #edf1f6;
     border-radius: 6px;
-    overflow: auto;
+    overflow: hidden;
+
+    .list-scroll-area {
+      flex: 1;
+      min-height: 0;
+      overflow: auto;
+    }
 
     .empty-state {
       flex: 1;
@@ -202,7 +208,7 @@
     }
 
     .pagination-wrap {
-      margin-top: 12px;
+      margin-top: auto;
       padding-top: 10px;
       border-top: 1px solid #edf1f6;
       display: flex;

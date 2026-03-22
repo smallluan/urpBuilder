@@ -512,80 +512,82 @@ const BuildPage: React.FC = () => {
       </div>
 
       <div className="table-wrapper">
-        {loading ? <div className="empty-state">加载中...</div> : null}
-        {!loading ? (
-          tableData.length ? (
-            <Row gutter={[12, 12]} className="card-grid-row">
-              {tableData.map((row) => {
-                const { date, time } = splitDateTimeText(row.updatedAt);
-                const descriptionText = row.description || '暂无描述';
+        <div className="list-scroll-area">
+          {loading ? <div className="empty-state">加载中...</div> : null}
+          {!loading ? (
+            tableData.length ? (
+              <Row gutter={[12, 12]} className="card-grid-row">
+                {tableData.map((row) => {
+                  const { date, time } = splitDateTimeText(row.updatedAt);
+                  const descriptionText = row.description || '暂无描述';
 
-                return (
-                  <Col key={row.id} xs={12} sm={6} lg={4} xl={3}>
-                    <Card className="resource-card" bordered>
-                      <Space direction="vertical" size={8} style={{ width: '100%' }}>
-                        <Row justify="space-between" align="middle">
-                          <Col flex="auto" className="resource-card__title-wrap">
-                            <div className="resource-card__title" title={row.pageName}>{row.pageName}</div>
-                          </Col>
-                          <Col flex="none">
-                            <Button size="small" variant="text" theme="primary" onClick={() => setDetailTarget(row)}>详情</Button>
-                          </Col>
-                        </Row>
+                  return (
+                    <Col key={row.id} xs={12} sm={6} lg={4} xl={3}>
+                      <Card className="resource-card" bordered>
+                        <Space direction="vertical" size={8} style={{ width: '100%' }}>
+                          <Row justify="space-between" align="middle">
+                            <Col flex="auto" className="resource-card__title-wrap">
+                              <div className="resource-card__title" title={row.pageName}>{row.pageName}</div>
+                            </Col>
+                            <Col flex="none">
+                              <Button size="small" variant="text" theme="primary" onClick={() => setDetailTarget(row)}>详情</Button>
+                            </Col>
+                          </Row>
 
-                        <Space size={6} className="resource-card__tags">
-                          <Tag size="small" theme={row.status === 'published' ? 'success' : 'warning'} variant="light">
-                            {row.status === 'published' ? '已发布' : '草稿'}
-                          </Tag>
-                          <Tag size="small" theme={row.visibility === '公开' ? 'primary' : 'default'} variant="light">
-                            {row.visibility}
-                          </Tag>
-                          <Tag size="small" variant="light-outline">v{row.currentVersion}</Tag>
-                        </Space>
-
-                        <Space size={6} className="resource-card__meta">
-                          <span className="meta-item"><UserIcon size="14" /> {row.ownerName || '-'}</span>
-                          <Popup trigger="hover" placement="top" showArrow content={renderTeamPopup(row)}>
-                            <Tag size="small" variant="light-outline" className="team-tag-popup-trigger">
-                              {row.ownerType === '团队' ? (row.ownerTeamName !== '-' ? row.ownerTeamName : '团队资源') : '个人资源'}
+                          <Space size={6} className="resource-card__tags">
+                            <Tag size="small" theme={row.status === 'published' ? 'success' : 'warning'} variant="light">
+                              {row.status === 'published' ? '已发布' : '草稿'}
                             </Tag>
-                          </Popup>
+                            <Tag size="small" theme={row.visibility === '公开' ? 'primary' : 'default'} variant="light">
+                              {row.visibility}
+                            </Tag>
+                            <Tag size="small" variant="light-outline">v{row.currentVersion}</Tag>
+                          </Space>
+
+                          <Space size={6} className="resource-card__meta">
+                            <span className="meta-item"><UserIcon size="14" /> {row.ownerName || '-'}</span>
+                            <Popup trigger="hover" placement="top" showArrow content={renderTeamPopup(row)}>
+                              <Tag size="small" variant="light-outline" className="team-tag-popup-trigger">
+                                {row.ownerType === '团队' ? (row.ownerTeamName !== '-' ? row.ownerTeamName : '团队资源') : '个人资源'}
+                              </Tag>
+                            </Popup>
+                          </Space>
+
+                          <div className="resource-card__description" title={descriptionText}>{descriptionText}</div>
+
+                          <Row justify="space-between" align="middle" className="resource-card__foot">
+                            <Col flex="auto" className="resource-card__time-text">{date}{time ? ` ${time}` : ''}</Col>
+                            <Col flex="none">
+                              <Space size={6} align="center">
+                                <Popup trigger="hover" placement="top-right" showArrow content={renderContributorsPopup(row.contributors)}>
+                                  <div className="participant-avatars-trigger">
+                                    <Avatar.Group max={4} cascading="right-up" size="24px">
+                                      {row.contributors.map((item) => (
+                                        <Avatar key={item.userId || item.username} image={item.avatar}>
+                                          {String(resolveContributorName(item) || '-').slice(0, 1)}
+                                        </Avatar>
+                                      ))}
+                                    </Avatar.Group>
+                                  </div>
+                                </Popup>
+
+                                <Popup trigger="click" placement="top-right" showArrow={false} content={renderActionPopup(row)}>
+                                  <Button size="small" variant="text" shape="square" className="resource-card__more-button">⋮</Button>
+                                </Popup>
+                              </Space>
+                            </Col>
+                          </Row>
                         </Space>
-
-                        <div className="resource-card__description" title={descriptionText}>{descriptionText}</div>
-
-                        <Row justify="space-between" align="middle" className="resource-card__foot">
-                          <Col flex="auto" className="resource-card__time-text">{date}{time ? ` ${time}` : ''}</Col>
-                          <Col flex="none">
-                            <Space size={6} align="center">
-                              <Popup trigger="hover" placement="top-right" showArrow content={renderContributorsPopup(row.contributors)}>
-                                <div className="participant-avatars-trigger">
-                                  <Avatar.Group max={4} cascading="right-up" size="24px">
-                                    {row.contributors.map((item) => (
-                                      <Avatar key={item.userId || item.username} image={item.avatar}>
-                                        {String(resolveContributorName(item) || '-').slice(0, 1)}
-                                      </Avatar>
-                                    ))}
-                                  </Avatar.Group>
-                                </div>
-                              </Popup>
-
-                              <Popup trigger="click" placement="top-right" showArrow={false} content={renderActionPopup(row)}>
-                                <Button size="small" variant="text" shape="square" className="resource-card__more-button">⋮</Button>
-                              </Popup>
-                            </Space>
-                          </Col>
-                        </Row>
-                      </Space>
-                    </Card>
-                  </Col>
-                );
-              })}
-            </Row>
-          ) : (
-            <div className="empty-state">暂无页面数据</div>
-          )
-        ) : null}
+                      </Card>
+                    </Col>
+                  );
+                })}
+              </Row>
+            ) : (
+              <div className="empty-state">暂无页面数据</div>
+            )
+          ) : null}
+        </div>
 
         <div className="pagination-wrap">
           <Pagination
