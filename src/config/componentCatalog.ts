@@ -1,3 +1,276 @@
+const createChartDefaultData = (
+  chartType:
+  | 'line'
+  | 'bar'
+  | 'pie'
+  | 'radar'
+  | 'scatter'
+  | 'area'
+  | 'donut'
+  | 'gauge'
+  | 'funnel'
+  | 'candlestick'
+  | 'treemap'
+  | 'heatmap'
+  | 'sunburst'
+  | 'map'
+  | 'sankey'
+  | 'graph'
+  | 'boxplot'
+  | 'waterfall',
+) => {
+  if (chartType === 'sankey' || chartType === 'graph') {
+    return [
+      { source: '访问', target: '注册', value: 120, category: '流量' },
+      { source: '注册', target: '付费', value: 64, category: '转化' },
+      { source: '注册', target: '流失', value: 32, category: '流失' },
+    ];
+  }
+
+  if (chartType === 'map') {
+    return [
+      { name: '北区', value: 120 },
+      { name: '中区', value: 200 },
+      { name: '南区', value: 160 },
+    ];
+  }
+
+  if (chartType === 'candlestick') {
+    return [
+      { name: 'Mon', open: 12, close: 15, low: 10, high: 18 },
+      { name: 'Tue', open: 15, close: 13, low: 12, high: 16 },
+      { name: 'Wed', open: 13, close: 17, low: 11, high: 19 },
+    ];
+  }
+
+  if (chartType === 'boxplot') {
+    return [
+      { name: 'Q1', min: 12, q1: 18, median: 22, q3: 28, max: 36 },
+      { name: 'Q2', min: 14, q1: 20, median: 25, q3: 30, max: 38 },
+    ];
+  }
+
+  return [
+    { name: 'Mon', value: 120 },
+    { name: 'Tue', value: 200 },
+    { name: 'Wed', value: 150 },
+    { name: 'Thu', value: 80 },
+    { name: 'Fri', value: 70 },
+  ];
+};
+
+const createChartComponent = (
+  type: string,
+  name: string,
+  chartType:
+  | 'line'
+  | 'bar'
+  | 'pie'
+  | 'radar'
+  | 'scatter'
+  | 'area'
+  | 'donut'
+  | 'gauge'
+  | 'funnel'
+  | 'candlestick'
+  | 'treemap'
+  | 'heatmap'
+  | 'sunburst'
+  | 'map'
+  | 'sankey'
+  | 'graph'
+  | 'boxplot'
+  | 'waterfall',
+) => ({
+  type,
+  name,
+  props: {
+    chartType: {
+      name: '图表类型',
+      value: chartType,
+      editType: 'select',
+      payload: {
+        options: [
+          { label: '折线图', value: 'line' },
+          { label: '柱状图', value: 'bar' },
+          { label: '饼图', value: 'pie' },
+          { label: '雷达图', value: 'radar' },
+          { label: '散点图', value: 'scatter' },
+          { label: '面积图', value: 'area' },
+          { label: '环形图', value: 'donut' },
+          { label: '仪表盘', value: 'gauge' },
+          { label: '漏斗图', value: 'funnel' },
+          { label: 'K线图', value: 'candlestick' },
+          { label: '矩形树图', value: 'treemap' },
+          { label: '热力图', value: 'heatmap' },
+          { label: '旭日图', value: 'sunburst' },
+          { label: '地图', value: 'map' },
+          { label: '桑基图', value: 'sankey' },
+          { label: '关系图', value: 'graph' },
+          { label: '箱线图', value: 'boxplot' },
+          { label: '瀑布图', value: 'waterfall' },
+        ],
+      },
+    },
+    dataSource: {
+      name: '图表数据',
+      value: createChartDefaultData(chartType),
+      editType: 'jsonCode',
+    },
+    dataSourceConfig: {
+      name: '数据源配置',
+      value: {
+        type: 'static',
+        responsePath: 'output',
+        page: 1,
+        pageSize: 20,
+      },
+      editType: 'dataSourceConfig',
+    },
+    xField: {
+      name: 'X轴字段',
+      value: 'name',
+      editType: 'input',
+    },
+    yField: {
+      name: 'Y轴字段',
+      value: 'value',
+      editType: 'input',
+    },
+    openField: {
+      name: '开盘字段',
+      value: 'open',
+      editType: 'input',
+    },
+    closeField: {
+      name: '收盘字段',
+      value: 'close',
+      editType: 'input',
+    },
+    lowField: {
+      name: '最低字段',
+      value: 'low',
+      editType: 'input',
+    },
+    highField: {
+      name: '最高字段',
+      value: 'high',
+      editType: 'input',
+    },
+    nameField: {
+      name: '名称字段(饼图)',
+      value: 'name',
+      editType: 'input',
+    },
+    valueField: {
+      name: '数值字段(饼图)',
+      value: 'value',
+      editType: 'input',
+    },
+    smooth: {
+      name: '折线平滑',
+      value: true,
+      editType: 'switch',
+    },
+    sourceField: {
+      name: '起点字段',
+      value: 'source',
+      editType: 'input',
+    },
+    targetField: {
+      name: '终点字段',
+      value: 'target',
+      editType: 'input',
+    },
+    categoryField: {
+      name: '分类字段',
+      value: 'category',
+      editType: 'input',
+    },
+    childrenField: {
+      name: '子节点字段',
+      value: 'children',
+      editType: 'input',
+    },
+    mapName: {
+      name: '地图名',
+      value: 'china',
+      editType: 'input',
+    },
+    minField: {
+      name: '最小值字段',
+      value: 'min',
+      editType: 'input',
+    },
+    q1Field: {
+      name: 'Q1字段',
+      value: 'q1',
+      editType: 'input',
+    },
+    medianField: {
+      name: '中位数字段',
+      value: 'median',
+      editType: 'input',
+    },
+    q3Field: {
+      name: 'Q3字段',
+      value: 'q3',
+      editType: 'input',
+    },
+    maxField: {
+      name: '最大值字段',
+      value: 'max',
+      editType: 'input',
+    },
+    min: {
+      name: '最小值',
+      value: 0,
+      editType: 'inputNumber',
+    },
+    max: {
+      name: '最大值',
+      value: 100,
+      editType: 'inputNumber',
+    },
+    splitNumber: {
+      name: '刻度分段',
+      value: 5,
+      editType: 'inputNumber',
+    },
+    sort: {
+      name: '排序',
+      value: 'descending',
+      editType: 'select',
+      payload: {
+        options: [
+          { label: '降序', value: 'descending' },
+          { label: '升序', value: 'ascending' },
+        ],
+      },
+    },
+    showLegend: {
+      name: '显示图例',
+      value: true,
+      editType: 'switch',
+    },
+    height: {
+      name: '高度(px)',
+      value: 320,
+      editType: 'inputNumber',
+      payload: {
+        min: 120,
+        max: 1200,
+      },
+    },
+    option: {
+      name: '高级配置',
+      value: {},
+      editType: 'jsonCode',
+    },
+  },
+  lifetimes: ['onClick'],
+});
+
 const componentCatalog = [
   {
     type: 'Button',
@@ -876,6 +1149,16 @@ const componentCatalog = [
         ],
         editType: 'tableDataConfig',
       },
+      dataSourceConfig: {
+        name: '数据源配置',
+        value: {
+          type: 'static',
+          responsePath: 'output',
+          page: 1,
+          pageSize: 20,
+        },
+        editType: 'dataSourceConfig',
+      },
     },
     lifetimes: ['onRowClick', 'onPageChange', 'onSortChange', 'onFilterChange'],
   },
@@ -1486,6 +1769,108 @@ const componentCatalog = [
       },
     },
   },
+  {
+    type: 'EChart',
+    name: '图表',
+    props: {
+      chartType: {
+        name: '图表类型',
+        value: 'line',
+        editType: 'select',
+        payload: {
+          options: [
+            { label: '折线图', value: 'line' },
+            { label: '柱状图', value: 'bar' },
+            { label: '饼图', value: 'pie' },
+          ],
+        },
+      },
+      dataSource: {
+        name: '图表数据',
+        value: [
+          { name: 'Mon', value: 120 },
+          { name: 'Tue', value: 200 },
+          { name: 'Wed', value: 150 },
+          { name: 'Thu', value: 80 },
+          { name: 'Fri', value: 70 },
+        ],
+        editType: 'jsonCode',
+      },
+      dataSourceConfig: {
+        name: '数据源配置',
+        value: {
+          type: 'static',
+          responsePath: 'output',
+          page: 1,
+          pageSize: 20,
+        },
+        editType: 'dataSourceConfig',
+      },
+      xField: {
+        name: 'X轴字段',
+        value: 'name',
+        editType: 'input',
+      },
+      yField: {
+        name: 'Y轴字段',
+        value: 'value',
+        editType: 'input',
+      },
+      nameField: {
+        name: '名称字段(饼图)',
+        value: 'name',
+        editType: 'input',
+      },
+      valueField: {
+        name: '数值字段(饼图)',
+        value: 'value',
+        editType: 'input',
+      },
+      smooth: {
+        name: '折线平滑',
+        value: true,
+        editType: 'switch',
+      },
+      showLegend: {
+        name: '显示图例',
+        value: true,
+        editType: 'switch',
+      },
+      height: {
+        name: '高度(px)',
+        value: 320,
+        editType: 'inputNumber',
+        payload: {
+          min: 120,
+          max: 1200,
+        },
+      },
+      option: {
+        name: '高级配置',
+        value: {},
+        editType: 'jsonCode',
+      },
+    },
+    lifetimes: ['onClick'],
+  },
+  createChartComponent('LineChart', '折线图', 'line'),
+  createChartComponent('BarChart', '柱状图', 'bar'),
+  createChartComponent('PieChart', '饼图', 'pie'),
+  createChartComponent('RadarChart', '雷达图', 'radar'),
+  createChartComponent('ScatterChart', '散点图', 'scatter'),
+  createChartComponent('AreaChart', '面积图', 'area'),
+  createChartComponent('DonutChart', '环形图', 'donut'),
+  createChartComponent('GaugeChart', '仪表盘', 'gauge'),
+  createChartComponent('FunnelChart', '漏斗图', 'funnel'),
+  createChartComponent('CandlestickChart', 'K线图', 'candlestick'),
+  createChartComponent('TreemapChart', '矩形树图', 'treemap'),
+  createChartComponent('HeatmapChart', '热力图', 'heatmap'),
+  createChartComponent('SunburstChart', '旭日图', 'sunburst'),
+  createChartComponent('MapChart', '地图', 'map'),
+  createChartComponent('SankeyChart', '桑基图', 'sankey'),
+  createChartComponent('GraphChart', '关系图', 'graph'),
+  createChartComponent('BoxplotChart', '箱线图', 'boxplot'),
+  createChartComponent('WaterfallChart', '瀑布图', 'waterfall'),
   {
     type: 'Image',
     name: '图片',

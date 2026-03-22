@@ -26,6 +26,7 @@ import {
   ListOrdered,
   Star,
   ArrowUpToLine,
+  BarChart3,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import componentCatalog from '../../config/componentCatalog';
@@ -50,6 +51,7 @@ interface ComponentLibraryPanelProps {
 }
 
 type ComponentSchema = (typeof componentCatalog)[number];
+type ComponentSourceType = 'tdesign' | 'echarts';
 
 interface CategoryMeta {
   label: string;
@@ -82,6 +84,27 @@ const CATEGORY_META_MAP: Record<ComponentLibraryCategory, CategoryMeta> = {
 const CATEGORY_ORDER: ComponentLibraryCategory[] = ['action', 'layout', 'display', 'text', 'navigation'];
 
 const HIDDEN_COMPONENT_TYPES = new Set(['List.Item']);
+const ECHART_COMPONENT_TYPES = new Set([
+  'EChart',
+  'LineChart',
+  'BarChart',
+  'PieChart',
+  'RadarChart',
+  'ScatterChart',
+  'AreaChart',
+  'DonutChart',
+  'GaugeChart',
+  'FunnelChart',
+  'CandlestickChart',
+  'TreemapChart',
+  'HeatmapChart',
+  'SunburstChart',
+  'MapChart',
+  'SankeyChart',
+  'GraphChart',
+  'BoxplotChart',
+  'WaterfallChart',
+]);
 
 const getCategoryByType = (type: string): ComponentLibraryCategory => {
   if (type.startsWith('Typography.')) {
@@ -108,6 +131,25 @@ const getCategoryByType = (type: string): ComponentLibraryCategory => {
     || type === 'Calendar'
     || type === 'Progress'
     || type === 'List'
+    || type === 'EChart'
+    || type === 'LineChart'
+    || type === 'BarChart'
+    || type === 'PieChart'
+    || type === 'RadarChart'
+    || type === 'ScatterChart'
+    || type === 'AreaChart'
+    || type === 'DonutChart'
+    || type === 'GaugeChart'
+    || type === 'FunnelChart'
+    || type === 'CandlestickChart'
+    || type === 'TreemapChart'
+    || type === 'HeatmapChart'
+    || type === 'SunburstChart'
+    || type === 'MapChart'
+    || type === 'SankeyChart'
+    || type === 'GraphChart'
+    || type === 'BoxplotChart'
+    || type === 'WaterfallChart'
     || type === 'Tabs'
     || type === 'Steps'
     || type === 'Steps.Item'
@@ -191,6 +233,25 @@ const getIconByType = (type: string) => {
     Image: ImageIcon,
     Avatar: UserRound,
     Calendar: CalendarDays,
+    EChart: BarChart3,
+    LineChart: BarChart3,
+    BarChart: BarChart3,
+    PieChart: BarChart3,
+    RadarChart: BarChart3,
+    ScatterChart: BarChart3,
+    AreaChart: BarChart3,
+    DonutChart: BarChart3,
+    GaugeChart: BarChart3,
+    FunnelChart: BarChart3,
+    CandlestickChart: BarChart3,
+    TreemapChart: BarChart3,
+    HeatmapChart: BarChart3,
+    SunburstChart: BarChart3,
+    MapChart: BarChart3,
+    SankeyChart: BarChart3,
+    GraphChart: BarChart3,
+    BoxplotChart: BarChart3,
+    WaterfallChart: BarChart3,
     ColorPicker: Pipette,
     TimePicker: Clock3,
     TimeRangePicker: Timer,
@@ -261,6 +322,7 @@ const ComponentLibraryPanel: React.FC<ComponentLibraryPanelProps> = ({ selectedN
   const { entityType } = useBuilderContext();
   const { currentTeamId } = useTeam();
   const [keyword, setKeyword] = useState('');
+  const [sourceType, setSourceType] = useState<ComponentSourceType>('tdesign');
   const [openedGroupKey, setOpenedGroupKey] = useState<string | null>(null);
   const [customComponentSchemas, setCustomComponentSchemas] = useState<CustomComponentSchema[]>([]);
 
@@ -296,13 +358,42 @@ const ComponentLibraryPanel: React.FC<ComponentLibraryPanelProps> = ({ selectedN
     return [...componentLibraryEntries, ...plainEntries];
   }, [entityType]);
 
+  const sourceFilteredEntries = useMemo(() => {
+    return libraryEntries.filter((entry) => {
+      if (entry.kind === 'group') {
+        const children = entry.children.filter((child) => {
+          const isChart = ECHART_COMPONENT_TYPES.has(String(child.type ?? ''));
+          return sourceType === 'echarts' ? isChart : !isChart;
+        });
+        return children.length > 0;
+      }
+
+      const isChart = ECHART_COMPONENT_TYPES.has(String(entry.type ?? ''));
+      return sourceType === 'echarts' ? isChart : !isChart;
+    }).map((entry) => {
+      if (entry.kind !== 'group') {
+        return entry;
+      }
+
+      const children = entry.children.filter((child) => {
+        const isChart = ECHART_COMPONENT_TYPES.has(String(child.type ?? ''));
+        return sourceType === 'echarts' ? isChart : !isChart;
+      });
+
+      return {
+        ...entry,
+        children,
+      };
+    });
+  }, [libraryEntries, sourceType]);
+
   const filteredEntries = useMemo(() => {
     const text = keyword.trim();
     if (!text) {
-      return libraryEntries;
+      return sourceFilteredEntries;
     }
 
-    return libraryEntries.reduce<ComponentLibraryEntry[]>((acc, entry) => {
+    return sourceFilteredEntries.reduce<ComponentLibraryEntry[]>((acc, entry) => {
       if (entry.kind === 'item') {
         const schema = schemaMap.get(entry.type);
         const matched = matchText([
@@ -350,7 +441,7 @@ const ComponentLibraryPanel: React.FC<ComponentLibraryPanelProps> = ({ selectedN
 
       return acc;
     }, []);
-  }, [keyword, libraryEntries, schemaMap]);
+  }, [keyword, sourceFilteredEntries, schemaMap]);
 
   const groupedCatalog = useMemo(() => {
     return filteredEntries.reduce<Record<ComponentLibraryCategory, ComponentLibraryEntry[]>>((acc, entry) => {
@@ -483,6 +574,10 @@ const ComponentLibraryPanel: React.FC<ComponentLibraryPanelProps> = ({ selectedN
   }, [hideSavedComponents, currentTeamId]);
 
   const filteredCustomComponentSchemas = useMemo(() => {
+    if (sourceType !== 'tdesign') {
+      return [];
+    }
+
     const text = keyword.trim().toLowerCase();
     if (!text) {
       return customComponentSchemas;
@@ -492,7 +587,7 @@ const ComponentLibraryPanel: React.FC<ComponentLibraryPanelProps> = ({ selectedN
       return item.name.toLowerCase().includes(text)
         || String((item.props.__componentId as { value?: unknown } | undefined)?.value ?? '').toLowerCase().includes(text);
     });
-  }, [customComponentSchemas, keyword]);
+  }, [customComponentSchemas, keyword, sourceType]);
 
   const renderLibraryItemCard = (schema: ComponentSchema, isActive: boolean, helperText?: string) => {
     const itemCategory = getCategoryByType(String(schema.type ?? ''));
@@ -571,8 +666,25 @@ const ComponentLibraryPanel: React.FC<ComponentLibraryPanelProps> = ({ selectedN
           onChange={(value) => setKeyword(String(value ?? ''))}
         />
       </div>
+      <div className="library-source-tabs library-source-tabs--horizontal">
+        <button
+          type="button"
+          className={`library-source-tabs__item${sourceType === 'tdesign' ? ' is-active' : ''}`}
+          onClick={() => setSourceType('tdesign')}
+        >
+          TDesign
+        </button>
+        <button
+          type="button"
+          className={`library-source-tabs__item${sourceType === 'echarts' ? ' is-active' : ''}`}
+          onClick={() => setSourceType('echarts')}
+        >
+          ECharts
+        </button>
+      </div>
 
-      <div className="library-list">
+      <div className="library-content">
+        <div className="library-list">
         {!hideSavedComponents && filteredCustomComponentSchemas.length > 0 ? (
           <div className="library-section">
             <div className="library-section-head">
@@ -677,6 +789,7 @@ const ComponentLibraryPanel: React.FC<ComponentLibraryPanelProps> = ({ selectedN
         {filteredEntries.length === 0 ? (
           <div className="library-empty">未找到匹配组件</div>
         ) : null}
+        </div>
       </div>
     </div>
   );

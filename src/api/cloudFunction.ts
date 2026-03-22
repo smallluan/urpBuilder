@@ -63,6 +63,18 @@ export interface UpdateCloudFunctionPayload {
   code?: string;
 }
 
+export interface ExecuteCloudFunctionPayload {
+  payload?: unknown;
+}
+
+export interface ExecuteCloudFunctionResult {
+  executionId?: string;
+  functionId?: string;
+  functionName?: string;
+  durationMs?: number;
+  output?: unknown;
+}
+
 const normalizeListResult = (rawData: unknown): CloudFunctionListResult => {
   if (Array.isArray(rawData)) {
     return {
@@ -119,5 +131,20 @@ export const deployCloudFunction = async (
   const response = await requestClient.post<ApiResponse<{ deploymentId?: string }>>(`/cloud-functions/${functionId}/deploy`, undefined, {
     params: accessContext,
   });
+  return response.data.data ?? {};
+};
+
+export const executeCloudFunction = async (
+  functionIdOrName: string,
+  payload: ExecuteCloudFunctionPayload,
+  accessContext: CloudFunctionAccessContext,
+): Promise<ExecuteCloudFunctionResult> => {
+  const response = await requestClient.post<ApiResponse<ExecuteCloudFunctionResult>>(
+    `/cloud-functions/${encodeURIComponent(functionIdOrName)}/execute`,
+    payload,
+    {
+      params: accessContext,
+    },
+  );
   return response.data.data ?? {};
 };

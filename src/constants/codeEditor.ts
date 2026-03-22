@@ -134,6 +134,42 @@ export const CODE_EDITOR_JS_GLOBAL_COMPLETIONS: Completion[] = [
     info: '推荐在 async 代码节点里 await 调用，再 return patch 向下游传递。',
   },
   {
+    label: "const res = await dataHub.cloud.invoke('fn_xxx', { page: 1 }); return { dataSource: res.output };",
+    type: 'snippet',
+    detail: '云函数结果驱动组件数据源',
+    info: 'execute 接口默认返回 { output }，可将 output 回填到表格/图表的 dataSource。',
+  },
+  {
+    label: "return { dataSource: [{ name: 'Mon', value: 120 }, { name: 'Tue', value: 200 }] }",
+    type: 'snippet',
+    detail: '图表/Table 更新示例',
+    info: '代码节点返回对象后会作为 patch 下发到下游组件，常用于刷新 Line/Bar/Pie 等图表和表格数据。',
+  },
+  {
+    label: "return { dataSource: [{ name: 'North', value: 320 }, { name: 'South', value: 260 }] }",
+    type: 'snippet',
+    detail: '多图表通用 patch',
+    info: '18 种图表组件共用 dataSource patch 协议，代码节点返回对象后可统一驱动刷新。',
+  },
+  {
+    label: "const res = await dataHub.cloud.invoke('fn_dashboard', { range: '7d' }); return { dataSource: res.output ?? [] };",
+    type: 'snippet',
+    detail: '云函数结果映射图表',
+    info: '推荐用 output 作为统一响应字段，再通过 return { dataSource } 驱动任意图表刷新。',
+  },
+  {
+    label: "return { dataSource: [{ name: '2026-03-01', open: 12, close: 15, low: 10, high: 18 }] }",
+    type: 'snippet',
+    detail: 'K线图 patch 示例',
+    info: 'CandlestickChart 推荐字段：name/open/close/low/high，可在属性面板调整字段映射。',
+  },
+  {
+    label: "return { dataSource: [{ name: '北京市', value: 120 }, { name: '上海市', value: 98 }] }",
+    type: 'snippet',
+    detail: '地图图表 patch 示例',
+    info: 'MapChart 推荐字段：name/value，默认 mapName=china，可通过 option 覆盖地图配置。',
+  },
+  {
     label: 'ctx',
     type: 'variable',
     detail: '当前触发上下文',

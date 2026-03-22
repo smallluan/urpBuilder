@@ -1,9 +1,12 @@
 import { List, Calendar, Steps, Tabs, Menu, Image, Button, Table } from 'tdesign-react';
+import ReactECharts from 'echarts-for-react';
 import type { ComponentRegistry } from '../componentContext';
 import { ActivateWrapper, CardContent } from '../componentHelpers';
 import DropArea from '../../../components/DropArea';
 import { LIST_PREVIEW_DATA } from '../../../constants/componentBuilder';
 import { getTabsPanelSlotKey, getTabsSlotNodeByValue } from '../../utils/tabs';
+import { buildEChartOption, normalizeEChartDataSource } from '../../../utils/echart';
+import { ensureBuiltInChinaMap } from '../../../utils/echartMap';
 
 const { ListItem, ListItemMeta } = List;
 
@@ -12,6 +15,30 @@ const TABLE_FALLBACK_DATA = [
   { id: 'row-2', name: '李四', role: '编辑', status: '启用' },
   { id: 'row-3', name: '王五', role: '访客', status: '禁用' },
 ];
+
+const CHART_TYPE_BY_COMPONENT: Record<string, 'line' | 'bar' | 'pie' | 'radar' | 'scatter' | 'area' | 'donut' | 'gauge' | 'funnel' | 'candlestick' | 'treemap' | 'heatmap' | 'sunburst' | 'map' | 'sankey' | 'graph' | 'boxplot' | 'waterfall'> = {
+  EChart: 'line',
+  LineChart: 'line',
+  BarChart: 'bar',
+  PieChart: 'pie',
+  RadarChart: 'radar',
+  ScatterChart: 'scatter',
+  AreaChart: 'area',
+  DonutChart: 'donut',
+  GaugeChart: 'gauge',
+  FunnelChart: 'funnel',
+  CandlestickChart: 'candlestick',
+  TreemapChart: 'treemap',
+  HeatmapChart: 'heatmap',
+  SunburstChart: 'sunburst',
+  MapChart: 'map',
+  SankeyChart: 'sankey',
+  GraphChart: 'graph',
+  BoxplotChart: 'boxplot',
+  WaterfallChart: 'waterfall',
+};
+
+const CHART_COMPONENT_TYPES = Object.keys(CHART_TYPE_BY_COMPONENT);
 
 const normalizeBuilderTableColumns = (value: unknown) => {
   if (!Array.isArray(value)) {
@@ -58,6 +85,59 @@ const normalizeBuilderTableColumns = (value: unknown) => {
 };
 
 export function registerDataComponents(registry: ComponentRegistry): void {
+  ensureBuiltInChinaMap();
+
+  CHART_COMPONENT_TYPES.forEach((componentType) => {
+    registry.set(componentType, (ctx) => {
+      const { getProp, getStringProp, getBooleanProp, getFiniteNumberProp, mergeStyle, handleActivateSelf, data, isNodeActive } = ctx;
+      const chartType = CHART_TYPE_BY_COMPONENT[componentType];
+      const dataSource = normalizeEChartDataSource(getProp('dataSource'));
+      const option = buildEChartOption({
+        chartType,
+        dataSource,
+        xField: getStringProp('xField') || 'name',
+        yField: getStringProp('yField') || 'value',
+        nameField: getStringProp('nameField') || 'name',
+        valueField: getStringProp('valueField') || 'value',
+        openField: getStringProp('openField') || 'open',
+        closeField: getStringProp('closeField') || 'close',
+        lowField: getStringProp('lowField') || 'low',
+        highField: getStringProp('highField') || 'high',
+        sourceField: getStringProp('sourceField') || 'source',
+        targetField: getStringProp('targetField') || 'target',
+        categoryField: getStringProp('categoryField') || 'category',
+        childrenField: getStringProp('childrenField') || 'children',
+        mapName: getStringProp('mapName') || 'china',
+        minField: getStringProp('minField') || 'min',
+        q1Field: getStringProp('q1Field') || 'q1',
+        medianField: getStringProp('medianField') || 'median',
+        q3Field: getStringProp('q3Field') || 'q3',
+        maxField: getStringProp('maxField') || 'max',
+        min: getFiniteNumberProp('min') ?? 0,
+        max: getFiniteNumberProp('max') ?? 100,
+        splitNumber: getFiniteNumberProp('splitNumber') ?? 5,
+        sort: getStringProp('sort') === 'ascending' ? 'ascending' : 'descending',
+        smooth: getBooleanProp('smooth') !== false,
+        showLegend: getBooleanProp('showLegend') !== false,
+        optionOverride: getProp('option'),
+      });
+      const chartHeight = Math.max(120, getFiniteNumberProp('height') ?? 320);
+
+      return (
+        <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf} nodeKey={data?.key} active={isNodeActive}>
+          <div style={{ ...mergeStyle(), minHeight: chartHeight }}>
+            <ReactECharts
+              option={option as any}
+              style={{ width: '100%', height: chartHeight }}
+              notMerge
+              lazyUpdate
+            />
+          </div>
+        </ActivateWrapper>
+      );
+    });
+  });
+
   registry.set('Table', (ctx) => {
     const { getProp, getStringProp, getBooleanProp, getFiniteNumberProp, mergeStyle, handleActivateSelf, data, isNodeActive } = ctx;
     const columns = normalizeBuilderTableColumns(getProp('columns'));

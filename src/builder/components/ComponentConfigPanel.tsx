@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Button, Collapse, ColorPicker, Dialog, Empty, Input, InputNumber, Popup, Select, Slider, Space, Switch, Table, Tag, Tabs, Typography, Row } from 'tdesign-react';
+import { Button, Collapse, ColorPicker, Dialog, Empty, Input, InputNumber, Popup, Select, Slider, Space, Switch, Table, Tag, Tabs, Typography, Row, Textarea } from 'tdesign-react';
 import { HelpCircleIcon, LayoutIcon } from 'tdesign-icons-react';
 import { useBuilderAccess, useBuilderContext } from '../context/BuilderContext';
 import type { UiTreeNode } from '../store/types';
@@ -26,6 +26,12 @@ import componentCatalog from '../../config/componentCatalog';
 import { createDefaultTabsList, normalizeTabsList } from '../utils/tabs';
 import { loadCustomComponentDetail, resolveExposedPropSchemas } from '../../utils/customComponentRuntime';
 import { getPropSection, sortSectionKeys } from '../utils/propConfigGroups';
+import { useTeam } from '../../team/context';
+import { getDataConstantList, type DataConstantRecord } from '../../api/dataConstant';
+import { getDataTableList, type DataTableRecord } from '../../api/dataTable';
+import { getCloudFunctionList, type CloudFunctionRecord } from '../../api/cloudFunction';
+import type { ComponentDataSourceType } from '../../types/dataSource';
+import { normalizeDataSourceConfig } from '../../types/dataSource';
 
 type EditType =
   | 'switch'
@@ -37,6 +43,7 @@ type EditType =
   | 'tabsConfig'
   | 'tableColumnsConfig'
   | 'tableDataConfig'
+  | 'dataSourceConfig'
   | 'jsonCode';
 
 interface SwiperImageRow {
@@ -70,6 +77,17 @@ interface TableColumnRow {
   fixed: '' | 'left' | 'right';
 }
 
+interface DataSourceConfigDraft {
+  type: ComponentDataSourceType;
+  constantId: string;
+  tableId: string;
+  functionId: string;
+  page: number;
+  pageSize: number;
+  responsePath: string;
+  payloadText: string;
+}
+
 const SWIPER_FIT_OPTIONS = ['contain', 'cover', 'fill', 'none', 'scale-down'].map((item) => ({
   label: item,
   value: item,
@@ -79,6 +97,35 @@ const SWIPER_POSITION_OPTIONS = ['left', 'center', 'right', 'top', 'bottom'].map
   label: item,
   value: item,
 }));
+
+const CHART_PROP_WHITELIST: Record<string, Set<string>> = {
+  EChart: new Set(['chartType', 'dataSource', 'dataSourceConfig', 'xField', 'yField', 'nameField', 'valueField', 'smooth', 'showLegend', 'height', 'option']),
+  LineChart: new Set(['dataSource', 'dataSourceConfig', 'xField', 'yField', 'smooth', 'showLegend', 'height', 'option']),
+  BarChart: new Set(['dataSource', 'dataSourceConfig', 'xField', 'yField', 'showLegend', 'height', 'option']),
+  AreaChart: new Set(['dataSource', 'dataSourceConfig', 'xField', 'yField', 'smooth', 'showLegend', 'height', 'option']),
+  ScatterChart: new Set(['dataSource', 'dataSourceConfig', 'xField', 'yField', 'showLegend', 'height', 'option']),
+  PieChart: new Set(['dataSource', 'dataSourceConfig', 'nameField', 'valueField', 'showLegend', 'height', 'option']),
+  DonutChart: new Set(['dataSource', 'dataSourceConfig', 'nameField', 'valueField', 'showLegend', 'height', 'option']),
+  RadarChart: new Set(['dataSource', 'dataSourceConfig', 'nameField', 'valueField', 'showLegend', 'height', 'option']),
+  GaugeChart: new Set(['dataSource', 'dataSourceConfig', 'valueField', 'height', 'option']),
+  FunnelChart: new Set(['dataSource', 'dataSourceConfig', 'nameField', 'valueField', 'showLegend', 'height', 'option']),
+  CandlestickChart: new Set(['dataSource', 'dataSourceConfig', 'xField', 'openField', 'closeField', 'lowField', 'highField', 'showLegend', 'height', 'option']),
+  TreemapChart: new Set(['dataSource', 'dataSourceConfig', 'nameField', 'valueField', 'childrenField', 'height', 'option']),
+  HeatmapChart: new Set(['dataSource', 'dataSourceConfig', 'xField', 'yField', 'valueField', 'showLegend', 'height', 'option']),
+  SunburstChart: new Set(['dataSource', 'dataSourceConfig', 'nameField', 'valueField', 'childrenField', 'height', 'option']),
+  MapChart: new Set(['dataSource', 'dataSourceConfig', 'nameField', 'valueField', 'mapName', 'showLegend', 'height', 'option']),
+  SankeyChart: new Set(['dataSource', 'dataSourceConfig', 'sourceField', 'targetField', 'valueField', 'showLegend', 'height', 'option']),
+  GraphChart: new Set(['dataSource', 'dataSourceConfig', 'sourceField', 'targetField', 'nameField', 'valueField', 'categoryField', 'showLegend', 'height', 'option']),
+  BoxplotChart: new Set(['dataSource', 'dataSourceConfig', 'nameField', 'minField', 'q1Field', 'medianField', 'q3Field', 'maxField', 'showLegend', 'height', 'option']),
+  WaterfallChart: new Set(['dataSource', 'dataSourceConfig', 'nameField', 'valueField', 'showLegend', 'height', 'option']),
+};
+
+const getChartVisibleProps = (componentType?: string): Set<string> | null => {
+  if (!componentType) {
+    return null;
+  }
+  return CHART_PROP_WHITELIST[componentType] ?? null;
+};
 
 const createSwiperImageRow = (seed?: Partial<SwiperImageRow>): SwiperImageRow => ({
   id: `swiper-image-${Date.now()}-${Math.round(Math.random() * 10000)}`,
@@ -154,6 +201,28 @@ const normalizeTableColumnRows = (value: unknown): TableColumnRow[] => {
   return value
     .filter((item) => !!item && typeof item === 'object')
     .map((item) => createTableColumnRow(item as Partial<TableColumnRow>));
+};
+
+const normalizeDataSourceConfigDraft = (value: unknown): DataSourceConfigDraft => {
+  const config = normalizeDataSourceConfig(value);
+  const payloadText = (() => {
+    try {
+      return JSON.stringify(config.payload ?? {}, null, 2);
+    } catch {
+      return '{}';
+    }
+  })();
+
+  return {
+    type: config.type,
+    constantId: config.constantId ?? '',
+    tableId: config.tableId ?? '',
+    functionId: config.functionId ?? '',
+    page: config.page ?? 1,
+    pageSize: config.pageSize ?? 20,
+    responsePath: config.responsePath ?? 'output',
+    payloadText: payloadText || '{}',
+  };
 };
 
 interface ComponentPropSchema {
@@ -310,6 +379,7 @@ const resolveEditType = (schema: ComponentPropSchema): EditType => {
     || type === 'tabsConfig'
     || type === 'tableColumnsConfig'
     || type === 'tableDataConfig'
+    || type === 'dataSourceConfig'
     || type === 'jsonCode'
   ) {
     return type;
@@ -321,6 +391,7 @@ const resolveEditType = (schema: ComponentPropSchema): EditType => {
 const ComponentConfigPanel: React.FC = () => {
   const { useStore } = useBuilderContext();
   const { readOnly, readOnlyReason } = useBuilderAccess();
+  const { workspaceMode, currentTeamId } = useTeam();
   const activeNode = useStore((state) => state.activeNode);
   const uiPageData = useStore((state) => state.uiPageData);
   const updateActiveNodeLabel = useStore((state) => state.updateActiveNodeLabel);
@@ -339,6 +410,13 @@ const ComponentConfigPanel: React.FC = () => {
   const [tableColumnsDialogVisible, setTableColumnsDialogVisible] = useState(false);
   const [tableColumnsDraft, setTableColumnsDraft] = useState<TableColumnRow[]>([]);
   const [tableColumnsTargetPropKey, setTableColumnsTargetPropKey] = useState<string | null>(null);
+  const [dataSourceDialogVisible, setDataSourceDialogVisible] = useState(false);
+  const [dataSourceTargetPropKey, setDataSourceTargetPropKey] = useState<string | null>(null);
+  const [dataSourceDraft, setDataSourceDraft] = useState<DataSourceConfigDraft>(normalizeDataSourceConfigDraft(undefined));
+  const [dataSourceLoading, setDataSourceLoading] = useState(false);
+  const [dataConstantOptions, setDataConstantOptions] = useState<DataConstantRecord[]>([]);
+  const [dataTableOptions, setDataTableOptions] = useState<DataTableRecord[]>([]);
+  const [cloudFunctionOptions, setCloudFunctionOptions] = useState<CloudFunctionRecord[]>([]);
   const [inputDrafts, setInputDrafts] = useState<Record<string, string>>({});
   const [numberDrafts, setNumberDrafts] = useState<Record<string, number | undefined>>({});
   const [jsonCodeDialogVisible, setJsonCodeDialogVisible] = useState(false);
@@ -381,6 +459,12 @@ const ComponentConfigPanel: React.FC = () => {
   const switchControlled = (activeNode?.type === 'Switch' || activeNode?.type === 'Slider' || activeNode?.type === 'Steps')
     ? Boolean((propsMap.controlled?.value ?? true))
     : undefined;
+  const ownerType = workspaceMode === 'team' ? 'team' : 'user';
+  const canQueryWorkspaceResource = ownerType === 'user' || Boolean(currentTeamId);
+  const accessContext = {
+    ownerType,
+    ownerTeamId: ownerType === 'team' ? currentTeamId || undefined : undefined,
+  } as const;
 
   const activePath = activeNode?.key ? findNodePathByKey(uiPageData, activeNode.key) : null;
   const listItemAncestor = activePath?.slice().reverse().find((node: UiTreeNode) => node.type === 'List.Item');
@@ -416,6 +500,11 @@ const ComponentConfigPanel: React.FC = () => {
     }
 
     if (activeNode?.type === 'List.Item' && isListCustomTemplateEnabled && LIST_ITEM_META_PROP_KEYS.has(propKey)) {
+      return false;
+    }
+
+    const chartVisibleProps = getChartVisibleProps(activeNode?.type);
+    if (chartVisibleProps && !chartVisibleProps.has(propKey)) {
       return false;
     }
 
@@ -776,6 +865,18 @@ const ComponentConfigPanel: React.FC = () => {
       );
     }
 
+    if (editType === 'dataSourceConfig') {
+      return (
+        <Button
+          size="small"
+          variant="outline"
+          onClick={() => openDataSourceConfigDialog(propKey, currentValue)}
+        >
+          配置数据源
+        </Button>
+      );
+    }
+
     if (editType === 'jsonCode') {
       const toJsonCode = (value: unknown) => {
         if (typeof value === 'string') {
@@ -994,6 +1095,79 @@ const ComponentConfigPanel: React.FC = () => {
 
     setTableColumnsDialogVisible(false);
     setTableColumnsTargetPropKey(null);
+  };
+
+  const loadDataSourceResources = async () => {
+    if (!canQueryWorkspaceResource) {
+      setDataConstantOptions([]);
+      setDataTableOptions([]);
+      setCloudFunctionOptions([]);
+      return;
+    }
+
+    setDataSourceLoading(true);
+    try {
+      const [constantsResult, tablesResult, functionsResult] = await Promise.all([
+        getDataConstantList({
+          ...accessContext,
+          page: 1,
+          pageSize: 200,
+        }),
+        getDataTableList({
+          ...accessContext,
+          page: 1,
+          pageSize: 200,
+        }),
+        getCloudFunctionList({
+          ...accessContext,
+          page: 1,
+          pageSize: 200,
+        }),
+      ]);
+      setDataConstantOptions(Array.isArray(constantsResult.list) ? constantsResult.list : []);
+      setDataTableOptions(Array.isArray(tablesResult.list) ? tablesResult.list : []);
+      setCloudFunctionOptions(Array.isArray(functionsResult.list) ? functionsResult.list : []);
+    } finally {
+      setDataSourceLoading(false);
+    }
+  };
+
+  const openDataSourceConfigDialog = (propKey: string, currentValue: unknown) => {
+    setDataSourceTargetPropKey(propKey);
+    setDataSourceDraft(normalizeDataSourceConfigDraft(currentValue));
+    setDataSourceDialogVisible(true);
+    void loadDataSourceResources();
+  };
+
+  const applyDataSourceConfigDraft = () => {
+    if (!dataSourceTargetPropKey) {
+      setDataSourceDialogVisible(false);
+      return;
+    }
+
+    let parsedPayload: unknown = {};
+    const payloadText = dataSourceDraft.payloadText.trim();
+    if (payloadText) {
+      try {
+        parsedPayload = JSON.parse(payloadText);
+      } catch {
+        parsedPayload = {};
+      }
+    }
+
+    updateActiveNodeProp(dataSourceTargetPropKey, {
+      type: dataSourceDraft.type,
+      constantId: dataSourceDraft.constantId || undefined,
+      tableId: dataSourceDraft.tableId || undefined,
+      functionId: dataSourceDraft.functionId || undefined,
+      page: Math.max(1, Math.round(Number(dataSourceDraft.page) || 1)),
+      pageSize: Math.max(1, Math.round(Number(dataSourceDraft.pageSize) || 20)),
+      responsePath: dataSourceDraft.responsePath.trim() || 'output',
+      payload: parsedPayload,
+    });
+
+    setDataSourceDialogVisible(false);
+    setDataSourceTargetPropKey(null);
   };
 
   const openGridResponsiveDialog = () => {
@@ -1716,6 +1890,183 @@ const ComponentConfigPanel: React.FC = () => {
             },
           ]}
         />
+      </Dialog>
+
+      <Dialog
+        visible={dataSourceDialogVisible}
+        width="760px"
+        header="配置数据源"
+        closeOnOverlayClick={false}
+        confirmBtn="应用"
+        cancelBtn="取消"
+        onConfirm={applyDataSourceConfigDraft}
+        onClose={() => {
+          setDataSourceDialogVisible(false);
+          setDataSourceTargetPropKey(null);
+        }}
+      >
+        <Space direction="vertical" style={{ width: '100%' }} size={12}>
+          <div className="config-row">
+            <span className="config-label">数据来源</span>
+            <div className="config-editor">
+              <Select
+                value={dataSourceDraft.type}
+                options={[
+                  { label: '静态数据', value: 'static' },
+                  { label: '常量管理', value: 'constant' },
+                  { label: '数据表记录', value: 'dataTable' },
+                  { label: '云函数调用', value: 'cloudFunction' },
+                ]}
+                onChange={(value) =>
+                  setDataSourceDraft((previous) => ({
+                    ...previous,
+                    type: String(value ?? 'static') as ComponentDataSourceType,
+                  }))
+                }
+              />
+            </div>
+          </div>
+
+          {dataSourceDraft.type === 'constant' ? (
+            <div className="config-row">
+              <span className="config-label">常量</span>
+              <div className="config-editor">
+                <Select
+                  loading={dataSourceLoading}
+                  value={dataSourceDraft.constantId || undefined}
+                  options={dataConstantOptions.map((item) => ({
+                    label: item.name,
+                    value: item.id,
+                  }))}
+                  placeholder="请选择常量"
+                  onChange={(value) =>
+                    setDataSourceDraft((previous) => ({
+                      ...previous,
+                      constantId: String(value ?? ''),
+                    }))
+                  }
+                />
+              </div>
+            </div>
+          ) : null}
+
+          {dataSourceDraft.type === 'dataTable' ? (
+            <>
+              <div className="config-row">
+                <span className="config-label">数据表</span>
+                <div className="config-editor">
+                  <Select
+                    loading={dataSourceLoading}
+                    value={dataSourceDraft.tableId || undefined}
+                    options={dataTableOptions.map((item) => ({
+                      label: item.name,
+                      value: item.id,
+                    }))}
+                    placeholder="请选择数据表"
+                    onChange={(value) =>
+                      setDataSourceDraft((previous) => ({
+                        ...previous,
+                        tableId: String(value ?? ''),
+                      }))
+                    }
+                  />
+                </div>
+              </div>
+              <Row gutter={12}>
+                <div style={{ flex: 1 }}>
+                  <div className="config-row">
+                    <span className="config-label">页码</span>
+                    <div className="config-editor">
+                      <InputNumber
+                        min={1}
+                        value={dataSourceDraft.page}
+                        onChange={(value) =>
+                          setDataSourceDraft((previous) => ({
+                            ...previous,
+                            page: typeof value === 'number' && Number.isFinite(value) ? Math.max(1, Math.round(value)) : 1,
+                          }))
+                        }
+                      />
+                    </div>
+                  </div>
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div className="config-row">
+                    <span className="config-label">每页</span>
+                    <div className="config-editor">
+                      <InputNumber
+                        min={1}
+                        value={dataSourceDraft.pageSize}
+                        onChange={(value) =>
+                          setDataSourceDraft((previous) => ({
+                            ...previous,
+                            pageSize: typeof value === 'number' && Number.isFinite(value) ? Math.max(1, Math.round(value)) : 20,
+                          }))
+                        }
+                      />
+                    </div>
+                  </div>
+                </div>
+              </Row>
+            </>
+          ) : null}
+
+          {dataSourceDraft.type === 'cloudFunction' ? (
+            <>
+              <div className="config-row">
+                <span className="config-label">云函数</span>
+                <div className="config-editor">
+                  <Select
+                    loading={dataSourceLoading}
+                    value={dataSourceDraft.functionId || undefined}
+                    options={cloudFunctionOptions.map((item) => ({
+                      label: item.name,
+                      value: item.id,
+                    }))}
+                    placeholder="请选择云函数"
+                    onChange={(value) =>
+                      setDataSourceDraft((previous) => ({
+                        ...previous,
+                        functionId: String(value ?? ''),
+                      }))
+                    }
+                  />
+                </div>
+              </div>
+              <div className="config-row">
+                <span className="config-label">结果路径</span>
+                <div className="config-editor">
+                  <Input
+                    clearable
+                    value={dataSourceDraft.responsePath}
+                    placeholder="默认 output，例如 output.list"
+                    onChange={(value) =>
+                      setDataSourceDraft((previous) => ({
+                        ...previous,
+                        responsePath: String(value ?? ''),
+                      }))
+                    }
+                  />
+                </div>
+              </div>
+              <div className="config-row">
+                <span className="config-label">调用参数</span>
+                <div className="config-editor">
+                  <Textarea
+                    autosize={{ minRows: 4, maxRows: 8 }}
+                    value={dataSourceDraft.payloadText}
+                    onChange={(value) =>
+                      setDataSourceDraft((previous) => ({
+                        ...previous,
+                        payloadText: String(value ?? ''),
+                      }))
+                    }
+                  />
+                </div>
+              </div>
+            </>
+          ) : null}
+        </Space>
       </Dialog>
 
       <CodeEditorDialog

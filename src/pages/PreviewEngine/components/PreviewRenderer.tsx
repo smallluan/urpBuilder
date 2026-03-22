@@ -1,5 +1,6 @@
 import React from 'react';
 import { Avatar, Button, Card, Col, Divider, Image, Row, Space, Switch, Swiper, Typography, Layout, Calendar, ColorPicker, TimePicker, TimeRangePicker, InputNumber, Slider, Steps, List, Link, Tabs, BackTop, Menu, Drawer, Progress, Upload, Input, Textarea, Table, Statistic } from 'tdesign-react';
+import ReactECharts from 'echarts-for-react';
 import type { Edge, Node } from '@xyflow/react';
 import type { UiTreeNode } from '../../../builder/store/types';
 import { getNodeSlotKey, isSlotNode } from '../../../builder/utils/slot';
@@ -10,6 +11,14 @@ import { renderNamedIcon } from '../../../constants/iconRegistry';
 import { getTabsSlotNodeByValue, normalizeTabsList, normalizeTabsValue } from '../../../builder/utils/tabs';
 import { createPreviewDataHub } from '../runtime/dataHub';
 import { createPreviewFlowRuntime, type PreviewFlowRuntime } from '../runtime/flowRuntime';
+import { getDataConstantList } from '../../../api/dataConstant';
+import { executeCloudFunction } from '../../../api/cloudFunction';
+import { getDataTableRecords } from '../../../api/dataTable';
+import { getStoredCurrentTeamId, getStoredWorkspaceMode } from '../../../team/storage';
+import { buildEChartOption, normalizeEChartDataSource } from '../../../utils/echart';
+import { ensureBuiltInChinaMap } from '../../../utils/echartMap';
+import { normalizeDataSourceConfig, pickByPath, type ComponentDataSourceConfig } from '../../../types/dataSource';
+import type { ResourceOwnerType } from '../../../api/types';
 import {
   applyInstanceSlotsToTemplate,
   applyExposedPropsToTemplate,
@@ -810,6 +819,28 @@ const TABLE_FALLBACK_COLUMNS: Array<Record<string, unknown>> = [
   { colKey: 'status', title: '状态', width: 120, align: 'center', ellipsis: true },
 ];
 
+const CHART_TYPE_BY_COMPONENT: Record<string, 'line' | 'bar' | 'pie' | 'radar' | 'scatter' | 'area' | 'donut' | 'gauge' | 'funnel' | 'candlestick' | 'treemap' | 'heatmap' | 'sunburst' | 'map' | 'sankey' | 'graph' | 'boxplot' | 'waterfall'> = {
+  EChart: 'line',
+  LineChart: 'line',
+  BarChart: 'bar',
+  PieChart: 'pie',
+  RadarChart: 'radar',
+  ScatterChart: 'scatter',
+  AreaChart: 'area',
+  DonutChart: 'donut',
+  GaugeChart: 'gauge',
+  FunnelChart: 'funnel',
+  CandlestickChart: 'candlestick',
+  TreemapChart: 'treemap',
+  HeatmapChart: 'heatmap',
+  SunburstChart: 'sunburst',
+  MapChart: 'map',
+  SankeyChart: 'sankey',
+  GraphChart: 'graph',
+  BoxplotChart: 'boxplot',
+  WaterfallChart: 'waterfall',
+};
+
 const normalizePreviewTableColumns = (node: UiTreeNode): Array<Record<string, unknown>> => {
   const value = getProp(node, 'columns');
   if (!Array.isArray(value)) {
@@ -875,6 +906,291 @@ const getTableDataSource = (node: UiTreeNode): Array<Record<string, unknown>> =>
   }
 
   return TABLE_FALLBACK_DATA;
+};
+
+const resolvePreviewAccessContext = (): { ownerType: ResourceOwnerType; ownerTeamId?: string } => {
+  const workspaceMode = getStoredWorkspaceMode();
+  const teamId = getStoredCurrentTeamId() || undefined;
+  if (workspaceMode === 'team' && teamId) {
+    return { ownerType: 'team', ownerTeamId: teamId };
+  }
+  return { ownerType: 'user' };
+};
+
+const normalizeRowsFromUnknown = (
+  source: unknown,
+  fallback: Array<Record<string, unknown>>,
+): Array<Record<string, unknown>> => {
+  if (Array.isArray(source)) {
+    const rows = source.filter((item) => !!item && typeof item === 'object') as Array<Record<string, unknown>>;
+    return rows.length > 0 ? rows : fallback;
+  }
+
+  if (source && typeof source === 'object') {
+    return [source as Record<string, unknown>];
+  }
+
+  if (typeof source === 'string' && source.trim()) {
+    try {
+      const parsed = JSON.parse(source);
+      return normalizeRowsFromUnknown(parsed, fallback);
+    } catch {
+      return fallback;
+    }
+  }
+
+  return fallback;
+};
+
+const resolveDataBySourceConfig = async (
+  config: ComponentDataSourceConfig,
+  fallback: unknown,
+): Promise<unknown> => {
+  const accessContext = resolvePreviewAccessContext();
+
+  if (config.type === 'constant') {
+    if (!config.constantId) {
+      return fallback;
+    }
+    const result = await getDataConstantList({
+      ...accessContext,
+      page: 1,
+      pageSize: 200,
+    });
+    const matched = (result.list ?? []).find((item) => item.id === config.constantId);
+    return matched?.value ?? fallback;
+  }
+
+  if (config.type === 'dataTable') {
+    if (!config.tableId) {
+      return fallback;
+    }
+    const result = await getDataTableRecords(config.tableId, {
+      ...accessContext,
+      page: config.page ?? 1,
+      pageSize: config.pageSize ?? 20,
+    });
+    const list = Array.isArray(result.list) ? result.list : [];
+    return list.map((item) => ({
+      id: item.id,
+      ...(item.data ?? {}),
+    }));
+  }
+
+  if (config.type === 'cloudFunction') {
+    if (!config.functionId) {
+      return fallback;
+    }
+    const result = await executeCloudFunction(
+      config.functionId,
+      { payload: config.payload ?? {} },
+      accessContext,
+    );
+    const responsePath = String(config.responsePath ?? '').trim() || 'output';
+    return pickByPath(result, responsePath) ?? fallback;
+  }
+
+  return fallback;
+};
+
+interface PreviewTableNodeProps {
+  node: UiTreeNode;
+  style?: React.CSSProperties;
+  emitInteractionLifecycle: (lifetime: string, payload?: unknown) => void;
+}
+
+const PreviewTableNode: React.FC<PreviewTableNodeProps> = ({ node, style, emitInteractionLifecycle }) => {
+  const staticDataSource = React.useMemo(() => getTableDataSource(node), [node]);
+  const [dataSource, setDataSource] = React.useState<Array<Record<string, unknown>>>(staticDataSource);
+  const [resolveError, setResolveError] = React.useState('');
+  const dataSourceRevision = React.useMemo(
+    () => JSON.stringify({
+      dataSource: getProp(node, 'dataSource'),
+      dataSourceConfig: getProp(node, 'dataSourceConfig'),
+    }),
+    [node],
+  );
+
+  React.useEffect(() => {
+    let cancelled = false;
+    const config = normalizeDataSourceConfig(getProp(node, 'dataSourceConfig'));
+    setDataSource(staticDataSource);
+    setResolveError('');
+
+    if (config.type === 'static') {
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    resolveDataBySourceConfig(config, staticDataSource)
+      .then((resolvedValue) => {
+        if (cancelled) {
+          return;
+        }
+        setDataSource(normalizeRowsFromUnknown(resolvedValue, staticDataSource));
+      })
+      .catch((error) => {
+        if (cancelled) {
+          return;
+        }
+        setResolveError((error as { message?: string })?.message ?? '数据源加载失败');
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [dataSourceRevision, staticDataSource, node]);
+
+  const columns = normalizePreviewTableColumns(node);
+  const tableColumns = columns.length > 0 ? columns : TABLE_FALLBACK_COLUMNS;
+  const rowKey = getStringProp(node, 'rowKey') || 'id';
+  const pageSize = Math.max(1, getFiniteNumberProp(node, 'pageSize') ?? 5);
+  const paginationEnabled = getBooleanProp(node, 'paginationEnabled') !== false;
+
+  return (
+    <div style={style}>
+      {resolveError ? (
+        <div style={{ marginBottom: 8, color: '#d54941', fontSize: 12 }}>
+          数据源加载失败：{resolveError}
+        </div>
+      ) : null}
+      <Table
+        rowKey={rowKey}
+        columns={tableColumns as any}
+        data={dataSource}
+        size={getStringProp(node, 'size') as any}
+        bordered={getBooleanProp(node, 'bordered')}
+        stripe={getBooleanProp(node, 'stripe')}
+        hover={getBooleanProp(node, 'hover')}
+        tableLayout={getStringProp(node, 'tableLayout') as any}
+        maxHeight={getFiniteNumberProp(node, 'maxHeight')}
+        pagination={
+          paginationEnabled
+            ? {
+                defaultCurrent: 1,
+                defaultPageSize: pageSize,
+                total: dataSource.length,
+              }
+            : undefined
+        }
+        onRowClick={(context) => emitInteractionLifecycle('onRowClick', context)}
+        onPageChange={(pageInfo, context) => emitInteractionLifecycle('onPageChange', { pageInfo, context })}
+        onSortChange={(sortInfo, context) => emitInteractionLifecycle('onSortChange', { sortInfo, context })}
+        onFilterChange={(filterValue, context) => emitInteractionLifecycle('onFilterChange', { filterValue, context })}
+        style={style}
+      />
+    </div>
+  );
+};
+
+interface PreviewEChartNodeProps {
+  node: UiTreeNode;
+  style?: React.CSSProperties;
+  emitInteractionLifecycle: (lifetime: string, payload?: unknown) => void;
+}
+
+const PreviewEChartNode: React.FC<PreviewEChartNodeProps> = ({ node, style, emitInteractionLifecycle }) => {
+  ensureBuiltInChinaMap();
+
+  const staticDataSource = React.useMemo(
+    () => normalizeEChartDataSource(getProp(node, 'dataSource')),
+    [node],
+  );
+  const [dataSource, setDataSource] = React.useState<Array<Record<string, unknown>>>(staticDataSource);
+  const [resolveError, setResolveError] = React.useState('');
+  const dataSourceRevision = React.useMemo(
+    () => JSON.stringify({
+      dataSource: getProp(node, 'dataSource'),
+      dataSourceConfig: getProp(node, 'dataSourceConfig'),
+    }),
+    [node],
+  );
+
+  React.useEffect(() => {
+    let cancelled = false;
+    const config = normalizeDataSourceConfig(getProp(node, 'dataSourceConfig'));
+    setDataSource(staticDataSource);
+    setResolveError('');
+
+    if (config.type === 'static') {
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    resolveDataBySourceConfig(config, staticDataSource)
+      .then((resolvedValue) => {
+        if (cancelled) {
+          return;
+        }
+        setDataSource(normalizeRowsFromUnknown(resolvedValue, staticDataSource));
+      })
+      .catch((error) => {
+        if (cancelled) {
+          return;
+        }
+        setResolveError((error as { message?: string })?.message ?? '数据源加载失败');
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [dataSourceRevision, staticDataSource, node]);
+
+  const nodeType = typeof node.type === 'string' ? node.type : '';
+  const chartType = CHART_TYPE_BY_COMPONENT[nodeType]
+    ?? (getStringProp(node, 'chartType') as 'line' | 'bar' | 'pie' | 'radar' | 'scatter' | 'area' | 'donut' | 'gauge' | 'funnel' | 'candlestick' | 'treemap' | 'heatmap' | 'sunburst' | 'map' | 'sankey' | 'graph' | 'boxplot' | 'waterfall' | undefined)
+    ?? 'line';
+  const chartHeight = Math.max(120, getFiniteNumberProp(node, 'height') ?? 320);
+  const chartOption = React.useMemo(() => buildEChartOption({
+    chartType,
+    dataSource,
+    xField: getStringProp(node, 'xField') || 'name',
+    yField: getStringProp(node, 'yField') || 'value',
+    nameField: getStringProp(node, 'nameField') || 'name',
+    valueField: getStringProp(node, 'valueField') || 'value',
+    openField: getStringProp(node, 'openField') || 'open',
+    closeField: getStringProp(node, 'closeField') || 'close',
+    lowField: getStringProp(node, 'lowField') || 'low',
+    highField: getStringProp(node, 'highField') || 'high',
+    sourceField: getStringProp(node, 'sourceField') || 'source',
+    targetField: getStringProp(node, 'targetField') || 'target',
+    categoryField: getStringProp(node, 'categoryField') || 'category',
+    childrenField: getStringProp(node, 'childrenField') || 'children',
+    mapName: getStringProp(node, 'mapName') || 'china',
+    minField: getStringProp(node, 'minField') || 'min',
+    q1Field: getStringProp(node, 'q1Field') || 'q1',
+    medianField: getStringProp(node, 'medianField') || 'median',
+    q3Field: getStringProp(node, 'q3Field') || 'q3',
+    maxField: getStringProp(node, 'maxField') || 'max',
+    min: getFiniteNumberProp(node, 'min') ?? 0,
+    max: getFiniteNumberProp(node, 'max') ?? 100,
+    splitNumber: getFiniteNumberProp(node, 'splitNumber') ?? 5,
+    sort: getStringProp(node, 'sort') === 'ascending' ? 'ascending' : 'descending',
+    smooth: getBooleanProp(node, 'smooth') !== false,
+    showLegend: getBooleanProp(node, 'showLegend') !== false,
+    optionOverride: getProp(node, 'option'),
+  }), [chartType, dataSource, node]);
+
+  return (
+    <div style={style}>
+      {resolveError ? (
+        <div style={{ marginBottom: 8, color: '#d54941', fontSize: 12 }}>
+          数据源加载失败：{resolveError}
+        </div>
+      ) : null}
+      <ReactECharts
+        option={chartOption as any}
+        style={{ width: '100%', height: chartHeight }}
+        notMerge
+        lazyUpdate
+        onEvents={{
+          click: (params: unknown) => emitInteractionLifecycle('onClick', { params }),
+        }}
+      />
+    </div>
+  );
 };
 
 const getListFieldValue = (record: ListRecord, fieldPath?: string): string | undefined => {
@@ -1869,46 +2185,39 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) 
       );
       }
     case 'Table':
-      {
-      const columns = normalizePreviewTableColumns(node);
-      const tableColumns = columns.length > 0
-        ? columns
-        : TABLE_FALLBACK_COLUMNS;
-      const dataSource = getTableDataSource(node);
-      const rowKey = getStringProp(node, 'rowKey') || 'id';
-      const pageSize = Math.max(1, getFiniteNumberProp(node, 'pageSize') ?? 5);
-      const paginationEnabled = getBooleanProp(node, 'paginationEnabled') !== false;
-
       return (
-        <div style={mergeStyle()}>
-          <Table
-            rowKey={rowKey}
-            columns={tableColumns as any}
-            data={dataSource}
-            size={getStringProp(node, 'size') as any}
-            bordered={getBooleanProp(node, 'bordered')}
-            stripe={getBooleanProp(node, 'stripe')}
-            hover={getBooleanProp(node, 'hover')}
-            tableLayout={getStringProp(node, 'tableLayout') as any}
-            maxHeight={getFiniteNumberProp(node, 'maxHeight')}
-            pagination={
-              paginationEnabled
-                ? {
-                    defaultCurrent: 1,
-                    defaultPageSize: pageSize,
-                    total: dataSource.length,
-                  }
-                : undefined
-            }
-            onRowClick={(context) => emitInteractionLifecycle('onRowClick', context)}
-            onPageChange={(pageInfo, context) => emitInteractionLifecycle('onPageChange', { pageInfo, context })}
-            onSortChange={(sortInfo, context) => emitInteractionLifecycle('onSortChange', { sortInfo, context })}
-            onFilterChange={(filterValue, context) => emitInteractionLifecycle('onFilterChange', { filterValue, context })}
-            style={mergeStyle()}
-          />
-        </div>
+        <PreviewTableNode
+          node={node}
+          style={mergeStyle()}
+          emitInteractionLifecycle={emitInteractionLifecycle}
+        />
       );
-      }
+    case 'EChart':
+    case 'LineChart':
+    case 'BarChart':
+    case 'PieChart':
+    case 'RadarChart':
+    case 'ScatterChart':
+    case 'AreaChart':
+    case 'DonutChart':
+    case 'GaugeChart':
+    case 'FunnelChart':
+    case 'CandlestickChart':
+    case 'TreemapChart':
+    case 'HeatmapChart':
+    case 'SunburstChart':
+    case 'MapChart':
+    case 'SankeyChart':
+    case 'GraphChart':
+    case 'BoxplotChart':
+    case 'WaterfallChart':
+      return (
+        <PreviewEChartNode
+          node={node}
+          style={mergeStyle()}
+          emitInteractionLifecycle={emitInteractionLifecycle}
+        />
+      );
     case 'List':
       {
       const customTemplateEnabled = getBooleanProp(node, 'customTemplateEnabled') === true;
