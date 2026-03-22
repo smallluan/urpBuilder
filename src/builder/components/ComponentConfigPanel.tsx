@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Button, Collapse, ColorPicker, Dialog, Empty, Input, InputNumber, Popup, Select, Slider, Space, Switch, Table, Tag, Tabs, Typography, Row, Divider } from 'tdesign-react';
+import { Button, Collapse, ColorPicker, Dialog, Empty, Input, InputNumber, Popup, Select, Slider, Space, Switch, Table, Tag, Tabs, Typography, Row } from 'tdesign-react';
 import { HelpCircleIcon, LayoutIcon } from 'tdesign-icons-react';
 import { useBuilderAccess, useBuilderContext } from '../context/BuilderContext';
 import type { UiTreeNode } from '../store/types';
@@ -27,7 +27,17 @@ import { createDefaultTabsList, normalizeTabsList } from '../utils/tabs';
 import { loadCustomComponentDetail, resolveExposedPropSchemas } from '../../utils/customComponentRuntime';
 import { getPropSection, sortSectionKeys } from '../utils/propConfigGroups';
 
-type EditType = 'switch' | 'input' | 'inputNumber' | 'select' | 'iconSelect' | 'swiperImages' | 'tabsConfig' | 'jsonCode';
+type EditType =
+  | 'switch'
+  | 'input'
+  | 'inputNumber'
+  | 'select'
+  | 'iconSelect'
+  | 'swiperImages'
+  | 'tabsConfig'
+  | 'tableColumnsConfig'
+  | 'tableDataConfig'
+  | 'jsonCode';
 
 interface SwiperImageRow {
   id: string;
@@ -47,6 +57,17 @@ interface TabsRow {
   removable: boolean;
   lazy: boolean;
   destroyOnHide: boolean;
+}
+
+interface TableColumnRow {
+  id: string;
+  colKey: string;
+  title: string;
+  width?: number;
+  align: 'left' | 'center' | 'right';
+  ellipsis: boolean;
+  sortType: '' | 'all' | 'asc' | 'desc';
+  fixed: '' | 'left' | 'right';
 }
 
 const SWIPER_FIT_OPTIONS = ['contain', 'cover', 'fill', 'none', 'scale-down'].map((item) => ({
@@ -100,6 +121,39 @@ const normalizeTabsRows = (value: unknown): TabsRow[] => {
     lazy: item.lazy,
     destroyOnHide: item.destroyOnHide,
   }));
+};
+
+const createTableColumnRow = (seed?: Partial<TableColumnRow>): TableColumnRow => {
+  const widthValue =
+    typeof seed?.width === 'number' && Number.isFinite(seed.width) && seed.width > 0
+      ? Math.round(seed.width)
+      : undefined;
+
+  const alignValue = seed?.align === 'center' || seed?.align === 'right' ? seed.align : 'left';
+  const sortTypeValue =
+    seed?.sortType === 'all' || seed?.sortType === 'asc' || seed?.sortType === 'desc' ? seed.sortType : '';
+  const fixedValue = seed?.fixed === 'left' || seed?.fixed === 'right' ? seed.fixed : '';
+
+  return {
+    id: `table-column-${Date.now()}-${Math.round(Math.random() * 10000)}`,
+    colKey: String(seed?.colKey ?? ''),
+    title: String(seed?.title ?? ''),
+    width: widthValue,
+    align: alignValue,
+    ellipsis: typeof seed?.ellipsis === 'boolean' ? seed.ellipsis : true,
+    sortType: sortTypeValue,
+    fixed: fixedValue,
+  };
+};
+
+const normalizeTableColumnRows = (value: unknown): TableColumnRow[] => {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .filter((item) => !!item && typeof item === 'object')
+    .map((item) => createTableColumnRow(item as Partial<TableColumnRow>));
 };
 
 interface ComponentPropSchema {
@@ -246,7 +300,18 @@ const getEditTypeSortRank = (editType: EditType) => {
 
 const resolveEditType = (schema: ComponentPropSchema): EditType => {
   const type = (schema.editType ?? schema.editInput) as EditType | string | undefined;
-  if (type === 'switch' || type === 'input' || type === 'inputNumber' || type === 'select' || type === 'iconSelect' || type === 'swiperImages' || type === 'tabsConfig' || type === 'jsonCode') {
+  if (
+    type === 'switch'
+    || type === 'input'
+    || type === 'inputNumber'
+    || type === 'select'
+    || type === 'iconSelect'
+    || type === 'swiperImages'
+    || type === 'tabsConfig'
+    || type === 'tableColumnsConfig'
+    || type === 'tableDataConfig'
+    || type === 'jsonCode'
+  ) {
     return type;
   }
 
@@ -271,6 +336,9 @@ const ComponentConfigPanel: React.FC = () => {
   const [tabsDialogVisible, setTabsDialogVisible] = useState(false);
   const [tabsDraft, setTabsDraft] = useState<TabsRow[]>([]);
   const [tabsTargetPropKey, setTabsTargetPropKey] = useState<string | null>(null);
+  const [tableColumnsDialogVisible, setTableColumnsDialogVisible] = useState(false);
+  const [tableColumnsDraft, setTableColumnsDraft] = useState<TableColumnRow[]>([]);
+  const [tableColumnsTargetPropKey, setTableColumnsTargetPropKey] = useState<string | null>(null);
   const [inputDrafts, setInputDrafts] = useState<Record<string, string>>({});
   const [numberDrafts, setNumberDrafts] = useState<Record<string, number | undefined>>({});
   const [jsonCodeDialogVisible, setJsonCodeDialogVisible] = useState(false);
@@ -676,6 +744,38 @@ const ComponentConfigPanel: React.FC = () => {
       );
     }
 
+    if (editType === 'tableColumnsConfig') {
+      return (
+        <Button
+          size="small"
+          variant="outline"
+          onClick={() => {
+            const rows = normalizeTableColumnRows(currentValue);
+            setTableColumnsDraft(
+              rows.length > 0
+                ? rows
+                : [
+                    createTableColumnRow({ colKey: 'name', title: '姓名', width: 140, align: 'left', ellipsis: true }),
+                    createTableColumnRow({ colKey: 'role', title: '角色', width: 120, align: 'left', ellipsis: true }),
+                  ],
+            );
+            setTableColumnsTargetPropKey(propKey);
+            setTableColumnsDialogVisible(true);
+          }}
+        >
+          配置列
+        </Button>
+      );
+    }
+
+    if (editType === 'tableDataConfig') {
+      return (
+        <Button size="small" variant="outline" disabled>
+          配置数据（待支持）
+        </Button>
+      );
+    }
+
     if (editType === 'jsonCode') {
       const toJsonCode = (value: unknown) => {
         if (typeof value === 'string') {
@@ -841,6 +941,59 @@ const ComponentConfigPanel: React.FC = () => {
 
     setTabsDialogVisible(false);
     setTabsTargetPropKey(null);
+  };
+
+  const applyTableColumnsDraft = () => {
+    const normalizedRows = tableColumnsDraft
+      .map((item, index) => {
+        const colKey = item.colKey.trim();
+        const title = item.title.trim();
+        if (!colKey) {
+          return null;
+        }
+
+        const nextColumn: Record<string, unknown> = {
+          colKey,
+          title: title || `列${index + 1}`,
+          align: item.align,
+          ellipsis: item.ellipsis,
+        };
+
+        if (typeof item.width === 'number' && Number.isFinite(item.width) && item.width > 0) {
+          nextColumn.width = Math.round(item.width);
+        }
+        if (item.sortType) {
+          nextColumn.sortType = item.sortType;
+        }
+        if (item.fixed) {
+          nextColumn.fixed = item.fixed;
+        }
+
+        return nextColumn;
+      })
+      .filter((item): item is Record<string, unknown> => !!item);
+
+    const dedupedRows = normalizedRows.reduce<Record<string, unknown>[]>((acc, item) => {
+      const key = String(item.colKey ?? '');
+      if (!acc.some((existing) => String(existing.colKey ?? '') === key)) {
+        acc.push(item);
+      }
+      return acc;
+    }, []);
+
+    const nextColumns = dedupedRows.length
+      ? dedupedRows
+      : [
+          { colKey: 'name', title: '姓名', width: 140, align: 'left', ellipsis: true },
+          { colKey: 'role', title: '角色', width: 120, align: 'left', ellipsis: true },
+        ];
+
+    if (tableColumnsTargetPropKey) {
+      updateActiveNodeProp(tableColumnsTargetPropKey, nextColumns);
+    }
+
+    setTableColumnsDialogVisible(false);
+    setTableColumnsTargetPropKey(null);
   };
 
   const openGridResponsiveDialog = () => {
@@ -1339,6 +1492,223 @@ const ComponentConfigPanel: React.FC = () => {
                   variant="text"
                   theme="danger"
                   onClick={() => setTabsDraft((previous) => previous.filter((item) => item.id !== row.id))}
+                >
+                  删除
+                </Button>
+              ),
+            },
+          ]}
+        />
+      </Dialog>
+
+      <Dialog
+        visible={tableColumnsDialogVisible}
+        width="1120px"
+        header="配置表格列"
+        closeOnOverlayClick={false}
+        confirmBtn="应用"
+        cancelBtn="取消"
+        onConfirm={applyTableColumnsDraft}
+        onClose={() => {
+          setTableColumnsDialogVisible(false);
+          setTableColumnsTargetPropKey(null);
+        }}
+      >
+        <div style={{ marginBottom: 12 }}>
+          <Button
+            size="small"
+            variant="outline"
+            onClick={() => {
+              const nextIndex = tableColumnsDraft.length + 1;
+              setTableColumnsDraft((previous) => ([
+                ...previous,
+                createTableColumnRow({
+                  colKey: `column_${nextIndex}`,
+                  title: `列${nextIndex}`,
+                  width: 140,
+                  align: 'left',
+                  ellipsis: true,
+                  sortType: '',
+                  fixed: '',
+                }),
+              ]));
+            }}
+          >
+            增加一列
+          </Button>
+        </div>
+
+        <Table
+          rowKey="id"
+          data={tableColumnsDraft}
+          columns={[
+            {
+              colKey: 'colKey',
+              title: 'key(colKey)',
+              width: 160,
+              cell: ({ row }: { row: TableColumnRow }) => (
+                <Input
+                  clearable
+                  value={row.colKey}
+                  onChange={(value) =>
+                    setTableColumnsDraft((previous) =>
+                      previous.map((item) => (item.id === row.id ? { ...item, colKey: String(value ?? '') } : item)),
+                    )
+                  }
+                />
+              ),
+            },
+            {
+              colKey: 'title',
+              title: '列名(title)',
+              width: 180,
+              cell: ({ row }: { row: TableColumnRow }) => (
+                <Input
+                  clearable
+                  value={row.title}
+                  onChange={(value) =>
+                    setTableColumnsDraft((previous) =>
+                      previous.map((item) => (item.id === row.id ? { ...item, title: String(value ?? '') } : item)),
+                    )
+                  }
+                />
+              ),
+            },
+            {
+              colKey: 'width',
+              title: '宽度(width)',
+              width: 118,
+              cell: ({ row }: { row: TableColumnRow }) => (
+                <InputNumber
+                  size="small"
+                  min={60}
+                  max={480}
+                  value={row.width}
+                  onChange={(value) => {
+                    const nextWidth = typeof value === 'number' && Number.isFinite(value) && value > 0
+                      ? Math.round(value)
+                      : undefined;
+                    setTableColumnsDraft((previous) =>
+                      previous.map((item) => (item.id === row.id ? { ...item, width: nextWidth } : item)),
+                    );
+                  }}
+                />
+              ),
+            },
+            {
+              colKey: 'align',
+              title: '对齐',
+              width: 120,
+              cell: ({ row }: { row: TableColumnRow }) => (
+                <Select
+                  size="small"
+                  options={[
+                    { label: '左对齐', value: 'left' },
+                    { label: '居中', value: 'center' },
+                    { label: '右对齐', value: 'right' },
+                  ]}
+                  value={row.align}
+                  onChange={(value) =>
+                    setTableColumnsDraft((previous) =>
+                      previous.map((item) => (
+                        item.id === row.id
+                          ? {
+                              ...item,
+                              align: value === 'center' || value === 'right' ? value : 'left',
+                            }
+                          : item
+                      )),
+                    )
+                  }
+                />
+              ),
+            },
+            {
+              colKey: 'ellipsis',
+              title: '省略',
+              width: 86,
+              cell: ({ row }: { row: TableColumnRow }) => (
+                <Switch
+                  size="small"
+                  value={row.ellipsis}
+                  onChange={(value) =>
+                    setTableColumnsDraft((previous) =>
+                      previous.map((item) => (item.id === row.id ? { ...item, ellipsis: Boolean(value) } : item)),
+                    )
+                  }
+                />
+              ),
+            },
+            {
+              colKey: 'sortType',
+              title: '排序',
+              width: 128,
+              cell: ({ row }: { row: TableColumnRow }) => (
+                <Select
+                  size="small"
+                  options={[
+                    { label: '无', value: '' },
+                    { label: '双向', value: 'all' },
+                    { label: '升序', value: 'asc' },
+                    { label: '降序', value: 'desc' },
+                  ]}
+                  value={row.sortType}
+                  onChange={(value) =>
+                    setTableColumnsDraft((previous) =>
+                      previous.map((item) => (
+                        item.id === row.id
+                          ? {
+                              ...item,
+                              sortType:
+                                value === 'all' || value === 'asc' || value === 'desc'
+                                  ? value
+                                  : '',
+                            }
+                          : item
+                      )),
+                    )
+                  }
+                />
+              ),
+            },
+            {
+              colKey: 'fixed',
+              title: '固定',
+              width: 120,
+              cell: ({ row }: { row: TableColumnRow }) => (
+                <Select
+                  size="small"
+                  options={[
+                    { label: '不固定', value: '' },
+                    { label: '左固定', value: 'left' },
+                    { label: '右固定', value: 'right' },
+                  ]}
+                  value={row.fixed}
+                  onChange={(value) =>
+                    setTableColumnsDraft((previous) =>
+                      previous.map((item) => (
+                        item.id === row.id
+                          ? {
+                              ...item,
+                              fixed: value === 'left' || value === 'right' ? value : '',
+                            }
+                          : item
+                      )),
+                    )
+                  }
+                />
+              ),
+            },
+            {
+              colKey: 'action',
+              title: '操作',
+              width: 80,
+              cell: ({ row }: { row: TableColumnRow }) => (
+                <Button
+                  size="small"
+                  variant="text"
+                  theme="danger"
+                  onClick={() => setTableColumnsDraft((previous) => previous.filter((item) => item.id !== row.id))}
                 >
                   删除
                 </Button>

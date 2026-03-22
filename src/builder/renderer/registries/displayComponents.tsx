@@ -1,10 +1,33 @@
-import { Image, Avatar, Swiper, Divider, Typography } from 'tdesign-react';
+import { Image, Avatar, Swiper, Divider, Typography, Statistic } from 'tdesign-react';
 import type { ComponentRegistry } from '../componentContext';
 import { ActivateWrapper } from '../componentHelpers';
 
 export function registerDisplayComponents(registry: ComponentRegistry): void {
+  registry.set('Statistic', (ctx) => {
+    const { getStringProp, getBooleanProp, getFiniteNumberProp, mergeStyle, handleActivateSelf, data, isNodeActive } = ctx;
+    const trend = getStringProp('trend');
+
+    return (
+      <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf} nodeKey={data?.key} active={isNodeActive}>
+        <Statistic
+          title={getStringProp('title')}
+          value={getFiniteNumberProp('value') ?? 0}
+          unit={getStringProp('unit') || undefined}
+          decimalPlaces={getFiniteNumberProp('decimalPlaces')}
+          separator={getStringProp('separator') || ','}
+          color={getStringProp('color') as any}
+          trend={trend === 'increase' || trend === 'decrease' ? trend : undefined}
+          trendPlacement={getStringProp('trendPlacement') as any}
+          loading={getBooleanProp('loading')}
+          animationStart={getBooleanProp('animationStart')}
+          style={mergeStyle()}
+        />
+      </ActivateWrapper>
+    );
+  });
+
   registry.set('Image', (ctx) => {
-    const { getStringProp, mergeStyle, handleActivateSelf, data, isNodeActive } = ctx;
+    const { getStringProp, getBooleanProp, mergeStyle, handleActivateSelf, data, isNodeActive } = ctx;
     return (
       <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf} nodeKey={data?.key} active={isNodeActive}>
         <Image
@@ -12,6 +35,7 @@ export function registerDisplayComponents(registry: ComponentRegistry): void {
           alt={getStringProp('alt')}
           fit={getStringProp('fit') as any}
           shape={getStringProp('shape') as any}
+          gallery={getBooleanProp('gallery')}
           style={mergeStyle()}
         />
       </ActivateWrapper>

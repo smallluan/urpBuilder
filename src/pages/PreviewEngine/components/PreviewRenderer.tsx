@@ -1,5 +1,5 @@
 import React from 'react';
-import { Avatar, Button, Card, Col, Divider, Image, Row, Space, Switch, Swiper, Typography, Layout, Calendar, ColorPicker, TimePicker, TimeRangePicker, InputNumber, Slider, Steps, List, Link, Tabs, BackTop, Menu, Drawer, Progress, Upload, Input, Textarea } from 'tdesign-react';
+import { Avatar, Button, Card, Col, Divider, Image, Row, Space, Switch, Swiper, Typography, Layout, Calendar, ColorPicker, TimePicker, TimeRangePicker, InputNumber, Slider, Steps, List, Link, Tabs, BackTop, Menu, Drawer, Progress, Upload, Input, Textarea, Table, Statistic } from 'tdesign-react';
 import type { Edge, Node } from '@xyflow/react';
 import type { UiTreeNode } from '../../../builder/store/types';
 import { getNodeSlotKey, isSlotNode } from '../../../builder/utils/slot';
@@ -797,6 +797,84 @@ const getListDataSource = (node: UiTreeNode): ListRecord[] => {
   }
 
   return LIST_PREVIEW_DATA;
+};
+
+const TABLE_FALLBACK_DATA: Array<Record<string, unknown>> = [
+  { id: 'row-1', name: '张三', role: '管理员', status: '启用' },
+  { id: 'row-2', name: '李四', role: '编辑', status: '启用' },
+  { id: 'row-3', name: '王五', role: '访客', status: '禁用' },
+];
+const TABLE_FALLBACK_COLUMNS: Array<Record<string, unknown>> = [
+  { colKey: 'name', title: '姓名', width: 140, align: 'left', ellipsis: true },
+  { colKey: 'role', title: '角色', width: 120, align: 'left', ellipsis: true },
+  { colKey: 'status', title: '状态', width: 120, align: 'center', ellipsis: true },
+];
+
+const normalizePreviewTableColumns = (node: UiTreeNode): Array<Record<string, unknown>> => {
+  const value = getProp(node, 'columns');
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .filter((item) => !!item && typeof item === 'object')
+    .map((item) => item as Record<string, unknown>)
+    .map((item, index) => {
+      const colKey = String(item.colKey ?? '').trim();
+      if (!colKey) {
+        return null;
+      }
+
+      const title = String(item.title ?? '').trim() || `列${index + 1}`;
+      const widthRaw = item.width;
+      const width = typeof widthRaw === 'number' && Number.isFinite(widthRaw) ? Math.round(widthRaw) : undefined;
+      const align = item.align === 'center' || item.align === 'right' ? item.align : 'left';
+      const ellipsis = typeof item.ellipsis === 'boolean' ? item.ellipsis : true;
+      const sortType = item.sortType === 'all' || item.sortType === 'asc' || item.sortType === 'desc' ? item.sortType : undefined;
+      const fixed = item.fixed === 'left' || item.fixed === 'right' ? item.fixed : undefined;
+
+      const column: Record<string, unknown> = {
+        colKey,
+        title,
+        align,
+        ellipsis,
+      };
+
+      if (typeof width === 'number' && width > 0) {
+        column.width = width;
+      }
+      if (sortType) {
+        column.sortType = sortType;
+      }
+      if (fixed) {
+        column.fixed = fixed;
+      }
+
+      return column;
+    })
+    .filter((item): item is Record<string, unknown> => !!item);
+};
+
+const getTableDataSource = (node: UiTreeNode): Array<Record<string, unknown>> => {
+  const value = getProp(node, 'dataSource');
+  if (Array.isArray(value)) {
+    const rows = value.filter((item) => !!item && typeof item === 'object') as Array<Record<string, unknown>>;
+    return rows.length > 0 ? rows : TABLE_FALLBACK_DATA;
+  }
+
+  if (typeof value === 'string' && value.trim()) {
+    try {
+      const parsed = JSON.parse(value);
+      if (Array.isArray(parsed)) {
+        const rows = parsed.filter((item) => !!item && typeof item === 'object') as Array<Record<string, unknown>>;
+        return rows.length > 0 ? rows : TABLE_FALLBACK_DATA;
+      }
+    } catch {
+      return TABLE_FALLBACK_DATA;
+    }
+  }
+
+  return TABLE_FALLBACK_DATA;
 };
 
 const getListFieldValue = (record: ListRecord, fieldPath?: string): string | undefined => {
@@ -1790,6 +1868,47 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) 
         </Col>
       );
       }
+    case 'Table':
+      {
+      const columns = normalizePreviewTableColumns(node);
+      const tableColumns = columns.length > 0
+        ? columns
+        : TABLE_FALLBACK_COLUMNS;
+      const dataSource = getTableDataSource(node);
+      const rowKey = getStringProp(node, 'rowKey') || 'id';
+      const pageSize = Math.max(1, getFiniteNumberProp(node, 'pageSize') ?? 5);
+      const paginationEnabled = getBooleanProp(node, 'paginationEnabled') !== false;
+
+      return (
+        <div style={mergeStyle()}>
+          <Table
+            rowKey={rowKey}
+            columns={tableColumns as any}
+            data={dataSource}
+            size={getStringProp(node, 'size') as any}
+            bordered={getBooleanProp(node, 'bordered')}
+            stripe={getBooleanProp(node, 'stripe')}
+            hover={getBooleanProp(node, 'hover')}
+            tableLayout={getStringProp(node, 'tableLayout') as any}
+            maxHeight={getFiniteNumberProp(node, 'maxHeight')}
+            pagination={
+              paginationEnabled
+                ? {
+                    defaultCurrent: 1,
+                    defaultPageSize: pageSize,
+                    total: dataSource.length,
+                  }
+                : undefined
+            }
+            onRowClick={(context) => emitInteractionLifecycle('onRowClick', context)}
+            onPageChange={(pageInfo, context) => emitInteractionLifecycle('onPageChange', { pageInfo, context })}
+            onSortChange={(sortInfo, context) => emitInteractionLifecycle('onSortChange', { sortInfo, context })}
+            onFilterChange={(filterValue, context) => emitInteractionLifecycle('onFilterChange', { filterValue, context })}
+            style={mergeStyle()}
+          />
+        </div>
+      );
+      }
     case 'List':
       {
       const customTemplateEnabled = getBooleanProp(node, 'customTemplateEnabled') === true;
@@ -1971,6 +2090,27 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) 
         </div>
       );
       }
+    case 'Statistic':
+      {
+      const trend = getStringProp(node, 'trend');
+      return (
+        <div style={mergeStyle()}>
+          <Statistic
+            title={getStringProp(node, 'title')}
+            value={getFiniteNumberProp(node, 'value') ?? 0}
+            unit={getStringProp(node, 'unit') || undefined}
+            decimalPlaces={getFiniteNumberProp(node, 'decimalPlaces')}
+            separator={getStringProp(node, 'separator') || ','}
+            color={getStringProp(node, 'color') as any}
+            trend={trend === 'increase' || trend === 'decrease' ? trend : undefined}
+            trendPlacement={getStringProp(node, 'trendPlacement') as any}
+            loading={getBooleanProp(node, 'loading')}
+            animationStart={getBooleanProp(node, 'animationStart')}
+            style={mergeStyle()}
+          />
+        </div>
+      );
+      }
     case 'Image':
       return (
         <div style={mergeStyle()}>
@@ -1979,6 +2119,7 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) 
             alt={getStringProp(node, 'alt')}
             fit={getStringProp(node, 'fit') as any}
             shape={getStringProp(node, 'shape') as any}
+            gallery={getBooleanProp(node, 'gallery') === true}
             style={mergeStyle()}
           />
         </div>

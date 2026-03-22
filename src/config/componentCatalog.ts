@@ -776,6 +776,110 @@ const componentCatalog = [
     },
   },
   {
+    type: 'Table',
+    name: '表格',
+    props: {
+      rowKey: {
+        name: '行唯一键(rowKey)',
+        value: 'id',
+        editType: 'input',
+      },
+      size: {
+        name: '尺寸',
+        value: 'medium',
+        editType: 'select',
+        payload: {
+          options: ['small', 'medium', 'large'],
+        },
+      },
+      bordered: {
+        name: '显示边框',
+        value: true,
+        editType: 'switch',
+      },
+      stripe: {
+        name: '斑马纹',
+        value: false,
+        editType: 'switch',
+      },
+      hover: {
+        name: '行悬浮高亮',
+        value: true,
+        editType: 'switch',
+      },
+      tableLayout: {
+        name: '布局模式',
+        value: 'fixed',
+        editType: 'select',
+        payload: {
+          options: ['auto', 'fixed'],
+        },
+      },
+      maxHeight: {
+        name: '最大高度(px)',
+        value: 360,
+        editType: 'inputNumber',
+      },
+      paginationEnabled: {
+        name: '启用分页',
+        value: true,
+        editType: 'switch',
+      },
+      pageSize: {
+        name: '每页条数',
+        value: 5,
+        editType: 'inputNumber',
+        payload: {
+          min: 1,
+          max: 100,
+        },
+      },
+      columns: {
+        name: '列配置',
+        value: [
+          {
+            colKey: 'name',
+            title: '姓名',
+            width: 140,
+            align: 'left',
+            ellipsis: true,
+            sortType: '',
+            fixed: '',
+          },
+          {
+            colKey: 'role',
+            title: '角色',
+            width: 120,
+            align: 'left',
+            ellipsis: true,
+            sortType: '',
+            fixed: '',
+          },
+          {
+            colKey: 'status',
+            title: '状态',
+            width: 120,
+            align: 'center',
+            ellipsis: false,
+            sortType: '',
+            fixed: '',
+          },
+        ],
+        editType: 'tableColumnsConfig',
+      },
+      dataSource: {
+        name: '表格数据',
+        value: [
+          { id: 'u-001', name: '张三', role: '管理员', status: '启用' },
+          { id: 'u-002', name: '李四', role: '编辑', status: '启用' },
+          { id: 'u-003', name: '王五', role: '访客', status: '禁用' },
+        ],
+        editType: 'tableDataConfig',
+      },
+    },
+    lifetimes: ['onRowClick', 'onPageChange', 'onSortChange', 'onFilterChange'],
+  },
+  {
     type: 'List',
     name: '列表',
     props: {
@@ -1310,6 +1414,79 @@ const componentCatalog = [
     }
   },
   {
+    type: 'Statistic',
+    name: '统计数值',
+    props: {
+      title: {
+        name: '标题',
+        value: '本月销售额',
+        editType: 'input',
+      },
+      value: {
+        name: '数值',
+        value: 26800,
+        editType: 'inputNumber',
+      },
+      unit: {
+        name: '单位',
+        value: '元',
+        editType: 'input',
+      },
+      decimalPlaces: {
+        name: '小数位',
+        value: 0,
+        editType: 'inputNumber',
+        payload: {
+          min: 0,
+          max: 8,
+        },
+      },
+      separator: {
+        name: '千分位分隔符',
+        value: ',',
+        editType: 'input',
+      },
+      color: {
+        name: '主题色',
+        value: 'blue',
+        editType: 'select',
+        payload: {
+          options: ['black', 'blue', 'red', 'orange', 'green'],
+        },
+      },
+      trend: {
+        name: '趋势',
+        value: '',
+        editType: 'select',
+        payload: {
+          options: [
+            { label: '无', value: '' },
+            { label: '上升', value: 'increase' },
+            { label: '下降', value: 'decrease' },
+          ],
+        },
+      },
+      trendPlacement: {
+        name: '趋势图位置',
+        value: 'left',
+        editType: 'select',
+        payload: {
+          options: ['left', 'right'],
+        },
+      },
+      loading: {
+        name: '加载中',
+        value: false,
+        editType: 'switch',
+      },
+      animationStart: {
+        name: '启用动效',
+        value: false,
+        editType: 'switch',
+      },
+    },
+  },
+  {
     type: 'Image',
     name: '图片',
     props: {
@@ -1338,6 +1515,11 @@ const componentCatalog = [
         payload: {
           options: ['square', 'round', 'circle']
         }
+      },
+      gallery: {
+        name: '启用图片预览(ImageViewer)',
+        value: false,
+        editType: 'switch',
       }
     }
   },

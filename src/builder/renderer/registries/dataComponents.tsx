@@ -1,4 +1,4 @@
-import { List, Calendar, Steps, Tabs, Menu, Image, Button } from 'tdesign-react';
+import { List, Calendar, Steps, Tabs, Menu, Image, Button, Table } from 'tdesign-react';
 import type { ComponentRegistry } from '../componentContext';
 import { ActivateWrapper, CardContent } from '../componentHelpers';
 import DropArea from '../../../components/DropArea';
@@ -7,7 +7,101 @@ import { getTabsPanelSlotKey, getTabsSlotNodeByValue } from '../../utils/tabs';
 
 const { ListItem, ListItemMeta } = List;
 
+const TABLE_FALLBACK_DATA = [
+  { id: 'row-1', name: '张三', role: '管理员', status: '启用' },
+  { id: 'row-2', name: '李四', role: '编辑', status: '启用' },
+  { id: 'row-3', name: '王五', role: '访客', status: '禁用' },
+];
+
+const normalizeBuilderTableColumns = (value: unknown) => {
+  if (!Array.isArray(value)) {
+    return [] as Array<Record<string, unknown>>;
+  }
+
+  return value
+    .filter((item) => !!item && typeof item === 'object')
+    .map((item) => item as Record<string, unknown>)
+    .map((item, index) => {
+      const colKey = String(item.colKey ?? '').trim();
+      if (!colKey) {
+        return null;
+      }
+
+      const title = String(item.title ?? '').trim() || `列${index + 1}`;
+      const widthRaw = item.width;
+      const width = typeof widthRaw === 'number' && Number.isFinite(widthRaw) ? Math.round(widthRaw) : undefined;
+      const align = item.align === 'center' || item.align === 'right' ? item.align : 'left';
+      const ellipsis = typeof item.ellipsis === 'boolean' ? item.ellipsis : true;
+      const sortType = item.sortType === 'all' || item.sortType === 'asc' || item.sortType === 'desc' ? item.sortType : undefined;
+      const fixed = item.fixed === 'left' || item.fixed === 'right' ? item.fixed : undefined;
+
+      const column: Record<string, unknown> = {
+        colKey,
+        title,
+        align,
+        ellipsis,
+      };
+
+      if (typeof width === 'number' && width > 0) {
+        column.width = width;
+      }
+      if (sortType) {
+        column.sortType = sortType;
+      }
+      if (fixed) {
+        column.fixed = fixed;
+      }
+
+      return column;
+    })
+    .filter((item): item is Record<string, unknown> => !!item);
+};
+
 export function registerDataComponents(registry: ComponentRegistry): void {
+  registry.set('Table', (ctx) => {
+    const { getProp, getStringProp, getBooleanProp, getFiniteNumberProp, mergeStyle, handleActivateSelf, data, isNodeActive } = ctx;
+    const columns = normalizeBuilderTableColumns(getProp('columns'));
+    const dataSource = Array.isArray(getProp('dataSource'))
+      ? (getProp('dataSource') as Array<Record<string, unknown>>)
+      : TABLE_FALLBACK_DATA;
+    const rowKey = getStringProp('rowKey') || 'id';
+    const pageSize = Math.max(1, getFiniteNumberProp('pageSize') ?? 5);
+    const paginationEnabled = getBooleanProp('paginationEnabled') !== false;
+    const tableColumns = columns.length > 0
+      ? columns
+      : normalizeBuilderTableColumns([
+          { colKey: 'name', title: '姓名', width: 140, align: 'left', ellipsis: true },
+          { colKey: 'role', title: '角色', width: 120, align: 'left', ellipsis: true },
+          { colKey: 'status', title: '状态', width: 120, align: 'center', ellipsis: true },
+        ]);
+
+    return (
+      <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf} nodeKey={data?.key} active={isNodeActive}>
+        <Table
+          rowKey={rowKey}
+          columns={tableColumns as any}
+          data={dataSource.length > 0 ? dataSource : TABLE_FALLBACK_DATA}
+          size={getStringProp('size') as any}
+          bordered={getBooleanProp('bordered')}
+          stripe={getBooleanProp('stripe')}
+          hover={getBooleanProp('hover')}
+          tableLayout={getStringProp('tableLayout') as any}
+          maxHeight={getFiniteNumberProp('maxHeight')}
+          pagination={
+            paginationEnabled
+              ? {
+                  defaultCurrent: 1,
+                  defaultPageSize: pageSize,
+                  total: (dataSource.length > 0 ? dataSource : TABLE_FALLBACK_DATA).length,
+                }
+              : undefined
+          }
+          style={mergeStyle()}
+        />
+      </ActivateWrapper>
+    );
+  });
+
   registry.set('List', (ctx) => {
     const {
       data, onDropData, getStringProp, getBooleanProp, mergeStyle, handleActivateSelf, isNodeActive,
