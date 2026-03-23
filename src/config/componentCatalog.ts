@@ -1,24 +1,7 @@
-const createChartDefaultData = (
-  chartType:
-  | 'line'
-  | 'bar'
-  | 'pie'
-  | 'radar'
-  | 'scatter'
-  | 'area'
-  | 'donut'
-  | 'gauge'
-  | 'funnel'
-  | 'candlestick'
-  | 'treemap'
-  | 'heatmap'
-  | 'sunburst'
-  | 'map'
-  | 'sankey'
-  | 'graph'
-  | 'boxplot'
-  | 'waterfall',
-) => {
+import type { EChartSeriesType } from '../constants/echart';
+import { ECHART_OPTION_PRESET_OPTIONS, ECHART_TYPE_OPTIONS } from '../constants/echart';
+
+const createChartDefaultData = (chartType: EChartSeriesType) => {
   if (chartType === 'sankey' || chartType === 'graph') {
     return [
       { source: '访问', target: '注册', value: 120, category: '流量' },
@@ -62,25 +45,7 @@ const createChartDefaultData = (
 const createChartComponent = (
   type: string,
   name: string,
-  chartType:
-  | 'line'
-  | 'bar'
-  | 'pie'
-  | 'radar'
-  | 'scatter'
-  | 'area'
-  | 'donut'
-  | 'gauge'
-  | 'funnel'
-  | 'candlestick'
-  | 'treemap'
-  | 'heatmap'
-  | 'sunburst'
-  | 'map'
-  | 'sankey'
-  | 'graph'
-  | 'boxplot'
-  | 'waterfall',
+  chartType: EChartSeriesType,
 ) => ({
   type,
   name,
@@ -90,26 +55,7 @@ const createChartComponent = (
       value: chartType,
       editType: 'select',
       payload: {
-        options: [
-          { label: '折线图', value: 'line' },
-          { label: '柱状图', value: 'bar' },
-          { label: '饼图', value: 'pie' },
-          { label: '雷达图', value: 'radar' },
-          { label: '散点图', value: 'scatter' },
-          { label: '面积图', value: 'area' },
-          { label: '环形图', value: 'donut' },
-          { label: '仪表盘', value: 'gauge' },
-          { label: '漏斗图', value: 'funnel' },
-          { label: 'K线图', value: 'candlestick' },
-          { label: '矩形树图', value: 'treemap' },
-          { label: '热力图', value: 'heatmap' },
-          { label: '旭日图', value: 'sunburst' },
-          { label: '地图', value: 'map' },
-          { label: '桑基图', value: 'sankey' },
-          { label: '关系图', value: 'graph' },
-          { label: '箱线图', value: 'boxplot' },
-          { label: '瀑布图', value: 'waterfall' },
-        ],
+        options: ECHART_TYPE_OPTIONS,
       },
     },
     dataSource: {
@@ -260,6 +206,14 @@ const createChartComponent = (
       payload: {
         min: 120,
         max: 1200,
+      },
+    },
+    optionPreset: {
+      name: '预设模板',
+      value: 'none',
+      editType: 'select',
+      payload: {
+        options: ECHART_OPTION_PRESET_OPTIONS.map((item) => ({ label: item.label, value: item.value })),
       },
     },
     option: {
@@ -1769,90 +1723,7 @@ const componentCatalog = [
       },
     },
   },
-  {
-    type: 'EChart',
-    name: '图表',
-    props: {
-      chartType: {
-        name: '图表类型',
-        value: 'line',
-        editType: 'select',
-        payload: {
-          options: [
-            { label: '折线图', value: 'line' },
-            { label: '柱状图', value: 'bar' },
-            { label: '饼图', value: 'pie' },
-          ],
-        },
-      },
-      dataSource: {
-        name: '图表数据',
-        value: [
-          { name: 'Mon', value: 120 },
-          { name: 'Tue', value: 200 },
-          { name: 'Wed', value: 150 },
-          { name: 'Thu', value: 80 },
-          { name: 'Fri', value: 70 },
-        ],
-        editType: 'jsonCode',
-      },
-      dataSourceConfig: {
-        name: '数据源配置',
-        value: {
-          type: 'static',
-          responsePath: 'output',
-          page: 1,
-          pageSize: 20,
-        },
-        editType: 'dataSourceConfig',
-      },
-      xField: {
-        name: 'X轴字段',
-        value: 'name',
-        editType: 'input',
-      },
-      yField: {
-        name: 'Y轴字段',
-        value: 'value',
-        editType: 'input',
-      },
-      nameField: {
-        name: '名称字段(饼图)',
-        value: 'name',
-        editType: 'input',
-      },
-      valueField: {
-        name: '数值字段(饼图)',
-        value: 'value',
-        editType: 'input',
-      },
-      smooth: {
-        name: '折线平滑',
-        value: true,
-        editType: 'switch',
-      },
-      showLegend: {
-        name: '显示图例',
-        value: true,
-        editType: 'switch',
-      },
-      height: {
-        name: '高度(px)',
-        value: 320,
-        editType: 'inputNumber',
-        payload: {
-          min: 120,
-          max: 1200,
-        },
-      },
-      option: {
-        name: '高级配置',
-        value: {},
-        editType: 'jsonCode',
-      },
-    },
-    lifetimes: ['onClick'],
-  },
+  createChartComponent('EChart', '图表', 'line'),
   createChartComponent('LineChart', '折线图', 'line'),
   createChartComponent('BarChart', '柱状图', 'bar'),
   createChartComponent('PieChart', '饼图', 'pie'),

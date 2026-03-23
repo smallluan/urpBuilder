@@ -18,6 +18,8 @@ import { getStoredCurrentTeamId, getStoredWorkspaceMode } from '../../../team/st
 import { buildEChartOption, normalizeEChartDataSource } from '../../../utils/echart';
 import { ensureBuiltInChinaMap } from '../../../utils/echartMap';
 import { normalizeDataSourceConfig, pickByPath, type ComponentDataSourceConfig } from '../../../types/dataSource';
+import type { EChartSeriesType } from '../../../constants/echart';
+import { CHART_COMPONENT_TYPE_MAP } from '../../../constants/echart';
 import type { ResourceOwnerType } from '../../../api/types';
 import {
   applyInstanceSlotsToTemplate,
@@ -819,28 +821,6 @@ const TABLE_FALLBACK_COLUMNS: Array<Record<string, unknown>> = [
   { colKey: 'status', title: '状态', width: 120, align: 'center', ellipsis: true },
 ];
 
-const CHART_TYPE_BY_COMPONENT: Record<string, 'line' | 'bar' | 'pie' | 'radar' | 'scatter' | 'area' | 'donut' | 'gauge' | 'funnel' | 'candlestick' | 'treemap' | 'heatmap' | 'sunburst' | 'map' | 'sankey' | 'graph' | 'boxplot' | 'waterfall'> = {
-  EChart: 'line',
-  LineChart: 'line',
-  BarChart: 'bar',
-  PieChart: 'pie',
-  RadarChart: 'radar',
-  ScatterChart: 'scatter',
-  AreaChart: 'area',
-  DonutChart: 'donut',
-  GaugeChart: 'gauge',
-  FunnelChart: 'funnel',
-  CandlestickChart: 'candlestick',
-  TreemapChart: 'treemap',
-  HeatmapChart: 'heatmap',
-  SunburstChart: 'sunburst',
-  MapChart: 'map',
-  SankeyChart: 'sankey',
-  GraphChart: 'graph',
-  BoxplotChart: 'boxplot',
-  WaterfallChart: 'waterfall',
-};
-
 const normalizePreviewTableColumns = (node: UiTreeNode): Array<Record<string, unknown>> => {
   const value = getProp(node, 'columns');
   if (!Array.isArray(value)) {
@@ -1139,8 +1119,8 @@ const PreviewEChartNode: React.FC<PreviewEChartNodeProps> = ({ node, style, emit
   }, [dataSourceRevision, staticDataSource, node]);
 
   const nodeType = typeof node.type === 'string' ? node.type : '';
-  const chartType = CHART_TYPE_BY_COMPONENT[nodeType]
-    ?? (getStringProp(node, 'chartType') as 'line' | 'bar' | 'pie' | 'radar' | 'scatter' | 'area' | 'donut' | 'gauge' | 'funnel' | 'candlestick' | 'treemap' | 'heatmap' | 'sunburst' | 'map' | 'sankey' | 'graph' | 'boxplot' | 'waterfall' | undefined)
+  const chartType = CHART_COMPONENT_TYPE_MAP[nodeType]
+    ?? (getStringProp(node, 'chartType') as EChartSeriesType | undefined)
     ?? 'line';
   const chartHeight = Math.max(120, getFiniteNumberProp(node, 'height') ?? 320);
   const chartOption = React.useMemo(() => buildEChartOption({
@@ -1170,6 +1150,7 @@ const PreviewEChartNode: React.FC<PreviewEChartNodeProps> = ({ node, style, emit
     sort: getStringProp(node, 'sort') === 'ascending' ? 'ascending' : 'descending',
     smooth: getBooleanProp(node, 'smooth') !== false,
     showLegend: getBooleanProp(node, 'showLegend') !== false,
+    optionPreset: getStringProp(node, 'optionPreset') || 'none',
     optionOverride: getProp(node, 'option'),
   }), [chartType, dataSource, node]);
 

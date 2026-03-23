@@ -26,6 +26,8 @@ import componentCatalog from '../../config/componentCatalog';
 import { createDefaultTabsList, normalizeTabsList } from '../utils/tabs';
 import { loadCustomComponentDetail, resolveExposedPropSchemas } from '../../utils/customComponentRuntime';
 import { getPropSection, sortSectionKeys } from '../utils/propConfigGroups';
+import type { EChartSeriesType } from '../../constants/echart';
+import { CHART_COMPONENT_TYPE_MAP } from '../../constants/echart';
 import { useTeam } from '../../team/context';
 import { getDataConstantList, type DataConstantRecord } from '../../api/dataConstant';
 import { getDataTableList, type DataTableRecord } from '../../api/dataTable';
@@ -99,32 +101,120 @@ const SWIPER_POSITION_OPTIONS = ['left', 'center', 'right', 'top', 'bottom'].map
 }));
 
 const CHART_PROP_WHITELIST: Record<string, Set<string>> = {
-  EChart: new Set(['chartType', 'dataSource', 'dataSourceConfig', 'xField', 'yField', 'nameField', 'valueField', 'smooth', 'showLegend', 'height', 'option']),
-  LineChart: new Set(['dataSource', 'dataSourceConfig', 'xField', 'yField', 'smooth', 'showLegend', 'height', 'option']),
-  BarChart: new Set(['dataSource', 'dataSourceConfig', 'xField', 'yField', 'showLegend', 'height', 'option']),
-  AreaChart: new Set(['dataSource', 'dataSourceConfig', 'xField', 'yField', 'smooth', 'showLegend', 'height', 'option']),
-  ScatterChart: new Set(['dataSource', 'dataSourceConfig', 'xField', 'yField', 'showLegend', 'height', 'option']),
-  PieChart: new Set(['dataSource', 'dataSourceConfig', 'nameField', 'valueField', 'showLegend', 'height', 'option']),
-  DonutChart: new Set(['dataSource', 'dataSourceConfig', 'nameField', 'valueField', 'showLegend', 'height', 'option']),
-  RadarChart: new Set(['dataSource', 'dataSourceConfig', 'nameField', 'valueField', 'showLegend', 'height', 'option']),
-  GaugeChart: new Set(['dataSource', 'dataSourceConfig', 'valueField', 'height', 'option']),
-  FunnelChart: new Set(['dataSource', 'dataSourceConfig', 'nameField', 'valueField', 'showLegend', 'height', 'option']),
-  CandlestickChart: new Set(['dataSource', 'dataSourceConfig', 'xField', 'openField', 'closeField', 'lowField', 'highField', 'showLegend', 'height', 'option']),
-  TreemapChart: new Set(['dataSource', 'dataSourceConfig', 'nameField', 'valueField', 'childrenField', 'height', 'option']),
-  HeatmapChart: new Set(['dataSource', 'dataSourceConfig', 'xField', 'yField', 'valueField', 'showLegend', 'height', 'option']),
-  SunburstChart: new Set(['dataSource', 'dataSourceConfig', 'nameField', 'valueField', 'childrenField', 'height', 'option']),
-  MapChart: new Set(['dataSource', 'dataSourceConfig', 'nameField', 'valueField', 'mapName', 'showLegend', 'height', 'option']),
-  SankeyChart: new Set(['dataSource', 'dataSourceConfig', 'sourceField', 'targetField', 'valueField', 'showLegend', 'height', 'option']),
-  GraphChart: new Set(['dataSource', 'dataSourceConfig', 'sourceField', 'targetField', 'nameField', 'valueField', 'categoryField', 'showLegend', 'height', 'option']),
-  BoxplotChart: new Set(['dataSource', 'dataSourceConfig', 'nameField', 'minField', 'q1Field', 'medianField', 'q3Field', 'maxField', 'showLegend', 'height', 'option']),
-  WaterfallChart: new Set(['dataSource', 'dataSourceConfig', 'nameField', 'valueField', 'showLegend', 'height', 'option']),
+  EChart: new Set([
+    'chartType',
+    'dataSource',
+    'dataSourceConfig',
+    'xField',
+    'yField',
+    'nameField',
+    'valueField',
+    'smooth',
+    'openField',
+    'closeField',
+    'lowField',
+    'highField',
+    'sourceField',
+    'targetField',
+    'categoryField',
+    'childrenField',
+    'mapName',
+    'minField',
+    'q1Field',
+    'medianField',
+    'q3Field',
+    'maxField',
+    'min',
+    'max',
+    'splitNumber',
+    'sort',
+    'showLegend',
+    'height',
+    'optionPreset',
+    'option',
+  ]),
+  LineChart: new Set(['dataSource', 'dataSourceConfig', 'xField', 'yField', 'smooth', 'showLegend', 'height', 'optionPreset', 'option']),
+  BarChart: new Set(['dataSource', 'dataSourceConfig', 'xField', 'yField', 'showLegend', 'height', 'optionPreset', 'option']),
+  AreaChart: new Set(['dataSource', 'dataSourceConfig', 'xField', 'yField', 'smooth', 'showLegend', 'height', 'optionPreset', 'option']),
+  ScatterChart: new Set(['dataSource', 'dataSourceConfig', 'xField', 'yField', 'showLegend', 'height', 'optionPreset', 'option']),
+  PieChart: new Set(['dataSource', 'dataSourceConfig', 'nameField', 'valueField', 'showLegend', 'height', 'optionPreset', 'option']),
+  DonutChart: new Set(['dataSource', 'dataSourceConfig', 'nameField', 'valueField', 'showLegend', 'height', 'optionPreset', 'option']),
+  RadarChart: new Set(['dataSource', 'dataSourceConfig', 'xField', 'yField', 'showLegend', 'height', 'optionPreset', 'option']),
+  GaugeChart: new Set(['dataSource', 'dataSourceConfig', 'nameField', 'valueField', 'min', 'max', 'splitNumber', 'height', 'optionPreset', 'option']),
+  FunnelChart: new Set(['dataSource', 'dataSourceConfig', 'nameField', 'valueField', 'showLegend', 'height', 'optionPreset', 'option']),
+  CandlestickChart: new Set(['dataSource', 'dataSourceConfig', 'xField', 'openField', 'closeField', 'lowField', 'highField', 'showLegend', 'height', 'optionPreset', 'option']),
+  TreemapChart: new Set(['dataSource', 'dataSourceConfig', 'nameField', 'valueField', 'childrenField', 'height', 'optionPreset', 'option']),
+  HeatmapChart: new Set(['dataSource', 'dataSourceConfig', 'xField', 'valueField', 'showLegend', 'height', 'optionPreset', 'option']),
+  SunburstChart: new Set(['dataSource', 'dataSourceConfig', 'nameField', 'valueField', 'childrenField', 'height', 'optionPreset', 'option']),
+  MapChart: new Set(['dataSource', 'dataSourceConfig', 'nameField', 'valueField', 'mapName', 'showLegend', 'height', 'optionPreset', 'option']),
+  SankeyChart: new Set(['dataSource', 'dataSourceConfig', 'sourceField', 'targetField', 'valueField', 'showLegend', 'height', 'optionPreset', 'option']),
+  GraphChart: new Set(['dataSource', 'dataSourceConfig', 'sourceField', 'targetField', 'nameField', 'valueField', 'categoryField', 'showLegend', 'height', 'optionPreset', 'option']),
+  BoxplotChart: new Set(['dataSource', 'dataSourceConfig', 'xField', 'minField', 'q1Field', 'medianField', 'q3Field', 'maxField', 'showLegend', 'height', 'optionPreset', 'option']),
+  WaterfallChart: new Set(['dataSource', 'dataSourceConfig', 'xField', 'yField', 'showLegend', 'height', 'optionPreset', 'option']),
 };
+
+const CHART_TYPE_PROP_WHITELIST: Record<EChartSeriesType, Set<string>> = {
+  line: new Set(['xField', 'yField', 'smooth']),
+  bar: new Set(['xField', 'yField']),
+  pie: new Set(['nameField', 'valueField']),
+  radar: new Set(['xField', 'yField']),
+  scatter: new Set(['xField', 'yField']),
+  area: new Set(['xField', 'yField', 'smooth']),
+  donut: new Set(['nameField', 'valueField']),
+  gauge: new Set(['nameField', 'valueField', 'min', 'max', 'splitNumber']),
+  funnel: new Set(['nameField', 'valueField', 'sort']),
+  candlestick: new Set(['xField', 'openField', 'closeField', 'lowField', 'highField']),
+  treemap: new Set(['nameField', 'valueField', 'childrenField']),
+  heatmap: new Set(['xField', 'valueField']),
+  sunburst: new Set(['nameField', 'valueField', 'childrenField']),
+  map: new Set(['nameField', 'valueField', 'mapName']),
+  sankey: new Set(['sourceField', 'targetField', 'valueField']),
+  graph: new Set(['sourceField', 'targetField', 'valueField', 'categoryField']),
+  boxplot: new Set(['xField', 'minField', 'q1Field', 'medianField', 'q3Field', 'maxField']),
+  waterfall: new Set(['xField', 'yField']),
+};
+
+const COMMON_CHART_PROPS = new Set([
+  'chartType',
+  'dataSource',
+  'dataSourceConfig',
+  'showLegend',
+  'height',
+  'optionPreset',
+  'option',
+]);
 
 const getChartVisibleProps = (componentType?: string): Set<string> | null => {
   if (!componentType) {
     return null;
   }
   return CHART_PROP_WHITELIST[componentType] ?? null;
+};
+
+const normalizeChartType = (value: unknown): EChartSeriesType | null => {
+  if (
+    value === 'line'
+    || value === 'bar'
+    || value === 'pie'
+    || value === 'radar'
+    || value === 'scatter'
+    || value === 'area'
+    || value === 'donut'
+    || value === 'gauge'
+    || value === 'funnel'
+    || value === 'candlestick'
+    || value === 'treemap'
+    || value === 'heatmap'
+    || value === 'sunburst'
+    || value === 'map'
+    || value === 'sankey'
+    || value === 'graph'
+    || value === 'boxplot'
+    || value === 'waterfall'
+  ) {
+    return value;
+  }
+  return null;
 };
 
 const createSwiperImageRow = (seed?: Partial<SwiperImageRow>): SwiperImageRow => ({
@@ -459,6 +549,13 @@ const ComponentConfigPanel: React.FC = () => {
   const switchControlled = (activeNode?.type === 'Switch' || activeNode?.type === 'Slider' || activeNode?.type === 'Steps')
     ? Boolean((propsMap.controlled?.value ?? true))
     : undefined;
+  const currentChartType = React.useMemo<EChartSeriesType | null>(() => {
+    const explicitChartType = normalizeChartType((propsMap.chartType as { value?: unknown } | undefined)?.value);
+    if (explicitChartType) {
+      return explicitChartType;
+    }
+    return normalizeChartType(CHART_COMPONENT_TYPE_MAP[String(activeNode?.type ?? '')]);
+  }, [activeNode?.type, propsMap.chartType]);
   const ownerType = workspaceMode === 'team' ? 'team' : 'user';
   const canQueryWorkspaceResource = ownerType === 'user' || Boolean(currentTeamId);
   const accessContext = {
@@ -506,6 +603,12 @@ const ComponentConfigPanel: React.FC = () => {
     const chartVisibleProps = getChartVisibleProps(activeNode?.type);
     if (chartVisibleProps && !chartVisibleProps.has(propKey)) {
       return false;
+    }
+    if (chartVisibleProps && currentChartType) {
+      const chartTypeProps = CHART_TYPE_PROP_WHITELIST[currentChartType];
+      if (!COMMON_CHART_PROPS.has(propKey) && !chartTypeProps.has(propKey)) {
+        return false;
+      }
     }
 
     return true;

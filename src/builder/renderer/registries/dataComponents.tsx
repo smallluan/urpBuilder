@@ -4,6 +4,7 @@ import type { ComponentRegistry } from '../componentContext';
 import { ActivateWrapper, CardContent } from '../componentHelpers';
 import DropArea from '../../../components/DropArea';
 import { LIST_PREVIEW_DATA } from '../../../constants/componentBuilder';
+import { CHART_COMPONENT_TYPE_MAP, ECHART_COMPONENT_TYPES } from '../../../constants/echart';
 import { getTabsPanelSlotKey, getTabsSlotNodeByValue } from '../../utils/tabs';
 import { buildEChartOption, normalizeEChartDataSource } from '../../../utils/echart';
 import { ensureBuiltInChinaMap } from '../../../utils/echartMap';
@@ -15,30 +16,6 @@ const TABLE_FALLBACK_DATA = [
   { id: 'row-2', name: '李四', role: '编辑', status: '启用' },
   { id: 'row-3', name: '王五', role: '访客', status: '禁用' },
 ];
-
-const CHART_TYPE_BY_COMPONENT: Record<string, 'line' | 'bar' | 'pie' | 'radar' | 'scatter' | 'area' | 'donut' | 'gauge' | 'funnel' | 'candlestick' | 'treemap' | 'heatmap' | 'sunburst' | 'map' | 'sankey' | 'graph' | 'boxplot' | 'waterfall'> = {
-  EChart: 'line',
-  LineChart: 'line',
-  BarChart: 'bar',
-  PieChart: 'pie',
-  RadarChart: 'radar',
-  ScatterChart: 'scatter',
-  AreaChart: 'area',
-  DonutChart: 'donut',
-  GaugeChart: 'gauge',
-  FunnelChart: 'funnel',
-  CandlestickChart: 'candlestick',
-  TreemapChart: 'treemap',
-  HeatmapChart: 'heatmap',
-  SunburstChart: 'sunburst',
-  MapChart: 'map',
-  SankeyChart: 'sankey',
-  GraphChart: 'graph',
-  BoxplotChart: 'boxplot',
-  WaterfallChart: 'waterfall',
-};
-
-const CHART_COMPONENT_TYPES = Object.keys(CHART_TYPE_BY_COMPONENT);
 
 const normalizeBuilderTableColumns = (value: unknown) => {
   if (!Array.isArray(value)) {
@@ -87,10 +64,10 @@ const normalizeBuilderTableColumns = (value: unknown) => {
 export function registerDataComponents(registry: ComponentRegistry): void {
   ensureBuiltInChinaMap();
 
-  CHART_COMPONENT_TYPES.forEach((componentType) => {
+  ECHART_COMPONENT_TYPES.forEach((componentType) => {
     registry.set(componentType, (ctx) => {
       const { getProp, getStringProp, getBooleanProp, getFiniteNumberProp, mergeStyle, handleActivateSelf, data, isNodeActive } = ctx;
-      const chartType = CHART_TYPE_BY_COMPONENT[componentType];
+      const chartType = CHART_COMPONENT_TYPE_MAP[componentType];
       const dataSource = normalizeEChartDataSource(getProp('dataSource'));
       const option = buildEChartOption({
         chartType,
@@ -119,6 +96,7 @@ export function registerDataComponents(registry: ComponentRegistry): void {
         sort: getStringProp('sort') === 'ascending' ? 'ascending' : 'descending',
         smooth: getBooleanProp('smooth') !== false,
         showLegend: getBooleanProp('showLegend') !== false,
+        optionPreset: getStringProp('optionPreset') || 'none',
         optionOverride: getProp('option'),
       });
       const chartHeight = Math.max(120, getFiniteNumberProp('height') ?? 320);

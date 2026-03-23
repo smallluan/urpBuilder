@@ -1,24 +1,5 @@
 import merge from 'lodash/merge';
-
-export type EChartSeriesType =
-  | 'line'
-  | 'bar'
-  | 'pie'
-  | 'radar'
-  | 'scatter'
-  | 'area'
-  | 'donut'
-  | 'gauge'
-  | 'funnel'
-  | 'candlestick'
-  | 'treemap'
-  | 'heatmap'
-  | 'sunburst'
-  | 'map'
-  | 'sankey'
-  | 'graph'
-  | 'boxplot'
-  | 'waterfall';
+import type { EChartOptionPreset, EChartSeriesType } from '../constants/echart';
 
 export interface BuildEChartOptionParams {
   chartType: EChartSeriesType;
@@ -47,6 +28,7 @@ export interface BuildEChartOptionParams {
   sort?: 'ascending' | 'descending';
   smooth: boolean;
   showLegend: boolean;
+  optionPreset?: EChartOptionPreset | string;
   optionOverride?: unknown;
 }
 
@@ -101,6 +83,74 @@ const normalizeOptionOverride = (value: unknown): Record<string, unknown> => {
     } catch {
       return {};
     }
+  }
+
+  return {};
+};
+
+const normalizeOptionPreset = (value: unknown): EChartOptionPreset => {
+  const preset = String(value ?? '').trim();
+  if (
+    preset === 'cleanGrid'
+    || preset === 'darkTheme'
+    || preset === 'labelEnhanced'
+    || preset === 'smoothAnimation'
+  ) {
+    return preset;
+  }
+  return 'none';
+};
+
+const createPresetOption = (
+  preset: EChartOptionPreset,
+  chartType: EChartSeriesType,
+): Record<string, unknown> => {
+  if (preset === 'cleanGrid') {
+    return {
+      grid: { left: 28, right: 24, top: 42, bottom: 28, containLabel: true },
+    };
+  }
+
+  if (preset === 'darkTheme') {
+    return {
+      backgroundColor: '#0f172a',
+      textStyle: { color: '#e2e8f0' },
+      legend: { textStyle: { color: '#cbd5e1' } },
+      tooltip: {
+        backgroundColor: 'rgba(15,23,42,0.88)',
+        borderColor: '#334155',
+        textStyle: { color: '#f8fafc' },
+      },
+      xAxis: { axisLabel: { color: '#cbd5e1' }, axisLine: { lineStyle: { color: '#475569' } } },
+      yAxis: { axisLabel: { color: '#cbd5e1' }, splitLine: { lineStyle: { color: '#334155' } } },
+    };
+  }
+
+  if (preset === 'labelEnhanced') {
+    return {
+      series: [
+        {
+          label: { show: true, color: '#1f2937' },
+        },
+      ],
+    };
+  }
+
+  if (preset === 'smoothAnimation') {
+    return {
+      animationDuration: 600,
+      animationDurationUpdate: 400,
+      animationEasing: 'cubicOut',
+      series: [
+        {
+          animationDuration: 600,
+          animationDurationUpdate: 400,
+          ...(chartType === 'line' || chartType === 'area'
+            ? { smooth: true }
+            : {}),
+        },
+      ],
+    };
   }
 
   return {};
@@ -453,6 +503,7 @@ export const buildEChartOption = (params: BuildEChartOptionParams): Record<strin
     };
   }
 
+  const presetOption = createPresetOption(normalizeOptionPreset(params.optionPreset), chartType);
   const overrideOption = normalizeOptionOverride(params.optionOverride);
-  return merge({}, baseOption, overrideOption);
+  return merge({}, baseOption, presetOption, overrideOption);
 };

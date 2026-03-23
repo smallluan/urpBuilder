@@ -501,25 +501,197 @@
       }
 
       .flow-body-topbar {
-        height: 36px;
+        height: 42px;
         flex: 0 0 auto;
-        background: #fff;
-        border-bottom: 1px solid #eef0f4;
-        border-radius: 4px 4px 0 0;
+        background: linear-gradient(180deg, #ffffff 0%, #fbfcff 100%);
+        border: 1px solid #eef0f4;
+        border-radius: 4px;
+        display: flex;
+        align-items: center;
+        padding: 0 8px;
       }
 
       .flow-body-content {
         flex: 1 1 auto;
         min-height: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
       }
 
       .flow-canvas {
         width: 100%;
-        height: 100%;
+        flex: 1 1 auto;
+        min-height: 0;
         background: #fff;
-        border-radius: 0 0 4px 4px;
+        border-radius: 4px;
         overflow: hidden;
         position: relative;
+        border: 1px solid #eef0f4;
+      }
+
+      .flow-topbar {
+        width: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+      }
+
+      .flow-topbar__group {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+      }
+
+      .flow-topbar__group--right {
+        margin-left: auto;
+      }
+
+      .flow-topbar__icon-btn {
+        width: 28px;
+        min-width: 28px;
+        height: 28px;
+        border-radius: 8px;
+        color: #4b5563;
+      }
+
+      .flow-topbar__icon-btn:hover {
+        color: #1d4ed8;
+        background: #eef4ff;
+      }
+
+      .flow-topbar__diagnostics {
+        border: 1px solid #e2e8f0;
+        background: #fff;
+        color: #334155;
+        border-radius: 999px;
+        height: 28px;
+        padding: 0 10px;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        cursor: pointer;
+        font-size: 12px;
+      }
+
+      .flow-topbar__focus-depth {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 2px;
+        border-radius: 999px;
+        border: 1px solid #e2e8f0;
+        background: #fff;
+      }
+
+      .flow-topbar__depth-btn {
+        border: 0;
+        background: transparent;
+        color: #64748b;
+        font-size: 12px;
+        padding: 0 8px;
+        height: 22px;
+        border-radius: 999px;
+        cursor: pointer;
+      }
+
+      .flow-topbar__depth-btn.is-active {
+        color: #1d4ed8;
+        background: #eef4ff;
+      }
+
+      .flow-topbar__dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 999px;
+        background: #94a3b8;
+      }
+
+      .flow-topbar__dot.is-warning {
+        background: #f59e0b;
+      }
+
+      .flow-topbar__count {
+        min-width: 16px;
+        text-align: center;
+        color: #64748b;
+      }
+
+      .flow-diagnostics-panel {
+        position: absolute;
+        top: 12px;
+        right: 12px;
+        width: 380px;
+        max-width: calc(100% - 24px);
+        max-height: calc(100% - 24px);
+        border: 1px solid #e5e7eb;
+        border-radius: 10px;
+        background: #fff;
+        box-shadow: 0 12px 26px rgba(15, 23, 42, 0.14);
+        z-index: 35;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .flow-diagnostics-panel__head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 10px 12px;
+        border-bottom: 1px solid #eef2f7;
+      }
+
+      .flow-diagnostics-panel__head-actions {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+      }
+
+      .flow-diagnostics-panel__title {
+        font-size: 13px;
+        font-weight: 600;
+        color: #111827;
+      }
+
+      .flow-diagnostics-panel__body {
+        overflow: auto;
+        padding: 8px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      .flow-diagnostics-panel__item {
+        border: 1px solid #edf1f7;
+        border-radius: 8px;
+        background: #fbfdff;
+        padding: 8px;
+      }
+
+      .flow-diagnostics-panel__item-head {
+        display: flex;
+        align-items: flex-start;
+        gap: 8px;
+      }
+
+      .flow-diagnostics-panel__item-text {
+        font-size: 12px;
+        color: #334155;
+        line-height: 18px;
+      }
+
+      .flow-diagnostics-panel__actions {
+        margin-top: 8px;
+        display: flex;
+        justify-content: flex-end;
+      }
+
+      .flow-diagnostics-panel__empty {
+        padding: 14px 8px;
+        text-align: center;
+        color: #94a3b8;
+        font-size: 12px;
       }
 
       .flow-canvas-toolbar {

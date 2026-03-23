@@ -31,6 +31,7 @@ import {
 import type { LucideIcon } from 'lucide-react';
 import componentCatalog from '../../config/componentCatalog';
 import { componentLibraryEntries, groupedComponentTypes, type ComponentLibraryCategory, type ComponentLibraryEntry, type ComponentLibraryGroupEntry } from '../../config/componentLibrary';
+import { ECHART_COMPONENT_TYPES as ECHART_COMPONENT_TYPE_LIST } from '../../constants/echart';
 import DragableWrapper from '../../components/DragableWrapper';
 import { getComponentBaseList, getComponentTemplateDetail } from '../../api/componentTemplate';
 import { useTeam } from '../../team/context';
@@ -84,27 +85,7 @@ const CATEGORY_META_MAP: Record<ComponentLibraryCategory, CategoryMeta> = {
 const CATEGORY_ORDER: ComponentLibraryCategory[] = ['action', 'layout', 'display', 'text', 'navigation'];
 
 const HIDDEN_COMPONENT_TYPES = new Set(['List.Item']);
-const ECHART_COMPONENT_TYPES = new Set([
-  'EChart',
-  'LineChart',
-  'BarChart',
-  'PieChart',
-  'RadarChart',
-  'ScatterChart',
-  'AreaChart',
-  'DonutChart',
-  'GaugeChart',
-  'FunnelChart',
-  'CandlestickChart',
-  'TreemapChart',
-  'HeatmapChart',
-  'SunburstChart',
-  'MapChart',
-  'SankeyChart',
-  'GraphChart',
-  'BoxplotChart',
-  'WaterfallChart',
-]);
+const ECHART_COMPONENT_TYPES = new Set(ECHART_COMPONENT_TYPE_LIST);
 
 const getCategoryByType = (type: string): ComponentLibraryCategory => {
   if (type.startsWith('Typography.')) {
@@ -131,25 +112,7 @@ const getCategoryByType = (type: string): ComponentLibraryCategory => {
     || type === 'Calendar'
     || type === 'Progress'
     || type === 'List'
-    || type === 'EChart'
-    || type === 'LineChart'
-    || type === 'BarChart'
-    || type === 'PieChart'
-    || type === 'RadarChart'
-    || type === 'ScatterChart'
-    || type === 'AreaChart'
-    || type === 'DonutChart'
-    || type === 'GaugeChart'
-    || type === 'FunnelChart'
-    || type === 'CandlestickChart'
-    || type === 'TreemapChart'
-    || type === 'HeatmapChart'
-    || type === 'SunburstChart'
-    || type === 'MapChart'
-    || type === 'SankeyChart'
-    || type === 'GraphChart'
-    || type === 'BoxplotChart'
-    || type === 'WaterfallChart'
+    || ECHART_COMPONENT_TYPES.has(type)
     || type === 'Tabs'
     || type === 'Steps'
     || type === 'Steps.Item'

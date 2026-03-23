@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert } from 'tdesign-react';
 import {
   ReactFlow,
@@ -21,7 +21,9 @@ import {
 import '@xyflow/react/dist/style.css';
 import { flowNodeTypes } from './nodes';
 import AnnotatedEdge, { type AnnotatedEdgeData } from './edges/AnnotatedEdge';
-import { useBuilderContext } from '../context/BuilderContext';
+import { useBuilderAccess, useBuilderContext } from '../context/BuilderContext';
+import FlowTopbar from './components/FlowTopbar';
+import FlowDiagnosticsPanel from './components/FlowDiagnosticsPanel';
 import type {
   AnnotationNodeData,
   ComponentFlowNodeData,
@@ -33,6 +35,10 @@ import type {
 } from '../../types/flow';
 import { CORE_LIFETIMES } from '../../constants/componentBuilder';
 import { findNodeByKey } from '../../utils/createComponentTree';
+import { buildAdjacency } from './utils/graphAnalyze';
+import { runFlowDiagnostics, type FlowDiagnosticItem } from './utils/flowValidate';
+import { autoLayoutNodes } from './utils/autoLayout';
+import { normalizeEdgesWithReport } from './utils/edgeNormalize';
 
 const FLOW_DRAG_DATA_KEY = 'drag-component-data';
 
@@ -103,8 +109,10 @@ const flowEdgeTypes: EdgeTypes = {
 
 const FlowCanvas: React.FC = () => {
   const { useStore } = useBuilderContext();
+  const { readOnly } = useBuilderAccess();
   const nodes = useStore((state) => state.flowNodes);
   const edges = useStore((state) => state.flowEdges);
+  const flowActiveNodeId = useStore((state) => state.flowActiveNodeId);
   const setFlowNodes = useStore((state) => state.setFlowNodes);
   const setFlowEdges = useStore((state) => state.setFlowEdges);
   const setFlowActiveNodeId = useStore((state) => state.setFlowActiveNodeId);
@@ -113,6 +121,11 @@ const FlowCanvas: React.FC = () => {
   const [flowAlertMessage, setFlowAlertMessage] = useState<string | null>(null);
   const [editingEdgeId, setEditingEdgeId] = useState<string | null>(null);
   const [editingEdgeValue, setEditingEdgeValue] = useState('');
+  const [layoutDirection, setLayoutDirection] = useState<'LR' | 'TB'>('LR');
+  const [lockSelectedLayout, setLockSelectedLayout] = useState(false);
+  const [focusDepth, setFocusDepth] = useState<1 | 2 | 99>(99);
+  const [diagnosticsVisible, setDiagnosticsVisible] = useState(false);
+  const [diagnostics, setDiagnostics] = useState<FlowDiagnosticItem[]>([]);
   const [annotationMenu, setAnnotationMenu] = useState<{
     visible: boolean;
     x: number;
@@ -137,7 +150,7 @@ const FlowCanvas: React.FC = () => {
     y: 0,
     edgeId: null,
   });
-  const { screenToFlowPosition } = useReactFlow();
+  const { screenToFlowPosition, fitView, setCenter } = useReactFlow();
 
   const applyFlowEdit = useCallback(
     (
@@ -150,6 +163,14 @@ const FlowCanvas: React.FC = () => {
       recordFlowEditHistory(actionLabel, prevNodes, prevEdges, result.nodes, result.edges);
     },
     [recordFlowEditHistory],
+  );
+
+  const applyFlowToolEdit = useCallback(
+    (
+      actionLabel: string,
+      updater: (payload: { nodes: Node[]; edges: Edge[] }) => { nodes: Node[]; edges: Edge[] },
+    ) => applyFlowEdit(`[FlowTool] ${actionLabel}`, updater),
+    [applyFlowEdit],
   );
 
   const createAnnotationNode = useCallback(
@@ -242,44 +263,36 @@ const FlowCanvas: React.FC = () => {
       }
     }
 
-    const outgoingMap = new Map<string, string[]>();
-    const incomingMap = new Map<string, string[]>();
-
-    edges.forEach((edge) => {
-      if (!outgoingMap.has(edge.source)) {
-        outgoingMap.set(edge.source, []);
-      }
-      outgoingMap.get(edge.source)?.push(edge.target);
-
-      if (!incomingMap.has(edge.target)) {
-        incomingMap.set(edge.target, []);
-      }
-      incomingMap.get(edge.target)?.push(edge.source);
-    });
+    const adjacency = buildAdjacency(nodes, edges);
 
     const visited = new Set<string>();
-    const queue = Array.from(seedNodeIds);
+    const queue = Array.from(seedNodeIds).map((nodeId) => ({ nodeId, depth: 0 }));
+    const maxDepth = focusDepth;
 
     while (queue.length > 0) {
-      const currentNodeId = queue.shift();
-      if (!currentNodeId || visited.has(currentNodeId)) {
+      const next = queue.shift();
+      if (!next || visited.has(next.nodeId)) {
         continue;
       }
 
-      visited.add(currentNodeId);
+      visited.add(next.nodeId);
 
-      const downstream = outgoingMap.get(currentNodeId) ?? [];
-      const upstream = incomingMap.get(currentNodeId) ?? [];
+      if (maxDepth !== 99 && next.depth >= maxDepth) {
+        continue;
+      }
+
+      const downstream = adjacency.outgoing.get(next.nodeId) ?? [];
+      const upstream = adjacency.incoming.get(next.nodeId) ?? [];
 
       [...downstream, ...upstream].forEach((neighborId) => {
         if (!visited.has(neighborId)) {
-          queue.push(neighborId);
+          queue.push({ nodeId: neighborId, depth: next.depth + 1 });
         }
       });
     }
 
     return visited;
-  }, [traceActiveNodeId, nodes, edges]);
+  }, [traceActiveNodeId, nodes, edges, focusDepth]);
 
   const renderedEdges = useMemo(() => {
     const hasTrace = traceNodeIds.size > 0;
@@ -1089,13 +1102,163 @@ const FlowCanvas: React.FC = () => {
     closeAnnotationMenu();
   }, [annotationMenu.flowX, annotationMenu.flowY, closeAnnotationMenu, createAnnotationNode]);
 
+  const runCycleDetection = useCallback(() => {
+    const result = runFlowDiagnostics(nodes, edges);
+    const cycles = result.filter((item) => item.kind === 'cycle');
+    if (cycles.length === 0) {
+      setFlowAlertMessage('未检测到循环依赖。');
+      return;
+    }
+    setFlowAlertMessage(`检测到 ${cycles.length} 处循环依赖。`);
+    setDiagnostics(result);
+    setDiagnosticsVisible(true);
+  }, [edges, nodes]);
+
+  const runFlowValidation = useCallback(() => {
+    const result = runFlowDiagnostics(nodes, edges);
+    setDiagnostics(result);
+    setDiagnosticsVisible(true);
+    setFlowAlertMessage(result.length > 0 ? `诊断完成：发现 ${result.length} 项问题/提示。` : '诊断完成：未发现问题。');
+  }, [edges, nodes]);
+
+  const runAutoLayout = useCallback((direction: 'LR' | 'TB') => {
+    const lockedNodeIds = lockSelectedLayout && flowActiveNodeId
+      ? new Set<string>([flowActiveNodeId])
+      : new Set<string>();
+    const nextNodes = autoLayoutNodes(nodes, edges, { direction, lockedNodeIds });
+    applyFlowToolEdit(`自动整理布局（${direction === 'LR' ? '横向' : '纵向'}）`, ({ edges: previousEdges }) => ({
+      nodes: nextNodes,
+      edges: previousEdges,
+    }));
+    setLayoutDirection(direction);
+    setTimeout(() => {
+      void fitView({ padding: 0.2, duration: 220 });
+    }, 0);
+  }, [applyFlowToolEdit, edges, fitView, flowActiveNodeId, lockSelectedLayout, nodes]);
+
+  const runEdgeCleanup = useCallback(() => {
+    const { edges: nextEdges } = normalizeEdgesWithReport(edges);
+    applyFlowToolEdit('连线清理与规范化', ({ nodes: previousNodes }) => ({
+      nodes: previousNodes,
+      edges: nextEdges,
+    }));
+    setFlowAlertMessage('连线清理已完成。');
+  }, [applyFlowToolEdit, edges]);
+
+  const runQuickFix = useCallback(() => {
+    const { edges: nextEdges, report } = normalizeEdgesWithReport(edges);
+    applyFlowToolEdit('一键修复', ({ nodes: previousNodes }) => ({
+      nodes: previousNodes,
+      edges: nextEdges,
+    }));
+    setFlowAlertMessage(`一键修复完成：去重 ${report.dedupedCount} 条，清理空注释 ${report.clearedAnnotationCount} 条。`);
+    setDiagnostics(runFlowDiagnostics(nodes, nextEdges));
+  }, [applyFlowToolEdit, edges, nodes]);
+
+  const focusActivePath = useCallback(() => {
+    if (!flowActiveNodeId) {
+      return;
+    }
+    setTraceActiveNodeId(flowActiveNodeId);
+    const node = nodes.find((item) => item.id === flowActiveNodeId);
+    if (node?.position) {
+      void setCenter(node.position.x + 120, node.position.y + 40, { duration: 220, zoom: 1 });
+    }
+  }, [flowActiveNodeId, nodes, setCenter]);
+
+  const clearFocus = useCallback(() => {
+    setTraceActiveNodeId(null);
+  }, []);
+
+  const switchLayoutDirection = useCallback(() => {
+    setLayoutDirection((previous) => (previous === 'LR' ? 'TB' : 'LR'));
+  }, []);
+
+  const handleLocateDiagnosticNode = useCallback((nodeId: string) => {
+    setFlowActiveNodeId(nodeId);
+    setTraceActiveNodeId(nodeId);
+    const node = nodes.find((item) => item.id === nodeId);
+    if (node?.position) {
+      void setCenter(node.position.x + 120, node.position.y + 40, { duration: 220, zoom: 1 });
+    }
+  }, [nodes, setCenter, setFlowActiveNodeId]);
+
+  const diagnosticsLevelMap = useMemo(() => {
+    const levelByNode = new Map<string, 'error' | 'warning' | 'info'>();
+    const rank: Record<'error' | 'warning' | 'info', number> = { error: 3, warning: 2, info: 1 };
+    diagnostics.forEach((item) => {
+      item.nodeIds.forEach((nodeId) => {
+        const previous = levelByNode.get(nodeId);
+        if (!previous || rank[item.level] > rank[previous]) {
+          levelByNode.set(nodeId, item.level);
+        }
+      });
+    });
+    return levelByNode;
+  }, [diagnostics]);
+
+  useEffect(() => {
+    const handleKeydown = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      const tagName = target?.tagName?.toLowerCase();
+      if (tagName === 'input' || tagName === 'textarea' || target?.isContentEditable) {
+        return;
+      }
+
+      const withMeta = event.ctrlKey || event.metaKey;
+      if (withMeta && event.shiftKey && event.key.toLowerCase() === 'l') {
+        event.preventDefault();
+        if (!readOnly) {
+          runAutoLayout(layoutDirection);
+        }
+      }
+      if (withMeta && event.shiftKey && event.key.toLowerCase() === 'v') {
+        event.preventDefault();
+        runFlowValidation();
+      }
+      if (withMeta && event.shiftKey && event.key.toLowerCase() === 'k') {
+        event.preventDefault();
+        runCycleDetection();
+      }
+      if (event.key === 'Escape') {
+        clearFocus();
+        setDiagnosticsVisible(false);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeydown);
+    return () => window.removeEventListener('keydown', handleKeydown);
+  }, [clearFocus, layoutDirection, readOnly, runAutoLayout, runCycleDetection, runFlowValidation]);
+
   return (
-    <div
-      className="flow-canvas"
-      onDragOver={handleDragOver}
-      onDrop={handleDrop}
-    >
-      <ReactFlow
+    <div className="flow-body-content">
+      <div className="flow-body-topbar">
+        <FlowTopbar
+          readOnly={readOnly}
+          hasActiveNode={Boolean(flowActiveNodeId)}
+          diagnosticsCount={diagnostics.length}
+          layoutDirection={layoutDirection}
+          focusDepth={focusDepth}
+          lockSelected={lockSelectedLayout}
+          onRunCycleDetect={runCycleDetection}
+          onRunValidate={runFlowValidation}
+          onRunAutoLayout={runAutoLayout}
+          onRunEdgeCleanup={runEdgeCleanup}
+          onRunQuickFix={runQuickFix}
+          onFocusActivePath={focusActivePath}
+          onClearFocus={clearFocus}
+          onSwitchLayoutDirection={switchLayoutDirection}
+          onToggleLockSelected={() => setLockSelectedLayout((previous) => !previous)}
+          onChangeFocusDepth={setFocusDepth}
+          onToggleDiagnosticsPanel={() => setDiagnosticsVisible((previous) => !previous)}
+        />
+      </div>
+      <div
+        className="flow-canvas"
+        onDragOver={handleDragOver}
+        onDrop={handleDrop}
+      >
+        <ReactFlow
         nodes={renderedNodes}
         edges={renderedEdges}
         nodeTypes={flowNodeTypes}
@@ -1148,46 +1311,71 @@ const FlowCanvas: React.FC = () => {
           },
         }}
         fitView
-      >
-        <MiniMap zoomable pannable />
-        <Controls />
-        <Background gap={16} size={1} />
-      </ReactFlow>
-
-      {annotationMenu.visible ? (
-        <div className="flow-context-menu" style={{ left: annotationMenu.x, top: annotationMenu.y }}>
-          <button
-            className="flow-context-menu__item"
-            type="button"
-            onClick={handleCreateAnnotationFromMenu}
-          >
-            新建注释
-          </button>
-        </div>
-      ) : null}
-
-      {edgeMenu.visible ? (
-        <div className="flow-context-menu" style={{ left: edgeMenu.x, top: edgeMenu.y }}>
-          <button
-            className="flow-context-menu__item"
-            type="button"
-            onClick={handleDeleteEdgeFromMenu}
-          >
-            删除连线
-          </button>
-        </div>
-      ) : null}
-
-      {flowAlertMessage ? (
-        <div className="flow-alert">
-          <Alert
-            theme="error"
-            close
-            message={flowAlertMessage}
-            onClose={() => setFlowAlertMessage(null)}
+        >
+          <MiniMap
+            zoomable
+            pannable
+            nodeColor={(node) => {
+              const level = diagnosticsLevelMap.get(node.id);
+              if (level === 'error') {
+                return '#d54941';
+              }
+              if (level === 'warning') {
+                return '#ed7b2f';
+              }
+              if (level === 'info') {
+                return '#2f7cf6';
+              }
+              return '#c9d2e4';
+            }}
           />
-        </div>
-      ) : null}
+          <Controls />
+          <Background gap={16} size={1} />
+        </ReactFlow>
+
+        <FlowDiagnosticsPanel
+          visible={diagnosticsVisible}
+          diagnostics={diagnostics}
+          onLocate={handleLocateDiagnosticNode}
+          onQuickFix={runQuickFix}
+          onClose={() => setDiagnosticsVisible(false)}
+        />
+
+        {annotationMenu.visible ? (
+          <div className="flow-context-menu" style={{ left: annotationMenu.x, top: annotationMenu.y }}>
+            <button
+              className="flow-context-menu__item"
+              type="button"
+              onClick={handleCreateAnnotationFromMenu}
+            >
+              新建注释
+            </button>
+          </div>
+        ) : null}
+
+        {edgeMenu.visible ? (
+          <div className="flow-context-menu" style={{ left: edgeMenu.x, top: edgeMenu.y }}>
+            <button
+              className="flow-context-menu__item"
+              type="button"
+              onClick={handleDeleteEdgeFromMenu}
+            >
+              删除连线
+            </button>
+          </div>
+        ) : null}
+
+        {flowAlertMessage ? (
+          <div className="flow-alert">
+            <Alert
+              theme="error"
+              close
+              message={flowAlertMessage}
+              onClose={() => setFlowAlertMessage(null)}
+            />
+          </div>
+        ) : null}
+      </div>
     </div>
   );
 };
@@ -1195,12 +1383,9 @@ const FlowCanvas: React.FC = () => {
 const FlowBody: React.FC = () => {
   return (
     <div className="flow-body">
-      <div className="flow-body-topbar" />
-      <div className="flow-body-content">
-        <ReactFlowProvider>
-          <FlowCanvas />
-        </ReactFlowProvider>
-      </div>
+      <ReactFlowProvider>
+        <FlowCanvas />
+      </ReactFlowProvider>
     </div>
   );
 };
