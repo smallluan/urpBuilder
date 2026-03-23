@@ -73,6 +73,7 @@
       .header-right-control {
         display: flex;
         align-items: center;
+        min-width: 0;
       }
 
       .nav-group {
@@ -91,6 +92,44 @@
         display: inline-flex;
         gap: 8px;
         margin-left: 12px;
+      }
+
+      .builder-topbar {
+        width: 100%;
+        min-width: 0;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+      }
+
+      .builder-topbar__left,
+      .builder-topbar__right {
+        display: flex;
+        align-items: center;
+        min-width: 0;
+      }
+
+      .builder-topbar__icon-btn {
+        width: 28px;
+        min-width: 28px;
+        height: 28px;
+        border-radius: 8px;
+        color: #4b5563;
+      }
+
+      .builder-topbar__icon-btn:hover {
+        color: #1d4ed8;
+        background: #eef4ff;
+      }
+
+      .builder-topbar__icon-btn.is-active {
+        color: #1d4ed8;
+        background: #e8f0ff;
+      }
+
+      .component-topbar .builder-topbar__right .builder-topbar__group {
+        gap: 8px;
       }
 
     }
@@ -442,30 +481,80 @@
     box-sizing: border-box;
 
     .component-main-toolbar {
-      background-color: #fff;
-      padding: 8px;
+      background: linear-gradient(180deg, #ffffff 0%, #fbfcff 100%);
+      border: 1px solid #eef0f4;
+      padding: 10px 14px;
       border-radius: 4px;
       box-sizing: border-box;
       overflow-x: auto;
+      overflow-y: hidden;
     }
 
     .component-main-toolbar__row {
-      min-width: 0;
+      min-width: fit-content;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .component-main-toolbar .builder-topbar {
+      width: max-content;
+      min-width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .component-main-toolbar .builder-topbar__left,
+    .component-main-toolbar .builder-topbar__right {
       display: inline-flex;
       align-items: center;
-      gap: 8px;
-      flex-wrap: nowrap;
-      white-space: nowrap;
     }
 
     .component-main-toolbar__group {
+      display: inline-flex;
+      align-items: center;
+      white-space: nowrap;
       flex-wrap: nowrap;
+      gap: 10px;
+    }
+
+    .component-main-toolbar .builder-topbar__icon-btn {
+      width: 30px;
+      min-width: 30px;
+      height: 30px;
+      border-radius: 8px;
+      color: #4b5563;
+    }
+
+    .component-main-toolbar .builder-topbar__icon-btn:hover {
+      color: #1d4ed8;
+      background: #eef4ff;
     }
 
     .component-main-toolbar__extra {
       display: inline-flex;
       align-items: center;
       flex-wrap: nowrap;
+      gap: 10px;
+      margin-left: auto;
+    }
+
+    .component-main-toolbar__extra-slot {
+      display: inline-flex;
+      align-items: center;
+    }
+
+    .component-main-toolbar__preset {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 4px;
+      border: 1px solid #e2e8f0;
+      border-radius: 999px;
+      background: #fff;
     }
 
     .page-route-toolbar {
@@ -477,7 +566,7 @@
     }
 
     .page-route-toolbar__select {
-      width: 140px;
+      width: 126px;
     }
 
     .main-inner {
@@ -548,7 +637,7 @@
         margin-left: auto;
       }
 
-      .flow-topbar__icon-btn {
+      .flow-topbar .builder-topbar__icon-btn {
         width: 28px;
         min-width: 28px;
         height: 28px;
@@ -556,7 +645,7 @@
         color: #4b5563;
       }
 
-      .flow-topbar__icon-btn:hover {
+      .flow-topbar .builder-topbar__icon-btn:hover {
         color: #1d4ed8;
         background: #eef4ff;
       }
@@ -3311,4 +3400,10 @@
 
 .code-editor-dialog__editor .cm-editor {
   height: 100%;
+}
+
+.builder-topbar__group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }

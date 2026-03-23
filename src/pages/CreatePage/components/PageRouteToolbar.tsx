@@ -1,5 +1,5 @@
 import React from 'react';
-import { Button, Select } from 'tdesign-react';
+import { Button, Select, Tooltip } from 'tdesign-react';
 import { AddIcon, SettingIcon } from 'tdesign-icons-react';
 import { useBuilderContext } from '../../../builder/context/BuilderContext';
 import type { UiTreeNode } from '../../../builder/store/types';
@@ -110,12 +110,12 @@ const PageRouteToolbar: React.FC = () => {
           onChange={(value) => setActiveRouteOutletKey(String(value ?? ''))}
         />
       ) : null}
-      <Button size="small" theme="default" variant="outline" icon={<SettingIcon />} onClick={handleOpenRouteSettings}>
-        设置
-      </Button>
-      <Button size="small" theme="default" variant="outline" icon={<AddIcon />} onClick={handleCreateRoute}>
-        新增
-      </Button>
+      <Tooltip content="路由设置" placement="bottom">
+        <Button size="small" theme="default" variant="text" className="builder-topbar__icon-btn" icon={<SettingIcon />} onClick={handleOpenRouteSettings} />
+      </Tooltip>
+      <Tooltip content="新增路由" placement="bottom">
+        <Button size="small" theme="default" variant="text" className="builder-topbar__icon-btn" icon={<AddIcon />} onClick={handleCreateRoute} />
+      </Tooltip>
     </div>
   );
 };

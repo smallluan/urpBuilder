@@ -54,6 +54,12 @@ interface NodeSiblingInfo {
   siblingCount: number;
 }
 
+const collectTreeNodes = (node: any, collector: any[] = []): any[] => {
+  collector.push(node);
+  (node.children ?? []).forEach((child: any) => collectTreeNodes(child, collector));
+  return collector;
+};
+
 const collectTreeKeySet = (node: any, collector = new Set<string>()): Set<string> => {
   collector.add(node.key);
   (node.children ?? []).forEach((child: any) => collectTreeKeySet(child, collector));
@@ -741,6 +747,35 @@ const ComponentBody: React.FC = () => {
     };
   }, []);
 
+  useEffect(() => {
+    const handleCanvasCommand = (event: Event) => {
+      const customEvent = event as CustomEvent<{ command?: 'center-canvas' | 'scroll-top' }>;
+      const command = customEvent.detail?.command;
+      if (!command) {
+        return;
+      }
+
+      const container = document.querySelector<HTMLElement>('[data-builder-scroll-container="true"]');
+      if (!container) {
+        return;
+      }
+
+      if (command === 'center-canvas') {
+        const left = Math.max(0, (container.scrollWidth - container.clientWidth) / 2);
+        container.scrollTo({ left, top: 0, behavior: 'smooth' });
+      }
+
+      if (command === 'scroll-top') {
+        container.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    };
+
+    window.addEventListener('builder:component-canvas-command', handleCanvasCommand as EventListener);
+    return () => {
+      window.removeEventListener('builder:component-canvas-command', handleCanvasCommand as EventListener);
+    };
+  }, []);
+
   const canCopyContextMenuNode = canOperateNode(contextMenuNode);
   const canCutContextMenuNode = canOperateNode(contextMenuNode);
   const canDeleteContextMenuNode = canOperateNode(contextMenuNode);
@@ -757,6 +792,151 @@ const ComponentBody: React.FC = () => {
   );
   const canMoveUp = canMoveToTop;
   const canMoveDown = canMoveToBottom;
+
+  const activeNode = useMemo(() => {
+    if (!activeNodeKey) {
+      return null;
+    }
+    const path = findNodePathByKey(uiPageData, activeNodeKey);
+    return path?.[path.length - 1] ?? null;
+  }, [activeNodeKey, uiPageData]);
+
+  const runQuickOrganize = () => {
+    if (!activeNodeKey) {
+      MessagePlugin.info('请先选中一个组件');
+      return;
+    }
+    const siblingInfo = getNodeSiblingInfo(uiPageData, activeNodeKey);
+    if (!siblingInfo || siblingInfo.index <= 0) {
+      MessagePlugin.info('当前节点位置已是较优顺序');
+      return;
+    }
+    moveUiNode(activeNodeKey, siblingInfo.parentKey, 0);
+    MessagePlugin.success('已将当前组件整理到同级首位');
+  };
+
+  const runToggleVisible = () => {
+    if (!activeNode) {
+      MessagePlugin.info('请先选中一个组件');
+      return;
+    }
+    const currentVisible = ((activeNode.props?.visible as { value?: unknown } | undefined)?.value) !== false;
+    updateActiveNodeProp('visible', !currentVisible);
+    MessagePlugin.success(!currentVisible ? '组件已显示' : '组件已隐藏');
+  };
+
+  const runSelectNextSameType = () => {
+    if (!activeNode || !activeNode.type) {
+      MessagePlugin.info('请先选中一个具备类型的组件');
+      return;
+    }
+    const nodes = collectTreeNodes(uiPageData).filter((node) => node.type === activeNode.type);
+    if (nodes.length <= 1) {
+      MessagePlugin.info('未找到其他同类型组件');
+      return;
+    }
+    const currentIndex = nodes.findIndex((node) => node.key === activeNode.key);
+    const nextNode = nodes[(currentIndex + 1) % nodes.length];
+    setActiveNode(nextNode.key);
+    MessagePlugin.success(`已定位同类组件：${nextNode.label || nextNode.key}`);
+  };
+
+  const runCopyActiveNode = () => {
+    if (!activeNode) {
+      MessagePlugin.info('请先选中一个组件');
+      return;
+    }
+    handleCopyNode(activeNode);
+  };
+
+  const runPasteToActiveNode = () => {
+    if (!activeNode) {
+      MessagePlugin.info('请先选中一个组件');
+      return;
+    }
+    handlePasteNode(activeNode);
+  };
+
+  useEffect(() => {
+    const handleToolbarCommand = (event: Event) => {
+      const customEvent = event as CustomEvent<{ command?: string }>;
+      const command = customEvent.detail?.command;
+      if (!command) {
+        return;
+      }
+      if (readOnly && command !== 'select-next-same-type' && command !== 'copy-active-node') {
+        return;
+      }
+      if (command === 'quick-organize') {
+        runQuickOrganize();
+      }
+      if (command === 'toggle-visible') {
+        runToggleVisible();
+      }
+      if (command === 'select-next-same-type') {
+        runSelectNextSameType();
+      }
+      if (command === 'copy-active-node') {
+        runCopyActiveNode();
+      }
+      if (command === 'paste-to-active-node') {
+        runPasteToActiveNode();
+      }
+    };
+
+    window.addEventListener('builder:component-toolbar-command', handleToolbarCommand as EventListener);
+    return () => {
+      window.removeEventListener('builder:component-toolbar-command', handleToolbarCommand as EventListener);
+    };
+  }, [activeNode, activeNodeKey, readOnly, treeClipboard, uiPageData]);
+
+  useEffect(() => {
+    const handleKeydown = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      const tagName = target?.tagName?.toLowerCase();
+      if (tagName === 'input' || tagName === 'textarea' || target?.isContentEditable) {
+        return;
+      }
+      const withMeta = event.ctrlKey || event.metaKey;
+      if (withMeta && event.shiftKey && event.key.toLowerCase() === 'l') {
+        event.preventDefault();
+        if (!readOnly) {
+          runQuickOrganize();
+        }
+      }
+      if (withMeta && event.shiftKey && event.key.toLowerCase() === 'v') {
+        event.preventDefault();
+        if (!readOnly) {
+          runToggleVisible();
+        }
+      }
+      if (withMeta && event.key.toLowerCase() === 'c') {
+        runCopyActiveNode();
+      }
+      if (withMeta && event.key.toLowerCase() === 'v' && !event.shiftKey) {
+        if (!readOnly) {
+          runPasteToActiveNode();
+        }
+      }
+      if (event.altKey && activeNodeKey) {
+        const siblingInfo = getNodeSiblingInfo(uiPageData, activeNodeKey);
+        if (!siblingInfo) {
+          return;
+        }
+        if (event.key === 'ArrowUp' && siblingInfo.index > 0 && !readOnly) {
+          event.preventDefault();
+          moveUiNode(activeNodeKey, siblingInfo.parentKey, siblingInfo.index - 1);
+        }
+        if (event.key === 'ArrowDown' && siblingInfo.index < siblingInfo.siblingCount - 1 && !readOnly) {
+          event.preventDefault();
+          moveUiNode(activeNodeKey, siblingInfo.parentKey, siblingInfo.index + 1);
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeydown);
+    return () => window.removeEventListener('keydown', handleKeydown);
+  }, [activeNode, activeNodeKey, readOnly, treeClipboard, uiPageData]);
 
   const getMenuItemStyle = (enabled: boolean): React.CSSProperties => ({
     opacity: enabled ? 1 : 0.45,

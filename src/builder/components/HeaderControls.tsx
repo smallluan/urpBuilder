@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import cloneDeep from 'lodash/cloneDeep';
-import { Radio, Button, Space, Drawer, Timeline, Tag, Dialog, Input, Switch, Textarea } from 'tdesign-react';
-import { UploadIcon, ViewImageIcon, ArrowLeftIcon, ArrowRightIcon, HistoryIcon } from 'tdesign-icons-react';
+import { Radio, Button, Drawer, Timeline, Tag, Dialog, Input, Switch, Textarea } from 'tdesign-react';
+import { UploadIcon, ViewImageIcon, ArrowLeftIcon, ArrowRightIcon, HistoryIcon, SettingIcon } from 'tdesign-icons-react';
 import { useBuilderAccess, useBuilderContext } from '../context/BuilderContext';
 import type { UiHistoryAction } from '../store/types';
 import { serializePreviewSnapshot } from '../../pages/PreviewEngine/utils/snapshot';
@@ -12,6 +12,7 @@ import type { ComponentTemplateListParams, PageTemplateListParams } from '../../
 import { emitApiAlert } from '../../api/alertBus';
 import { findNodeByKey, updateNodeByKey } from '../../utils/createComponentTree';
 import { useTeam } from '../../team/context';
+import UnifiedBuilderTopbar, { TopbarGroup, TopbarIconButton } from './UnifiedBuilderTopbar';
 
 type Props = {
   mode: 'component' | 'flow';
@@ -355,6 +356,7 @@ const HeaderControls: React.FC<Props> = ({
   const [componentId, setComponentId] = useState('');
   const [componentDescription, setComponentDescription] = useState('');
   const [saving, setSaving] = useState(false);
+  const [shortcutDialogVisible, setShortcutDialogVisible] = useState(false);
   const [pageSettingsVisible, setPageSettingsVisible] = useState(false);
   const [deleteRouteDialogVisible, setDeleteRouteDialogVisible] = useState(false);
   const [routeConfigDraft, setRouteConfigDraft] = useState<RouteConfigDraft>({
@@ -750,44 +752,26 @@ const HeaderControls: React.FC<Props> = ({
       </div>
 
       <div className="header-right-control">
-        <Space>
-          <div className="action-group">
-            <Button
-              theme="default"
-              size="small"
-              variant="outline"
-              icon={<ArrowLeftIcon />}
-              disabled={readOnly || !canUndo}
-              onClick={undo}
-            >
-              上一步
-            </Button>
-            <Button
-              theme="default"
-              size="small"
-              variant="outline"
-              icon={<ArrowRightIcon />}
-              disabled={readOnly || !canRedo}
-              onClick={redo}
-            >
-              下一步
-            </Button>
-            <Button
-              theme="default"
-              size="small"
-              variant="outline"
-              icon={<HistoryIcon />}
-              onClick={() => setHistoryVisible(true)}
-            >
-              操作历史
-            </Button>
-            {enablePageRouteConfig ? (
-              <Button theme="default" size="small" variant="outline" disabled={readOnly} onClick={handleOpenPageSettings}>当前路由设置</Button>
-            ) : null}
-            <Button theme="primary" size="small" icon={<UploadIcon />} disabled={readOnly} onClick={handleOpenSaveDialog}>保存</Button>
-            <Button theme="default" size="small" icon={<ViewImageIcon />} onClick={handlePreview}>预览</Button>
-          </div>
-        </Space>
+        <UnifiedBuilderTopbar
+          className="component-topbar"
+          left={(
+            <TopbarGroup>
+              <TopbarIconButton tip="上一步" icon={<ArrowLeftIcon />} disabled={readOnly || !canUndo} onClick={undo} />
+              <TopbarIconButton tip="下一步" icon={<ArrowRightIcon />} disabled={readOnly || !canRedo} onClick={redo} />
+              <TopbarIconButton tip="操作历史" icon={<HistoryIcon />} onClick={() => setHistoryVisible(true)} />
+            </TopbarGroup>
+          )}
+          right={(
+            <TopbarGroup>
+              {enablePageRouteConfig ? (
+                <Button theme="default" size="small" variant="outline" disabled={readOnly} onClick={handleOpenPageSettings}>当前路由设置</Button>
+              ) : null}
+              <TopbarIconButton tip="高级快捷键设置" icon={<SettingIcon />} onClick={() => setShortcutDialogVisible(true)} />
+              <Button theme="primary" size="small" icon={<UploadIcon />} disabled={readOnly} onClick={handleOpenSaveDialog}>保存</Button>
+              <Button theme="default" size="small" icon={<ViewImageIcon />} onClick={handlePreview}>预览</Button>
+            </TopbarGroup>
+          )}
+        />
       </div>
 
       <Dialog
@@ -945,6 +929,24 @@ const HeaderControls: React.FC<Props> = ({
         onClose={() => setDeleteRouteDialogVisible(false)}
       >
         <div>删除后不可恢复，确认继续吗？</div>
+      </Dialog>
+
+      <Dialog
+        visible={shortcutDialogVisible}
+        header="快捷键设置"
+        confirmBtn="关闭"
+        cancelBtn={null}
+        onConfirm={() => setShortcutDialogVisible(false)}
+        onClose={() => setShortcutDialogVisible(false)}
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div>核心快捷键：Ctrl/Cmd+Z（撤销）、Ctrl/Cmd+Shift+Z（重做）、Esc（关闭浮层/退出聚焦）。</div>
+          <div>流程模式快捷键：Ctrl/Cmd+Shift+L / V / K。</div>
+          <div>组件模式快捷键：Alt + 方向键（同级微调）。</div>
+          <div style={{ color: '#64748b', fontSize: 12 }}>
+            该入口用于查看全局快捷键，后续可扩展为可编辑映射。
+          </div>
+        </div>
       </Dialog>
 
       <Drawer
