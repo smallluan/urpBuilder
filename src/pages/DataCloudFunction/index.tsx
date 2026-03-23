@@ -9,6 +9,7 @@ import {
   InputNumber,
   MessagePlugin,
   Pagination,
+  Row,
   Select,
   Space,
   Switch,
@@ -17,7 +18,7 @@ import {
   Tag,
   Textarea,
 } from 'tdesign-react';
-import { AddIcon, DeleteIcon, EditIcon, RefreshIcon } from 'tdesign-icons-react';
+import { AddIcon, DeleteIcon, EditIcon, RefreshIcon, SearchIcon } from 'tdesign-icons-react';
 import { useTeam } from '../../team/context';
 import WorkspaceModePanel from '../../components/WorkspaceModePanel';
 import CodeEditorDialog, { type CodeEditorValue } from '../../builder/components/CodeEditorDialog';
@@ -50,6 +51,7 @@ import {
 } from '../../api/dataTable';
 import type { ResourceOwnerType } from '../../api/types';
 import './style.less';
+import { SearchSlash } from 'lucide-react';
 
 type ConsoleTab = 'table' | 'function';
 type FunctionCodeTarget = 'detail' | 'create';
@@ -986,27 +988,35 @@ const DataCloudFunction: React.FC = () => {
           <div className="data-cloud-function-page__workspace">
             <aside className="console-sider">
               <div className="console-sider__toolbar">
-                <Input
-                  clearable
-                  value={tableKeyword}
-                  placeholder="搜索数据表"
-                  onChange={(value) => setTableKeyword(String(value ?? ''))}
-                  onEnter={() => {
-                    setTablePage(1);
-                    void loadTables(1, tablePageSize);
-                  }}
-                />
-                <Space>
-                  <Button variant="outline" icon={<RefreshIcon />} onClick={() => void loadTables()}>刷新</Button>
-                  <Button theme="primary" icon={<AddIcon />} onClick={openCreateTableDrawer}>新建数据表</Button>
-                </Space>
+                <Row justify='space-between' align='end'>
+                  <Space size={8}>
+                    <Button size='small' theme="primary" icon={<AddIcon />} onClick={openCreateTableDrawer}/>
+                    <Button size='small' variant="outline" icon={<RefreshIcon />} onClick={() => void loadTables()}/>
+                  </Space>
+                </Row>
+                <Row justify="space-between">
+                  <Input
+                    style={{ flex: 1, }}
+                    size="small"
+                    clearable
+                    value={tableKeyword}
+                    placeholder="搜索数据表"
+                    onChange={(value) => setTableKeyword(String(value ?? ''))}
+                    onEnter={() => {
+                      setTablePage(1);
+                      void loadTables(1, tablePageSize);
+                    }}
+                  />
+                  <div style={{ width: 16 }}></div>
+                  <Button size="small" variant="outline" icon={<SearchIcon />} onClick={() => void loadTables()}>搜索</Button>
+                </Row>
+                
               </div>
 
               <div className="console-sider__list">
                 {!tableLoading && !tables.length ? <Empty description="当前空间暂无数据表" /> : null}
                 {tables.map((item) => (
-                  <button
-                    type="button"
+                  <div
                     key={item.id}
                     className={`console-list-item${item.id === activeTableId ? ' is-active' : ''}`}
                     onClick={() => setActiveTableId(item.id)}
@@ -1017,7 +1027,7 @@ const DataCloudFunction: React.FC = () => {
                       <span>记录 {item.recordCount ?? 0}</span>
                       <span>{formatDateTime(item.updatedAt)}</span>
                     </div>
-                  </button>
+                  </div>
                 ))}
               </div>
 
@@ -1027,9 +1037,9 @@ const DataCloudFunction: React.FC = () => {
                   current={tablePage}
                   pageSize={tablePageSize}
                   total={tableTotal}
-                  showJumper
-                  showPageSize
-                  pageSizeOptions={[12, 24, 48]}
+                  // showJumper
+                  // showPageSize
+                  // pageSizeOptions={[12, 24, 48]}
                   onCurrentChange={(nextPage) => {
                     setTablePage(nextPage);
                     void loadTables(nextPage, tablePageSize);
@@ -1169,9 +1179,9 @@ const DataCloudFunction: React.FC = () => {
                   current={functionPage}
                   pageSize={functionPageSize}
                   total={functionTotal}
-                  showJumper
-                  showPageSize
-                  pageSizeOptions={[12, 24, 48]}
+                  // showJumper
+                  // showPageSize
+                  // pageSizeOptions={[12, 24, 48]}
                   onCurrentChange={(nextPage) => {
                     setFunctionPage(nextPage);
                     void loadFunctions(nextPage, functionPageSize);

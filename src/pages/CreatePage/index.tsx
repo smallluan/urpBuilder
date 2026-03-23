@@ -349,11 +349,13 @@ const CreatePage: React.FC = () => {
         markModeSwitchStart(nextMode);
         setMode(nextMode);
       }} designLabel="页面" saveEntityLabel="页面" entityType="page" enablePageRouteConfig />}>
-        <div style={{ display: mode === 'component' ? 'block' : 'none', width: '100%', height: '100%' }}>
-          {componentLayoutMounted ? <PageLayout /> : null}
-        </div>
-        <div style={{ display: mode === 'flow' ? 'block' : 'none', width: '100%', height: '100%' }}>
-          {flowLayoutMounted ? <FlowLayout /> : null}
+        <div className="mode-keepalive-host">
+          <div className={`mode-keepalive-pane${mode === 'component' ? ' is-active' : ''}`}>
+            {componentLayoutMounted ? <PageLayout /> : null}
+          </div>
+          <div className={`mode-keepalive-pane${mode === 'flow' ? ' is-active' : ''}`}>
+            {flowLayoutMounted ? <FlowLayout /> : null}
+          </div>
         </div>
       </BuilderShell>
     </BuilderProvider>

@@ -725,6 +725,30 @@ const FlowCanvas: React.FC = () => {
         });
       }
 
+      if (sourceNode?.type === 'componentNode' && targetNode?.type === 'lifecycleExposeNode') {
+        const sourceData = (sourceNode.data ?? {}) as ComponentFlowNodeData;
+        const availableLifetimes = resolveFlowLifetimes(sourceData.lifetimes, sourceData.componentType);
+        const selectedLifetimes = availableLifetimes.length === 1 ? [availableLifetimes[0]] : [];
+
+        nextNodes = currentNodes.map((item) => {
+          if (item.id !== targetNode.id) {
+            return item;
+          }
+
+          const currentData = (item.data ?? {}) as LifecycleExposeNodeData;
+          return {
+            ...item,
+            data: {
+              ...currentData,
+              upstreamNodeId: sourceNode.id,
+              upstreamLabel: sourceData.label || sourceData.componentType || '组件节点',
+              availableLifetimes,
+              selectedLifetimes,
+            },
+          };
+        });
+      }
+
       const nextEdge: Edge = {
         id: createFlowEdgeId(params.source, params.target),
         source: params.source,
@@ -801,7 +825,7 @@ const FlowCanvas: React.FC = () => {
     }
 
     if (targetNode?.type === 'lifecycleExposeNode') {
-      if (sourceNode?.type !== 'eventFilterNode') {
+      if (sourceNode?.type !== 'eventFilterNode' && sourceNode?.type !== 'componentNode') {
         return false;
       }
 

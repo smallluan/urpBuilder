@@ -354,7 +354,7 @@ export const buildEChartOption = (params: BuildEChartOptionParams): Record<strin
     baseOption = {
       title: {
         text: '地图组件',
-        subtext: `默认地图 ${mapName}，如未注册地图数据请通过 option 覆盖`,
+        // subtext: `默认地图 ${mapName}，如未注册地图数据请通过 option 覆盖`,
         left: 'center',
       },
       tooltip: { trigger: 'item' },

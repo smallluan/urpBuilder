@@ -127,11 +127,13 @@ const CreateComponent: React.FC = () => {
         markModeSwitchStart(nextMode);
         setMode(nextMode);
       }} entityType="component" enableComponentContract />}>
-        <div style={{ display: mode === 'component' ? 'block' : 'none', width: '100%', height: '100%' }}>
-          {componentLayoutMounted ? <ComponentLayout /> : null}
-        </div>
-        <div style={{ display: mode === 'flow' ? 'block' : 'none', width: '100%', height: '100%' }}>
-          {flowLayoutMounted ? <FlowLayout /> : null}
+        <div className="mode-keepalive-host">
+          <div className={`mode-keepalive-pane${mode === 'component' ? ' is-active' : ''}`}>
+            {componentLayoutMounted ? <ComponentLayout /> : null}
+          </div>
+          <div className={`mode-keepalive-pane${mode === 'flow' ? ' is-active' : ''}`}>
+            {flowLayoutMounted ? <FlowLayout /> : null}
+          </div>
         </div>
       </BuilderShell>
     </BuilderProvider>

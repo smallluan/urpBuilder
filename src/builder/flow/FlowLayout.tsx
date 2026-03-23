@@ -918,7 +918,7 @@ const FlowLayout: React.FC = () => {
                   multiple
                   clearable
                   disabled={lifecycleExposeDraft.availableLifetimes.length === 0}
-                  placeholder={lifecycleExposeDraft.availableLifetimes.length === 0 ? '请先连接事件过滤节点' : '请选择要暴露的生命周期'}
+                  placeholder={lifecycleExposeDraft.availableLifetimes.length === 0 ? '请先连接组件节点或事件过滤节点' : '请选择要暴露的生命周期'}
                   options={lifecycleExposeDraft.availableLifetimes.map((item) => ({ label: item, value: item }))}
                   value={lifecycleExposeDraft.selectedLifetimes}
                   onChange={(value) => {

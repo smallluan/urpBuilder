@@ -694,18 +694,11 @@ const ComponentBody: React.FC = () => {
     event.stopPropagation();
     setActiveNode(nodeKey);
 
-    const menuWidth = 190;
-    const menuHeight = 280;
-    const viewportWidth = window.innerWidth;
-    const viewportHeight = window.innerHeight;
-    const x = Math.max(8, Math.min(event.clientX, viewportWidth - menuWidth - 8));
-    const y = Math.max(8, Math.min(event.clientY, viewportHeight - menuHeight - 8));
-
     setContextMenuState({
       visible: true,
       nodeKey,
-      x,
-      y,
+      x: event.clientX,
+      y: event.clientY,
     });
   };
 
