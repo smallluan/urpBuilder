@@ -70,9 +70,8 @@ export default function DropArea({
   const [isDragOver, setIsDragOver] = useState(false);
   const dragDisabled = disabled || !onDropData;
   const childrenLength = React.Children.count(children);
-  const activeNodeKey = useStore((state) => state.activeNodeKey);
   const setActiveNode = useStore((state) => state.setActiveNode);
-  const isNodeActive = !!data?.key && activeNodeKey === data.key;
+  const isNodeActive = useStore((state) => (!!data?.key && state.activeNodeKey === data.key));
 
   // 拖拽经过时允许放置，并切换高亮态
   const handleDragOver = (event: DragEvent<HTMLDivElement>) => {

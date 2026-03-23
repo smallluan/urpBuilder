@@ -294,88 +294,14 @@ const FlowCanvas: React.FC = () => {
     return visited;
   }, [traceActiveNodeId, nodes, edges, focusDepth]);
 
-  const renderedEdges = useMemo(() => {
-    const hasTrace = traceNodeIds.size > 0;
+  const handleChangeEditingValue = useCallback((value: string) => {
+    setEditingEdgeValue(value);
+  }, []);
 
-    return edges.map((edge) => {
-      const edgeData = (edge.data ?? {}) as Record<string, unknown>;
-      const annotation = typeof edgeData.annotation === 'string' ? edgeData.annotation : '';
-      const highlighted =
-        traceNodeIds.size > 0 && traceNodeIds.has(edge.source) && traceNodeIds.has(edge.target);
-
-      return {
-        ...edge,
-        type: 'annotatedEdge',
-        animated: highlighted,
-        data: {
-          ...edgeData,
-          annotation,
-          isEditing: editingEdgeId === edge.id,
-          editingValue: editingEdgeId === edge.id ? editingEdgeValue : annotation,
-          onStartEdit: (edgeId: string) => {
-            const targetEdge = useStore
-              .getState()
-              .flowEdges.find((item) => item.id === edgeId);
-            const targetData = (targetEdge?.data ?? {}) as Record<string, unknown>;
-            setEditingEdgeId(edgeId);
-            setEditingEdgeValue(typeof targetData.annotation === 'string' ? targetData.annotation : '');
-          },
-          onChangeEditingValue: (value: string) => setEditingEdgeValue(value),
-          onCommitEdit: () => {
-            const nextAnnotation = editingEdgeValue.trim();
-            applyFlowEdit('编辑连线注释', ({ nodes: previousNodes, edges: previousEdges }) => {
-              const nextEdges = previousEdges.map((item) => {
-                if (item.id !== edge.id) {
-                  return item;
-                }
-
-                const currentData = (item.data ?? {}) as Record<string, unknown>;
-
-                if (!nextAnnotation) {
-                  const { annotation: _, ...restData } = currentData;
-                  return {
-                    ...item,
-                    data: restData,
-                  };
-                }
-
-                return {
-                  ...item,
-                  data: {
-                    ...currentData,
-                    annotation: nextAnnotation,
-                  },
-                };
-              });
-
-              return {
-                nodes: previousNodes,
-                edges: nextEdges,
-              };
-            });
-
-            setEditingEdgeId(null);
-            setEditingEdgeValue('');
-          },
-          onCancelEdit: () => {
-            setEditingEdgeId(null);
-            setEditingEdgeValue('');
-          },
-        } as AnnotatedEdgeData,
-        style: {
-          ...edge.style,
-          stroke: highlighted ? traceColor : DEFAULT_EDGE_COLOR,
-          strokeWidth: highlighted ? 2 : 1.6,
-          strokeDasharray: highlighted ? '6 4' : undefined,
-          opacity: hasTrace ? (highlighted ? 1 : 0.28) : 1,
-        },
-        markerEnd: {
-          type: MarkerType.ArrowClosed,
-          color: highlighted ? traceColor : DEFAULT_EDGE_COLOR,
-        },
-      } as Edge;
-    });
-  }, [editingEdgeId, editingEdgeValue, edges, applyFlowEdit, traceColor, traceNodeIds]);
+  const handleCancelEdgeEditing = useCallback(() => {
+    setEditingEdgeId(null);
+    setEditingEdgeValue('');
+  }, []);
 
   const handleStartEditEdge = useCallback((edgeId: string) => {
     const targetEdge = useStore.getState().flowEdges.find((item) => item.id === edgeId);
@@ -431,6 +357,54 @@ const FlowCanvas: React.FC = () => {
     setEditingEdgeId(null);
     setEditingEdgeValue('');
   }, []);
+
+  const renderedEdges = useMemo(() => {
+    const hasTrace = traceNodeIds.size > 0;
+
+    return edges.map((edge) => {
+      const edgeData = (edge.data ?? {}) as Record<string, unknown>;
+      const annotation = typeof edgeData.annotation === 'string' ? edgeData.annotation : '';
+      const highlighted =
+        traceNodeIds.size > 0 && traceNodeIds.has(edge.source) && traceNodeIds.has(edge.target);
+
+      return {
+        ...edge,
+        type: 'annotatedEdge',
+        animated: highlighted,
+        data: {
+          ...edgeData,
+          annotation,
+          isEditing: editingEdgeId === edge.id,
+          editingValue: editingEdgeId === edge.id ? editingEdgeValue : annotation,
+          onStartEdit: handleStartEditEdge,
+          onChangeEditingValue: handleChangeEditingValue,
+          onCommitEdit: handleCommitEdgeAnnotation,
+          onCancelEdit: handleCancelEdgeEditing,
+        } as AnnotatedEdgeData,
+        style: {
+          ...edge.style,
+          stroke: highlighted ? traceColor : DEFAULT_EDGE_COLOR,
+          strokeWidth: highlighted ? 2 : 1.6,
+          strokeDasharray: highlighted ? '6 4' : undefined,
+          opacity: hasTrace ? (highlighted ? 1 : 0.28) : 1,
+        },
+        markerEnd: {
+          type: MarkerType.ArrowClosed,
+          color: highlighted ? traceColor : DEFAULT_EDGE_COLOR,
+        },
+      } as Edge;
+    });
+  }, [
+    editingEdgeId,
+    editingEdgeValue,
+    edges,
+    handleCancelEdgeEditing,
+    handleChangeEditingValue,
+    handleCommitEdgeAnnotation,
+    handleStartEditEdge,
+    traceColor,
+    traceNodeIds,
+  ]);
 
   const handleAnnotationTextChange = useCallback(
     (nodeId: string, text: string) => {

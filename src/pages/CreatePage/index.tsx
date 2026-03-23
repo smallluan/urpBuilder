@@ -15,6 +15,7 @@ import { findNodeByKey, updateNodeByKey } from '../../utils/createComponentTree'
 import { useCreatePageStore } from './store';
 import PageRouteToolbar from './components/PageRouteToolbar.tsx';
 import { useAuth } from '../../auth/context';
+import { initModeLongTaskObserver, markModeSwitchEnd, markModeSwitchStart } from '../../builder/utils/perf';
 
 const resolveValidTemplateIdFromUrl = () => {
   const searchParams = new URLSearchParams(window.location.search);
@@ -179,6 +180,8 @@ const PageLayout: React.FC = () => {
 const CreatePage: React.FC = () => {
   const { user } = useAuth();
   const [mode, setMode] = useState<'component' | 'flow'>('component');
+  const [componentLayoutMounted, setComponentLayoutMounted] = useState(true);
+  const [flowLayoutMounted, setFlowLayoutMounted] = useState(false);
   const [readOnly, setReadOnly] = useState(false);
   const [readOnlyReason, setReadOnlyReason] = useState('');
   const loadedPageIdRef = useRef<string | null>(null);
@@ -194,6 +197,22 @@ const CreatePage: React.FC = () => {
   const syncActivePageRouteSnapshot = useCreatePageStore((state) => state.syncActivePageRouteSnapshot);
   const addPageRoute = useCreatePageStore((state) => state.addPageRoute);
   const switchPageRoute = useCreatePageStore((state) => state.switchPageRoute);
+
+  useEffect(() => {
+    initModeLongTaskObserver();
+  }, []);
+
+  useEffect(() => {
+    if (mode === 'component') {
+      setComponentLayoutMounted(true);
+    } else {
+      setFlowLayoutMounted(true);
+    }
+    const rafId = window.requestAnimationFrame(() => {
+      markModeSwitchEnd(mode);
+    });
+    return () => window.cancelAnimationFrame(rafId);
+  }, [mode]);
 
   useEffect(() => {
     if (pageRoutes.length > 0 || loadedPageIdRef.current || pageIdFromUrl.trim()) {
@@ -218,8 +237,10 @@ const CreatePage: React.FC = () => {
     if (!activePageRouteId) {
       return;
     }
-
-    syncActivePageRouteSnapshot();
+    const timer = window.setTimeout(() => {
+      syncActivePageRouteSnapshot();
+    }, 120);
+    return () => window.clearTimeout(timer);
   }, [activePageRouteId, uiPageData, flowNodes, flowEdges, selectedLayoutTemplateId, pageRouteConfig, syncActivePageRouteSnapshot]);
 
   useEffect(() => {
@@ -324,8 +345,16 @@ const CreatePage: React.FC = () => {
 
   return (
     <BuilderProvider useStore={useCreatePageStore} readOnly={readOnly} readOnlyReason={readOnlyReason} entityType="page">
-      <BuilderShell header={<HeaderControls mode={mode} onChange={setMode} designLabel="页面" saveEntityLabel="页面" entityType="page" enablePageRouteConfig />}>
-        {mode === 'component' ? <PageLayout /> : <FlowLayout />}
+      <BuilderShell header={<HeaderControls mode={mode} onChange={(nextMode) => {
+        markModeSwitchStart(nextMode);
+        setMode(nextMode);
+      }} designLabel="页面" saveEntityLabel="页面" entityType="page" enablePageRouteConfig />}>
+        <div style={{ display: mode === 'component' ? 'block' : 'none', width: '100%', height: '100%' }}>
+          {componentLayoutMounted ? <PageLayout /> : null}
+        </div>
+        <div style={{ display: mode === 'flow' ? 'block' : 'none', width: '100%', height: '100%' }}>
+          {flowLayoutMounted ? <FlowLayout /> : null}
+        </div>
       </BuilderShell>
     </BuilderProvider>
   );

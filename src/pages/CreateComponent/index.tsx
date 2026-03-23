@@ -12,6 +12,7 @@ import { BuilderShell } from '../../builder/components/BuilderShell';
 import type { Edge, Node } from '@xyflow/react';
 import type { UiTreeNode, BuiltInLayoutTemplateId } from '../../builder/store/types';
 import { useAuth } from '../../auth/context';
+import { initModeLongTaskObserver, markModeSwitchEnd, markModeSwitchStart } from '../../builder/utils/perf';
 
 const resolveValidTemplateIdFromUrl = () => {
   const searchParams = new URLSearchParams(window.location.search);
@@ -32,10 +33,28 @@ const resolveValidTemplateIdFromUrl = () => {
 const CreateComponent: React.FC = () => {
   const { user } = useAuth();
   const [mode, setMode] = useState<'component' | 'flow'>('component');
+  const [componentLayoutMounted, setComponentLayoutMounted] = useState(true);
+  const [flowLayoutMounted, setFlowLayoutMounted] = useState(false);
   const [readOnly, setReadOnly] = useState(false);
   const [readOnlyReason, setReadOnlyReason] = useState('');
   const loadedPageIdRef = useRef<string | null>(null);
   const setCurrentPageMeta = useCreateComponentStore((state) => state.setCurrentPageMeta);
+
+  useEffect(() => {
+    initModeLongTaskObserver();
+  }, []);
+
+  useEffect(() => {
+    if (mode === 'component') {
+      setComponentLayoutMounted(true);
+    } else {
+      setFlowLayoutMounted(true);
+    }
+    const rafId = window.requestAnimationFrame(() => {
+      markModeSwitchEnd(mode);
+    });
+    return () => window.cancelAnimationFrame(rafId);
+  }, [mode]);
 
   useEffect(() => {
     const pageId = resolveValidTemplateIdFromUrl();
@@ -104,8 +123,16 @@ const CreateComponent: React.FC = () => {
 
   return (
     <BuilderProvider useStore={useCreateComponentStore} readOnly={readOnly} readOnlyReason={readOnlyReason} entityType="component">
-      <BuilderShell header={<HeaderControls mode={mode} onChange={setMode} entityType="component" enableComponentContract />}>
-        {mode === 'component' ? <ComponentLayout /> : <FlowLayout />}
+      <BuilderShell header={<HeaderControls mode={mode} onChange={(nextMode) => {
+        markModeSwitchStart(nextMode);
+        setMode(nextMode);
+      }} entityType="component" enableComponentContract />}>
+        <div style={{ display: mode === 'component' ? 'block' : 'none', width: '100%', height: '100%' }}>
+          {componentLayoutMounted ? <ComponentLayout /> : null}
+        </div>
+        <div style={{ display: mode === 'flow' ? 'block' : 'none', width: '100%', height: '100%' }}>
+          {flowLayoutMounted ? <FlowLayout /> : null}
+        </div>
       </BuilderShell>
     </BuilderProvider>
   );

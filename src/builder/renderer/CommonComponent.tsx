@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import DropArea from '../../components/DropArea';
 import type { UiDropDataHandler, UiTreeNode } from '../store/types';
 import type { ComponentRenderContext } from './componentContext';
@@ -114,7 +114,6 @@ export default function CommonComponent(properties: CommonComponentProps) {
   const normalizedType = typeof type === 'string' ? type.trim() : type;
   const [tabsInnerValue, setTabsInnerValue] = React.useState<string | number | undefined>(undefined);
   const setActiveNode = useStore((state) => state.setActiveNode);
-  const activeNodeKey = useStore((state) => state.activeNodeKey);
   const screenSize = useStore((state) => state.screenSize);
   const autoWidth = useStore((state) => state.autoWidth);
 
@@ -134,7 +133,9 @@ export default function CommonComponent(properties: CommonComponentProps) {
   const resolvedActivationKey = lockActivationToOwner
     ? (activationOwnerKey || data?.key || '')
     : (data?.key || '');
-  const isNodeActive = !!resolvedActivationKey && activeNodeKey === resolvedActivationKey;
+  const isNodeActive = useStore((state) => (
+    !!resolvedActivationKey && state.activeNodeKey === resolvedActivationKey
+  ));
 
   const mergeStyle = (baseStyle?: React.CSSProperties): React.CSSProperties | undefined => {
     if (!baseStyle && !inlineStyle) return undefined;

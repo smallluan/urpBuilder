@@ -745,8 +745,6 @@ const ComponentAsideLeft: React.FC = () => {
   };
 
   const uiPageDataWithWrappedLabel = useMemo(() => {
-    const cloned = cloneDeep(uiPageData) as UiTreeNode;
-
     const transformNode = (node: UiTreeNode): RenderUiTreeNode => {
       const children = Array.isArray(node.children)
         ? node.children.map((child) => transformNode(child))
@@ -812,7 +810,7 @@ const ComponentAsideLeft: React.FC = () => {
       };
     };
 
-    return transformNode(cloned);
+    return transformNode(uiPageData);
   }, [dragOverNodeKey, uiPageData]);
 
   const contextMenuNode = useMemo(() => {

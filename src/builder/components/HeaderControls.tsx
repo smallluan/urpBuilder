@@ -326,9 +326,6 @@ const HeaderControls: React.FC<Props> = ({
   const { readOnly } = useBuilderAccess();
   const { currentTeamId, currentTeam, workspaceMode } = useTeam();
   const history = useStore((state) => state.history);
-  const uiTreeData = useStore((state) => state.uiPageData);
-  const flowNodes = useStore((state) => state.flowNodes);
-  const flowEdges = useStore((state) => state.flowEdges);
   const screenSize = useStore((state) => state.screenSize);
   const autoWidth = useStore((state) => state.autoWidth);
   const currentPageId = useStore((state) => state.currentPageId);
@@ -373,14 +370,14 @@ const HeaderControls: React.FC<Props> = ({
 
   const displayTimelineItems = useMemo(
     () =>
-      history.actions
+      (!historyVisible ? [] : history.actions)
         .map((action, index) => ({
           index,
           time: new Date(action.timestamp).toLocaleTimeString('zh-CN', { hour12: false }),
           detail: toActionDescription(action),
         }))
         .reverse(),
-    [history.actions],
+    [history.actions, historyVisible],
   );
 
   const handleChange = (value: any) => {
@@ -388,6 +385,7 @@ const HeaderControls: React.FC<Props> = ({
   };
 
   const handlePreview = () => {
+    const { uiPageData: uiTreeData, flowNodes, flowEdges } = useStore.getState();
     const routeSnapshots = enablePageRouteConfig
       ? pageRoutes.map((route) => {
           const composedUiTree = composeRouteUiTree(route.uiTree, sharedUiTree, activeRouteOutletKey);
@@ -574,6 +572,7 @@ const HeaderControls: React.FC<Props> = ({
   };
 
   const handleSave = async () => {
+    const { uiPageData: uiTreeData, flowNodes, flowEdges } = useStore.getState();
     const pageName = componentName.trim();
     const pageId = componentId.trim();
     const pageDescription = componentDescription.trim();
