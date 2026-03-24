@@ -35,6 +35,7 @@ const CONTAINER_NODE_TYPES = new Set([
   'Steps',
   'Drawer',
   'Upload',
+  'RouteOutlet',
   'Menu',
   'HeadMenu',
   'Menu.Submenu',

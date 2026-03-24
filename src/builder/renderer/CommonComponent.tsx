@@ -114,6 +114,7 @@ export default function CommonComponent(properties: CommonComponentProps) {
   const normalizedType = typeof type === 'string' ? type.trim() : type;
   const [tabsInnerValue, setTabsInnerValue] = React.useState<string | number | undefined>(undefined);
   const setActiveNode = useStore((state) => state.setActiveNode);
+  const updateActiveNodeProp = useStore((state) => state.updateActiveNodeProp);
   const screenSize = useStore((state) => state.screenSize);
   const autoWidth = useStore((state) => state.autoWidth);
 
@@ -273,6 +274,7 @@ export default function CommonComponent(properties: CommonComponentProps) {
     tabsInnerValue,
     setTabsInnerValue,
     setActiveNode,
+    updateActiveNodeProp,
   };
 
   const renderer = registry.get(normalizedType ?? '');

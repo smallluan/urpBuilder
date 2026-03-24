@@ -1,4 +1,4 @@
-import { Switch, ColorPicker, TimePicker, TimeRangePicker, Input, Textarea, InputNumber, Slider, Space } from 'tdesign-react';
+import { Switch, ColorPicker, TimePicker, TimeRangePicker, Input, Textarea, InputNumber, Slider } from 'tdesign-react';
 import type { ComponentRegistry } from '../componentContext';
 import { ActivateWrapper } from '../componentHelpers';
 
@@ -102,11 +102,22 @@ export function registerFormComponents(registry: ComponentRegistry): void {
   });
 
   registry.set('Input', (ctx) => {
-    const { getStringProp, getBooleanProp, getFiniteNumberProp, mergeStyle, handleActivateSelf, data, isNodeActive } = ctx;
+    const {
+      getStringProp, getBooleanProp, getFiniteNumberProp, mergeStyle,
+      handleActivateSelf, data, isNodeActive, setActiveNode, updateActiveNodeProp,
+    } = ctx;
     const isControlled = getBooleanProp('controlled') !== false;
     const inputValueProps = isControlled
-      ? { value: getStringProp('value') || undefined }
+      ? { value: getStringProp('value') ?? '' }
       : { defaultValue: getStringProp('defaultValue') || undefined };
+
+    const handleInputChange = (nextValue: string) => {
+      if (data?.key) {
+        setActiveNode(data.key);
+      }
+      updateActiveNodeProp('value', nextValue);
+    };
+
     return (
       <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf} nodeKey={data?.key} active={isNodeActive}>
         <Input
@@ -132,6 +143,7 @@ export function registerFormComponents(registry: ComponentRegistry): void {
           spellCheck={getBooleanProp('spellCheck')}
           tips={getStringProp('tips') || undefined}
           type={getStringProp('type') as any}
+          onChange={(value) => handleInputChange(String(value ?? ''))}
           style={mergeStyle()}
         />
       </ActivateWrapper>
@@ -141,14 +153,22 @@ export function registerFormComponents(registry: ComponentRegistry): void {
   registry.set('Textarea', (ctx) => {
     const {
       getStringProp, getBooleanProp, getFiniteNumberProp, mergeStyle, handleActivateSelf, data, isNodeActive,
-      getTextareaStyleProp, getTextareaAutosizeProp,
+      getTextareaStyleProp, getTextareaAutosizeProp, setActiveNode, updateActiveNodeProp,
     } = ctx;
     const isControlled = getBooleanProp('controlled') !== false;
     const textareaValueProps = isControlled
-      ? { value: getStringProp('value') || undefined }
+      ? { value: getStringProp('value') ?? '' }
       : { defaultValue: getStringProp('defaultValue') || undefined };
     const textareaStyle = getTextareaStyleProp();
     const mergedTextareaStyle = textareaStyle ? { ...mergeStyle(), ...textareaStyle } : mergeStyle();
+
+    const handleTextareaChange = (nextValue: string) => {
+      if (data?.key) {
+        setActiveNode(data.key);
+      }
+      updateActiveNodeProp('value', nextValue);
+    };
+
     return (
       <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf} nodeKey={data?.key} active={isNodeActive}>
         <Textarea
@@ -166,6 +186,7 @@ export function registerFormComponents(registry: ComponentRegistry): void {
           name={getStringProp('name') || undefined}
           tips={getStringProp('tips') || undefined}
           autosize={getTextareaAutosizeProp()}
+          onChange={(value) => handleTextareaChange(String(value ?? ''))}
           style={mergedTextareaStyle}
         />
       </ActivateWrapper>
@@ -175,9 +196,17 @@ export function registerFormComponents(registry: ComponentRegistry): void {
   registry.set('InputNumber', (ctx) => {
     const {
       getStringProp, getBooleanProp, getFiniteNumberProp, mergeStyle, handleActivateSelf, data, isNodeActive,
-      getInputNumberValueProp,
+      getInputNumberValueProp, setActiveNode, updateActiveNodeProp,
     } = ctx;
     const isControlled = getBooleanProp('controlled') !== false;
+
+    const handleInputNumberChange = (nextValue: string | number | undefined) => {
+      if (data?.key) {
+        setActiveNode(data.key);
+      }
+      updateActiveNodeProp('value', typeof nextValue === 'undefined' ? '' : nextValue);
+    };
+
     return (
       <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf} nodeKey={data?.key} active={isNodeActive}>
         <InputNumber
@@ -197,6 +226,7 @@ export function registerFormComponents(registry: ComponentRegistry): void {
           disabled={getBooleanProp('disabled')}
           readOnly={getBooleanProp('readOnly')}
           largeNumber={getBooleanProp('largeNumber')}
+          onChange={(value) => handleInputNumberChange(value as string | number | undefined)}
           style={mergeStyle()}
         />
       </ActivateWrapper>

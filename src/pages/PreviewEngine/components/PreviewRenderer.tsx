@@ -1691,6 +1691,10 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) 
     window.dataHub?.applyComponentPatch(node.key, { visible: nextVisible });
   }, [isDrawerNode, node.key]);
 
+  const syncNodeValue = React.useCallback((nextValue: unknown) => {
+    window.dataHub?.applyComponentPatch(node.key, { value: nextValue });
+  }, [node.key]);
+
   if (visible === false && !isDrawerNode) {
     return null;
   }
@@ -2508,6 +2512,7 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) 
                 } else {
                   setUncontrolledSwitchValue(normalizedValue);
                 }
+                syncNodeValue(normalizedValue);
 
                 emitInteractionLifecycle('onChange', {
                   value: normalizedValue,
@@ -2638,7 +2643,7 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) 
       {
       const isControlled = getBooleanProp(node, 'controlled') !== false;
       const inputValueProps = isControlled
-        ? { value: getStringProp(node, 'value') || undefined }
+        ? { value: getStringProp(node, 'value') ?? '' }
         : { defaultValue: getStringProp(node, 'defaultValue') || undefined };
 
       return (
@@ -2667,7 +2672,11 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) 
             tips={getStringProp(node, 'tips') || undefined}
             type={getStringProp(node, 'type') as any}
             onBlur={(value, context) => emitInteractionLifecycle('onBlur', { value, context })}
-            onChange={(value, context) => emitInteractionLifecycle('onChange', { value, context })}
+            onChange={(value, context) => {
+              const nextValue = String(value ?? '');
+              syncNodeValue(nextValue);
+              emitInteractionLifecycle('onChange', { value: nextValue, context });
+            }}
             onClear={(context) => emitInteractionLifecycle('onClear', context)}
             onClick={(context) => emitInteractionLifecycle('onClick', context)}
             onCompositionend={(value, context) => emitInteractionLifecycle('onCompositionend', { value, context })}
@@ -2780,7 +2789,7 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) 
       };
 
       const textareaValueProps = isControlled
-        ? { value: getStringProp(node, 'value') || undefined }
+        ? { value: getStringProp(node, 'value') ?? '' }
         : { defaultValue: getStringProp(node, 'defaultValue') || undefined };
       const textareaStyle = getTextareaStyleProp();
       const mergedTextareaStyle = textareaStyle ? { ...mergeStyle(), ...textareaStyle } : mergeStyle();
@@ -2803,7 +2812,11 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) 
             tips={getStringProp(node, 'tips') || undefined}
             autosize={getTextareaAutosizeProp()}
             onBlur={(value, context) => emitInteractionLifecycle('onBlur', { value, context })}
-            onChange={(value, context) => emitInteractionLifecycle('onChange', { value, context })}
+            onChange={(value, context) => {
+              const nextValue = String(value ?? '');
+              syncNodeValue(nextValue);
+              emitInteractionLifecycle('onChange', { value: nextValue, context });
+            }}
             onFocus={(value, context) => emitInteractionLifecycle('onFocus', { value, context })}
             onKeydown={(value, context) => emitInteractionLifecycle('onKeydown', { value, context })}
             onKeypress={(value, context) => emitInteractionLifecycle('onKeypress', { value, context })}
@@ -2837,7 +2850,10 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) 
             readOnly={getBooleanProp(node, 'readOnly')}
             largeNumber={getBooleanProp(node, 'largeNumber')}
             onBlur={(value, context) => emitInteractionLifecycle('onBlur', { value, context })}
-            onChange={(value, context) => emitInteractionLifecycle('onChange', { value, context })}
+            onChange={(value, context) => {
+              syncNodeValue(value);
+              emitInteractionLifecycle('onChange', { value, context });
+            }}
             onEnter={(value, context) => emitInteractionLifecycle('onEnter', { value, context })}
             onFocus={(value, context) => emitInteractionLifecycle('onFocus', { value, context })}
             onKeydown={(value, context) => emitInteractionLifecycle('onKeydown', { value, context })}
@@ -2880,7 +2896,10 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) 
             step={getFiniteNumberProp(node, 'step')}
             range={isRange}
             disabled={getBooleanProp(node, 'disabled')}
-            onChange={(nextValue) => emitInteractionLifecycle('onChange', { value: nextValue })}
+            onChange={(nextValue) => {
+              syncNodeValue(nextValue);
+              emitInteractionLifecycle('onChange', { value: nextValue });
+            }}
             style={mergeStyle()}
           />
         </div>

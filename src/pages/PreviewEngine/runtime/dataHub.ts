@@ -1,4 +1,5 @@
 import cloneDeep from 'lodash/cloneDeep';
+import { DialogPlugin, MessagePlugin } from 'tdesign-react';
 import type { UiTreeNode } from '../../../builder/store/types';
 import requestClient from '../../../api/request';
 import { getAccessToken, migrateLegacyToken } from '../../../auth/storage';
@@ -47,6 +48,36 @@ export interface DataHubCloudContext {
   invoke: (functionIdOrName: string, payload?: unknown, options?: DataHubCloudInvokeOptions) => Promise<unknown>;
 }
 
+export type DataHubMessageType = 'info' | 'success' | 'warning' | 'error';
+
+export interface DataHubMessageOptions {
+  type?: DataHubMessageType;
+  duration?: number;
+  closeBtn?: boolean;
+}
+
+export interface DataHubDialogOptions {
+  title?: string;
+  content?: string;
+  confirmText?: string;
+  cancelText?: string;
+  theme?: string;
+  closeOnOverlayClick?: boolean;
+}
+
+export interface DataHubMessageContext {
+  (content: string, options?: DataHubMessageOptions): void;
+  info: (content: string, options?: Omit<DataHubMessageOptions, 'type'>) => void;
+  success: (content: string, options?: Omit<DataHubMessageOptions, 'type'>) => void;
+  warning: (content: string, options?: Omit<DataHubMessageOptions, 'type'>) => void;
+  error: (content: string, options?: Omit<DataHubMessageOptions, 'type'>) => void;
+}
+
+export interface DataHubDialogContext {
+  alert: (contentOrOptions: string | DataHubDialogOptions) => Promise<void>;
+  confirm: (contentOrOptions: string | DataHubDialogOptions) => Promise<boolean>;
+}
+
 export interface DataHubCodeContext {
   scopeId: string;
   composeRef: (componentKey: string) => string;
@@ -55,11 +86,143 @@ export interface DataHubCodeContext {
   getComponentState: (componentKey: string) => ComponentStateRecord | undefined;
   getComponentProp: (componentKey: string, propKey: string) => unknown;
   getAllComponentStates: () => ComponentStateRecord[];
+  message: DataHubMessageContext;
+  dialog: DataHubDialogContext;
   router: DataHubRouterContext;
   cloud: DataHubCloudContext;
 }
 
 type DataHubEventHandler = (payload: unknown) => void;
+
+const safeMessage = (type: DataHubMessageType, content: string, options?: Omit<DataHubMessageOptions, 'type'>) => {
+  const payload = {
+    content,
+    duration: options?.duration,
+    closeBtn: options?.closeBtn,
+  };
+  try {
+    if (type === 'success') {
+      MessagePlugin.success(payload as any);
+      return;
+    }
+    if (type === 'warning') {
+      MessagePlugin.warning(payload as any);
+      return;
+    }
+    if (type === 'error') {
+      MessagePlugin.error(payload as any);
+      return;
+    }
+    MessagePlugin.info(payload as any);
+  } catch {
+    // fallback: when UI plugin is unavailable, avoid breaking runtime script
+    // eslint-disable-next-line no-console
+    console.info(`[dataHub.message.${type}]`, content);
+  }
+};
+
+const createMessageContext = (): DataHubMessageContext => {
+  const message = ((content: string, options?: DataHubMessageOptions) => {
+    const normalizedContent = String(content ?? '');
+    safeMessage(options?.type ?? 'info', normalizedContent, options);
+  }) as DataHubMessageContext;
+
+  message.info = (content, options) => safeMessage('info', String(content ?? ''), options);
+  message.success = (content, options) => safeMessage('success', String(content ?? ''), options);
+  message.warning = (content, options) => safeMessage('warning', String(content ?? ''), options);
+  message.error = (content, options) => safeMessage('error', String(content ?? ''), options);
+  return message;
+};
+
+const normalizeDialogOptions = (
+  contentOrOptions: string | DataHubDialogOptions,
+  defaultTitle: string,
+): Required<Pick<DataHubDialogOptions, 'title' | 'content' | 'confirmText' | 'cancelText'>> & DataHubDialogOptions => {
+  if (typeof contentOrOptions === 'string') {
+    return {
+      title: defaultTitle,
+      content: contentOrOptions,
+      confirmText: '确定',
+      cancelText: '取消',
+    };
+  }
+
+  return {
+    title: String(contentOrOptions.title ?? defaultTitle),
+    content: String(contentOrOptions.content ?? ''),
+    confirmText: String(contentOrOptions.confirmText ?? '确定'),
+    cancelText: String(contentOrOptions.cancelText ?? '取消'),
+    ...contentOrOptions,
+  };
+};
+
+const createDialogContext = (): DataHubDialogContext => {
+  const alert: DataHubDialogContext['alert'] = (contentOrOptions) =>
+    new Promise<void>((resolve) => {
+      const options = normalizeDialogOptions(contentOrOptions, '提示');
+      try {
+        const dialog = DialogPlugin.alert({
+          header: options.title,
+          body: options.content,
+          confirmBtn: options.confirmText,
+          closeOnOverlayClick: options.closeOnOverlayClick ?? true,
+          theme: options.theme as any,
+          onConfirm: () => {
+            dialog.destroy();
+            resolve();
+          },
+          onCloseBtnClick: () => {
+            dialog.destroy();
+            resolve();
+          },
+          onCancel: () => {
+            dialog.destroy();
+            resolve();
+          },
+        });
+      } catch {
+        if (typeof window !== 'undefined') {
+          window.alert(options.content);
+        }
+        resolve();
+      }
+    });
+
+  const confirm: DataHubDialogContext['confirm'] = (contentOrOptions) =>
+    new Promise<boolean>((resolve) => {
+      const options = normalizeDialogOptions(contentOrOptions, '请确认');
+      try {
+        const dialog = DialogPlugin.confirm({
+          header: options.title,
+          body: options.content,
+          confirmBtn: options.confirmText,
+          cancelBtn: options.cancelText,
+          closeOnOverlayClick: options.closeOnOverlayClick ?? true,
+          theme: options.theme as any,
+          onConfirm: () => {
+            dialog.destroy();
+            resolve(true);
+          },
+          onCancel: () => {
+            dialog.destroy();
+            resolve(false);
+          },
+          onCloseBtnClick: () => {
+            dialog.destroy();
+            resolve(false);
+          },
+        });
+      } catch {
+        if (typeof window !== 'undefined') {
+          resolve(window.confirm(options.content));
+          return;
+        }
+        resolve(false);
+      }
+    });
+
+  return { alert, confirm };
+};
 
 const toPropsRecord = (node: UiTreeNode): Record<string, unknown> => {
   const source = (node.props ?? {}) as Record<string, unknown>;
@@ -144,6 +307,10 @@ export class PreviewDataHub {
 
   private readonly cloudContext: DataHubCloudContext;
 
+  private readonly messageContext: DataHubMessageContext;
+
+  private readonly dialogContext: DataHubDialogContext;
+
   constructor(uiTreeData: UiTreeNode, options?: { scopeId?: string; router?: DataHubRouterContext; cloud?: DataHubCloudContext }) {
     this.treeRoot = cloneDeep(uiTreeData);
     this.scopeId = String(options?.scopeId ?? DEFAULT_SCOPE_ID).trim() || DEFAULT_SCOPE_ID;
@@ -195,6 +362,8 @@ export class PreviewDataHub {
         }
       },
     };
+    this.messageContext = createMessageContext();
+    this.dialogContext = createDialogContext();
   }
 
   getScopeId() {
@@ -336,6 +505,8 @@ export class PreviewDataHub {
       getComponentState: (componentKey) => this.getComponentState(componentKey),
       getComponentProp: (componentKey, propKey) => this.getComponentProp(componentKey, propKey),
       getAllComponentStates: () => this.getAllComponentStates(),
+      message: this.messageContext,
+      dialog: this.dialogContext,
       router: this.routerContext,
       cloud: this.cloudContext,
     };
