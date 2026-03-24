@@ -10,14 +10,14 @@ export function registerFormComponents(registry: ComponentRegistry): void {
     const defaultValue = Boolean(getBooleanProp('defaultValue'));
     return (
       <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf} nodeKey={data?.key} active={isNodeActive}>
-        <Space align="center" size={8}>
+        {/* <Space align="center" size={8}> */}
           <Switch
             size={getStringProp('size') as any}
             value={isControlled ? controlledValue : undefined}
             defaultValue={isControlled ? undefined : defaultValue}
             onChange={() => { /* 搭建态仅展示 */ }}
           />
-        </Space>
+        {/* </Space> */}
       </ActivateWrapper>
     );
   });

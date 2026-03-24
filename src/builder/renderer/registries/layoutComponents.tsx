@@ -25,7 +25,7 @@ export function registerLayoutComponents(registry: ComponentRegistry): void {
           spaceSplitDashed={spaceSplitDashed}
           spaceSplitAlign={spaceSplitAlign}
           spaceSplitContent={spaceSplitContent}
-          style={undefined}
+          style={mergeStyle()}
           onActivate={handleActivateSelf}
           nodeKey={data?.key}
           active={isNodeActive}

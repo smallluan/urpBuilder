@@ -212,6 +212,36 @@ const createDefaultMenuChildren = (): UiTreeNode[] => {
   ];
 };
 
+const normalizeCollapseSeedList = (value: unknown): Array<{ value: string; label: string }> => {
+  const source = Array.isArray(value) ? value : [];
+  const usedValues = new Set<string>();
+  const normalized = source
+    .filter((item) => item && typeof item === 'object')
+    .map((item, index) => {
+      const record = item as Record<string, unknown>;
+      const rawValue = typeof record.value === 'string' ? record.value.trim() : String(record.value ?? '').trim();
+      let nextValue = rawValue || `collapse-${index + 1}`;
+      if (usedValues.has(nextValue)) {
+        nextValue = `${nextValue}-${index + 1}`;
+      }
+      usedValues.add(nextValue);
+      const rawLabel = typeof record.label === 'string' ? record.label.trim() : '';
+      return {
+        value: nextValue,
+        label: rawLabel || `面板 ${index + 1}`,
+      };
+    });
+
+  if (normalized.length > 0) {
+    return normalized;
+  }
+
+  return [
+    { value: 'collapse-1', label: '面板 1' },
+    { value: 'collapse-2', label: '面板 2' },
+  ];
+};
+
 const buildInitialChildren = (type: string, props?: Record<string, unknown>): UiTreeNode[] => {
   if (type === 'Card') {
     return [
@@ -232,6 +262,15 @@ const buildInitialChildren = (type: string, props?: Record<string, unknown>): Ui
     const listSchema = (props?.list ?? null) as { value?: unknown } | null;
     const tabsList = normalizeTabsList(listSchema?.value);
     return tabsList.map((item) => createSlotNode(getTabsPanelSlotKey(item.value), `${item.label} 面板`));
+  }
+
+  if (type === 'Collapse') {
+    const listSchema = (props?.list ?? null) as { value?: unknown } | null;
+    const collapseList = normalizeCollapseSeedList(listSchema?.value);
+    return collapseList.flatMap((item) => ([
+      createSlotNode(`collapse:header:${item.value}`, `${item.label} 头部`, [createTypographyTitleNode()]),
+      createSlotNode(`collapse:panel:${item.value}`, `${item.label} 内容`, [createTypographyParagraphNode()]),
+    ]));
   }
 
   if (type === 'HeadMenu') {

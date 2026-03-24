@@ -30,6 +30,7 @@ import {
   updateNodeByKey,
 } from '../../utils/createComponentTree';
 import { normalizeTabsList, syncTabsSlotNodes } from '../utils/tabs';
+import { normalizeCollapseList, syncCollapseSlotNodes } from '../utils/collapse';
 import {
   buildEntityPatch,
   cleanupNodePool,   // re-used via pushHistoryAction
@@ -994,6 +995,13 @@ export const createBuilderStore = (options: CreateBuilderStoreOptions = {}) => {
           const tabsList = normalizeTabsList(value);
           nextTree = updateNodeByKey(nextTree, state.activeNodeKey, (target) =>
             syncTabsSlotNodes(target, tabsList),
+          );
+        }
+
+        if (currentNode.type === 'Collapse' && propKey === 'list') {
+          const collapseList = normalizeCollapseList(value);
+          nextTree = updateNodeByKey(nextTree, state.activeNodeKey, (target) =>
+            syncCollapseSlotNodes(target, collapseList),
           );
         }
 

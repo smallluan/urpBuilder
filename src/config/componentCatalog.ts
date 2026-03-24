@@ -1419,6 +1419,69 @@ const componentCatalog = [
     lifetimes: ['onAdd', 'onChange', 'onDragSort', 'onRemove'],
   },
   {
+    type: 'Collapse',
+    name: '折叠面板',
+    props: {
+      list: {
+        name: '面板配置',
+        value: [
+          {
+            value: 'collapse-1',
+            label: '面板 1',
+            disabled: false,
+            destroyOnCollapse: true,
+          },
+          {
+            value: 'collapse-2',
+            label: '面板 2',
+            disabled: false,
+            destroyOnCollapse: true,
+          },
+        ],
+        editType: 'tabsConfig',
+      },
+      value: {
+        name: '当前展开(value)',
+        value: '',
+        editType: 'input',
+      },
+      defaultValue: {
+        name: '默认展开(defaultValue)',
+        value: 'collapse-1',
+        editType: 'input',
+      },
+      defaultExpandAll: {
+        name: '默认全部展开',
+        value: false,
+        editType: 'switch',
+      },
+      expandMutex: {
+        name: '手风琴模式',
+        value: false,
+        editType: 'switch',
+      },
+      bordered: {
+        name: '显示边框',
+        value: true,
+        editType: 'switch',
+      },
+      expandIconPlacement: {
+        name: '图标位置',
+        value: 'left',
+        editType: 'select',
+        payload: {
+          options: ['left', 'right'],
+        },
+      },
+      disabled: {
+        name: '禁用',
+        value: false,
+        editType: 'switch',
+      },
+    },
+    lifetimes: ['onChange'],
+  },
+  {
     type: 'HeadMenu',
     name: '顶部菜单',
     props: {

@@ -1,4 +1,4 @@
-import { List, Calendar, Steps, Tabs, Menu, Image, Button, Table } from 'tdesign-react';
+import { List, Calendar, Steps, Tabs, Menu, Image, Button, Table, Collapse } from 'tdesign-react';
 import ReactECharts from 'echarts-for-react';
 import type { ComponentRegistry } from '../componentContext';
 import { ActivateWrapper, CardContent } from '../componentHelpers';
@@ -6,6 +6,14 @@ import DropArea from '../../../components/DropArea';
 import { LIST_PREVIEW_DATA } from '../../../constants/componentBuilder';
 import { CHART_COMPONENT_TYPE_MAP, ECHART_COMPONENT_TYPES } from '../../../constants/echart';
 import { getTabsPanelSlotKey, getTabsSlotNodeByValue } from '../../utils/tabs';
+import {
+  getCollapseHeaderSlotKey,
+  getCollapseHeaderSlotNodeByValue,
+  getCollapsePanelSlotKey,
+  getCollapsePanelSlotNodeByValue,
+  normalizeCollapseList,
+  normalizeCollapseValue,
+} from '../../utils/collapse';
 import { buildEChartOption, normalizeEChartDataSource } from '../../../utils/echart';
 import { ensureBuiltInChinaMap } from '../../../utils/echartMap';
 
@@ -453,6 +461,77 @@ export function registerDataComponents(registry: ComponentRegistry): void {
           value={activeTabValue as any}
           onChange={(value) => { setTabsInnerValue(value as string | number); }}
         />
+      </ActivateWrapper>
+    );
+  });
+
+  registry.set('Collapse', (ctx) => {
+    const {
+      data, onDropData, getProp, getStringProp, getBooleanProp, mergeStyle, handleActivateSelf, isNodeActive,
+    } = ctx;
+    const collapseList = normalizeCollapseList(getProp('list'));
+    const controlledValue = normalizeCollapseValue(getProp('value'));
+    const defaultValue = normalizeCollapseValue(getProp('defaultValue'));
+    const firstValue = collapseList[0]?.value;
+    const toCollapseValueArray = (value: unknown) => {
+      const normalized = normalizeCollapseValue(value);
+      if (typeof normalized === 'undefined') {
+        return undefined;
+      }
+      return Array.isArray(normalized) ? normalized : [normalized];
+    };
+    const controlledValueArray = toCollapseValueArray(controlledValue);
+    const defaultValueArray = toCollapseValueArray(defaultValue);
+    const collapseValueProps = typeof controlledValue !== 'undefined'
+      ? { value: controlledValueArray as any }
+      : { defaultValue: (defaultValueArray ?? (typeof firstValue !== 'undefined' ? [firstValue] : undefined)) as any };
+
+    return (
+      <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf} nodeKey={data?.key} active={isNodeActive}>
+        <Collapse
+          {...collapseValueProps}
+          disabled={getBooleanProp('disabled')}
+          borderless={getBooleanProp('bordered') === false}
+          expandMutex={getBooleanProp('expandMutex')}
+          defaultExpandAll={getBooleanProp('defaultExpandAll')}
+          expandIconPlacement={getStringProp('expandIconPlacement') as any}
+          onChange={() => { /* 搭建态仅展示 */ }}
+          style={mergeStyle()}
+        >
+          {collapseList.map((item) => {
+            const headerSlotNode = getCollapseHeaderSlotNodeByValue(data, item.value);
+            const panelSlotNode = getCollapsePanelSlotNodeByValue(data, item.value);
+            const headerSlotKey = getCollapseHeaderSlotKey(item.value);
+            const panelSlotKey = getCollapsePanelSlotKey(item.value);
+            return (
+              <Collapse.Panel
+                key={`${data?.key ?? 'collapse'}-${String(item.value)}`}
+                value={item.value as any}
+                disabled={item.disabled}
+                destroyOnCollapse={item.destroyOnCollapse}
+                header={(
+                  <DropArea
+                    data={headerSlotNode}
+                    onDropData={onDropData}
+                    dropSlotKey={headerSlotKey}
+                    selectable={false}
+                    compactWhenFilled
+                    emptyText={`拖拽组件到「${item.label}」头部`}
+                  />
+                )}
+              >
+                <DropArea
+                  data={panelSlotNode}
+                  onDropData={onDropData}
+                  dropSlotKey={panelSlotKey}
+                  selectable={false}
+                  compactWhenFilled
+                  emptyText={`拖拽组件到「${item.label}」内容`}
+                />
+              </Collapse.Panel>
+            );
+          })}
+        </Collapse>
       </ActivateWrapper>
     );
   });

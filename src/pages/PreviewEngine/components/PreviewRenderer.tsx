@@ -1,5 +1,5 @@
 import React from 'react';
-import { Avatar, Button, Card, Col, Divider, Image, Row, Space, Switch, Swiper, Typography, Layout, Calendar, ColorPicker, TimePicker, TimeRangePicker, InputNumber, Slider, Steps, List, Link, Tabs, BackTop, Menu, Drawer, Progress, Upload, Input, Textarea, Table, Statistic } from 'tdesign-react';
+import { Avatar, Button, Card, Col, Divider, Image, Row, Space, Switch, Swiper, Typography, Layout, Calendar, ColorPicker, TimePicker, TimeRangePicker, InputNumber, Slider, Steps, List, Link, Tabs, BackTop, Menu, Drawer, Progress, Upload, Input, Textarea, Table, Statistic, Collapse } from 'tdesign-react';
 import ReactECharts from 'echarts-for-react';
 import type { Edge, Node } from '@xyflow/react';
 import type { UiTreeNode } from '../../../builder/store/types';
@@ -9,6 +9,12 @@ import type { ComponentLifecycleHandler, ListRecord, SwiperImageItem } from '../
 import { CORE_LIFETIMES, LIST_PREVIEW_DATA } from '../../../constants/componentBuilder';
 import { renderNamedIcon } from '../../../constants/iconRegistry';
 import { getTabsSlotNodeByValue, normalizeTabsList, normalizeTabsValue } from '../../../builder/utils/tabs';
+import {
+  getCollapseHeaderSlotNodeByValue,
+  getCollapsePanelSlotNodeByValue,
+  normalizeCollapseList,
+  normalizeCollapseValue,
+} from '../../../builder/utils/collapse';
 import { createPreviewDataHub } from '../runtime/dataHub';
 import { createPreviewFlowRuntime, type PreviewFlowRuntime } from '../runtime/flowRuntime';
 import { getDataConstantList } from '../../../api/dataConstant';
@@ -1490,6 +1496,7 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) 
   const suppressNextControlledPropEventRef = React.useRef(false);
   const expectedControlledSwitchValueRef = React.useRef<boolean | undefined>(undefined);
   const [tabsInnerValue, setTabsInnerValue] = React.useState<string | number | undefined>(undefined);
+  const [collapseInnerValue, setCollapseInnerValue] = React.useState<string | number | Array<string | number> | undefined>(undefined);
   const hasLifetime = React.useCallback(
     (lifetime: string) => lifetimes.includes(lifetime),
     [lifetimes],
@@ -1648,6 +1655,7 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) 
 
   React.useEffect(() => {
     setTabsInnerValue(undefined);
+    setCollapseInnerValue(undefined);
   }, [node.key]);
 
   React.useEffect(() => {
@@ -2083,6 +2091,58 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) 
               emitInteractionLifecycle('onChange', { value });
             }}
           />
+        </div>
+      );
+    }
+    case 'Collapse': {
+      const collapseList = normalizeCollapseList(getProp(node, 'list'));
+      const controlledValue = normalizeCollapseValue(getProp(node, 'value'));
+      const defaultValue = normalizeCollapseValue(getProp(node, 'defaultValue'));
+      const firstValue = collapseList[0]?.value;
+      const toCollapseValueArray = (value: unknown) => {
+        const normalized = normalizeCollapseValue(value);
+        if (typeof normalized === 'undefined') {
+          return undefined;
+        }
+        return Array.isArray(normalized) ? normalized : [normalized];
+      };
+      const activeValue = toCollapseValueArray(controlledValue ?? collapseInnerValue ?? defaultValue)
+        ?? (typeof firstValue !== 'undefined' ? [firstValue] : undefined);
+
+      return (
+        <div style={mergeStyle()}>
+          <Collapse
+            value={activeValue as any}
+            disabled={getBooleanProp(node, 'disabled')}
+            borderless={getBooleanProp(node, 'bordered') === false}
+            expandMutex={getBooleanProp(node, 'expandMutex')}
+            defaultExpandAll={getBooleanProp(node, 'defaultExpandAll')}
+            expandIconPlacement={getStringProp(node, 'expandIconPlacement') as any}
+            onChange={(value) => {
+              setCollapseInnerValue(value as Array<string | number>);
+              emitInteractionLifecycle('onChange', { value });
+            }}
+            style={mergeStyle()}
+          >
+            {collapseList.map((item) => {
+              const headerSlotNode = getCollapseHeaderSlotNodeByValue(node, item.value);
+              const panelSlotNode = getCollapsePanelSlotNodeByValue(node, item.value);
+              const headerChildren = headerSlotNode ? renderChildList(headerSlotNode.children ?? [], onLifecycle) : null;
+              const panelChildren = panelSlotNode ? renderChildList(panelSlotNode.children ?? [], onLifecycle) : null;
+
+              return (
+                <Collapse.Panel
+                  key={`${node.key}-collapse-panel-${String(item.value)}`}
+                  value={item.value as any}
+                  disabled={item.disabled}
+                  destroyOnCollapse={item.destroyOnCollapse}
+                  header={headerChildren || item.label}
+                >
+                  {panelChildren}
+                </Collapse.Panel>
+              );
+            })}
+          </Collapse>
         </div>
       );
     }

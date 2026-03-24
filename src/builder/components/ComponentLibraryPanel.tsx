@@ -114,6 +114,7 @@ const getCategoryByType = (type: string): ComponentLibraryCategory => {
     || type === 'List'
     || ECHART_COMPONENT_TYPES.has(type)
     || type === 'Tabs'
+    || type === 'Collapse'
     || type === 'Steps'
     || type === 'Steps.Item'
     || type === 'Swiper'
@@ -223,6 +224,7 @@ const getIconByType = (type: string) => {
     InputNumber: Hash,
     Slider: SlidersHorizontal,
     Tabs: ListOrdered,
+    Collapse: ListOrdered,
     Steps: ListOrdered,
     'Steps.Item': ListOrdered,
     List,
