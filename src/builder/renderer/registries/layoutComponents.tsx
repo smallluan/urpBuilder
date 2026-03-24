@@ -1,3 +1,4 @@
+import React from 'react';
 import { Col, Layout } from 'tdesign-react';
 import type { ComponentRegistry } from '../componentContext';
 import { SpaceContent, RowContent } from '../componentHelpers';
@@ -6,6 +7,76 @@ import DropArea from '../../../components/DropArea';
 const { Header, Content, Aside, Footer } = Layout;
 
 export function registerLayoutComponents(registry: ComponentRegistry): void {
+  registry.set('Flex', (ctx) => {
+    const { data, onDropData, getStringProp, getBooleanProp, getNumberProp, mergeStyle } = ctx;
+    return (
+      <div
+        style={mergeStyle({
+          display: 'flex',
+          flexDirection: (getStringProp('direction') as React.CSSProperties['flexDirection']) ?? 'row',
+          justifyContent: (getStringProp('justify') as React.CSSProperties['justifyContent']) ?? 'flex-start',
+          alignItems: (getStringProp('align') as React.CSSProperties['alignItems']) ?? 'stretch',
+          flexWrap: getBooleanProp('wrap') ? 'wrap' : 'nowrap',
+          gap: getNumberProp('gap') ?? 8,
+        })}
+      >
+        <DropArea data={data} onDropData={onDropData} />
+      </div>
+    );
+  });
+
+  registry.set('Flex.Item', (ctx) => {
+    const { data, onDropData, getStringProp, getNumberProp, mergeStyle } = ctx;
+    return (
+      <div
+        style={mergeStyle({
+          flexGrow: getNumberProp('grow') ?? 0,
+          flexShrink: getNumberProp('shrink') ?? 1,
+          flexBasis: getStringProp('basis') || 'auto',
+          alignSelf: (getStringProp('alignSelf') as React.CSSProperties['alignSelf']) || undefined,
+          minWidth: 0,
+        })}
+      >
+        <DropArea data={data} onDropData={onDropData} />
+      </div>
+    );
+  });
+
+  registry.set('Stack', (ctx) => {
+    const { data, onDropData, getStringProp, getNumberProp, mergeStyle } = ctx;
+    return (
+      <div
+        style={mergeStyle({
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: (getStringProp('justify') as React.CSSProperties['justifyContent']) ?? 'flex-start',
+          alignItems: (getStringProp('align') as React.CSSProperties['alignItems']) ?? 'stretch',
+          gap: getNumberProp('gap') ?? 8,
+        })}
+      >
+        <DropArea data={data} onDropData={onDropData} />
+      </div>
+    );
+  });
+
+  registry.set('Inline', (ctx) => {
+    const { data, onDropData, getStringProp, getBooleanProp, getNumberProp, mergeStyle } = ctx;
+    return (
+      <div
+        style={mergeStyle({
+          display: 'flex',
+          flexDirection: 'row',
+          justifyContent: (getStringProp('justify') as React.CSSProperties['justifyContent']) ?? 'flex-start',
+          alignItems: (getStringProp('align') as React.CSSProperties['alignItems']) ?? 'center',
+          flexWrap: getBooleanProp('wrap') ? 'wrap' : 'nowrap',
+          gap: getNumberProp('gap') ?? 8,
+        })}
+      >
+        <DropArea data={data} onDropData={onDropData} />
+      </div>
+    );
+  });
+
   registry.set('Space', (ctx) => {
     const {
       data, onDropData, getStringProp, getNumberProp, getBooleanProp, mergeStyle,

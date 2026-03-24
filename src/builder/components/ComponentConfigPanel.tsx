@@ -483,6 +483,7 @@ const ComponentConfigPanel: React.FC = () => {
   const { readOnly, readOnlyReason } = useBuilderAccess();
   const { workspaceMode, currentTeamId } = useTeam();
   const activeNode = useStore((state) => state.activeNode);
+  const activeNodeKey = useStore((state) => state.activeNodeKey);
   const uiPageData = useStore((state) => state.uiPageData);
   const updateActiveNodeLabel = useStore((state) => state.updateActiveNodeLabel);
   const updateActiveNodeKey = useStore((state) => state.updateActiveNodeKey);
@@ -1478,7 +1479,12 @@ const ComponentConfigPanel: React.FC = () => {
               compact
               targetKey={activeNode.key}
               value={styleValue}
-              onChange={(nextStyle: Record<string, unknown>) => updateActiveNodeProp('__style', nextStyle)}
+              onChange={(nextStyle: Record<string, unknown>) => {
+                if (!activeNode || activeNode.key !== activeNodeKey) {
+                  return;
+                }
+                updateActiveNodeProp('__style', nextStyle);
+              }}
             />
           </div>
         </Tabs.TabPanel>

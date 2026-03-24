@@ -29,7 +29,7 @@ const NodeStyleDrawer: React.FC<NodeStyleDrawerProps> = ({
 
       <Drawer
         visible={visible}
-        header="样式编辑器"
+        header="CSS 样式编辑器"
         placement="right"
         size="720px"
         closeBtn

@@ -3,6 +3,7 @@ import type { UiTreeNode } from '../store/types';
 import type { ListRecord, SwiperImageItem } from '../../types/component';
 import { normalizeTabsList, normalizeTabsValue } from '../utils/tabs';
 import { renderNamedIcon } from '../../constants/iconRegistry';
+import { resolveSimulatorStyle } from '../utils/simulatorStyle';
 
 // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 export function createPropAccessors(data: UiTreeNode | undefined) {
@@ -39,7 +40,7 @@ export function createPropAccessors(data: UiTreeNode | undefined) {
   const getStyleProp = () => {
     const value = getProp('__style');
     if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
-    return value as React.CSSProperties;
+    return resolveSimulatorStyle(value as React.CSSProperties, { mapFixedToAbsolute: true });
   };
 
   const inlineStyle = getStyleProp();

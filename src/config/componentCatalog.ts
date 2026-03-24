@@ -843,6 +843,134 @@ const componentCatalog = [
     }
   },
   {
+    type: 'Flex',
+    name: 'Flex容器',
+    props: {
+      direction: {
+        name: '主轴方向',
+        value: 'row',
+        editType: 'select',
+        payload: {
+          options: ['row', 'column', 'row-reverse', 'column-reverse'],
+        },
+      },
+      justify: {
+        name: '主轴对齐',
+        value: 'flex-start',
+        editType: 'select',
+        payload: {
+          options: ['flex-start', 'center', 'flex-end', 'space-between', 'space-around', 'space-evenly'],
+        },
+      },
+      align: {
+        name: '交叉轴对齐',
+        value: 'stretch',
+        editType: 'select',
+        payload: {
+          options: ['stretch', 'flex-start', 'center', 'flex-end', 'baseline'],
+        },
+      },
+      wrap: {
+        name: '换行',
+        value: false,
+        editType: 'switch',
+      },
+      gap: {
+        name: '间距',
+        value: 8,
+        editType: 'inputNumber',
+      },
+    },
+  },
+  {
+    type: 'Flex.Item',
+    name: 'Flex子项',
+    props: {
+      grow: {
+        name: '放大系数',
+        value: 0,
+        editType: 'inputNumber',
+      },
+      shrink: {
+        name: '缩小系数',
+        value: 1,
+        editType: 'inputNumber',
+      },
+      basis: {
+        name: '基础尺寸',
+        value: 'auto',
+        editType: 'input',
+      },
+      alignSelf: {
+        name: '自身对齐',
+        value: '',
+        editType: 'select',
+        payload: {
+          options: ['', 'auto', 'stretch', 'flex-start', 'center', 'flex-end', 'baseline'],
+        },
+      },
+    },
+  },
+  {
+    type: 'Stack',
+    name: '纵向堆叠',
+    props: {
+      justify: {
+        name: '主轴对齐',
+        value: 'flex-start',
+        editType: 'select',
+        payload: {
+          options: ['flex-start', 'center', 'flex-end', 'space-between', 'space-around', 'space-evenly'],
+        },
+      },
+      align: {
+        name: '交叉轴对齐',
+        value: 'stretch',
+        editType: 'select',
+        payload: {
+          options: ['stretch', 'flex-start', 'center', 'flex-end', 'baseline'],
+        },
+      },
+      gap: {
+        name: '间距',
+        value: 8,
+        editType: 'inputNumber',
+      },
+    },
+  },
+  {
+    type: 'Inline',
+    name: '横向排列',
+    props: {
+      justify: {
+        name: '主轴对齐',
+        value: 'flex-start',
+        editType: 'select',
+        payload: {
+          options: ['flex-start', 'center', 'flex-end', 'space-between', 'space-around', 'space-evenly'],
+        },
+      },
+      align: {
+        name: '交叉轴对齐',
+        value: 'center',
+        editType: 'select',
+        payload: {
+          options: ['stretch', 'flex-start', 'center', 'flex-end', 'baseline'],
+        },
+      },
+      wrap: {
+        name: '换行',
+        value: false,
+        editType: 'switch',
+      },
+      gap: {
+        name: '间距',
+        value: 8,
+        editType: 'inputNumber',
+      },
+    },
+  },
+  {
     type: 'Space',
     name: '间隔',
     props: {

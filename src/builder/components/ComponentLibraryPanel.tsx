@@ -107,6 +107,21 @@ const getCategoryByType = (type: string): ComponentLibraryCategory => {
   }
 
   if (
+    type === 'Flex'
+    || type === 'Flex.Item'
+    || type === 'Stack'
+    || type === 'Inline'
+    || type === 'Space'
+    || type.startsWith('Grid.')
+    || type.startsWith('Layout.')
+    || type === 'Layout'
+    || type === 'RouteOutlet'
+    || type === 'ComponentSlotOutlet'
+  ) {
+    return 'layout';
+  }
+
+  if (
     type === 'Image'
     || type === 'Avatar'
     || type === 'Calendar'
@@ -120,17 +135,6 @@ const getCategoryByType = (type: string): ComponentLibraryCategory => {
     || type === 'Swiper'
   ) {
     return 'text';
-  }
-
-  if (
-    type === 'Space'
-    || type.startsWith('Grid.')
-    || type.startsWith('Layout.')
-    || type === 'Layout'
-    || type === 'RouteOutlet'
-    || type === 'ComponentSlotOutlet'
-  ) {
-    return 'layout';
   }
 
   if (type === 'BackTop') {
@@ -189,6 +193,10 @@ const getIconByType = (type: string) => {
     'Menu.Group': ListOrdered,
     Icon: Star,
     Space: GripHorizontal,
+    Flex: GripHorizontal,
+    'Flex.Item': Columns3,
+    Stack: Rows3,
+    Inline: GripHorizontal,
     'Grid.Row': Rows3,
     'Grid.Col': Columns3,
     RouteOutlet: RectangleHorizontal,

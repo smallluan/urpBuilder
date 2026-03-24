@@ -20,6 +20,7 @@ import {
   subscribeTreeClipboard,
   type TreeClipboardPayload,
 } from '../utils/treeClipboard';
+import { resolveSimulatorStyle } from '../utils/simulatorStyle';
 
 const { Text } = Typography;
 
@@ -27,6 +28,10 @@ const GRID_COL_COMPONENT_SCHEMA = componentCatalog.find((item) => item.type === 
 
 const CONTAINER_NODE_TYPES = new Set([
   'Space',
+  'Flex',
+  'Flex.Item',
+  'Stack',
+  'Inline',
   'Steps',
   'Drawer',
   'Upload',
@@ -327,7 +332,7 @@ const ComponentBody: React.FC = () => {
   const recordFlowEditHistory = useStore((state) => state.recordFlowEditHistory);
   const updateActiveNodeProp = useStore((state) => state.updateActiveNodeProp);
   const hiddenHintKeyRef = useRef<string | null>(null);
-  const pulseCleanupRef = useRef<(() => void) | null>(null);
+  const simulatorContainerRef = useRef<HTMLDivElement | null>(null);
   const [contextMenuState, setContextMenuState] = useState<{
     visible: boolean;
     nodeKey: string | null;
@@ -432,7 +437,33 @@ const ComponentBody: React.FC = () => {
       boxSizing: 'content-box',
       display: 'flex',
       overflow: 'auto',
-      position: 'relative'
+      position: 'relative',
+      isolation: 'isolate',
+    };
+  }, [screenSize, autoWidth]);
+
+  useEffect(() => {
+    const host = simulatorContainerRef.current;
+    if (!host) {
+      return;
+    }
+
+    const applyViewportVariables = () => {
+      const nextWidth = host.clientWidth;
+      const nextHeight = host.clientHeight;
+      if (nextWidth > 0) {
+        host.style.setProperty('--builder-vw', `${nextWidth / 100}px`);
+      }
+      if (nextHeight > 0) {
+        host.style.setProperty('--builder-vh', `${nextHeight / 100}px`);
+      }
+    };
+
+    applyViewportVariables();
+    const resizeObserver = new ResizeObserver(() => applyViewportVariables());
+    resizeObserver.observe(host);
+    return () => {
+      resizeObserver.disconnect();
     };
   }, [screenSize, autoWidth]);
 
@@ -471,31 +502,6 @@ const ComponentBody: React.FC = () => {
       return;
     }
 
-    if (pulseCleanupRef.current) {
-      pulseCleanupRef.current();
-      pulseCleanupRef.current = null;
-    }
-
-    target.classList.remove('builder-node-anchor--pulse');
-    void target.offsetWidth;
-    target.classList.add('builder-node-anchor--pulse');
-
-    const handlePulseAnimationEnd = () => {
-      target.classList.remove('builder-node-anchor--pulse');
-      target.removeEventListener('animationend', handlePulseAnimationEnd);
-      if (pulseCleanupRef.current === cleanupPulse) {
-        pulseCleanupRef.current = null;
-      }
-    };
-
-    const cleanupPulse = () => {
-      target.classList.remove('builder-node-anchor--pulse');
-      target.removeEventListener('animationend', handlePulseAnimationEnd);
-    };
-
-    pulseCleanupRef.current = cleanupPulse;
-    target.addEventListener('animationend', handlePulseAnimationEnd);
-
     const simulatorContainer = document.querySelector<HTMLElement>('[data-builder-scroll-container="true"]');
     if (!simulatorContainer) {
       target.scrollIntoView({ block: 'center', inline: 'center', behavior: 'smooth' });
@@ -514,15 +520,6 @@ const ComponentBody: React.FC = () => {
       target.scrollIntoView({ block: 'center', inline: 'center', behavior: 'smooth' });
     }
   }, [activeNodeKey]);
-
-  useEffect(() => {
-    return () => {
-      if (pulseCleanupRef.current) {
-        pulseCleanupRef.current();
-        pulseCleanupRef.current = null;
-      }
-    };
-  }, []);
 
   const contextMenuNode = useMemo(() => {
     if (!contextMenuState.nodeKey) {
@@ -939,10 +936,16 @@ const ComponentBody: React.FC = () => {
 
   return (
     <div className="component-body">
-      <div className="simulator-container" data-builder-scroll-container="true" style={simulatorStyle} onContextMenu={handleCanvasContextMenu}>
+      <div
+        ref={simulatorContainerRef}
+        className="simulator-container"
+        data-builder-scroll-container="true"
+        style={simulatorStyle}
+        onContextMenu={handleCanvasContextMenu}
+      >
         <DropArea
           className="drop-area-root"
-          style={{ minHeight: '100%', height: 'auto', flex: '0 0 auto' }}
+          style={resolveSimulatorStyle({ minHeight: '100%', height: 'auto', flex: '0 0 auto' })}
           data={uiPageData}
           onDropData={handleDropData}
           selectable={false}

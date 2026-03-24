@@ -13,14 +13,30 @@ export interface ActivateWrapperProps {
 }
 
 export const ActivateWrapper: React.FC<ActivateWrapperProps> = ({ children, style, onActivate, nodeKey, active }) => (
-  <div
-    style={style}
-    onClick={onActivate}
-    data-builder-node-key={nodeKey || undefined}
-    className={`builder-node-anchor${active ? ' builder-node-anchor--active' : ''}`}
-  >
-    {children}
-  </div>
+  (() => {
+    const onlyChild = React.Children.count(children) === 1 ? React.Children.only(children) : null;
+    if (React.isValidElement(onlyChild)) {
+      const childProps = (onlyChild.props ?? {}) as Record<string, unknown>;
+      const originalClassName = typeof childProps.className === 'string' ? childProps.className : '';
+      const mergedClassName = `${originalClassName} builder-node-anchor${active ? ' builder-node-anchor--active' : ''}`.trim();
+      const originalStyle = (childProps.style as React.CSSProperties | undefined) ?? {};
+      const originalOnClick = childProps.onClick as ((event: React.MouseEvent<HTMLElement>) => void) | undefined;
+      return React.cloneElement(onlyChild as React.ReactElement<Record<string, unknown>>, {
+        ...childProps,
+        style: { ...originalStyle, ...(style ?? {}) },
+        className: mergedClassName,
+        onClick: (event: React.MouseEvent<HTMLElement>) => {
+          onActivate(event);
+          if (originalOnClick) {
+            originalOnClick(event);
+          }
+        },
+        'data-builder-node-key': nodeKey || undefined,
+      });
+    }
+
+    return <>{children}</>;
+  })()
 );
 
 /** Space 组件包裹层，含 split 功能 */

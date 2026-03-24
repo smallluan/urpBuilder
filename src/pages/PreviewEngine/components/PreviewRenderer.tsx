@@ -36,6 +36,7 @@ import {
   resolveExposedLifecycleMappings,
   resolveExposedLifecycles,
 } from '../../../utils/customComponentRuntime';
+import { resolveSimulatorStyle } from '../../../builder/utils/simulatorStyle';
 
 interface PreviewRendererProps {
   node: UiTreeNode;
@@ -171,7 +172,7 @@ const getStyleProp = (node: UiTreeNode) => {
     return undefined;
   }
 
-  return value as React.CSSProperties;
+  return resolveSimulatorStyle(value as React.CSSProperties);
 };
 
 const getStringArrayProp = (node: UiTreeNode, propName: string) => {
@@ -2205,6 +2206,64 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) 
         </div>
       );
     }
+    case 'Flex':
+      return (
+        <div
+          style={mergeStyle({
+            display: 'flex',
+            flexDirection: (getStringProp(node, 'direction') as React.CSSProperties['flexDirection']) ?? 'row',
+            justifyContent: (getStringProp(node, 'justify') as React.CSSProperties['justifyContent']) ?? 'flex-start',
+            alignItems: (getStringProp(node, 'align') as React.CSSProperties['alignItems']) ?? 'stretch',
+            flexWrap: getBooleanProp(node, 'wrap') ? 'wrap' : 'nowrap',
+            gap: getNumberProp(node, 'gap') ?? 8,
+          })}
+        >
+          {renderChildren(node, onLifecycle)}
+        </div>
+      );
+    case 'Flex.Item':
+      return (
+        <div
+          style={mergeStyle({
+            flexGrow: getNumberProp(node, 'grow') ?? 0,
+            flexShrink: getNumberProp(node, 'shrink') ?? 1,
+            flexBasis: getStringProp(node, 'basis') || 'auto',
+            alignSelf: (getStringProp(node, 'alignSelf') as React.CSSProperties['alignSelf']) || undefined,
+            minWidth: 0,
+          })}
+        >
+          {renderChildren(node, onLifecycle)}
+        </div>
+      );
+    case 'Stack':
+      return (
+        <div
+          style={mergeStyle({
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: (getStringProp(node, 'justify') as React.CSSProperties['justifyContent']) ?? 'flex-start',
+            alignItems: (getStringProp(node, 'align') as React.CSSProperties['alignItems']) ?? 'stretch',
+            gap: getNumberProp(node, 'gap') ?? 8,
+          })}
+        >
+          {renderChildren(node, onLifecycle)}
+        </div>
+      );
+    case 'Inline':
+      return (
+        <div
+          style={mergeStyle({
+            display: 'flex',
+            flexDirection: 'row',
+            justifyContent: (getStringProp(node, 'justify') as React.CSSProperties['justifyContent']) ?? 'flex-start',
+            alignItems: (getStringProp(node, 'align') as React.CSSProperties['alignItems']) ?? 'center',
+            flexWrap: getBooleanProp(node, 'wrap') ? 'wrap' : 'nowrap',
+            gap: getNumberProp(node, 'gap') ?? 8,
+          })}
+        >
+          {renderChildren(node, onLifecycle)}
+        </div>
+      );
     case 'Grid.Row':
       return (
         <Row
