@@ -1460,11 +1460,7 @@ function PreviewCustomComponentRenderer({
   }
 
   return (
-    <>
-      {(renderTree.children ?? []).map((child) => (
-        <PreviewRenderer key={child.key} node={child} onLifecycle={handleInnerLifecycle} />
-      ))}
-    </>
+    <PreviewRenderer key={renderTree.key} node={renderTree} onLifecycle={handleInnerLifecycle} />
   );
 }
 
@@ -1698,6 +1694,16 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) 
 
   if (visible === false && !isDrawerNode) {
     return null;
+  }
+
+  // 根节点在搭建态可通过 DropArea 承载 __style，预览态需要显式兜底渲染，
+  // 否则 type 为空字符串时会丢失布局样式（例如 flex/column/gap）。
+  if (!type) {
+    return (
+      <div style={mergeStyle()} className="preview-page-root" data-preview-page-root>
+        {renderChildren(node, onLifecycle)}
+      </div>
+    );
   }
 
   const renderPreviewMenuNodes = (nodes?: UiTreeNode[]): React.ReactNode => {

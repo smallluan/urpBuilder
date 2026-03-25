@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import cloneDeep from 'lodash/cloneDeep';
+import { computePosition, flip, offset, shift } from '@floating-ui/dom';
 import { v4 as uuidv4 } from 'uuid';
 import type { Edge, Node as FlowNode } from '@xyflow/react';
 import { Button, Divider, Input, Row, Space, Tree, Typography, MessagePlugin } from 'tdesign-react';
@@ -435,8 +436,10 @@ const ComponentAsideLeft: React.FC = () => {
     y: 0,
   });
   const contextMenuRef = useRef<HTMLDivElement | null>(null);
+  const contextMenuAnchorRef = useRef<{ x: number; y: number } | null>(null);
 
   const closeContextMenu = () => {
+    contextMenuAnchorRef.current = null;
     setContextMenuState((previous) => {
       if (!previous.visible) {
         return previous;
@@ -458,6 +461,10 @@ const ComponentAsideLeft: React.FC = () => {
     event.preventDefault();
     event.stopPropagation();
     setActiveNode(nodeKey);
+    contextMenuAnchorRef.current = {
+      x: event.clientX,
+      y: event.clientY,
+    };
 
     setContextMenuState({
       visible: true,
@@ -919,6 +926,34 @@ const ComponentAsideLeft: React.FC = () => {
       window.removeEventListener('keydown', handleEscape);
       window.removeEventListener('resize', closeContextMenu);
     };
+  }, [contextMenuState.visible]);
+
+  useEffect(() => {
+    if (!contextMenuState.visible) {
+      return;
+    }
+    const menuElement = contextMenuRef.current;
+    const anchor = contextMenuAnchorRef.current;
+    if (!menuElement || !anchor) {
+      return;
+    }
+    const anchorX = anchor.x;
+    const anchorY = anchor.y;
+    const virtualAnchor = {
+      getBoundingClientRect: () => DOMRect.fromRect({ x: anchorX, y: anchorY, width: 0, height: 0 }),
+    };
+    void computePosition(virtualAnchor, menuElement, {
+      strategy: 'fixed',
+      placement: 'right-start',
+      middleware: [offset(4), flip({ padding: 8 }), shift({ padding: 8 })],
+    }).then(({ x, y }) => {
+      setContextMenuState((previous) => {
+        if (!previous.visible || previous.x !== anchorX || previous.y !== anchorY) {
+          return previous;
+        }
+        return { ...previous, x, y };
+      });
+    });
   }, [contextMenuState.visible]);
 
   useEffect(() => {

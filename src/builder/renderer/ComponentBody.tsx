@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import cloneDeep from 'lodash/cloneDeep';
+import { computePosition, flip, offset, shift } from '@floating-ui/dom';
 import { Button, Divider, MessagePlugin, Row, Space, Typography } from 'tdesign-react';
 import { Icon } from 'tdesign-icons-react';
 import { Palette, PlusSquare } from 'lucide-react';
@@ -345,9 +346,11 @@ const ComponentBody: React.FC = () => {
     y: 0,
   });
   const contextMenuRef = useRef<HTMLDivElement | null>(null);
+  const contextMenuAnchorRef = useRef<{ x: number; y: number } | null>(null);
   const [treeClipboard, setTreeClipboardState] = useState<TreeClipboardPayload | null>(() => getTreeClipboard());
 
   const closeContextMenu = () => {
+    contextMenuAnchorRef.current = null;
     setContextMenuState((previous) => {
       if (!previous.visible) {
         return previous;
@@ -691,6 +694,10 @@ const ComponentBody: React.FC = () => {
     event.preventDefault();
     event.stopPropagation();
     setActiveNode(nodeKey);
+    contextMenuAnchorRef.current = {
+      x: event.clientX,
+      y: event.clientY,
+    };
 
     setContextMenuState({
       visible: true,
@@ -726,6 +733,34 @@ const ComponentBody: React.FC = () => {
       window.removeEventListener('keydown', handleEscape);
       window.removeEventListener('resize', closeContextMenu);
     };
+  }, [contextMenuState.visible]);
+
+  useEffect(() => {
+    if (!contextMenuState.visible) {
+      return;
+    }
+    const menuElement = contextMenuRef.current;
+    const anchor = contextMenuAnchorRef.current;
+    if (!menuElement || !anchor) {
+      return;
+    }
+    const anchorX = anchor.x;
+    const anchorY = anchor.y;
+    const virtualAnchor = {
+      getBoundingClientRect: () => DOMRect.fromRect({ x: anchorX, y: anchorY, width: 0, height: 0 }),
+    };
+    void computePosition(virtualAnchor, menuElement, {
+      strategy: 'fixed',
+      placement: 'right-start',
+      middleware: [offset(4), flip({ padding: 8 }), shift({ padding: 8 })],
+    }).then(({ x, y }) => {
+      setContextMenuState((previous) => {
+        if (!previous.visible || previous.x !== anchorX || previous.y !== anchorY) {
+          return previous;
+        }
+        return { ...previous, x, y };
+      });
+    });
   }, [contextMenuState.visible]);
 
   useEffect(() => {
@@ -848,6 +883,15 @@ const ComponentBody: React.FC = () => {
     handlePasteNode(activeNode);
   };
 
+  const runDeleteActiveNode = () => {
+    if (!activeNode || !canOperateNode(activeNode)) {
+      MessagePlugin.info('请先选中可删除组件');
+      return;
+    }
+    removeFromUiPageData(activeNode.key);
+    MessagePlugin.success('已删除组件');
+  };
+
   useEffect(() => {
     const handleToolbarCommand = (event: Event) => {
       const customEvent = event as CustomEvent<{ command?: string }>;
@@ -907,6 +951,12 @@ const ComponentBody: React.FC = () => {
       if (withMeta && event.key.toLowerCase() === 'v' && !event.shiftKey) {
         if (!readOnly) {
           runPasteToActiveNode();
+        }
+      }
+      if (withMeta && event.key === 'Delete') {
+        event.preventDefault();
+        if (!readOnly) {
+          runDeleteActiveNode();
         }
       }
       if (event.altKey && activeNodeKey) {

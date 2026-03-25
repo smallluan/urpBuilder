@@ -57,6 +57,14 @@ const normalizeRoutePath = (value: string) => {
   return text.startsWith('/') ? text : `/${text}`;
 };
 
+const isEditableTarget = (target: EventTarget | null) => {
+  if (!(target instanceof HTMLElement)) {
+    return false;
+  }
+  const tagName = target.tagName.toLowerCase();
+  return tagName === 'input' || tagName === 'textarea' || target.isContentEditable;
+};
+
 const SCOPED_ID_CHECK_PAGE_SIZE = 200;
 const SCOPED_ID_CHECK_MAX_PAGES = 10;
 const MAX_TEAM_COMPONENT_VALIDATION_COUNT = 60;
@@ -475,6 +483,37 @@ const HeaderControls: React.FC<Props> = ({
       window.removeEventListener('builder:open-page-settings', handleEvent);
     };
   }, [enablePageRouteConfig, pageRouteConfig]);
+
+  useEffect(() => {
+    const handleGlobalHistoryHotkey = (event: KeyboardEvent) => {
+      const withMeta = event.ctrlKey || event.metaKey;
+      if (!withMeta || isEditableTarget(event.target)) {
+        return;
+      }
+
+      const key = event.key.toLowerCase();
+      if (key === 'z' && !event.shiftKey) {
+        if (!readOnly && canUndo) {
+          event.preventDefault();
+          undo();
+        }
+        return;
+      }
+
+      const isRedoHotkey = (key === 'z' && event.shiftKey) || key === 'y';
+      if (isRedoHotkey) {
+        if (!readOnly && canRedo) {
+          event.preventDefault();
+          redo();
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleGlobalHistoryHotkey);
+    return () => {
+      window.removeEventListener('keydown', handleGlobalHistoryHotkey);
+    };
+  }, [canRedo, canUndo, readOnly, redo, undo]);
 
   const handleApplyPageSettings = () => {
     const routePath = routeConfigDraft.routePath.trim();
