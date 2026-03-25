@@ -11,6 +11,7 @@ import DropArea from '../../components/DropArea';
 import { LIST_TEMPLATE_ALLOWED_TYPES } from '../../constants/componentBuilder';
 import { findNodePathByKey } from '../utils/tree';
 import NodeStyleDrawer from '../components/NodeStyleDrawer';
+import SimulatorSelectionOverlay from '../components/SimulatorSelectionOverlay';
 import componentCatalog from '../../config/componentCatalog';
 import { getNodeSlotKey, isSlotNode } from '../utils/slot';
 import { getTabsPanelSlotKey, normalizeTabsList, normalizeTabsValue } from '../utils/tabs';
@@ -22,6 +23,7 @@ import {
   type TreeClipboardPayload,
 } from '../utils/treeClipboard';
 import { resolveSimulatorStyle } from '../utils/simulatorStyle';
+import { getEffectiveBoundingRect, getScrollTargetForBuilderNode } from '../utils/builderNodeDomRect';
 
 const { Text } = Typography;
 
@@ -505,13 +507,15 @@ const ComponentBody: React.FC = () => {
       return;
     }
 
+    const scrollTarget = getScrollTargetForBuilderNode(target);
+
     const simulatorContainer = document.querySelector<HTMLElement>('[data-builder-scroll-container="true"]');
     if (!simulatorContainer) {
-      target.scrollIntoView({ block: 'center', inline: 'center', behavior: 'smooth' });
+      scrollTarget.scrollIntoView({ block: 'center', inline: 'center', behavior: 'smooth' });
       return;
     }
 
-    const targetRect = target.getBoundingClientRect();
+    const targetRect = getEffectiveBoundingRect(target);
     const containerRect = simulatorContainer.getBoundingClientRect();
     const outsideViewport =
       targetRect.top < containerRect.top
@@ -520,7 +524,7 @@ const ComponentBody: React.FC = () => {
       || targetRect.right > containerRect.right;
 
     if (outsideViewport) {
-      target.scrollIntoView({ block: 'center', inline: 'center', behavior: 'smooth' });
+      scrollTarget.scrollIntoView({ block: 'center', inline: 'center', behavior: 'smooth' });
     }
   }, [activeNodeKey]);
 
@@ -1000,6 +1004,7 @@ const ComponentBody: React.FC = () => {
           onDropData={handleDropData}
           selectable={false}
         />
+        <SimulatorSelectionOverlay scrollContainerRef={simulatorContainerRef} />
 
         {contextMenuState.visible && contextMenuNode ? (
           <div

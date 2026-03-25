@@ -2276,7 +2276,7 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) 
           align={getStringProp(node, 'align') as any}
           justify={getStringProp(node, 'justify') as any}
           gutter={getNumberProp(node, 'gutter')}
-          style={mergeStyle()}
+          style={mergeStyle({ width: '100%' })}
         >
           {renderChildren(node, onLifecycle)}
         </Row>

@@ -10,6 +10,34 @@
   align-items: stretch;
 }
 
+/* 子内容块级流排布，避免外层 flex 子项 stretch 拉宽叶子组件（与预览 Col 内直接子节点语义对齐） */
+.drop-area__body {
+  display: block;
+  width: 100%;
+  min-height: 0;
+  box-sizing: border-box;
+}
+
+/* 与预览对齐：根画布、路由出口外，DropArea 不生成布局盒（避免多一层 width:100% 的“外壳”挤压栅格等）。
+   须写在 .drop-area__body 默认规则之后，否则 display:block 会覆盖 display:contents。 */
+@supports (display: contents) {
+  .drop-area:not(.drop-area-root):not(.drop-area--route-outlet) {
+    display: contents;
+    width: auto;
+  }
+
+  .drop-area:not(.drop-area-root):not(.drop-area--route-outlet) > .drop-area__body {
+    display: contents;
+    width: auto;
+  }
+}
+
+.drop-area--drag-over-target {
+  outline: 2px solid rgba(0, 82, 217, 0.55);
+  outline-offset: 1px;
+  border-radius: 4px;
+}
+
 .drop-area--filled {
   min-height: 0;
   padding: 0;
@@ -25,14 +53,14 @@
   align-items: stretch;
 }
 
+.drop-area-root > .drop-area__body {
+  flex: 1 1 auto;
+  min-height: 100%;
+}
+
 .drop-area-active {
   border-color: #0052d9;
   background-color: #f2f3ff;
-}
-
-.drop-area-selected {
-  background-color: rgba(0, 82, 217, 0.04);
-  box-shadow: inset 0 0 0 1px rgba(0, 82, 217, 0.35);
 }
 
 .drop-area-empty {
@@ -50,7 +78,7 @@
   padding: 16px;
 }
 
-.drop-area-root .drop-area-empty {
+.drop-area-root .drop-area__body .drop-area-empty {
   width: 100%;
   height: 100%;
 }
@@ -62,9 +90,18 @@
 
 .builder-route-outlet > .drop-area--route-outlet {
   height: 100%;
+  display: flex;
+  flex-direction: column;
 }
 
-.builder-route-outlet > .drop-area--route-outlet .drop-area-empty {
+.builder-route-outlet > .drop-area--route-outlet > .drop-area__body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.builder-route-outlet > .drop-area--route-outlet .drop-area__body .drop-area-empty {
   flex: 1;
   min-height: 100%;
 }

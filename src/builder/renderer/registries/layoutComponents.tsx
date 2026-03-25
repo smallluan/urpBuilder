@@ -6,74 +6,132 @@ import DropArea from '../../../components/DropArea';
 
 const { Header, Content, Aside, Footer } = Layout;
 
+/**
+ * DropArea 布局宿主规范（与 Grid.Row + RowContent 一致）：
+ * - 禁止：外层 flex/grid 容器内只放一个 DropArea（flex 只会作用到 DropArea 一块，子树 gap 等失效）。
+ * - 必须：DropArea 的唯一子元素即「布局宿主」，由 DropArea cloneElement 将 data.children 注入为该子元素的 children。
+ * - __style：与 PreviewRenderer 同角色节点一致，合并到内层宿主（含 display:flex 的 div 或下方 Layout 外包的 div）。
+ */
+
+/** 预览态 Layout 为 div(__style) > Layout > children；className 供 DropArea 拖拽态 outline，勿删 */
+const BuilderLayoutRoot: React.FC<{ style?: React.CSSProperties; className?: string; children?: React.ReactNode }> = ({
+  style,
+  className,
+  children,
+}) => (
+  <div style={style} className={className}>
+    <Layout>{children}</Layout>
+  </div>
+);
+
+const BuilderLayoutHeaderRoot: React.FC<{ style?: React.CSSProperties; className?: string; children?: React.ReactNode }> = ({
+  style,
+  className,
+  children,
+}) => (
+  <div style={style} className={className}>
+    <Header>{children}</Header>
+  </div>
+);
+
+const BuilderLayoutContentRoot: React.FC<{ style?: React.CSSProperties; className?: string; children?: React.ReactNode }> = ({
+  style,
+  className,
+  children,
+}) => (
+  <div style={style} className={className}>
+    <Content>{children}</Content>
+  </div>
+);
+
+const BuilderLayoutAsideRoot: React.FC<{ style?: React.CSSProperties; className?: string; children?: React.ReactNode }> = ({
+  style,
+  className,
+  children,
+}) => (
+  <div style={style} className={className}>
+    <Aside>{children}</Aside>
+  </div>
+);
+
+const BuilderLayoutFooterRoot: React.FC<{ style?: React.CSSProperties; className?: string; children?: React.ReactNode }> = ({
+  style,
+  className,
+  children,
+}) => (
+  <div style={style} className={className}>
+    <Footer>{children}</Footer>
+  </div>
+);
+
 export function registerLayoutComponents(registry: ComponentRegistry): void {
   registry.set('Flex', (ctx) => {
     const { data, onDropData, getStringProp, getBooleanProp, getNumberProp, mergeStyle } = ctx;
     return (
-      <div
-        style={mergeStyle({
-          display: 'flex',
-          flexDirection: (getStringProp('direction') as React.CSSProperties['flexDirection']) ?? 'row',
-          justifyContent: (getStringProp('justify') as React.CSSProperties['justifyContent']) ?? 'flex-start',
-          alignItems: (getStringProp('align') as React.CSSProperties['alignItems']) ?? 'stretch',
-          flexWrap: getBooleanProp('wrap') ? 'wrap' : 'nowrap',
-          gap: getNumberProp('gap') ?? 8,
-        })}
-      >
-        <DropArea data={data} onDropData={onDropData} />
-      </div>
+      <DropArea data={data} onDropData={onDropData}>
+        <div
+          style={mergeStyle({
+            display: 'flex',
+            flexDirection: (getStringProp('direction') as React.CSSProperties['flexDirection']) ?? 'row',
+            justifyContent: (getStringProp('justify') as React.CSSProperties['justifyContent']) ?? 'flex-start',
+            alignItems: (getStringProp('align') as React.CSSProperties['alignItems']) ?? 'stretch',
+            flexWrap: getBooleanProp('wrap') ? 'wrap' : 'nowrap',
+            gap: getNumberProp('gap') ?? 8,
+          })}
+        />
+      </DropArea>
     );
   });
 
   registry.set('Flex.Item', (ctx) => {
     const { data, onDropData, getStringProp, getNumberProp, mergeStyle } = ctx;
     return (
-      <div
-        style={mergeStyle({
-          flexGrow: getNumberProp('grow') ?? 0,
-          flexShrink: getNumberProp('shrink') ?? 1,
-          flexBasis: getStringProp('basis') || 'auto',
-          alignSelf: (getStringProp('alignSelf') as React.CSSProperties['alignSelf']) || undefined,
-          minWidth: 0,
-        })}
-      >
-        <DropArea data={data} onDropData={onDropData} />
-      </div>
+      <DropArea data={data} onDropData={onDropData}>
+        <div
+          style={mergeStyle({
+            flexGrow: getNumberProp('grow') ?? 0,
+            flexShrink: getNumberProp('shrink') ?? 1,
+            flexBasis: getStringProp('basis') || 'auto',
+            alignSelf: (getStringProp('alignSelf') as React.CSSProperties['alignSelf']) || undefined,
+            minWidth: 0,
+          })}
+        />
+      </DropArea>
     );
   });
 
   registry.set('Stack', (ctx) => {
     const { data, onDropData, getStringProp, getNumberProp, mergeStyle } = ctx;
     return (
-      <div
-        style={mergeStyle({
-          display: 'flex',
-          flexDirection: 'column',
-          justifyContent: (getStringProp('justify') as React.CSSProperties['justifyContent']) ?? 'flex-start',
-          alignItems: (getStringProp('align') as React.CSSProperties['alignItems']) ?? 'stretch',
-          gap: getNumberProp('gap') ?? 8,
-        })}
-      >
-        <DropArea data={data} onDropData={onDropData} />
-      </div>
+      <DropArea data={data} onDropData={onDropData}>
+        <div
+          style={mergeStyle({
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: (getStringProp('justify') as React.CSSProperties['justifyContent']) ?? 'flex-start',
+            alignItems: (getStringProp('align') as React.CSSProperties['alignItems']) ?? 'stretch',
+            gap: getNumberProp('gap') ?? 8,
+          })}
+        />
+      </DropArea>
     );
   });
 
   registry.set('Inline', (ctx) => {
     const { data, onDropData, getStringProp, getBooleanProp, getNumberProp, mergeStyle } = ctx;
     return (
-      <div
-        style={mergeStyle({
-          display: 'flex',
-          flexDirection: 'row',
-          justifyContent: (getStringProp('justify') as React.CSSProperties['justifyContent']) ?? 'flex-start',
-          alignItems: (getStringProp('align') as React.CSSProperties['alignItems']) ?? 'center',
-          flexWrap: getBooleanProp('wrap') ? 'wrap' : 'nowrap',
-          gap: getNumberProp('gap') ?? 8,
-        })}
-      >
-        <DropArea data={data} onDropData={onDropData} />
-      </div>
+      <DropArea data={data} onDropData={onDropData}>
+        <div
+          style={mergeStyle({
+            display: 'flex',
+            flexDirection: 'row',
+            justifyContent: (getStringProp('justify') as React.CSSProperties['justifyContent']) ?? 'flex-start',
+            alignItems: (getStringProp('align') as React.CSSProperties['alignItems']) ?? 'center',
+            flexWrap: getBooleanProp('wrap') ? 'wrap' : 'nowrap',
+            gap: getNumberProp('gap') ?? 8,
+          })}
+        />
+      </DropArea>
     );
   });
 
@@ -85,7 +143,7 @@ export function registerLayoutComponents(registry: ComponentRegistry): void {
       spaceSplitDashed, spaceSplitAlign, spaceSplitContent,
     } = ctx;
     return (
-      <DropArea data={data} onDropData={onDropData} style={mergeStyle()}>
+      <DropArea data={data} onDropData={onDropData}>
         <SpaceContent
           align={getStringProp('align')}
           direction={spaceDirection}
@@ -131,45 +189,45 @@ export function registerLayoutComponents(registry: ComponentRegistry): void {
   registry.set('Layout', (ctx) => {
     const { data, onDropData, mergeStyle } = ctx;
     return (
-      <Layout style={mergeStyle()}>
-        <DropArea data={data} onDropData={onDropData} />
-      </Layout>
+      <DropArea data={data} onDropData={onDropData}>
+        <BuilderLayoutRoot style={mergeStyle()} />
+      </DropArea>
     );
   });
 
   registry.set('Layout.Header', (ctx) => {
     const { data, onDropData, mergeStyle } = ctx;
     return (
-      <Header style={mergeStyle()}>
-        <DropArea data={data} onDropData={onDropData} />
-      </Header>
+      <DropArea data={data} onDropData={onDropData}>
+        <BuilderLayoutHeaderRoot style={mergeStyle()} />
+      </DropArea>
     );
   });
 
   registry.set('Layout.Content', (ctx) => {
     const { data, onDropData, mergeStyle } = ctx;
     return (
-      <Content style={mergeStyle()}>
-        <DropArea data={data} onDropData={onDropData} />
-      </Content>
+      <DropArea data={data} onDropData={onDropData}>
+        <BuilderLayoutContentRoot style={mergeStyle()} />
+      </DropArea>
     );
   });
 
   registry.set('Layout.Aside', (ctx) => {
     const { data, onDropData, mergeStyle } = ctx;
     return (
-      <Aside style={mergeStyle()}>
-        <DropArea data={data} onDropData={onDropData} />
-      </Aside>
+      <DropArea data={data} onDropData={onDropData}>
+        <BuilderLayoutAsideRoot style={mergeStyle()} />
+      </DropArea>
     );
   });
 
   registry.set('Layout.Footer', (ctx) => {
     const { data, onDropData, mergeStyle } = ctx;
     return (
-      <Footer style={mergeStyle()}>
-        <DropArea data={data} onDropData={onDropData} />
-      </Footer>
+      <DropArea data={data} onDropData={onDropData}>
+        <BuilderLayoutFooterRoot style={mergeStyle()} />
+      </DropArea>
     );
   });
 

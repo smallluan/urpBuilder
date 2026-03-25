@@ -18,13 +18,13 @@ export const ActivateWrapper: React.FC<ActivateWrapperProps> = ({ children, styl
     if (React.isValidElement(onlyChild)) {
       const childProps = (onlyChild.props ?? {}) as Record<string, unknown>;
       const originalClassName = typeof childProps.className === 'string' ? childProps.className : '';
-      const mergedClassName = `${originalClassName} builder-node-anchor${active ? ' builder-node-anchor--active' : ''}`.trim();
+      const mergedClassName = originalClassName.trim();
       const originalStyle = (childProps.style as React.CSSProperties | undefined) ?? {};
       const originalOnClick = childProps.onClick as ((event: React.MouseEvent<HTMLElement>) => void) | undefined;
       return React.cloneElement(onlyChild as React.ReactElement<Record<string, unknown>>, {
         ...childProps,
         style: { ...originalStyle, ...(style ?? {}) },
-        className: mergedClassName,
+        className: mergedClassName || undefined,
         onClick: (event: React.MouseEvent<HTMLElement>) => {
           onActivate(event);
           if (originalOnClick) {
@@ -32,6 +32,7 @@ export const ActivateWrapper: React.FC<ActivateWrapperProps> = ({ children, styl
           }
         },
         'data-builder-node-key': nodeKey || undefined,
+        'data-builder-active': active ? 'true' : undefined,
       });
     }
 
@@ -52,6 +53,7 @@ export interface SpaceContentProps {
   spaceSplitAlign?: string;
   spaceSplitContent?: string;
   style?: React.CSSProperties;
+  className?: string;
   onActivate: (event: React.MouseEvent<HTMLElement>) => void;
   nodeKey?: string;
   active?: boolean;
@@ -60,14 +62,14 @@ export interface SpaceContentProps {
 export const SpaceContent: React.FC<SpaceContentProps> = ({
   children, align, direction, size, breakLine,
   isSpaceSplitEnabled, spaceSplitLayout, spaceSplitDashed, spaceSplitAlign, spaceSplitContent,
-  style, onActivate, nodeKey, active,
+  style, className, onActivate, nodeKey, active,
 }) => {
   const childrenList = React.Children.toArray(children);
 
   if (!isSpaceSplitEnabled || childrenList.length <= 1) {
     return (
       <ActivateWrapper style={style} onActivate={onActivate} nodeKey={nodeKey} active={active}>
-        <Space align={align as any} direction={direction as any} size={size} breakLine={breakLine}>
+        <Space className={className} align={align as any} direction={direction as any} size={size} breakLine={breakLine}>
           {children}
         </Space>
       </ActivateWrapper>
@@ -92,7 +94,7 @@ export const SpaceContent: React.FC<SpaceContentProps> = ({
 
   return (
     <ActivateWrapper style={style} onActivate={onActivate} nodeKey={nodeKey} active={active}>
-      <Space align={align as any} direction={direction as any} size={size} breakLine={breakLine}>
+      <Space className={className} align={align as any} direction={direction as any} size={size} breakLine={breakLine}>
         {mergedChildren}
       </Space>
     </ActivateWrapper>
@@ -106,10 +108,11 @@ export interface RowContentProps {
   justify?: string;
   gutter?: number;
   style?: React.CSSProperties;
+  className?: string;
 }
 
-export const RowContent: React.FC<RowContentProps> = ({ children, align, justify, gutter, style }) => (
-  <Row align={align as any} justify={justify as any} gutter={gutter} style={style}>
+export const RowContent: React.FC<RowContentProps> = ({ children, align, justify, gutter, style, className }) => (
+  <Row className={className} align={align as any} justify={justify as any} gutter={gutter} style={style}>
     {children}
   </Row>
 );
