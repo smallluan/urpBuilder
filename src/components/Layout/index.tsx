@@ -11,6 +11,7 @@ import {
   ApiIcon,
   SettingIcon,
   UserIcon,
+  ImageIcon,
 } from 'tdesign-icons-react';
 import { useAuth } from '../../auth/context';
 import { useTeam } from '../../team/context';
@@ -93,6 +94,11 @@ const AppLayout: React.FC = () => {
             key: '/data-cloud-function',
             icon: <CodeIcon />,
             title: '云函数',
+          },
+          {
+            key: '/data-assets',
+            icon: <ImageIcon />,
+            title: '素材管理',
           },
         ],
       },

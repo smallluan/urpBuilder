@@ -5,3 +5,4 @@ export * from './pageTemplate';
 export * from './dataConstant';
 export * from './cloudFunction';
 export * from './dataTable';
+export * from './assets';

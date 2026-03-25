@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { Button, Collapse, ColorPicker, Dialog, Empty, Input, InputNumber, Popup, Select, Slider, Space, Switch, Table, Tag, Tabs, Typography, Row, Textarea } from 'tdesign-react';
+import { Button, Collapse, ColorPicker, Dialog, Empty, Input, InputNumber, MessagePlugin, Popup, Select, Slider, Space, Switch, Table, Tag, Tabs, Typography, Row, Textarea } from 'tdesign-react';
 import { HelpCircleIcon, LayoutIcon } from 'tdesign-icons-react';
 import { useBuilderAccess, useBuilderContext } from '../context/BuilderContext';
 import type { UiTreeNode } from '../store/types';
 import { NodeStylePanel } from './NodeStylePanel';
 import { isSlotNode } from '../utils/slot';
 import CodeEditorDialog, { type CodeEditorValue } from './CodeEditorDialog';
+import AssetPickerModal from './AssetPickerModal';
 import { findNodePathByKey } from '../utils/tree';
 import {
   GRID_BREAKPOINTS,
@@ -34,6 +35,7 @@ import { getDataTableList, type DataTableRecord } from '../../api/dataTable';
 import { getCloudFunctionList, type CloudFunctionRecord } from '../../api/cloudFunction';
 import type { ComponentDataSourceType } from '../../types/dataSource';
 import { normalizeDataSourceConfig } from '../../types/dataSource';
+import { getMediaAssetUrlFromDrop } from '../../utils/mediaAssetDrag';
 
 type EditType =
   | 'switch'
@@ -514,6 +516,8 @@ const ComponentConfigPanel: React.FC = () => {
   const [jsonCodeTargetPropKey, setJsonCodeTargetPropKey] = useState<string | null>(null);
   const [gridResponsiveDialogVisible, setGridResponsiveDialogVisible] = useState(false);
   const [gridResponsiveDraft, setGridResponsiveDraft] = useState<GridResponsiveConfig>({});
+  const [assetPickerVisible, setAssetPickerVisible] = useState(false);
+  const [assetPickerTargetPropKey, setAssetPickerTargetPropKey] = useState<string | null>(null);
   const [activeBreakpoint, setActiveBreakpoint] = useState<GridBreakpoint>('xs');
   const [iconQuickFilters, setIconQuickFilters] = useState<Record<string, IconQuickFilterKey>>({});
   const [iconInitialFilters, setIconInitialFilters] = useState<Record<string, IconInitialFilterKey>>({});
@@ -978,6 +982,88 @@ const ComponentConfigPanel: React.FC = () => {
         >
           配置数据源
         </Button>
+      );
+    }
+
+    if (
+      editType === 'input'
+      && activeNode
+      && ((activeNode.type === 'Image' && propKey === 'src')
+        || (activeNode.type === 'Avatar' && propKey === 'image'))
+    ) {
+      const draftValue = inputDrafts[propKey] ?? (typeof currentValue === 'string' ? currentValue : String(currentValue ?? ''));
+      return (
+        <div
+          style={{
+            border: '1px dashed transparent',
+            borderRadius: 6,
+            padding: 4,
+            margin: -4,
+          }}
+          onDragOver={(e) => {
+            if (readOnly) {
+              return;
+            }
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'copy';
+          }}
+          onDrop={(e) => {
+            e.preventDefault();
+            if (readOnly) {
+              return;
+            }
+            const url = getMediaAssetUrlFromDrop(e);
+            if (!url) {
+              return;
+            }
+            setInputDrafts((previous) => ({
+              ...previous,
+              [propKey]: url,
+            }));
+            updateActiveNodeProp(propKey, url);
+            MessagePlugin.success('已应用素材地址');
+          }}
+        >
+          <Space align="center" size={8} style={{ width: '100%' }}>
+            <Input
+              style={{ flex: 1 }}
+              size="small"
+              clearable
+              value={draftValue}
+              onChange={(value) => {
+                setInputDrafts((previous) => ({
+                  ...previous,
+                  [propKey]: String(value ?? ''),
+                }));
+              }}
+              onBlur={(value, context) => {
+                const fallbackValue = context?.e?.target && 'value' in context.e.target
+                  ? String((context.e.target as { value?: unknown }).value ?? '')
+                  : draftValue;
+                const nextValue = typeof value === 'string' ? value : fallbackValue;
+                setInputDrafts((previous) => ({
+                  ...previous,
+                  [propKey]: String(nextValue ?? ''),
+                }));
+                updateActiveNodeProp(propKey, String(nextValue ?? ''));
+              }}
+            />
+            <Button
+              size="small"
+              variant="outline"
+              disabled={readOnly}
+              onClick={() => {
+                if (readOnly) {
+                  return;
+                }
+                setAssetPickerTargetPropKey(propKey);
+                setAssetPickerVisible(true);
+              }}
+            >
+              使用素材库
+            </Button>
+          </Space>
+        </div>
       );
     }
 
@@ -2314,6 +2400,27 @@ const ComponentConfigPanel: React.FC = () => {
           </div>
         </div>
       </Dialog>
+
+      <AssetPickerModal
+        visible={assetPickerVisible}
+        workspaceMode={workspaceMode}
+        teamId={currentTeamId ?? undefined}
+        onClose={() => {
+          setAssetPickerVisible(false);
+          setAssetPickerTargetPropKey(null);
+        }}
+        onConfirm={(url) => {
+          if (assetPickerTargetPropKey) {
+            updateActiveNodeProp(assetPickerTargetPropKey, url);
+            setInputDrafts((previous) => ({
+              ...previous,
+              [assetPickerTargetPropKey]: url,
+            }));
+          }
+          setAssetPickerVisible(false);
+          setAssetPickerTargetPropKey(null);
+        }}
+      />
       </div>
     </div>
   );

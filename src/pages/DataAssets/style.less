@@ -1,0 +1,208 @@
+.data-assets-page {
+  min-height: 100%;
+  background: var(--td-bg-color-page, #f5f5f5);
+  padding: 0 0 32px;
+}
+
+.data-assets-page__inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 24px 24px 0;
+  box-sizing: border-box;
+}
+
+.data-assets-page__header {
+  margin-bottom: 20px;
+}
+
+.data-assets-page__title {
+  margin: 0 0 8px;
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--td-text-color-primary);
+  letter-spacing: -0.02em;
+}
+
+.data-assets-page__desc {
+  margin: 0;
+  font-size: 13px;
+  color: var(--td-text-color-secondary);
+  line-height: 1.5;
+}
+
+.data-assets-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 20px;
+  padding: 16px;
+  background: var(--td-bg-color-container);
+  border-radius: var(--td-radius-medium);
+  border: 1px solid var(--td-component-border);
+}
+
+.data-assets-toolbar__grow {
+  flex: 1;
+  min-width: 200px;
+}
+
+.data-assets-upload {
+  border: 1px dashed var(--td-component-border);
+  border-radius: var(--td-radius-medium);
+  padding: 12px 16px;
+  background: var(--td-bg-color-container);
+}
+
+.data-assets-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+}
+
+@media (max-width: 1199px) {
+  .data-assets-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 899px) {
+  .data-assets-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 479px) {
+  .data-assets-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.data-assets-card-wrap--draggable {
+  cursor: grab;
+}
+
+.data-assets-card-wrap--draggable:active {
+  cursor: grabbing;
+}
+
+.data-assets-card-wrap--pick {
+  cursor: pointer;
+  border-radius: var(--td-radius-medium);
+}
+
+.data-assets-card-wrap--pick.data-assets-card-wrap--draggable {
+  cursor: grab;
+}
+
+.data-assets-card-wrap--pick:focus-visible {
+  outline: 2px solid var(--td-brand-color);
+  outline-offset: 2px;
+}
+
+.data-assets-card {
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.data-assets-card__size {
+  font-size: 11px;
+  color: var(--td-text-color-secondary);
+}
+
+.data-assets-card--selected {
+  border-color: var(--td-brand-color) !important;
+  box-shadow: 0 0 0 1px var(--td-brand-color);
+}
+
+.data-assets-card__thumb-wrap {
+  position: relative;
+  aspect-ratio: 4 / 3;
+  border-radius: var(--td-radius-small);
+  background: var(--td-bg-color-secondarycontainer);
+  overflow: hidden;
+}
+
+.data-assets-card__thumb {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.data-assets-card__thumb-mask {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.45);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.data-assets-card:hover .data-assets-card__thumb-mask {
+  opacity: 1;
+}
+
+/* 选择模式：遮罩默认挡住点击，导致点不到外层选中；遮罩穿透，仅预览按钮可点 */
+.data-assets-card-wrap--pick .data-assets-card__thumb-mask {
+  pointer-events: none;
+}
+
+.data-assets-card-wrap--pick .data-assets-card__thumb-mask .t-button,
+.data-assets-card-wrap--pick .data-assets-card__thumb-mask button {
+  pointer-events: auto;
+}
+
+.data-assets-card__meta {
+  padding: 10px 4px 4px;
+}
+
+.data-assets-card__name {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.data-assets-pagination {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid var(--td-component-border);
+}
+
+.data-assets-preview-dialog .t-dialog__body {
+  padding: 0;
+  text-align: center;
+  background: #0a0a0a;
+}
+
+.data-assets-preview-dialog img {
+  max-width: 100%;
+  max-height: 70vh;
+  vertical-align: middle;
+}
+
+/* 素材选择弹窗：拖放快捷应用 */
+.asset-picker-drop-zone {
+  margin-top: 16px;
+  padding: 16px;
+  min-height: 56px;
+  box-sizing: border-box;
+  border: 1px dashed var(--td-component-border);
+  border-radius: var(--td-radius-medium);
+  background: var(--td-bg-color-secondarycontainer);
+  color: var(--td-text-color-secondary);
+  font-size: 13px;
+  text-align: center;
+  line-height: 1.5;
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease;
+}
+
+.asset-picker-drop-zone--active {
+  border-color: var(--td-brand-color);
+  background: var(--td-brand-color-light, rgba(0, 82, 217, 0.08));
+  color: var(--td-text-color-primary);
+}

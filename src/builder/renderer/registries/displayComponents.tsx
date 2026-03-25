@@ -1,6 +1,7 @@
-import { Image, Avatar, Swiper, Divider, Typography, Statistic } from 'tdesign-react';
+import { Image, Avatar, Swiper, Divider, Typography, Statistic, MessagePlugin } from 'tdesign-react';
 import type { ComponentRegistry } from '../componentContext';
 import { ActivateWrapper } from '../componentHelpers';
+import { getMediaAssetUrlFromDrop } from '../../../utils/mediaAssetDrag';
 
 export function registerDisplayComponents(registry: ComponentRegistry): void {
   registry.set('Statistic', (ctx) => {
@@ -27,34 +28,92 @@ export function registerDisplayComponents(registry: ComponentRegistry): void {
   });
 
   registry.set('Image', (ctx) => {
-    const { getStringProp, getBooleanProp, mergeStyle, handleActivateSelf, data, isNodeActive } = ctx;
+    const {
+      getStringProp,
+      getBooleanProp,
+      mergeStyle,
+      handleActivateSelf,
+      data,
+      isNodeActive,
+      setActiveNode,
+      updateActiveNodeProp,
+    } = ctx;
     return (
       <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf} nodeKey={data?.key} active={isNodeActive}>
-        <Image
-          src={getStringProp('src')}
-          alt={getStringProp('alt')}
-          fit={getStringProp('fit') as any}
-          shape={getStringProp('shape') as any}
-          gallery={getBooleanProp('gallery')}
-          style={mergeStyle()}
-        />
+        <div
+          style={{ display: 'inline-block', maxWidth: '100%', verticalAlign: 'top' }}
+          onDragOver={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            e.dataTransfer.dropEffect = 'copy';
+          }}
+          onDrop={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const url = getMediaAssetUrlFromDrop(e);
+            if (!url || !data?.key) {
+              return;
+            }
+            setActiveNode(data.key);
+            updateActiveNodeProp('src', url);
+            MessagePlugin.success('已应用素材地址');
+          }}
+        >
+          <Image
+            src={getStringProp('src')}
+            alt={getStringProp('alt')}
+            fit={getStringProp('fit') as any}
+            shape={getStringProp('shape') as any}
+            gallery={getBooleanProp('gallery')}
+            style={mergeStyle()}
+          />
+        </div>
       </ActivateWrapper>
     );
   });
 
   registry.set('Avatar', (ctx) => {
-    const { getStringProp, getBooleanProp, mergeStyle, handleActivateSelf, data, isNodeActive } = ctx;
+    const {
+      getStringProp,
+      getBooleanProp,
+      mergeStyle,
+      handleActivateSelf,
+      data,
+      isNodeActive,
+      setActiveNode,
+      updateActiveNodeProp,
+    } = ctx;
     return (
       <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf} nodeKey={data?.key} active={isNodeActive}>
-        <Avatar
-          image={getStringProp('image')}
-          alt={getStringProp('alt')}
-          content={getStringProp('content')}
-          shape={getStringProp('shape') as any}
-          size={getStringProp('size')}
-          hideOnLoadFailed={getBooleanProp('hideOnLoadFailed')}
-          style={mergeStyle()}
-        />
+        <div
+          style={{ display: 'inline-block', maxWidth: '100%', verticalAlign: 'top' }}
+          onDragOver={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            e.dataTransfer.dropEffect = 'copy';
+          }}
+          onDrop={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const url = getMediaAssetUrlFromDrop(e);
+            if (!url || !data?.key) {
+              return;
+            }
+            setActiveNode(data.key);
+            updateActiveNodeProp('image', url);
+            MessagePlugin.success('已应用素材地址');
+          }}
+        >
+          <Avatar
+            image={getStringProp('image')}
+            alt={getStringProp('alt')}
+            content={getStringProp('content')}
+            shape={getStringProp('shape') as any}
+            size={getStringProp('size')}
+            hideOnLoadFailed={getBooleanProp('hideOnLoadFailed')}
+            style={mergeStyle()}
+          />
+        </div>
       </ActivateWrapper>
     );
   });

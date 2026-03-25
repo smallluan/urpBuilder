@@ -186,3 +186,51 @@ export type ComponentTemplateListParams = {
   page?: number;
   pageSize?: number;
 };
+
+/** 素材归属：个人与团队严格隔离，接口路径不同 */
+export type MediaAssetScope = 'personal' | 'team';
+
+/** 素材类型，与后端 AssetDTO.type 对齐 */
+export type TeamAssetKind = 'image' | 'icon' | 'other';
+
+export interface TeamAssetCreatorSummary {
+  userId?: string;
+  username?: string;
+}
+
+/** 素材条目（个人库无 teamId；团队库必有 teamId） */
+export interface TeamAssetDTO {
+  id: string;
+  /** 团队素材时有值；个人素材通常省略 */
+  teamId?: string;
+  name: string;
+  type: TeamAssetKind;
+  mimeType: string;
+  sizeBytes: number;
+  url: string;
+  thumbnailUrl?: string | null;
+  width?: number | null;
+  height?: number | null;
+  createdAt: string;
+  updatedAt: string;
+  createdBy?: TeamAssetCreatorSummary | null;
+}
+
+export interface TeamAssetListResult {
+  list: TeamAssetDTO[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+export interface TeamAssetListParams {
+  page?: number;
+  pageSize?: number;
+  keyword?: string;
+  type?: TeamAssetKind | '';
+}
+
+export interface TeamAssetPatchPayload {
+  name?: string;
+  type?: TeamAssetKind;
+}
