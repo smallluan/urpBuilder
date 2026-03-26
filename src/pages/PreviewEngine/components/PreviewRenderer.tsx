@@ -1327,6 +1327,12 @@ function PreviewCustomComponentRenderer({
     flowEdges: Edge[];
     exposedLifecycles: string[];
     lifecycleMappings: Array<{ lifetime: string; key?: string }>;
+    exposedPropRefs: Array<{
+      sourceKey?: string;
+      sourceRef?: string;
+      sourcePropKey: string;
+      externalPropName: string;
+    }>;
   } | null>(null);
   const [renderTree, setRenderTree] = React.useState<UiTreeNode | null>(null);
   const [loading, setLoading] = React.useState(false);
@@ -1357,6 +1363,96 @@ function PreviewCustomComponentRenderer({
           return;
         }
 
+        const tryParseJsonObject = (value: unknown): Record<string, unknown> | null => {
+          if (!value) {
+            return null;
+          }
+          if (typeof value === 'string') {
+            const text = value.trim();
+            if (!text) {
+              return null;
+            }
+            try {
+              const parsed = JSON.parse(text);
+              if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+                return parsed as Record<string, unknown>;
+              }
+              return null;
+            } catch {
+              return null;
+            }
+          }
+          if (typeof value === 'object' && !Array.isArray(value)) {
+            return value as Record<string, unknown>;
+          }
+          return null;
+        };
+
+        const resolveExposedPropRefs = (d: typeof detail) => {
+          const refs: Array<{
+            sourceKey?: string;
+            sourceRef?: string;
+            sourcePropKey: string;
+            externalPropName: string;
+          }> = [];
+
+          const pageConfig = tryParseJsonObject(d?.template?.pageConfig);
+          const contract = pageConfig ? tryParseJsonObject(pageConfig.componentContract) : null;
+          const contractExposed = Array.isArray(contract?.exposedProps) ? (contract?.exposedProps as unknown[]) : [];
+
+          if (contractExposed.length > 0) {
+            contractExposed.forEach((item) => {
+              if (!item) return;
+              if (typeof item === 'string') {
+                const key = String(item).trim();
+                if (!key) return;
+                // string 形式无法携带 sourceKey/sourcePropKey，无法用于反向同步，跳过
+                return;
+              }
+              if (typeof item !== 'object') return;
+              const obj = item as Record<string, unknown>;
+              const sourcePropKey = String(obj.propKey ?? obj.key ?? '').trim();
+              const externalPropName = String(obj.key ?? obj.propKey ?? '').trim();
+              if (!sourcePropKey || !externalPropName) return;
+              refs.push({
+                sourceKey: typeof obj.sourceKey === 'string' ? String(obj.sourceKey).trim() : undefined,
+                sourceRef: typeof obj.sourceRef === 'string' ? String(obj.sourceRef).trim() : undefined,
+                sourcePropKey,
+                externalPropName,
+              });
+            });
+            return refs;
+          }
+
+          const flowNodes = Array.isArray(d?.template?.flowNodes)
+            ? (d?.template?.flowNodes as Array<Record<string, unknown>>)
+            : [];
+          flowNodes.forEach((flowNode) => {
+            if (String(flowNode?.type ?? '').trim() !== 'propExposeNode') {
+              return;
+            }
+            const data = (flowNode?.data ?? {}) as Record<string, unknown>;
+            const sourceKey = typeof data.sourceKey === 'string' ? String(data.sourceKey).trim() : '';
+            const sourceRef = typeof data.sourceRef === 'string' ? String(data.sourceRef).trim() : '';
+            const selectedMappings = Array.isArray(data.selectedMappings) ? (data.selectedMappings as unknown[]) : [];
+            selectedMappings.forEach((mapping) => {
+              if (!mapping || typeof mapping !== 'object') return;
+              const m = mapping as Record<string, unknown>;
+              const sourcePropKey = String(m.sourcePropKey ?? '').trim();
+              if (!sourcePropKey) return;
+              const alias = typeof m.alias === 'string' ? String(m.alias).trim() : '';
+              const externalPropName = alias || sourcePropKey;
+              refs.push({
+                sourceKey: sourceKey || undefined,
+                sourceRef: sourceRef || undefined,
+                sourcePropKey,
+                externalPropName,
+              });
+            });
+          });
+          return refs;
+        };
+
         const root = cloneTemplateUiTree(detail);
         if (!root) {
           setRuntimeSeed(null);
@@ -1370,6 +1466,7 @@ function PreviewCustomComponentRenderer({
         const flowEdges = (detail?.template?.flowEdges as unknown as Edge[]) ?? [];
         const exposedLifecycles = resolveExposedLifecycles(detail);
         const lifecycleMappings = resolveExposedLifecycleMappings(detail);
+        const exposedPropRefs = resolveExposedPropRefs(detail);
 
         setRuntimeSeed({
           tree: injectedTree,
@@ -1377,6 +1474,7 @@ function PreviewCustomComponentRenderer({
           flowEdges,
           exposedLifecycles,
           lifecycleMappings,
+          exposedPropRefs,
         });
         setRenderTree(injectedTree);
       })
@@ -1404,17 +1502,55 @@ function PreviewCustomComponentRenderer({
     const unsubscribePatched = hub.subscribe('component:patched', () => {
       setRenderTree(hub.getTreeSnapshot());
     });
+    const unsubscribeExposeSync = hub.subscribe('component:patched', (eventPayload) => {
+      if (!onLifecycle) {
+        return;
+      }
+
+      const data = (eventPayload && typeof eventPayload === 'object') ? (eventPayload as Record<string, unknown>) : null;
+      const patchedKey = data ? String(data.componentKey ?? '').trim() : '';
+      const patchedRef = data ? String(data.componentRef ?? '').trim() : '';
+      const patch = data?.patch;
+      if (!patchedKey && !patchedRef) {
+        return;
+      }
+      if (!patch || typeof patch !== 'object' || Array.isArray(patch)) {
+        return;
+      }
+
+      const nextExternalPatch: Record<string, unknown> = {};
+      runtimeSeed.exposedPropRefs.forEach((ref) => {
+        const sourceKeyMatched = ref.sourceKey ? ref.sourceKey === patchedKey : false;
+        const sourceRefMatched = ref.sourceRef ? ref.sourceRef === patchedRef : false;
+        if (!sourceKeyMatched && !sourceRefMatched) {
+          return;
+        }
+        const nextValue = (patch as Record<string, unknown>)[ref.sourcePropKey];
+        if (typeof nextValue === 'undefined') {
+          return;
+        }
+        nextExternalPatch[ref.externalPropName] = nextValue;
+      });
+
+      if (Object.keys(nextExternalPatch).length === 0) {
+        return;
+      }
+
+      // 写回外层实例 props，让外层 code 节点 dataHub.getComponentProp 可读到最新输入值。
+      onLifecycle(node.key, '__customComponentPropSync', { patch: nextExternalPatch });
+    });
 
     runtimeRef.current = runtime;
 
     return () => {
       unsubscribePatched();
+      unsubscribeExposeSync();
       runtime.destroy();
       if (runtimeRef.current === runtime) {
         runtimeRef.current = null;
       }
     };
-  }, [runtimeSeed]);
+  }, [node.key, onLifecycle, runtimeSeed]);
 
   const handleInnerLifecycle = React.useCallback<ComponentLifecycleHandler>((componentKey, lifetime, payload) => {
     queueMicrotask(() => {

@@ -51,7 +51,6 @@ import {
 } from '../../api/dataTable';
 import type { ResourceOwnerType } from '../../api/types';
 import './style.less';
-import { SearchSlash } from 'lucide-react';
 
 type ConsoleTab = 'table' | 'function';
 type FunctionCodeTarget = 'detail' | 'create';

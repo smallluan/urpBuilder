@@ -6,6 +6,7 @@ import ComponentLayout from './ComponentLayout';
 import FlowLayout from '../../builder/flow/FlowLayout';
 import { getComponentTemplateDetail } from '../../api/componentTemplate';
 import { emitApiAlert } from '../../api/alertBus';
+import { MessagePlugin } from 'tdesign-react';
 import { useCreateComponentStore } from './store';
 import { BuilderProvider } from '../../builder/context/BuilderContext';
 import { BuilderShell } from '../../builder/components/BuilderShell';
@@ -13,6 +14,9 @@ import type { Edge, Node } from '@xyflow/react';
 import type { UiTreeNode, BuiltInLayoutTemplateId } from '../../builder/store/types';
 import { useAuth } from '../../auth/context';
 import { initModeLongTaskObserver, markModeSwitchEnd, markModeSwitchStart } from '../../builder/utils/perf';
+import { collectCustomComponentInstances, upgradeCustomComponentsInTree } from '../../utils/customComponentUpgrade';
+import type { ComponentDetail, ComponentTemplateBaseInfo } from '../../api/types';
+import DependencyUpgradeIndicator, { type DependencyUpgradeItem } from '../../builder/components/DependencyUpgradeIndicator';
 
 const resolveValidTemplateIdFromUrl = () => {
   const searchParams = new URLSearchParams(window.location.search);
@@ -37,6 +41,9 @@ const CreateComponent: React.FC = () => {
   const [flowLayoutMounted, setFlowLayoutMounted] = useState(false);
   const [readOnly, setReadOnly] = useState(false);
   const [readOnlyReason, setReadOnlyReason] = useState('');
+  const [dependencyUpdates, setDependencyUpdates] = useState<DependencyUpgradeItem[]>([]);
+  const latestByIdRef = useRef<Map<string, { base: ComponentTemplateBaseInfo; detail: ComponentDetail | null }>>(new Map());
+  const ignoredDependencyIdsRef = useRef<Set<string>>(new Set());
   const loadedPageIdRef = useRef<string | null>(null);
   const setCurrentPageMeta = useCreateComponentStore((state) => state.setCurrentPageMeta);
 
@@ -87,6 +94,59 @@ const CreateComponent: React.FC = () => {
 
         const pageConfig = template.pageConfig ?? {};
 
+        const resolveLatestComponentInfo = async (componentIds: string[]) => {
+          const tasks = componentIds.map(async (componentId) => {
+            try {
+              const res = await getComponentTemplateDetail(componentId);
+              const base = (res.data?.base ?? {}) as ComponentTemplateBaseInfo;
+              return { componentId, base, detail: res.data as ComponentDetail };
+            } catch {
+              return { componentId, base: null as unknown as ComponentTemplateBaseInfo, detail: null as ComponentDetail | null };
+            }
+          });
+          const results = await Promise.all(tasks);
+          const map = new Map<string, { base: ComponentTemplateBaseInfo; detail: ComponentDetail | null }>();
+          results.forEach((item) => {
+            if (!item?.componentId || !item.base) return;
+            map.set(item.componentId, { base: item.base, detail: item.detail });
+          });
+          return map;
+        };
+
+        const resolveDependencyUpdates = async (tree: UiTreeNode) => {
+          const instances = collectCustomComponentInstances(tree);
+          const componentIds = Array.from(new Set(instances.map((i) => i.componentId)));
+          if (componentIds.length === 0) {
+            latestByIdRef.current = new Map();
+            setDependencyUpdates([]);
+            return;
+          }
+
+          const latestMap = await resolveLatestComponentInfo(componentIds);
+          latestByIdRef.current = latestMap;
+          const merged = new Map<string, DependencyUpgradeItem>();
+          instances.forEach((instance) => {
+            if (ignoredDependencyIdsRef.current.has(instance.componentId)) {
+              return;
+            }
+            const latest = latestMap.get(instance.componentId);
+            if (!latest) return;
+            const latestVersion = Number(latest.base.currentVersion);
+            if (!Number.isFinite(latestVersion)) return;
+            if (typeof instance.usedVersion !== 'number') return;
+            if (instance.usedVersion >= latestVersion) return;
+            const prev = merged.get(instance.componentId);
+            const usedVersion = prev ? Math.min(prev.usedVersion, instance.usedVersion) : instance.usedVersion;
+            merged.set(instance.componentId, {
+              componentId: instance.componentId,
+              usedVersion,
+              latestVersion,
+              name: String(latest.base.pageName ?? instance.componentId),
+            });
+          });
+          setDependencyUpdates(Array.from(merged.values()));
+        };
+
         setCurrentPageMeta({
           pageId: detail.base?.pageId ?? pageId,
           pageName: detail.base?.pageName ?? '',
@@ -94,13 +154,16 @@ const CreateComponent: React.FC = () => {
           visibility: detail.base?.visibility === 'public' ? 'public' : 'private',
         });
 
+        const initialTree = template.uiTree as unknown as UiTreeNode;
+        await resolveDependencyUpdates(initialTree);
+
         useCreateComponentStore.setState({
           screenSize: (pageConfig.screenSize as string | number | undefined) ?? detail.base?.screenSize ?? 'auto',
           autoWidth:
             typeof pageConfig.autoWidth === 'number'
               ? pageConfig.autoWidth
               : (detail.base?.autoWidth ?? 1800),
-          uiPageData: template.uiTree as unknown as UiTreeNode,
+          uiPageData: initialTree,
           flowNodes: (template.flowNodes as unknown as Node[]) ?? [],
           flowEdges: (template.flowEdges as unknown as Edge[]) ?? [],
           selectedLayoutTemplateId:
@@ -123,10 +186,63 @@ const CreateComponent: React.FC = () => {
 
   return (
     <BuilderProvider useStore={useCreateComponentStore} readOnly={readOnly} readOnlyReason={readOnlyReason} entityType="component">
-      <BuilderShell header={<HeaderControls mode={mode} onChange={(nextMode) => {
-        markModeSwitchStart(nextMode);
-        setMode(nextMode);
-      }} entityType="component" enableComponentContract />}>
+      <BuilderShell
+        header={
+          <HeaderControls
+            mode={mode}
+            onChange={(nextMode) => {
+              markModeSwitchStart(nextMode);
+              setMode(nextMode);
+            }}
+            entityType="component"
+            enableComponentContract
+            extraRight={(
+              <DependencyUpgradeIndicator
+                items={dependencyUpdates}
+                onIgnoreOne={(componentId) => {
+                  ignoredDependencyIdsRef.current.add(componentId);
+                  setDependencyUpdates((prev) => prev.filter((item) => item.componentId !== componentId));
+                }}
+                onUpgradeOne={(componentId) => {
+                  const latest = latestByIdRef.current.get(componentId);
+                  if (!latest) {
+                    return;
+                  }
+                  const latestById = new Map<string, { base: ComponentTemplateBaseInfo; detail: ComponentDetail | null }>();
+                  latestById.set(componentId, latest);
+                  const currentTree = useCreateComponentStore.getState().uiPageData as UiTreeNode;
+                  const nextTree = upgradeCustomComponentsInTree(currentTree, latestById);
+                  useCreateComponentStore.setState({ uiPageData: nextTree });
+                  setDependencyUpdates((prev) => prev.filter((item) => item.componentId !== componentId));
+                  MessagePlugin.success('已升级该组件依赖');
+                }}
+                onUpgradeAll={() => {
+                  const latestMap = latestByIdRef.current;
+                  if (dependencyUpdates.length === 0 || latestMap.size === 0) {
+                    return;
+                  }
+                  const latestById = new Map<string, { base: ComponentTemplateBaseInfo; detail: ComponentDetail | null }>();
+                  dependencyUpdates.forEach((item) => {
+                    const latest = latestMap.get(item.componentId);
+                    if (latest) {
+                      latestById.set(item.componentId, latest);
+                    }
+                  });
+                  const currentTree = useCreateComponentStore.getState().uiPageData as UiTreeNode;
+                  const nextTree = upgradeCustomComponentsInTree(currentTree, latestById);
+                  useCreateComponentStore.setState({ uiPageData: nextTree });
+                  setDependencyUpdates([]);
+                  MessagePlugin.success('已完成无感升级');
+                }}
+                onIgnoreAll={() => {
+                  dependencyUpdates.forEach((item) => ignoredDependencyIdsRef.current.add(item.componentId));
+                  setDependencyUpdates([]);
+                }}
+              />
+            )}
+          />
+        }
+      >
         <div className="mode-keepalive-host">
           <div className={`mode-keepalive-pane${mode === 'component' ? ' is-active' : ''}`}>
             {componentLayoutMounted ? <ComponentLayout /> : null}

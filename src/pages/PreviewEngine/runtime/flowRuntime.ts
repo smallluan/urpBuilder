@@ -266,6 +266,16 @@ export class PreviewFlowRuntime {
       return;
     }
 
+    // 自定义组件内部状态同步到外层实例 props（inner -> outer）
+    // payload: { patch: Record<string, unknown> }
+    if (String(lifetime ?? '').trim() === '__customComponentPropSync' && isPlainObject(payload)) {
+      const patch = (payload as { patch?: unknown }).patch;
+      if (isPlainObject(patch)) {
+        this.dataHub.applyComponentPatch(rawKey, patch);
+      }
+      return;
+    }
+
     const normalizedRef = rawKey.includes('::')
       ? rawKey
       : composeComponentRef(this.dataHub.getScopeId(), rawKey);

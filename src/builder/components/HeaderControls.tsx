@@ -22,6 +22,8 @@ type Props = {
   entityType?: 'page' | 'component';
   enableComponentContract?: boolean;
   enablePageRouteConfig?: boolean;
+  /** 追加到右侧按钮组（保持 header 布局不变） */
+  extraRight?: React.ReactNode;
 };
 
 type RouteConfigDraft = {
@@ -329,6 +331,7 @@ const HeaderControls: React.FC<Props> = ({
   entityType = 'component',
   enableComponentContract = false,
   enablePageRouteConfig = false,
+  extraRight,
 }) => {
   const { useStore } = useBuilderContext();
   const { readOnly } = useBuilderAccess();
@@ -805,6 +808,7 @@ const HeaderControls: React.FC<Props> = ({
                 <Button theme="default" size="small" variant="outline" disabled={readOnly} onClick={handleOpenPageSettings}>当前路由设置</Button>
               ) : null}
               <TopbarIconButton tip="高级快捷键设置" icon={<SettingIcon />} onClick={() => setShortcutDialogVisible(true)} />
+              {extraRight}
               <Button theme="primary" size="small" icon={<UploadIcon />} disabled={readOnly} onClick={handleOpenSaveDialog}>保存</Button>
               <Button theme="default" size="small" icon={<ViewImageIcon />} onClick={handlePreview}>预览</Button>
             </TopbarGroup>

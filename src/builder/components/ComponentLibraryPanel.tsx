@@ -503,6 +503,16 @@ const ComponentLibraryPanel: React.FC<ComponentLibraryPanelProps> = ({ selectedN
                 value: String(base.pageName ?? base.pageId ?? '自定义组件'),
                 editType: 'input',
               },
+              __componentVersion: {
+                name: '组件版本',
+                value: Number.isFinite(Number((base as any).currentVersion)) ? Number((base as any).currentVersion) : 0,
+                editType: 'inputNumber',
+              },
+              __componentUpdatedAt: {
+                name: '组件更新时间',
+                value: String((base as any).updatedAt ?? ''),
+                editType: 'input',
+              },
               __slots: {
                 name: '插槽定义',
                 value: componentSlots,
