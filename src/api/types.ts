@@ -162,6 +162,33 @@ export interface WithdrawTemplatePayload {
   versionNote?: string;
 }
 
+export interface ComponentVersionedDetailOptions {
+  version?: number | null;
+}
+
+export interface ComponentMetaBatchItem {
+  componentId: string;
+  usedVersion?: number;
+}
+
+export interface ComponentMetaBatchRequest {
+  items: ComponentMetaBatchItem[];
+}
+
+export interface ComponentMetaBatchResultItem {
+  componentId: string;
+  pageName?: string;
+  latestVersion?: number;
+  usedVersion?: number;
+  upgradeAvailable?: boolean;
+  accessible: boolean;
+  deleted: boolean;
+}
+
+export interface ComponentMetaBatchResult {
+  list: ComponentMetaBatchResultItem[];
+}
+
 export type PageTemplateListParams = {
   pageName?: string;
   status?: TemplateStatus;

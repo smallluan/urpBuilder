@@ -211,6 +211,19 @@ const detailCache = new Map<string, Promise<ComponentDetail | null>>();
 
 const normalizeComponentId = (componentId: string) => String(componentId ?? '').trim();
 
+const normalizeComponentVersion = (version: unknown): number | null => {
+  const parsed = Number(version);
+  if (!Number.isFinite(parsed)) {
+    return null;
+  }
+  const normalized = Math.floor(parsed);
+  return normalized > 0 ? normalized : null;
+};
+
+const buildDetailCacheKey = (componentId: string, version: number | null): string => {
+  return version ? `${componentId}@${version}` : `${componentId}@latest`;
+};
+
 const walkTree = (node: UiTreeNode, visitor: (item: UiTreeNode) => void) => {
   visitor(node);
   (node.children ?? []).forEach((child) => walkTree(child, visitor));
@@ -399,26 +412,32 @@ export const resolveExposedLifecycles = (detail: ComponentDetail | null): string
   return Array.from(new Set(mappings.map((item) => item.key || item.lifetime).filter(Boolean)));
 };
 
-export const loadCustomComponentDetail = async (componentId: string, options?: { forceRefresh?: boolean }): Promise<ComponentDetail | null> => {
+export const loadCustomComponentDetail = async (
+  componentId: string,
+  options?: { forceRefresh?: boolean; version?: number | null },
+): Promise<ComponentDetail | null> => {
   const normalizedId = normalizeComponentId(componentId);
   if (!normalizedId) {
     return null;
   }
+  const normalizedVersion = normalizeComponentVersion(options?.version ?? null);
+  const cacheKey = buildDetailCacheKey(normalizedId, normalizedVersion);
 
   if (options?.forceRefresh) {
-    detailCache.delete(normalizedId);
+    detailCache.delete(cacheKey);
   }
 
-  if (!detailCache.has(normalizedId)) {
-    detailCache.set(
-      normalizedId,
-      getComponentTemplateDetail(normalizedId)
-        .then((res) => res.data ?? null)
-        .catch(() => null),
-    );
+  if (!detailCache.has(cacheKey)) {
+    detailCache.set(cacheKey, (
+      normalizedVersion
+        ? getComponentTemplateDetail(normalizedId, { version: normalizedVersion })
+        : getComponentTemplateDetail(normalizedId)
+    )
+      .then((res) => res.data ?? null)
+      .catch(() => null));
   }
 
-  return detailCache.get(normalizedId) ?? null;
+  return detailCache.get(cacheKey) ?? null;
 };
 
 export const cloneTemplateUiTree = (detail: ComponentDetail | null): UiTreeNode | null => {

@@ -1339,6 +1339,11 @@ function PreviewCustomComponentRenderer({
   const runtimeRef = React.useRef<PreviewFlowRuntime | null>(null);
 
   const componentId = getNodeStringProp(node, '__componentId');
+  const componentVersion = React.useMemo(() => {
+    const raw = (node.props?.__componentVersion as { value?: unknown } | undefined)?.value;
+    const parsed = Number(raw);
+    return Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : null;
+  }, [node.props?.__componentVersion]);
 
   const exposedLifecycleSet = React.useMemo(
     () => new Set(runtimeSeed?.exposedLifecycles ?? []),
@@ -1357,7 +1362,7 @@ function PreviewCustomComponentRenderer({
     }
 
     setLoading(true);
-    void loadCustomComponentDetail(componentId)
+    void loadCustomComponentDetail(componentId, { version: componentVersion })
       .then((detail) => {
         if (cancelled) {
           return;
@@ -1487,7 +1492,7 @@ function PreviewCustomComponentRenderer({
     return () => {
       cancelled = true;
     };
-  }, [componentId, node]);
+  }, [componentId, componentVersion, node]);
 
   React.useEffect(() => {
     runtimeRef.current?.destroy();

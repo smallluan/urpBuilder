@@ -14,7 +14,7 @@ import type { Edge, Node } from '@xyflow/react';
 import type { UiTreeNode, BuiltInLayoutTemplateId } from '../../builder/store/types';
 import { useAuth } from '../../auth/context';
 import { initModeLongTaskObserver, markModeSwitchEnd, markModeSwitchStart } from '../../builder/utils/perf';
-import { collectCustomComponentInstances, upgradeCustomComponentsInTree } from '../../utils/customComponentUpgrade';
+import { collectCustomComponentInstances, fetchLatestComponentBundle, upgradeCustomComponentsInTree } from '../../utils/customComponentUpgrade';
 import type { ComponentDetail, ComponentTemplateBaseInfo } from '../../api/types';
 import DependencyUpgradeIndicator, { type DependencyUpgradeItem } from '../../builder/components/DependencyUpgradeIndicator';
 
@@ -133,10 +133,10 @@ const CreateComponent: React.FC = () => {
             if (!latest) return;
             const latestVersion = Number(latest.base.currentVersion);
             if (!Number.isFinite(latestVersion)) return;
-            if (typeof instance.usedVersion !== 'number') return;
-            if (instance.usedVersion >= latestVersion) return;
+            const normalizedUsedVersion = typeof instance.usedVersion === 'number' ? instance.usedVersion : 0;
+            if (normalizedUsedVersion >= latestVersion && normalizedUsedVersion > 0) return;
             const prev = merged.get(instance.componentId);
-            const usedVersion = prev ? Math.min(prev.usedVersion, instance.usedVersion) : instance.usedVersion;
+            const usedVersion = prev ? Math.min(prev.usedVersion, normalizedUsedVersion) : normalizedUsedVersion;
             merged.set(instance.componentId, {
               componentId: instance.componentId,
               usedVersion,
@@ -203,33 +203,56 @@ const CreateComponent: React.FC = () => {
                   ignoredDependencyIdsRef.current.add(componentId);
                   setDependencyUpdates((prev) => prev.filter((item) => item.componentId !== componentId));
                 }}
-                onUpgradeOne={(componentId) => {
-                  const latest = latestByIdRef.current.get(componentId);
-                  if (!latest) {
+                onUpgradeOne={async (componentId) => {
+                  const bundle = await fetchLatestComponentBundle(componentId);
+                  if (!bundle) {
+                    MessagePlugin.warning('获取最新依赖失败，请稍后重试');
                     return;
                   }
+                  latestByIdRef.current.set(componentId, bundle);
                   const latestById = new Map<string, { base: ComponentTemplateBaseInfo; detail: ComponentDetail | null }>();
-                  latestById.set(componentId, latest);
+                  latestById.set(componentId, bundle);
                   const currentTree = useCreateComponentStore.getState().uiPageData as UiTreeNode;
                   const nextTree = upgradeCustomComponentsInTree(currentTree, latestById);
+                  if (nextTree === currentTree) {
+                    MessagePlugin.warning('未检测到可升级变更，请稍后重试或刷新依赖列表');
+                    return;
+                  }
                   useCreateComponentStore.setState({ uiPageData: nextTree });
                   setDependencyUpdates((prev) => prev.filter((item) => item.componentId !== componentId));
                   MessagePlugin.success('已升级该组件依赖');
                 }}
-                onUpgradeAll={() => {
-                  const latestMap = latestByIdRef.current;
-                  if (dependencyUpdates.length === 0 || latestMap.size === 0) {
+                onUpgradeAll={async () => {
+                  if (dependencyUpdates.length === 0) {
                     return;
                   }
+                  const bundles = await Promise.all(
+                    dependencyUpdates.map((item) => fetchLatestComponentBundle(item.componentId)),
+                  );
                   const latestById = new Map<string, { base: ComponentTemplateBaseInfo; detail: ComponentDetail | null }>();
-                  dependencyUpdates.forEach((item) => {
-                    const latest = latestMap.get(item.componentId);
-                    if (latest) {
-                      latestById.set(item.componentId, latest);
+                  let failedCount = 0;
+                  dependencyUpdates.forEach((item, index) => {
+                    const bundle = bundles[index];
+                    if (bundle) {
+                      latestById.set(item.componentId, bundle);
+                      latestByIdRef.current.set(item.componentId, bundle);
+                    } else {
+                      failedCount += 1;
                     }
                   });
+                  if (latestById.size === 0) {
+                    MessagePlugin.warning('获取最新依赖失败，请稍后重试');
+                    return;
+                  }
+                  if (failedCount > 0) {
+                    MessagePlugin.warning(`部分依赖拉取失败（${failedCount} 个），已跳过`);
+                  }
                   const currentTree = useCreateComponentStore.getState().uiPageData as UiTreeNode;
                   const nextTree = upgradeCustomComponentsInTree(currentTree, latestById);
+                  if (nextTree === currentTree) {
+                    MessagePlugin.warning('未检测到可升级变更，请稍后重试或刷新依赖列表');
+                    return;
+                  }
                   useCreateComponentStore.setState({ uiPageData: nextTree });
                   setDependencyUpdates([]);
                   MessagePlugin.success('已完成无感升级');

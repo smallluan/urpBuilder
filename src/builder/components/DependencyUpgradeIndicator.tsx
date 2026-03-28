@@ -97,9 +97,6 @@ const DependencyUpgradeIndicator: React.FC<DependencyUpgradeIndicatorProps> = ({
         }
       >
         <div style={{ marginBottom: 12 }}>
-          <Text style={{ color: 'var(--td-text-color-secondary)', fontSize: 13 }}>
-            这里只影响当前模板的直接依赖；升级会补齐最新暴露属性/插槽/生命周期定义，并更新版本标记，不会自动改你的布局结构。
-          </Text>
         </div>
         <div style={{ maxHeight: 360, overflow: 'auto' }}>
           {items.length === 0 ? (
@@ -128,7 +125,7 @@ const DependencyUpgradeIndicator: React.FC<DependencyUpgradeIndicatorProps> = ({
               </div>
               <Space align="center" size={8}>
                 <Text style={{ fontSize: 13 }}>
-                  v{item.usedVersion} → v{item.latestVersion}
+                  {item.usedVersion > 0 ? `v${item.usedVersion}` : '未固定'} → v{item.latestVersion}
                 </Text>
                 <Button
                   size="small"

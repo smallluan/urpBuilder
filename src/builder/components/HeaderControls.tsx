@@ -149,6 +149,61 @@ const collectCustomComponentIdsFromTree = (root: unknown, bucket: Set<string>) =
   }
 };
 
+const collectUnpinnedCustomComponentsFromTree = (
+  root: unknown,
+  bucket: Array<{ componentId: string; componentName: string }>,
+) => {
+  if (!root || typeof root !== 'object') {
+    return;
+  }
+
+  const node = root as {
+    type?: unknown;
+    props?: Record<string, unknown>;
+    children?: unknown[];
+  };
+  const componentIdMeta = node.props?.__componentId as { value?: unknown } | undefined;
+  const componentVersionMeta = node.props?.__componentVersion as { value?: unknown } | undefined;
+  const componentNameMeta = node.props?.__componentName as { value?: unknown } | undefined;
+
+  const componentId = String(componentIdMeta?.value ?? '').trim();
+  const componentVersion = Number(componentVersionMeta?.value);
+  const isVersionPinned = Number.isFinite(componentVersion) && componentVersion > 0;
+  if ((node.type === 'CustomComponent' || componentId) && componentId && !isVersionPinned) {
+    bucket.push({
+      componentId,
+      componentName: String(componentNameMeta?.value ?? componentId).trim() || componentId,
+    });
+  }
+
+  if (Array.isArray(node.children)) {
+    node.children.forEach((child) => collectUnpinnedCustomComponentsFromTree(child, bucket));
+  }
+};
+
+const collectAllUnpinnedCustomComponents = (
+  uiTree: unknown,
+  routes: Array<{ uiTree?: unknown }> = [],
+  sharedTree?: unknown,
+) => {
+  const list: Array<{ componentId: string; componentName: string }> = [];
+  collectUnpinnedCustomComponentsFromTree(uiTree, list);
+  routes.forEach((route) => {
+    collectUnpinnedCustomComponentsFromTree(route?.uiTree, list);
+  });
+  if (sharedTree) {
+    collectUnpinnedCustomComponentsFromTree(sharedTree, list);
+  }
+
+  const deduped = new Map<string, { componentId: string; componentName: string }>();
+  list.forEach((item) => {
+    if (!deduped.has(item.componentId)) {
+      deduped.set(item.componentId, item);
+    }
+  });
+  return Array.from(deduped.values());
+};
+
 const collectAllUsedCustomComponentIds = (
   uiTree: unknown,
   routes: Array<{ uiTree?: unknown }> = [],
@@ -631,6 +686,23 @@ const HeaderControls: React.FC<Props> = ({
 
     if (!/^[A-Za-z0-9_-]+$/.test(pageId)) {
       emitApiAlert('保存失败', `${saveEntityLabel} ID 仅支持字母、数字、下划线和中划线`);
+      return;
+    }
+
+    const unpinnedDependencies = collectAllUnpinnedCustomComponents(
+      uiTreeData,
+      enablePageRouteConfig ? pageRoutes : [],
+      enablePageRouteConfig ? sharedUiTree : null,
+    );
+    if (unpinnedDependencies.length > 0) {
+      const previewText = unpinnedDependencies
+        .slice(0, 3)
+        .map((item) => `${item.componentName}（${item.componentId}）`)
+        .join('、');
+      emitApiAlert(
+        '保存失败',
+        `检测到 ${unpinnedDependencies.length} 个自定义组件依赖未固定版本：${previewText}${unpinnedDependencies.length > 3 ? ' 等' : ''}。请先在“依赖更新”中升级/固化后再保存。`,
+      );
       return;
     }
 

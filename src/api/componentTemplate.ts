@@ -5,6 +5,8 @@ import type {
   ComponentDetail,
   ComponentTemplateBaseInfo,
   ComponentTemplateListParams,
+  ComponentMetaBatchRequest,
+  ComponentMetaBatchResult,
   PublishComponentPayload,
   SaveComponentDraftPayload,
   UpdateTemplateVisibilityPayload,
@@ -47,12 +49,21 @@ export const deleteComponentTemplate = async (componentId: string) => {
   return response.data;
 };
 
-export const getComponentTemplateDetail = async (componentId: string) => {
+export const getComponentTemplateDetail = async (componentId: string, options?: { version?: number | null }) => {
+  const normalizedVersion = Number(options?.version);
   const response = await requestClient.get<ApiResponse<ComponentDetail>>(`/page-template/${componentId}`, {
     params: {
       entityType: 'component',
+      ...(Number.isFinite(normalizedVersion) && normalizedVersion > 0
+        ? { version: Math.floor(normalizedVersion) }
+        : {}),
     },
   });
+  return response.data;
+};
+
+export const batchGetComponentMeta = async (payload: ComponentMetaBatchRequest) => {
+  const response = await requestClient.post<ApiResponse<ComponentMetaBatchResult>>('/v1/components/meta:batch', payload);
   return response.data;
 };
 

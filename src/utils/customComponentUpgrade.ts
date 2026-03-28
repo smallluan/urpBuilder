@@ -1,5 +1,6 @@
 import type { UiTreeNode } from '../builder/store/types';
 import type { ComponentDetail, ComponentTemplateBaseInfo } from '../api/types';
+import { getComponentTemplateDetail } from '../api/componentTemplate';
 import { resolveComponentSlots, resolveExposedLifecycles, resolveExposedPropSchemas } from './customComponentRuntime';
 
 export type CustomComponentInstanceMeta = {
@@ -49,6 +50,31 @@ type LatestComponentInfo = {
   detail: ComponentDetail | null;
 };
 
+/**
+ * 拉取依赖组件「当前最新」详情（用于无感升级点击时，避免使用进入页面时缓存的 stale 数据）。
+ */
+export const fetchLatestComponentBundle = async (componentId: string): Promise<LatestComponentInfo | null> => {
+  const id = String(componentId ?? '').trim();
+  if (!id) {
+    return null;
+  }
+
+  try {
+    const res = await getComponentTemplateDetail(id);
+    const detail = res.data as ComponentDetail | undefined;
+    if (!detail?.base) {
+      return null;
+    }
+
+    return {
+      base: detail.base,
+      detail,
+    };
+  } catch {
+    return null;
+  }
+};
+
 const normalizeNumber = (value: unknown): number | undefined => {
   const parsed = Number(value);
   if (!Number.isFinite(parsed)) {
@@ -62,7 +88,7 @@ const upgradeCustomComponentNode = (
   latest: LatestComponentInfo,
 ): UiTreeNode => {
   const componentId = String(getSchemaValue(node, '__componentId') ?? '').trim();
-  if (!componentId || componentId !== String(latest.base.pageId ?? '').trim()) {
+  if (!componentId) {
     return node;
   }
 
@@ -104,15 +130,13 @@ const upgradeCustomComponentNode = (
     },
   };
 
-  // 合并暴露属性：保留旧值；缺失则用 schema.value 兜底
+  // 合并暴露属性：采用新模板上的 schema（含 value）。升级后须与发布模板一致；
+  // 若保留旧 value，运行时 applyExposedPropsToTemplate 会覆盖模板内节点，导致「接口已是 v33、画布仍像旧版」。
   exposedPropSchemas.forEach((item) => {
     const key = item.propKey;
-    const existingSchema = (currentProps[key] ?? null) as { value?: unknown } | null;
-    const existingValue = existingSchema?.value;
     nextProps[key] = {
       ...item.schema,
       name: String(item.schema.name ?? key),
-      value: typeof existingValue === 'undefined' ? (item.schema.value ?? '') : existingValue,
     };
   });
 

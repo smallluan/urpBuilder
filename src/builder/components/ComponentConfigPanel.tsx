@@ -743,12 +743,20 @@ const ComponentConfigPanel: React.FC = () => {
 
       const componentIdSchema = (activeNode.props?.__componentId ?? null) as { value?: unknown } | null;
       const componentId = String(componentIdSchema?.value ?? '').trim();
+      const componentVersionSchema = (activeNode.props?.__componentVersion ?? null) as { value?: unknown } | null;
+      const componentVersionRaw = Number(componentVersionSchema?.value);
+      const componentVersion = Number.isFinite(componentVersionRaw) && componentVersionRaw > 0
+        ? Math.floor(componentVersionRaw)
+        : null;
       if (!componentId) {
         setCustomComponentFallbackProps([]);
         return;
       }
 
-      const detail = await loadCustomComponentDetail(componentId, { forceRefresh: true });
+      const detail = await loadCustomComponentDetail(componentId, {
+        forceRefresh: true,
+        version: componentVersion,
+      });
       if (cancelled) {
         return;
       }

@@ -21,6 +21,22 @@ import {
   namespaceUiTreeKeys,
 } from '../../utils/customComponentRuntime';
 
+/**
+ * CommonComponent：Builder 运行时的“组件渲染分发器”。
+ *
+ * 输入：UiTreeNode（搭建器存储的组件树节点）+ type
+ * 输出：对应组件的 React 元素（或 null）
+ *
+ * 这里统一处理的 editor 级能力：
+ * - 激活/选中：activeNodeKey（以及自定义组件内部的“激活归属锁定”）
+ * - 样式：从 props.__style 解析并与 registry 内样式合并
+ * - 可见性：visible=false 的节点默认不渲染（Drawer 例外）
+ * - 插槽：slot 节点 / slot outlet 渲染为 DropArea 承接拖拽
+ * - 自定义组件运行时：根据 __componentId 拉取模板 uiTree，应用 exposed props/slots 后递归渲染
+ *
+ * 内置组件渲染由 registry(Map) 驱动（见 src/builder/renderer/registries/*）。
+ */
+
 interface CommonComponentProps {
   type?: string;
   data?: UiTreeNode;
@@ -29,11 +45,32 @@ interface CommonComponentProps {
   lockActivationToOwner?: boolean;
 }
 
+/**
+ * CustomComponent 运行时渲染器（“组件自生长”的落点）。
+ *
+ * CustomComponent 实例节点只携带：
+ * - __componentId：指向后端存储的模板
+ * - exposed props：对外暴露的配置（会映射回模板树内部的真实 prop）
+ * - slots：实例插槽内容（会注入到模板 slot outlet）
+ *
+ * 渲染流程：
+ * 1) 拉取 detail（缓存由 customComponentRuntime 管理）
+ * 2) clone 模板树，避免污染 detail
+ * 3) 应用 exposed props（instance -> template）
+ * 4) 应用实例 slots（instance -> template）
+ * 5) namespace key，避免与画布其它节点 key 冲突（同一模板多实例尤其需要）
+ * 6) 递归渲染模板树的 children（注意：不会渲染模板 root 本身）
+ */
 const BuilderCustomComponentRenderer: React.FC<{ node: UiTreeNode; onDropData?: UiDropDataHandler }> = ({ node, onDropData }) => {
   const [templateTree, setTemplateTree] = React.useState<UiTreeNode | null>(null);
   const [loading, setLoading] = React.useState(false);
 
   const componentId = getNodeStringProp(node, '__componentId');
+  const componentVersion = React.useMemo(() => {
+    const raw = (node.props?.__componentVersion as { value?: unknown } | undefined)?.value;
+    const parsed = Number(raw);
+    return Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : null;
+  }, [node.props?.__componentVersion]);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -46,7 +83,7 @@ const BuilderCustomComponentRenderer: React.FC<{ node: UiTreeNode; onDropData?: 
     }
 
     setLoading(true);
-    void loadCustomComponentDetail(componentId)
+    void loadCustomComponentDetail(componentId, { version: componentVersion })
       .then((detail) => {
         if (cancelled) {
           return;
@@ -72,7 +109,7 @@ const BuilderCustomComponentRenderer: React.FC<{ node: UiTreeNode; onDropData?: 
     return () => {
       cancelled = true;
     };
-  }, [componentId, node]);
+  }, [componentId, componentVersion, node]);
 
   if (!componentId) {
     return null;
@@ -131,6 +168,13 @@ export default function CommonComponent(properties: CommonComponentProps) {
   }, [data?.key]);
 
   const inlineStyle = getStyleProp();
+
+  /**
+   * 激活归属：
+   * - 普通节点：激活 key = 自身 data.key
+   * - 自定义组件内部递归渲染的子节点：可通过 lockActivationToOwner 把激活归属锁定到外层 CustomComponent 实例，
+   *   避免“点内部节点导致选中跳走/DropArea 写入错误归属”等编辑器体验问题。
+   */
   const resolvedActivationKey = lockActivationToOwner
     ? (activationOwnerKey || data?.key || '')
     : (data?.key || '');
@@ -197,6 +241,7 @@ export default function CommonComponent(properties: CommonComponentProps) {
         return;
       }
 
+      // 自定义组件内部 slot 的写入，应该落到外层 CustomComponent 实例节点上（由运行时把 slots 注回模板）。
       onDropData(dropData, { key: activationOwnerKey, type: 'CustomComponent' } as UiTreeNode, { slotKey });
     };
   }, [activationOwnerKey, lockActivationToOwner, onDropData]);
@@ -251,8 +296,10 @@ export default function CommonComponent(properties: CommonComponentProps) {
 
   const visible = getBooleanProp('visible');
   const isDrawerNode = normalizedType === 'Drawer';
+  // Drawer 需要允许在“不可见”时依旧保留节点渲染入口（由组件自身处理打开/关闭与挂载策略）。
   if (visible === false && !isDrawerNode) return null;
 
+  // ctx 是 renderer 的统一输入协议：把 node 数据、事件、编辑器能力、以及部分组件的预解析 props 打包给 registry renderer。
   const ctx: ComponentRenderContext = {
     data,
     onDropData,
