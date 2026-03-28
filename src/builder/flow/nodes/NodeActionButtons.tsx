@@ -5,16 +5,23 @@ interface NodeActionButtonsProps {
 	onDelete?: () => void;
 	onFlipHorizontal?: () => void;
 	onFlipVertical?: () => void;
+	/** 为 true 时不渲染工具条（如预览调试只读画布） */
+	suppress?: boolean;
 }
 
 const NodeActionButtons: React.FC<NodeActionButtonsProps> = ({
 	onDelete,
 	onFlipHorizontal,
 	onFlipVertical,
+	suppress,
 }) => {
 	const stopBubble = (event: React.MouseEvent | React.MouseEvent<HTMLButtonElement>) => {
 		event.stopPropagation();
 	};
+
+	if (suppress) {
+		return null;
+	}
 
 	return (
 		<div className="flow-node-actions nodrag nopan" onMouseDown={stopBubble} onClick={stopBubble}>

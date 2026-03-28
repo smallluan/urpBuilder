@@ -56,6 +56,7 @@ const PropExposeNode: React.FC<NodeProps> = ({ id, data, selected }) => {
 
       <div className="flow-node-actions-row flow-node-actions-row--end">
         <NodeActionButtons
+          suppress={Boolean(nodeData.__suppressFlowActions)}
           onDelete={() => nodeData.onDeleteNode?.(id)}
           onFlipHorizontal={() => nodeData.onFlipHorizontal?.(id)}
           onFlipVertical={() => nodeData.onFlipVertical?.(id)}

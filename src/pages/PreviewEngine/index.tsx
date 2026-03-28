@@ -4,13 +4,20 @@ import type { Edge, Node } from '@xyflow/react';
 import cloneDeep from 'lodash/cloneDeep';
 import PreviewRenderer from './components/PreviewRenderer';
 import { deserializePreviewSnapshot, type PreviewSnapshot } from './utils/snapshot';
-import { createPreviewDataHub, type DataHubRouterState } from './runtime/dataHub';
+import { createPreviewDataHub, type DataHubRouterState, type PreviewDataHub } from './runtime/dataHub';
 import { createPreviewFlowRuntime, type PreviewFlowRuntime } from './runtime/flowRuntime';
+import { createInstrumentedFlowRuntime, type InstrumentedFlowRuntime } from './debug/InstrumentedFlowRuntime';
+import { useDebugStore } from './debug/debugStore';
+import { DebugProvider } from './debug/DebugProvider';
+import DebugFAB from './debug/DebugFAB';
+import DebugPanel from './debug/DebugPanel';
+import DebugPauseOverlay from './debug/DebugPauseOverlay';
 import { getPageTemplateBaseList, getPageTemplateDetail } from '../../api/pageTemplate';
 import { getComponentTemplateDetail } from '../../api/componentTemplate';
 import type { UiTreeNode } from '../../builder/store/types';
 import { findNodeByKey, updateNodeByKey } from '../../utils/createComponentTree';
 import './style.less';
+import './debug/debug.less';
 
 const EMPTY_ROOT: UiTreeNode = { key: '__root__', type: 'root', label: '', props: {}, children: [] };
 const SITE_PREVIEW_PREFIX = '/site-preview';
@@ -150,6 +157,14 @@ const PreviewEngine: React.FC = () => {
   const pageId = normalizePageId(searchParams.get('pageId'));
   const scopeId = (searchParams.get('scopeId') || 'root').trim() || 'root';
   const entityType = searchParams.get('entityType') === 'component' ? 'component' : 'page';
+  const debugEnabled = searchParams.get('debug') === 'true';
+
+  React.useEffect(() => {
+    if (!debugEnabled) {
+      return;
+    }
+    void import('../../builder/style.less');
+  }, [debugEnabled]);
   const routePathFromLocation = location.pathname.startsWith(SITE_PREVIEW_PREFIX)
     ? normalizeRoutePath(location.pathname.slice(SITE_PREVIEW_PREFIX.length) || '/')
     : '';
@@ -324,7 +339,11 @@ const PreviewEngine: React.FC = () => {
   const effectiveFlowEdges = matchedRouteSnapshot?.flowEdges ?? snapshot.flowEdges;
 
   const [renderTree, setRenderTree] = React.useState(effectiveUiTree);
-  const runtimeRef = React.useRef<PreviewFlowRuntime | null>(null);
+  const runtimeRef = React.useRef<PreviewFlowRuntime | InstrumentedFlowRuntime | null>(null);
+  const dataHubRef = React.useRef<PreviewDataHub | null>(null);
+  const debugPanelOpen = useDebugStore((s) => s.panelOpen);
+  const debugPanelHeight = useDebugStore((s) => s.panelHeight);
+  const debugPaused = useDebugStore((s) => s.paused);
   const routeNotFound = isSitePreview && !routeMatched;
   const routeHasRenderableContent = (renderTree.children ?? []).length > 0;
   const routeEmpty = !routeNotFound && !routeHasRenderableContent;
@@ -392,27 +411,35 @@ const PreviewEngine: React.FC = () => {
     });
   }, [routerState]);
 
-  // 在 effect 里创建 DataHub/runtime，避免在 render 里用 useMemo 重建 hub（会用快照树覆盖掉补丁态，导致抽屉/点击等全部失效）。
-  // 子组件的 useEffect 先于父组件执行，故 emitLifecycle 需推迟到微任务，保证 runtimeRef 已赋值。
   React.useEffect(() => {
     const hub = createPreviewDataHub(effectiveUiTree, { scopeId, router: routerContext });
-    const runtime = createPreviewFlowRuntime(effectiveFlowNodes, effectiveFlowEdges, hub);
+    const runtime = debugEnabled
+      ? createInstrumentedFlowRuntime(effectiveFlowNodes, effectiveFlowEdges, hub, useDebugStore)
+      : createPreviewFlowRuntime(effectiveFlowNodes, effectiveFlowEdges, hub);
     const unsubscribePatched = hub.subscribe('component:patched', () => {
       setRenderTree(hub.getTreeSnapshot());
     });
 
     runtimeRef.current = runtime;
+    dataHubRef.current = hub;
     window.dataHub = hub;
+
+    if (debugEnabled) {
+      const state = useDebugStore.getState();
+      state._clearPaused();
+      state.clearTrace();
+    }
 
     return () => {
       unsubscribePatched();
       runtime.destroy();
       runtimeRef.current = null;
+      dataHubRef.current = null;
       if (window.dataHub === hub) {
         delete window.dataHub;
       }
     };
-  }, [effectiveFlowEdges, effectiveFlowNodes, effectiveUiTree, routerContext, scopeId]);
+  }, [debugEnabled, effectiveFlowEdges, effectiveFlowNodes, effectiveUiTree, routerContext, scopeId]);
 
   const handleLifecycle = React.useCallback((componentKey: string, lifetime: string, payload?: unknown) => {
     queueMicrotask(() => {
@@ -420,29 +447,45 @@ const PreviewEngine: React.FC = () => {
     });
   }, []);
 
+  const canvasStyle: React.CSSProperties | undefined =
+    debugEnabled && debugPanelOpen
+      ? { height: `calc(100vh - ${debugPanelHeight}px)`, overflow: 'auto' }
+      : undefined;
+
   return (
-    <div className="preview-engine-page" data-preview-scroll-container="true">
-      <div className="preview-engine-canvas" data-preview-page>
-        {shouldShowResolveError ? (
-          <div className="preview-route-status preview-route-status--empty">
-            <div className="preview-route-status__title">无法定位预览页面</div>
-            <div className="preview-route-status__desc">{routeResolveError}</div>
-          </div>
-        ) : routeNotFound ? (
-          <div className="preview-route-status preview-route-status--empty">
-            <div className="preview-route-status__title">当前路由不存在</div>
-            <div className="preview-route-status__desc">请确认页面中是否存在该路由，或检查 URL 的 pageId 与路径是否匹配。</div>
-          </div>
-        ) : routeEmpty ? (
-          <div className="preview-route-status preview-route-status--empty">
-            <div className="preview-route-status__title">当前路由内容为空</div>
-            <div className="preview-route-status__desc">页面中暂无可渲染组件，请先在搭建器中添加内容。</div>
-          </div>
-        ) : (
-          <PreviewRenderer key={renderTree.key} node={renderTree} onLifecycle={handleLifecycle} />
+    <DebugProvider enabled={debugEnabled} dataHub={dataHubRef.current}>
+      <div className="preview-engine-page" data-preview-scroll-container="true">
+        <div className="preview-engine-canvas" data-preview-page style={canvasStyle}>
+          {shouldShowResolveError ? (
+            <div className="preview-route-status preview-route-status--empty">
+              <div className="preview-route-status__title">无法定位预览页面</div>
+              <div className="preview-route-status__desc">{routeResolveError}</div>
+            </div>
+          ) : routeNotFound ? (
+            <div className="preview-route-status preview-route-status--empty">
+              <div className="preview-route-status__title">当前路由不存在</div>
+              <div className="preview-route-status__desc">请确认页面中是否存在该路由，或检查 URL 的 pageId 与路径是否匹配。</div>
+            </div>
+          ) : routeEmpty ? (
+            <div className="preview-route-status preview-route-status--empty">
+              <div className="preview-route-status__title">当前路由内容为空</div>
+              <div className="preview-route-status__desc">页面中暂无可渲染组件，请先在搭建器中添加内容。</div>
+            </div>
+          ) : (
+            <PreviewRenderer key={renderTree.key} node={renderTree} onLifecycle={handleLifecycle} />
+          )}
+        </div>
+        {debugEnabled && debugPaused && <DebugPauseOverlay />}
+        {debugEnabled && <DebugFAB />}
+        {debugEnabled && debugPanelOpen && (
+          <DebugPanel
+            flowNodes={effectiveFlowNodes}
+            flowEdges={effectiveFlowEdges}
+            dataHub={dataHubRef.current}
+          />
         )}
       </div>
-    </div>
+    </DebugProvider>
   );
 };
 

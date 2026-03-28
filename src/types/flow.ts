@@ -21,6 +21,8 @@ export interface FlowNodeActionHandlers {
   onDeleteNode?: (nodeId: string) => void;
   onFlipHorizontal?: (nodeId: string) => void;
   onFlipVertical?: (nodeId: string) => void;
+  /** 预览调试只读流程图：隐藏删除/翻转按钮 */
+  __suppressFlowActions?: boolean;
 }
 
 export interface ComponentFlowNodeData extends FlowNodeActionHandlers {

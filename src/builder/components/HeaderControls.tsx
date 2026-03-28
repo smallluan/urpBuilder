@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import cloneDeep from 'lodash/cloneDeep';
-import { Radio, Button, Drawer, Timeline, Tag, Dialog, Input, Switch, Textarea } from 'tdesign-react';
+import { Radio, Button, Drawer, Timeline, Tag, Dialog, DialogPlugin, Input, Switch, Textarea } from 'tdesign-react';
 import { UploadIcon, ViewImageIcon, ArrowLeftIcon, ArrowRightIcon, HistoryIcon, SettingIcon } from 'tdesign-icons-react';
 import { useBuilderAccess, useBuilderContext } from '../context/BuilderContext';
 import type { UiHistoryAction } from '../store/types';
@@ -450,7 +450,7 @@ const HeaderControls: React.FC<Props> = ({
     onChange(String(value) === '1' ? 'component' : 'flow');
   };
 
-  const handlePreview = () => {
+  const openPreviewWindow = (debug: boolean) => {
     const { uiPageData: uiTreeData, flowNodes, flowEdges } = useStore.getState();
     const routeSnapshots = enablePageRouteConfig
       ? pageRoutes.map((route) => {
@@ -505,8 +505,23 @@ const HeaderControls: React.FC<Props> = ({
     if (routePath) {
       previewUrl.searchParams.set('previewMode', 'route');
     }
+    if (debug) {
+      previewUrl.searchParams.set('debug', 'true');
+    }
 
     window.open(previewUrl.toString(), '_blank', 'noopener,noreferrer');
+  };
+
+  const handlePreview = () => {
+    const confirmDialog = DialogPlugin.confirm({
+      header: '预览选项',
+      body: '是否开启调试模式？开启后可在预览页面中使用流程图断点调试功能。',
+      confirmBtn: '调试模式预览',
+      cancelBtn: '普通预览',
+      onConfirm: () => { confirmDialog.hide(); openPreviewWindow(true); },
+      onCancel: () => { confirmDialog.hide(); openPreviewWindow(false); },
+      onClose: () => { confirmDialog.hide(); },
+    });
   };
 
   const handleOpenSaveDialog = () => {
