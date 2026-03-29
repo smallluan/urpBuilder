@@ -5,6 +5,7 @@ import FlowBody from './FlowBody';
 import FlowAsideLeft from '../components/FlowAsideLeft';
 import CodeEditorDialog, { type CodeEditorValue } from '../components/CodeEditorDialog';
 import DragableWrapper from '../../components/DragableWrapper';
+import { applyBuilderDragPreview } from '../utils/dragPreview';
 import RightPanelHeader, { type RightPanelMode } from '../components/RightPanelHeader';
 import { useBuilderAccess, useBuilderContext } from '../context/BuilderContext';
 import {
@@ -107,6 +108,12 @@ const FlowLayout: React.FC = () => {
       return;
     }
 
+    applyBuilderDragPreview(event, {
+      kind: 'flow-builtin',
+      title: String(data.label ?? '节点'),
+      flowBuiltinTheme: String(data.theme ?? 'event'),
+      flowNodeType: String(data.nodeType ?? ''),
+    });
     event.dataTransfer?.setData('drag-component-data', JSON.stringify(data));
     event.dataTransfer.effectAllowed = 'copy';
   };
@@ -528,19 +535,16 @@ const FlowLayout: React.FC = () => {
           onChange={setRightPanelMode}
           libraryLabel="内置节点"
           configLabel="节点配置"
-        />
-
-        <div className="right-panel-content">
-          {rightPanelMode === 'library' ? (
+          libraryPanel={
             <div className={`right-panel-body${readOnly ? ' builder-readonly-surface' : ''}`}>
               <div className="flow-builtins-panel">
                 <div className="flow-builtins-header">
-                  <div className="flow-builtins-title">内置节点</div>
+                  {/* <div className="flow-builtins-title">内置节点</div> */}
                 </div>
                 {builtinNodes.map((item) => (
                   <DragableWrapper
                     key={item.nodeType}
-                    data={{ kind: 'builtin-node', nodeType: item.nodeType, label: item.label }}
+                    data={{ kind: 'builtin-node', nodeType: item.nodeType, label: item.label, theme: item.theme }}
                     onDragStart={handleBuiltinDragStart}
                   >
                     <div className={`flow-builtins-item flow-builtins-item--${item.theme}`}>
@@ -555,7 +559,8 @@ const FlowLayout: React.FC = () => {
                 ))}
               </div>
             </div>
-          ) : (
+          }
+          configPanel={
             <div className="right-panel-body flow-config-panel">
               {readOnly ? (
                 <div style={{ marginBottom: 12, padding: '10px 12px', borderRadius: 8, background: '#fff7e8', color: '#8d5c0d', fontSize: 12 }}>
@@ -563,7 +568,7 @@ const FlowLayout: React.FC = () => {
                 </div>
               ) : null}
               <div className={readOnly ? 'builder-readonly-surface' : ''}>
-              <div className="flow-config-panel__title">节点配置</div>
+              {/* <div className="flow-config-panel__title">节点配置</div> */}
 
               {activeFlowNode ? (
                 <div className="config-form">
@@ -888,16 +893,16 @@ const FlowLayout: React.FC = () => {
                   </div>
                 </div>
               ) : null}
-            </div>
+                </div>
               ) : (
                 <div className="right-panel-empty flow-config-panel__empty">
                   点击流程节点后，在此展示对应的基础配置。
                 </div>
               )}
+              </div>
             </div>
-            </div>
-          )}
-        </div>
+          }
+        />
 
         <Drawer
           visible={lifecycleAliasDrawerVisible && !!activeFlowNode && activeFlowNode.type === 'lifecycleExposeNode' && !!lifecycleExposeDraft}

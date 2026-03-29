@@ -3,6 +3,7 @@ import { Input, MessagePlugin, Tree } from 'tdesign-react';
 import type { TreeInstanceFunctions } from 'tdesign-react';
 import { SearchIcon } from 'tdesign-icons-react';
 import DragableWrapper from '../../components/DragableWrapper';
+import { applyBuilderDragPreview } from '../utils/dragPreview';
 import { useBuilderContext } from '../context/BuilderContext';
 import type { UiTreeInstance, UiTreeNode } from '../store/types';
 import { isSlotNode } from '../utils/slot';
@@ -51,6 +52,11 @@ const FlowAsideLeft: React.FC = () => {
 			lifetimes: Array.isArray(node.lifetimes) ? node.lifetimes : [],
 		};
 
+		applyBuilderDragPreview(event, {
+			kind: 'flow-component',
+			title: String(node.label ?? '节点'),
+			componentType: String(node.type ?? ''),
+		});
 		event.dataTransfer?.setData('drag-component-data', JSON.stringify(payload));
 		event.dataTransfer.effectAllowed = 'copy';
 	};

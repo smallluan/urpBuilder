@@ -7,10 +7,9 @@ import { Button, Divider, Input, Row, Space, Tree, Typography, MessagePlugin } f
 const { Text } = Typography;
 import type { TreeInstanceFunctions } from 'tdesign-react';
 import { Icon, SearchIcon } from 'tdesign-icons-react';
-import { GripHorizontal, LayoutGrid, Minus, Palette, PlusSquare } from 'lucide-react';
+import { GripHorizontal, LayoutGrid, Minus, PlusSquare } from 'lucide-react';
 import { useBuilderAccess, useBuilderContext } from '../context/BuilderContext';
 import type { UiTreeInstance, UiTreeNode } from '../store/types';
-import NodeStyleDrawer from './NodeStyleDrawer';
 import { getNodeSlotKey, isSlotNode } from '../utils/slot';
 import componentCatalog from '../../config/componentCatalog';
 import { LIST_TEMPLATE_ALLOWED_TYPES } from '../../constants/componentBuilder';
@@ -422,7 +421,6 @@ const ComponentAsideLeft: React.FC = () => {
   const flowNodes = useStore((state) => state.flowNodes);
   const flowEdges = useStore((state) => state.flowEdges);
   const recordFlowEditHistory = useStore((state) => state.recordFlowEditHistory);
-  const updateActiveNodeProp = useStore((state) => state.updateActiveNodeProp);
   const [treeClipboard, setTreeClipboardState] = useState<TreeClipboardPayload | null>(() => getTreeClipboard());
   const [dragOverNodeKey, setDragOverNodeKey] = useState<string | null>(null);
   const [draggingTreeNodeKey, setDraggingTreeNodeKey] = useState<string | null>(null);
@@ -871,7 +869,7 @@ const ComponentAsideLeft: React.FC = () => {
   });
 
   const treeData = useMemo(() => [uiPageDataWithWrappedLabel], [uiPageDataWithWrappedLabel]);
-  const treeRef = useRef<TreeInstanceFunctions<any>>(null);
+  const treeRef = useRef<TreeInstanceFunctions<any> | null>(null);
 
   const bindTreeRef = useCallback(
     (el: TreeInstanceFunctions<any> | null) => {
@@ -1279,32 +1277,6 @@ const ComponentAsideLeft: React.FC = () => {
                   </Space>
                 </Row>
               </div>
-              <Divider size={4}/>
-
-              <NodeStyleDrawer
-                targetKey={contextMenuNode.key}
-                value={(contextMenuNode.props?.__style as { value?: Record<string, unknown> } | undefined)?.value}
-                onChange={(nextStyle) => {
-                  setActiveNode(contextMenuNode.key);
-                  updateActiveNodeProp('__style', nextStyle);
-                }}
-                triggerRenderer={(openDrawer) => (
-                  <Button
-                    size="small"
-                    variant="text"
-                    theme="default"
-                    className="tree-node-context-action"
-                    icon={<Palette size={14} />}
-                    onClick={() => {
-                      setActiveNode(contextMenuNode.key);
-                      closeContextMenu();
-                      openDrawer();
-                    }}
-                  >
-                    样式配置
-                  </Button>
-                )}
-              />
 
               {contextMenuNode.type === 'Grid.Row' ? (
                 <Button

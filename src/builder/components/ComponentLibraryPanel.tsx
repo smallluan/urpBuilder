@@ -37,6 +37,7 @@ import { getComponentBaseList, getComponentTemplateDetail } from '../../api/comp
 import { useTeam } from '../../team/context';
 import { resolveComponentSlots, resolveExposedLifecycles, resolveExposedPropSchemas } from '../../utils/customComponentRuntime';
 import { useBuilderContext } from '../context/BuilderContext';
+import { applyBuilderDragPreview } from '../utils/dragPreview';
 
 interface CustomComponentSchema {
   name: string;
@@ -274,23 +275,6 @@ const isGroupEntrySelected = (
   return entry.children.some((child) => schemaMap.get(child.type)?.name === selectedName);
 };
 
-const getPopupNodeKindLabel = (type: string): string => {
-  const normalizedType = type.trim();
-
-  if (
-    normalizedType === 'Menu.Submenu'
-    || normalizedType === 'Menu.Item'
-    || normalizedType === 'Menu.Group'
-    || normalizedType === 'Steps.Item'
-    || normalizedType.startsWith('Layout.')
-    || normalizedType === 'Grid.Col'
-  ) {
-    return '结构';
-  }
-
-  return '容器';
-};
-
 const ComponentLibraryPanel: React.FC<ComponentLibraryPanelProps> = ({ selectedName, onSelect, hideSavedComponents = false }) => {
   const { entityType } = useBuilderContext();
   const { currentTeamId } = useTeam();
@@ -301,6 +285,12 @@ const ComponentLibraryPanel: React.FC<ComponentLibraryPanelProps> = ({ selectedN
 
   // 拖拽组件开始时，将组件的结构化数据携带
   const handleOnDrapStart = (e: React.DragEvent<HTMLDivElement>, data: any) => {
+    applyBuilderDragPreview(e, {
+      kind: 'page',
+      title: String(data?.name ?? ''),
+      componentType: String(data?.type ?? ''),
+      catalogData: data as Record<string, unknown>,
+    });
     e.dataTransfer?.setData('drag-component-data', JSON.stringify(data));
     e.dataTransfer.effectAllowed = 'copy';
   };
@@ -572,7 +562,7 @@ const ComponentLibraryPanel: React.FC<ComponentLibraryPanelProps> = ({ selectedN
     });
   }, [customComponentSchemas, keyword, sourceType]);
 
-  const renderLibraryItemCard = (schema: ComponentSchema, isActive: boolean, helperText?: string) => {
+  const renderLibraryItemCard = (schema: ComponentSchema, isActive: boolean) => {
     const itemCategory = getCategoryByType(String(schema.type ?? ''));
     const IconComponent = getIconByType(String(schema.type ?? ''));
 
@@ -583,10 +573,11 @@ const ComponentLibraryPanel: React.FC<ComponentLibraryPanelProps> = ({ selectedN
         onClick={() => onSelect(String(schema.name))}
       >
         <div className={`library-item-icon library-item-icon--${itemCategory}`}>
-          <IconComponent size={16} strokeWidth={2} />
+          <IconComponent size={14} strokeWidth={2} />
         </div>
-        <div className="library-item-name">{schema.name}</div>
-        <div className="library-item-type">{helperText || schema.type}</div>
+        <div className="library-item-main">
+          <div className="library-item-name">{schema.name}</div>
+        </div>
       </div>
     );
   };
@@ -623,11 +614,9 @@ const ComponentLibraryPanel: React.FC<ComponentLibraryPanelProps> = ({ selectedN
                   </div>
                   <div className="library-popup-item__content">
                     <div className="library-popup-item__name">{schema.name}</div>
-                    <div className="library-popup-item__desc">{child.helperText || schema.type}</div>
-                  </div>
-                  <div className="library-popup-item__meta">
-                    <span className="library-popup-item__type">{schema.type}</span>
-                    <span className="library-popup-item__kind">{getPopupNodeKindLabel(schema.type)}</span>
+                    {child.helperText && child.helperText !== schema.type ? (
+                      <div className="library-popup-item__desc">{child.helperText}</div>
+                    ) : null}
                   </div>
                 </div>
               </DragableWrapper>
@@ -639,9 +628,10 @@ const ComponentLibraryPanel: React.FC<ComponentLibraryPanelProps> = ({ selectedN
   };
 
   return (
-    <div className="right-panel-body">
+    <div className="right-panel-body library-panel">
       <div className="library-search-row">
         <Input
+          size="small"
           clearable
           value={keyword}
           placeholder="搜索组件（中文名）"
@@ -687,10 +677,11 @@ const ComponentLibraryPanel: React.FC<ComponentLibraryPanelProps> = ({ selectedN
                     onClick={() => onSelect(schema.name)}
                   >
                     <div className="library-item-icon library-item-icon--action">
-                      <Boxes size={16} strokeWidth={2} />
+                      <Boxes size={14} strokeWidth={2} />
                     </div>
-                    <div className="library-item-name">{schema.name}</div>
-                    <div className="library-item-type">{String((schema.props.__componentId as { value?: unknown } | undefined)?.value ?? 'CustomComponent')}</div>
+                    <div className="library-item-main">
+                      <div className="library-item-name">{schema.name}</div>
+                    </div>
                   </div>
                 </DragableWrapper>
               ))}
@@ -737,16 +728,17 @@ const ComponentLibraryPanel: React.FC<ComponentLibraryPanelProps> = ({ selectedN
                         >
                           <div
                             className={`library-item library-item--group ${isActive ? 'is-active' : ''}${openedGroupKey === entry.key ? ' is-open' : ''}`}
-                            title={`${entry.name}（点击后选择子组件）`}
+                            title={`${entry.name}（点击选择子组件）`}
                           >
                             <span className="library-item-group-marker" aria-hidden="true">
-                              <MousePointerClick size={12} strokeWidth={2.2} />
+                              <MousePointerClick size={11} strokeWidth={2.2} />
                             </span>
                             <div className={`library-item-icon library-item-icon--${entry.category}`}>
-                              <IconComponent size={16} strokeWidth={2} />
+                              <IconComponent size={14} strokeWidth={2} />
                             </div>
-                            <div className="library-item-name">{entry.name}</div>
-                            <div className="library-item-type">{entry.helperText || '点击后选择子组件'}</div>
+                            <div className="library-item-main">
+                              <div className="library-item-name">{entry.name}</div>
+                            </div>
                           </div>
                         </Popup>
                       </div>

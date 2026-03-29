@@ -19,18 +19,19 @@ const ComponentAsideRight: React.FC = () => {
 
 	return (
 		<aside className="aside-right">
-			<RightPanelHeader mode={mode} onChange={setMode} showSaved savedLabel="自定义" />
-			<div className="right-panel-content">
-				<div className={`right-panel-view ${mode === 'library' ? '' : ' right-panel-view--hidden'}`}>
+			<RightPanelHeader
+				mode={mode}
+				onChange={setMode}
+				showSaved
+				savedLabel="自定义组件"
+				libraryPanel={
 					<ComponentLibraryPanel selectedName={selectedName} onSelect={setSelectedName} hideSavedComponents />
-				</div>
-				<div className={`right-panel-view ${mode === 'saved' ? '' : ' right-panel-view--hidden'}`}>
+				}
+				savedPanel={
 					<SavedComponentPanel selectedName={selectedName} onSelect={setSelectedName} active={mode === 'saved'} />
-				</div>
-				<div className={`right-panel-view ${mode === 'config' ? '' : ' right-panel-view--hidden'}`}>
-					<ComponentConfigPanel />
-				</div>
-			</div>
+				}
+				configPanel={<ComponentConfigPanel />}
+			/>
 		</aside>
 	);
 };

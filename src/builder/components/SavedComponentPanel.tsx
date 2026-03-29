@@ -6,6 +6,7 @@ import DragableWrapper from '../../components/DragableWrapper';
 import { getComponentBaseList, getComponentTemplateDetail } from '../../api/componentTemplate';
 import { useTeam } from '../../team/context';
 import { resolveComponentSlots, resolveExposedLifecycles, resolveExposedPropSchemas } from '../../utils/customComponentRuntime';
+import { applyBuilderDragPreview } from '../utils/dragPreview';
 
 interface CustomComponentSchema {
   name: string;
@@ -27,6 +28,12 @@ const SavedComponentPanel: React.FC<SavedComponentPanelProps> = ({ selectedName,
   const [customComponentSchemas, setCustomComponentSchemas] = useState<CustomComponentSchema[]>([]);
 
   const handleOnDrapStart = (e: React.DragEvent<HTMLDivElement>, data: any) => {
+    applyBuilderDragPreview(e, {
+      kind: 'page',
+      title: String(data?.name ?? ''),
+      componentType: String(data?.type ?? ''),
+      catalogData: data as Record<string, unknown>,
+    });
     e.dataTransfer?.setData('drag-component-data', JSON.stringify(data));
     e.dataTransfer.effectAllowed = 'copy';
   };
@@ -170,9 +177,10 @@ const SavedComponentPanel: React.FC<SavedComponentPanelProps> = ({ selectedName,
   }, [customComponentSchemas, keyword]);
 
   return (
-    <div className="right-panel-body">
+    <div className="right-panel-body library-panel">
       <div className="library-search-row saved-components-search-row">
         <Input
+          size="small"
           clearable
           value={keyword}
           placeholder="搜索已保存组件"
@@ -180,6 +188,7 @@ const SavedComponentPanel: React.FC<SavedComponentPanelProps> = ({ selectedName,
           onChange={(value) => setKeyword(String(value ?? ''))}
         />
         <Select
+          size="small"
           className="saved-components-category"
           value={category}
           options={[{ label: '全部分类（预留）', value: 'all' }]}
@@ -207,10 +216,11 @@ const SavedComponentPanel: React.FC<SavedComponentPanelProps> = ({ selectedName,
                     onClick={() => onSelect(schema.name)}
                   >
                     <div className="library-item-icon library-item-icon--action">
-                      <Boxes size={16} />
+                      <Boxes size={14} strokeWidth={2} />
                     </div>
-                    <div className="library-item-name">{schema.name}</div>
-                    <div className="library-item-type">{String((schema.props.__componentId as { value?: unknown } | undefined)?.value ?? 'CustomComponent')}</div>
+                    <div className="library-item-main">
+                      <div className="library-item-name">{schema.name}</div>
+                    </div>
                   </div>
                 </DragableWrapper>
               ))}

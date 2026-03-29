@@ -16,14 +16,15 @@
  *   const screenSize = useStore((s) => s.screenSize);
  */
 
-import React, { createContext, useContext } from 'react';
+import React, { createContext, useContext, useEffect, useMemo } from 'react';
 import type { StoreApi, UseBoundStore } from 'zustand';
 import type { BuilderStore } from '../store/types';
+import { setBuilderDragPreviewContext } from '../utils/builderDragPreviewBridge';
 
 type BuilderStoreHook = UseBoundStore<StoreApi<BuilderStore>>;
 export type BuilderEntityType = 'component' | 'page';
 
-interface BuilderContextValue {
+export interface BuilderContextValue {
   useStore: BuilderStoreHook;
   readOnly: boolean;
   readOnlyReason?: string;
@@ -47,11 +48,19 @@ export const BuilderProvider: React.FC<BuilderProviderProps> = ({
   readOnlyReason,
   entityType = 'component',
   children,
-}) => (
-  <BuilderContext.Provider value={{ useStore, readOnly, readOnlyReason, entityType }}>
-    {children}
-  </BuilderContext.Provider>
-);
+}) => {
+  const value = useMemo<BuilderContextValue>(
+    () => ({ useStore, readOnly, readOnlyReason, entityType }),
+    [useStore, readOnly, readOnlyReason, entityType],
+  );
+
+  useEffect(() => {
+    setBuilderDragPreviewContext(value);
+    return () => setBuilderDragPreviewContext(null);
+  }, [value]);
+
+  return <BuilderContext.Provider value={value}>{children}</BuilderContext.Provider>;
+};
 
 /**
  * 获取当前上下文中注入的 builder store hook。

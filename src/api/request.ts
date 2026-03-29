@@ -1,10 +1,47 @@
-import axios, { AxiosError, type InternalAxiosRequestConfig } from 'axios';
+import axios, { AxiosError, type AxiosRequestConfig, type AxiosResponse, type InternalAxiosRequestConfig } from 'axios';
+import { loading as showLoadingPlugin } from 'tdesign-react';
 import { emitApiAlert } from './alertBus';
 import type { ApiResponse } from './types';
 import { emitUnauthorized } from '../auth/events';
 import { getAccessToken, migrateLegacyToken } from '../auth/storage';
 
+declare module 'axios' {
+  interface AxiosRequestConfig {
+    /** 为 true 时不触发全屏请求 Loading */
+    skipGlobalLoading?: boolean;
+  }
+}
+
 const API_TIMEOUT = 15000;
+
+/** 延迟展示全屏 Loading，避免短请求反复显隐闪屏（对应 TDesign Loading 的 delay） */
+const GLOBAL_LOADING_DELAY_MS = 320;
+
+let globalLoadingActiveCount = 0;
+let globalLoadingInstance: { hide: () => void } | null = null;
+
+const beginGlobalLoading = () => {
+  globalLoadingActiveCount += 1;
+  if (globalLoadingActiveCount === 1) {
+    globalLoadingInstance = showLoadingPlugin({
+      fullscreen: true,
+      delay: GLOBAL_LOADING_DELAY_MS,
+      showOverlay: true,
+      preventScrollThrough: true,
+    });
+  }
+};
+
+const endGlobalLoading = () => {
+  globalLoadingActiveCount -= 1;
+  if (globalLoadingActiveCount < 0) {
+    globalLoadingActiveCount = 0;
+  }
+  if (globalLoadingActiveCount === 0 && globalLoadingInstance) {
+    globalLoadingInstance.hide();
+    globalLoadingInstance = null;
+  }
+};
 
 const resolveErrorMessage = (error: AxiosError<ApiResponse>) => {
   if (error.response?.data?.message) {
@@ -70,5 +107,19 @@ requestClient.interceptors.response.use(
     return Promise.reject(error);
   },
 );
+
+const rawRequest = requestClient.request.bind(requestClient);
+requestClient.request = function requestWithGlobalLoading<T = unknown, R = AxiosResponse<T>, D = unknown>(
+  config: AxiosRequestConfig<D>,
+): Promise<R> {
+  if (config?.skipGlobalLoading) {
+    return rawRequest(config);
+  }
+
+  beginGlobalLoading();
+  return rawRequest(config).finally(() => {
+    endGlobalLoading();
+  }) as Promise<R>;
+};
 
 export default requestClient;

@@ -3,14 +3,13 @@ import cloneDeep from 'lodash/cloneDeep';
 import { computePosition, flip, offset, shift } from '@floating-ui/dom';
 import { Button, Divider, MessagePlugin, Row, Space, Typography } from 'tdesign-react';
 import { Icon } from 'tdesign-icons-react';
-import { Palette, PlusSquare } from 'lucide-react';
+import { PlusSquare } from 'lucide-react';
 import type { Edge, Node as FlowNode } from '@xyflow/react';
 import { v4 as uuidv4 } from 'uuid';
 import { useBuilderAccess, useBuilderContext } from '../context/BuilderContext';
 import DropArea from '../../components/DropArea';
 import { LIST_TEMPLATE_ALLOWED_TYPES } from '../../constants/componentBuilder';
 import { findNodePathByKey } from '../utils/tree';
-import NodeStyleDrawer from '../components/NodeStyleDrawer';
 import SimulatorSelectionOverlay from '../components/SimulatorSelectionOverlay';
 import componentCatalog from '../../config/componentCatalog';
 import { getNodeSlotKey, isSlotNode } from '../utils/slot';
@@ -1206,32 +1205,6 @@ const ComponentBody: React.FC = () => {
                 </Space>
               </Row>
             </div>
-            <Divider size={4}/>
-
-            <NodeStyleDrawer
-              targetKey={contextMenuNode.key}
-              value={(contextMenuNode.props?.__style as { value?: Record<string, unknown> } | undefined)?.value}
-              onChange={(nextStyle) => {
-                setActiveNode(contextMenuNode.key);
-                updateActiveNodeProp('__style', nextStyle);
-              }}
-              triggerRenderer={(openDrawer) => (
-                <Button
-                  size="small"
-                  variant="text"
-                  theme="default"
-                  className="tree-node-context-action"
-                  icon={<Palette size={14} />}
-                  onClick={() => {
-                    setActiveNode(contextMenuNode.key);
-                    closeContextMenu();
-                    openDrawer();
-                  }}
-                >
-                  样式配置
-                </Button>
-              )}
-            />
 
             {contextMenuNode.type === 'Grid.Row' ? (
               <Button
