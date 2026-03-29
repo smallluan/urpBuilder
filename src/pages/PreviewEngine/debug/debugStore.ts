@@ -48,6 +48,14 @@ export interface DebugState {
   panelHeight: number;
   activeTab: 'flow' | 'data' | 'console';
 
+  /** 流程图页右侧「数据」侧栏 */
+  flowDataSidebarOpen: boolean;
+  flowDataSidebarWidth: number;
+
+  /** 调试 FAB：距视口右边、下边的距离（px） */
+  fabRight: number;
+  fabBottom: number;
+
   breakpoints: Set<string>;
 
   paused: boolean;
@@ -75,6 +83,9 @@ export interface DebugState {
   togglePanel: () => void;
   setPanelHeight: (h: number) => void;
   setActiveTab: (tab: DebugState['activeTab']) => void;
+  setFlowDataSidebarOpen: (open: boolean) => void;
+  setFlowDataSidebarWidth: (w: number) => void;
+  setFabPosition: (right: number, bottom: number) => void;
   toggleBreakpoint: (nodeId: string) => void;
   clearBreakpoints: () => void;
   resume: () => void;
@@ -98,10 +109,39 @@ const MAX_EVENT_LOG = 500;
 const MAX_ERRORS = 200;
 const MAX_REQUESTS = 200;
 
+const FAB_SIZE = 44;
+const FAB_PAD = 8;
+
+const clampFabIntoViewport = (
+  right: number,
+  bottom: number,
+  panelOpen: boolean,
+  panelHeight: number,
+): { fabRight: number; fabBottom: number } => {
+  if (typeof window === 'undefined') {
+    return { fabRight: right, fabBottom: bottom };
+  }
+  const maxR = Math.max(FAB_PAD, window.innerWidth - FAB_SIZE - FAB_PAD);
+  const maxB = Math.max(FAB_PAD, window.innerHeight - FAB_SIZE - FAB_PAD);
+  const minB = panelOpen
+    ? Math.min(maxB, Math.max(FAB_PAD, panelHeight + 16))
+    : FAB_PAD;
+  return {
+    fabRight: Math.max(FAB_PAD, Math.min(maxR, right)),
+    fabBottom: Math.max(minB, Math.min(maxB, bottom)),
+  };
+};
+
 export const useDebugStore = create<DebugState>((set, get) => ({
   panelOpen: false,
   panelHeight: 320,
   activeTab: 'flow',
+
+  flowDataSidebarOpen: true,
+  flowDataSidebarWidth: 300,
+
+  fabRight: 24,
+  fabBottom: 24,
 
   breakpoints: new Set<string>(),
 
@@ -125,7 +165,42 @@ export const useDebugStore = create<DebugState>((set, get) => ({
 
   _pauseResolver: null,
 
-  togglePanel: () => set((s) => ({ panelOpen: !s.panelOpen })),
+  togglePanel: () => {
+    const s = get();
+    if (!s.panelOpen) {
+      set({ panelOpen: true });
+      const opened = get();
+      const cOpen = clampFabIntoViewport(opened.fabRight, opened.fabBottom, true, opened.panelHeight);
+      if (cOpen.fabRight !== opened.fabRight || cOpen.fabBottom !== opened.fabBottom) {
+        set({ fabRight: cOpen.fabRight, fabBottom: cOpen.fabBottom });
+      }
+      return;
+    }
+    // 关闭面板：放行当前断点、退出单步；面板关闭期间不再进入断点（见 InstrumentedFlowRuntime shouldBreak）
+    if (s.paused && s._pauseResolver) {
+      s._pauseResolver('resume');
+    }
+    set({
+      panelOpen: false,
+      stepping: false,
+      ...(s.paused
+        ? {
+            paused: false,
+            pausedAtNodeId: null,
+            pausedEvent: null,
+            _pauseResolver: null,
+            reachableNodeIds: new Set(),
+            reachableEdgeIds: new Set(),
+            stepHighlightEdgeIds: new Set(),
+          }
+        : {}),
+    });
+    const next = get();
+    const c = clampFabIntoViewport(next.fabRight, next.fabBottom, false, next.panelHeight);
+    if (c.fabRight !== next.fabRight || c.fabBottom !== next.fabBottom) {
+      set({ fabRight: c.fabRight, fabBottom: c.fabBottom });
+    }
+  },
 
   setPanelHeight: (h) => {
     const clamped = Math.max(200, Math.min(h, window.innerHeight * 0.7));
@@ -133,6 +208,18 @@ export const useDebugStore = create<DebugState>((set, get) => ({
   },
 
   setActiveTab: (tab) => set({ activeTab: tab }),
+
+  setFlowDataSidebarOpen: (open) => set({ flowDataSidebarOpen: open }),
+
+  setFlowDataSidebarWidth: (w) => {
+    set({ flowDataSidebarWidth: Math.max(200, w) });
+  },
+
+  setFabPosition: (right, bottom) => {
+    const { panelOpen, panelHeight } = get();
+    const c = clampFabIntoViewport(right, bottom, panelOpen, panelHeight);
+    set({ fabRight: c.fabRight, fabBottom: c.fabBottom });
+  },
 
   toggleBreakpoint: (nodeId) => set((s) => {
     const next = new Set(s.breakpoints);

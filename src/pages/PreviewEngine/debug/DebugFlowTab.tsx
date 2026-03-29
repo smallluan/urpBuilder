@@ -14,6 +14,9 @@ import '@xyflow/react/dist/style.css';
 import { flowNodeTypes } from '../../../builder/flow/nodes';
 import AnnotatedEdge, { type AnnotatedEdgeData } from '../../../builder/flow/edges/AnnotatedEdge';
 import { useDebugStore } from './debugStore';
+import DebugDataTab from './DebugDataTab';
+import type { PreviewDataHub } from '../runtime/dataHub';
+import { ChevronRight, Database } from 'lucide-react';
 
 const flowEdgeTypes = { annotatedEdge: AnnotatedEdge };
 
@@ -33,9 +36,10 @@ const traceColorForType = (type: string | undefined) => TRACE_BY_NODE_TYPE[type 
 interface DebugFlowTabProps {
   flowNodes: Node[];
   flowEdges: Edge[];
+  dataHub: PreviewDataHub | null;
 }
 
-const DebugFlowCanvas: React.FC<DebugFlowTabProps> = ({ flowNodes, flowEdges }) => {
+const DebugFlowCanvas: React.FC<DebugFlowTabProps> = ({ flowNodes, flowEdges, dataHub }) => {
   const [searchText, setSearchText] = useState('');
   const [matchedNodeId, setMatchedNodeId] = useState<string | null>(null);
   const reactFlowInstance = useReactFlow();
@@ -49,6 +53,14 @@ const DebugFlowCanvas: React.FC<DebugFlowTabProps> = ({ flowNodes, flowEdges }) 
   const reachableNodeIds = useDebugStore((s) => s.reachableNodeIds);
   const stepHighlightEdgeIds = useDebugStore((s) => s.stepHighlightEdgeIds);
   const toggleBreakpoint = useDebugStore((s) => s.toggleBreakpoint);
+
+  const flowDataSidebarOpen = useDebugStore((s) => s.flowDataSidebarOpen);
+  const flowDataSidebarWidth = useDebugStore((s) => s.flowDataSidebarWidth);
+  const setFlowDataSidebarOpen = useDebugStore((s) => s.setFlowDataSidebarOpen);
+  const setFlowDataSidebarWidth = useDebugStore((s) => s.setFlowDataSidebarWidth);
+
+  const splitRef = useRef<HTMLDivElement>(null);
+  const sidebarResizeRef = useRef({ dragging: false, startX: 0, startWidth: 0 });
 
   const collectivelyVisibleNodeIds = useMemo(() => {
     const s = new Set<string>();
@@ -87,9 +99,9 @@ const DebugFlowCanvas: React.FC<DebugFlowTabProps> = ({ flowNodes, flowEdges }) 
         try {
           reactFlowInstance.fitView({
             nodes: [{ id }],
-            padding: 0.48,
+            padding: 0.78,
             duration: 320,
-            maxZoom: 1.4,
+            maxZoom: 1.02,
             minZoom: 0.12,
           });
         } catch {
@@ -98,7 +110,7 @@ const DebugFlowCanvas: React.FC<DebugFlowTabProps> = ({ flowNodes, flowEdges }) 
             reactFlowInstance.setCenter(
               (n.position?.x ?? 0) + 95,
               (n.position?.y ?? 0) + 40,
-              { zoom: 1.15, duration: 300 },
+              { zoom: 0.92, duration: 300 },
             );
           }
         }
@@ -245,8 +257,42 @@ const DebugFlowCanvas: React.FC<DebugFlowTabProps> = ({ flowNodes, flowEdges }) 
     }
   }, [toggleBreakpoint]);
 
+  const handleSidebarResizeMouseDown = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault();
+      const el = splitRef.current;
+      if (!el) return;
+      sidebarResizeRef.current = {
+        dragging: true,
+        startX: e.clientX,
+        startWidth: flowDataSidebarWidth,
+      };
+
+      const maxW = Math.min(640, Math.floor(el.clientWidth * 0.72));
+
+      const onMove = (ev: MouseEvent) => {
+        if (!sidebarResizeRef.current.dragging) return;
+        const { startX, startWidth } = sidebarResizeRef.current;
+        // 分隔条在侧栏左侧：鼠标右移 → 分界线右移 → 侧栏应变窄，故与 delta 相减（与拖动手感一致）
+        const next = startWidth - (ev.clientX - startX);
+        setFlowDataSidebarWidth(Math.max(200, Math.min(maxW, next)));
+      };
+
+      const onUp = () => {
+        sidebarResizeRef.current.dragging = false;
+        window.removeEventListener('mousemove', onMove);
+        window.removeEventListener('mouseup', onUp);
+      };
+
+      window.addEventListener('mousemove', onMove);
+      window.addEventListener('mouseup', onUp);
+    },
+    [flowDataSidebarWidth, setFlowDataSidebarWidth],
+  );
+
   return (
-    <div className="debug-flow-tab">
+    <div ref={splitRef} className="debug-flow-tab debug-flow-tab--split">
+      <div className="debug-flow-tab__main">
       <div className="debug-flow-tab__toolbar">
         <input
           type="text"
@@ -256,7 +302,6 @@ const DebugFlowCanvas: React.FC<DebugFlowTabProps> = ({ flowNodes, flowEdges }) 
           onChange={(e) => setSearchText(e.target.value)}
           onKeyDown={handleSearchKeyDown}
         />
-        <span className="debug-flow-tab__hint">双击或右键节点切换断点 · 连线样式与搭建器一致</span>
       </div>
       <div className="debug-flow-tab__canvas">
         <div className="flow-canvas debug-flow-tab__canvas-shell">
@@ -297,6 +342,48 @@ const DebugFlowCanvas: React.FC<DebugFlowTabProps> = ({ flowNodes, flowEdges }) 
           </ReactFlow>
         </div>
       </div>
+      </div>
+
+      {flowDataSidebarOpen ? (
+        <>
+          <div
+            className="debug-flow-tab__hsplit"
+            onMouseDown={handleSidebarResizeMouseDown}
+            role="separator"
+            aria-orientation="vertical"
+            aria-label="调整数据面板宽度"
+          />
+          <aside
+            className="debug-flow-tab__data-sidebar"
+            style={{ width: flowDataSidebarWidth }}
+          >
+            <div className="debug-flow-tab__data-sidebar-head">
+              <span className="debug-flow-tab__data-sidebar-title">数据</span>
+              <button
+                type="button"
+                className="debug-flow-tab__data-sidebar-collapse"
+                onClick={() => setFlowDataSidebarOpen(false)}
+                title="收起数据面板"
+              >
+                <ChevronRight style={{ width: 14, height: 14 }} />
+              </button>
+            </div>
+            <div className="debug-flow-tab__data-sidebar-body">
+              <DebugDataTab dataHub={dataHub} variant="sidebar" />
+            </div>
+          </aside>
+        </>
+      ) : (
+        <button
+          type="button"
+          className="debug-flow-tab__data-rail"
+          onClick={() => setFlowDataSidebarOpen(true)}
+          title="展开数据面板"
+        >
+          <Database style={{ width: 14, height: 14 }} />
+          <span className="debug-flow-tab__data-rail-label">数据</span>
+        </button>
+      )}
     </div>
   );
 };

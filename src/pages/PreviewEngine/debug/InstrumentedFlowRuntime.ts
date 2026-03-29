@@ -268,7 +268,9 @@ export class InstrumentedFlowRuntime {
           if (!nextNode) continue;
 
           const state = this.store.getState();
-          const shouldBreak = state.breakpoints.has(downstreamNodeId) || state.stepping;
+          // 仅当调试面板打开时才进入断点/单步等待（与浏览器 DevTools 行为一致；面板关闭时断点配置仍保留）
+          const shouldBreak =
+            state.panelOpen && (state.breakpoints.has(downstreamNodeId) || state.stepping);
 
           if (shouldBreak) {
             const action = await this.waitForUserAction(current.nodeId, downstreamNodeId, current.event);

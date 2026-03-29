@@ -36,11 +36,6 @@ const DebugPauseOverlay: React.FC = () => {
         <button type="button" className="debug-pause-toolbar__btn" onClick={stepOver}>
           <StepForward /> 单步执行 <kbd>F10</kbd>
         </button>
-        {pausedAtNodeId && (
-          <span className="debug-pause-toolbar__info">
-            已断在节点：{pausedAtNodeId}
-          </span>
-        )}
       </div>
     </>
   );

@@ -2,8 +2,6 @@
 .debug-fab {
   position: fixed;
   z-index: 10000;
-  right: 24px;
-  bottom: 24px;
   width: 44px;
   height: 44px;
   border-radius: 50%;
@@ -13,19 +11,22 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  cursor: pointer;
+  cursor: grab;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
-  transition: background 0.15s, transform 0.15s, border-color 0.15s;
+  transition: background 0.15s, border-color 0.15s;
   user-select: none;
+  touch-action: none;
 
-  &:hover {
+  &:hover:not(.is-dragging) {
     background: #2d2d2d;
     border-color: #007acc;
-    transform: scale(1.08);
+    transform: scale(1.06);
   }
 
-  &.is-panel-open {
-    bottom: calc(var(--debug-panel-height, 320px) + 16px);
+  &.is-dragging {
+    cursor: grabbing;
+    transform: none;
+    transition: none;
   }
 
   svg {
@@ -154,7 +155,15 @@
 .debug-panel__body {
   flex: 1;
   min-height: 0;
-  overflow: auto;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+
+  > * {
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+  }
 }
 
 /* ===== Flow Tab ===== */
@@ -163,6 +172,120 @@
   height: 100%;
   display: flex;
   flex-direction: column;
+}
+
+.debug-flow-tab--split {
+  flex-direction: row;
+  align-items: stretch;
+  min-height: 0;
+}
+
+.debug-flow-tab__main {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.debug-flow-tab__hsplit {
+  width: 5px;
+  flex-shrink: 0;
+  cursor: ew-resize;
+  background: #2d2d2d;
+  transition: background 0.15s;
+
+  &:hover,
+  &:active {
+    background: #007acc;
+  }
+}
+
+.debug-flow-tab__data-sidebar {
+  flex-shrink: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: #1e1e1e;
+  border-left: 1px solid #3c3c3c;
+  overflow: hidden;
+}
+
+.debug-flow-tab__data-sidebar-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+  height: 30px;
+  padding: 0 8px 0 10px;
+  background: #252526;
+  border-bottom: 1px solid #3c3c3c;
+}
+
+.debug-flow-tab__data-sidebar-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: #969696;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.debug-flow-tab__data-sidebar-collapse {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 24px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: #969696;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+
+  &:hover {
+    background: #3c3c3c;
+    color: #fff;
+  }
+}
+
+.debug-flow-tab__data-sidebar-body {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.debug-flow-tab__data-rail {
+  flex-shrink: 0;
+  width: 28px;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 0;
+  border: none;
+  border-left: 1px solid #3c3c3c;
+  background: #252526;
+  color: #969696;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 10px;
+  transition: background 0.12s, color 0.12s;
+
+  &:hover {
+    background: #2d2d2d;
+    color: #d4d4d4;
+  }
+}
+
+.debug-flow-tab__data-rail-label {
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  letter-spacing: 0.12em;
+  font-weight: 600;
 }
 
 .debug-flow-tab__toolbar {
@@ -219,9 +342,9 @@
   flex: 1;
   min-height: 0;
   width: 100%;
-  background: #fff;
+  background: #252526;
   border-radius: 4px;
-  border: 1px solid #eef0f4;
+  // border: 1px solid #eef0f4;
   overflow: hidden;
 }
 
@@ -337,17 +460,6 @@
   }
 }
 
-.debug-pause-toolbar__info {
-  margin-left: 8px;
-  font-size: 12px;
-  font-weight: 500;
-  color: #5d4600;
-  max-width: 360px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
 /* ===== Data Tab ===== */
 .debug-data-tab {
   width: 100%;
@@ -384,6 +496,43 @@
 .debug-data-tab__trace {
   flex: 1;
   min-height: 0;
+  overflow: auto;
+}
+
+.debug-data-tab--flow-sidebar {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.debug-data-tab--flow-sidebar .debug-data-tab__section {
+  flex-shrink: 0;
+}
+
+.debug-data-tab__trace--sidebar {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.debug-data-tab--flow-sidebar .debug-data-tab__trace-table-wrap {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+.debug-data-tab--flow-sidebar .debug-trace-table td {
+  max-width: 96px;
+}
+
+.debug-json-tree--sidebar {
+  flex-shrink: 0;
+  min-height: 72px;
+  max-height: 38%;
   overflow: auto;
 }
 

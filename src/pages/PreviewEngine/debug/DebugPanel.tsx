@@ -82,7 +82,9 @@ const DebugPanel: React.FC<DebugPanelProps> = ({ flowNodes, flowEdges, dataHub }
         </button>
       </div>
       <div className="debug-panel__body">
-        {activeTab === 'flow' && <DebugFlowTab flowNodes={flowNodes} flowEdges={flowEdges} />}
+        {activeTab === 'flow' && (
+          <DebugFlowTab flowNodes={flowNodes} flowEdges={flowEdges} dataHub={dataHub} />
+        )}
         {activeTab === 'data' && <DebugDataTab dataHub={dataHub} />}
         {activeTab === 'console' && <DebugConsoleTab />}
       </div>

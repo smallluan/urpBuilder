@@ -1,6 +1,6 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
-import { useDebugStore, type TraceEntry } from './debugStore';
+import { useDebugStore } from './debugStore';
 import type { PreviewDataHub } from '../runtime/dataHub';
 
 /* ---------- JSON Tree ---------- */
@@ -129,9 +129,11 @@ const ComponentStatesPanel: React.FC<{ dataHub: PreviewDataHub | null }> = ({ da
 
 interface DebugDataTabProps {
   dataHub: PreviewDataHub | null;
+  /** 流程图右侧栏内嵌时使用独立滚动分区 */
+  variant?: 'tab' | 'sidebar';
 }
 
-const DebugDataTab: React.FC<DebugDataTabProps> = ({ dataHub }) => {
+const DebugDataTab: React.FC<DebugDataTabProps> = ({ dataHub, variant = 'tab' }) => {
   const traceEntries = useDebugStore((s) => s.traceEntries);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
@@ -140,47 +142,54 @@ const DebugDataTab: React.FC<DebugDataTabProps> = ({ dataHub }) => {
     [traceEntries, selectedId],
   );
 
+  const traceClass =
+    variant === 'sidebar'
+      ? 'debug-data-tab__trace debug-data-tab__trace--sidebar'
+      : 'debug-data-tab__trace';
+
   return (
-    <div className="debug-data-tab">
+    <div className={`debug-data-tab${variant === 'sidebar' ? ' debug-data-tab--flow-sidebar' : ''}`}>
       <ComponentStatesPanel dataHub={dataHub} />
-      <div className="debug-data-tab__trace">
-        <table className="debug-trace-table">
-          <thead>
-            <tr>
-              <th>#</th>
-              <th>节点</th>
-              <th>类型</th>
-              <th>输入</th>
-              <th>输出</th>
-              <th>耗时</th>
-            </tr>
-          </thead>
-          <tbody>
-            {traceEntries.length === 0 && (
+      <div className={traceClass}>
+        <div className="debug-data-tab__trace-table-wrap">
+          <table className="debug-trace-table">
+            <thead>
               <tr>
-                <td colSpan={6} style={{ textAlign: 'center', color: '#6a6a6a', padding: 16 }}>
-                  暂无执行记录。触发组件交互后此处将显示流程图执行轨迹。
-                </td>
+                <th>#</th>
+                <th>节点</th>
+                <th>类型</th>
+                <th>输入</th>
+                <th>输出</th>
+                <th>耗时</th>
               </tr>
-            )}
-            {traceEntries.map((entry, idx) => (
-              <tr
-                key={entry.id}
-                className={selectedId === entry.id ? 'is-selected' : ''}
-                onClick={() => setSelectedId(selectedId === entry.id ? null : entry.id)}
-              >
-                <td>{idx + 1}</td>
-                <td title={entry.nodeId}>{entry.nodeLabel}</td>
-                <td>{entry.nodeType}</td>
-                <td>{eventSummary(entry.inputEvent)}</td>
-                <td>{entry.outputEvent ? eventSummary(entry.outputEvent) : <span style={{ color: '#6a6a6a' }}>blocked</span>}</td>
-                <td>{entry.durationMs}ms</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {traceEntries.length === 0 && (
+                <tr>
+                  <td colSpan={6} style={{ textAlign: 'center', color: '#6a6a6a', padding: 16 }}>
+                    暂无执行记录。触发组件交互后此处将显示流程图执行轨迹。
+                  </td>
+                </tr>
+              )}
+              {traceEntries.map((entry, idx) => (
+                <tr
+                  key={entry.id}
+                  className={selectedId === entry.id ? 'is-selected' : ''}
+                  onClick={() => setSelectedId(selectedId === entry.id ? null : entry.id)}
+                >
+                  <td>{idx + 1}</td>
+                  <td title={entry.nodeId}>{entry.nodeLabel}</td>
+                  <td>{entry.nodeType}</td>
+                  <td>{eventSummary(entry.inputEvent)}</td>
+                  <td>{entry.outputEvent ? eventSummary(entry.outputEvent) : <span style={{ color: '#6a6a6a' }}>blocked</span>}</td>
+                  <td>{entry.durationMs}ms</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
         {selectedEntry && (
-          <div className="debug-json-tree">
+          <div className={`debug-json-tree${variant === 'sidebar' ? ' debug-json-tree--sidebar' : ''}`}>
             <div style={{ marginBottom: 6, color: '#969696', fontWeight: 600 }}>输入事件</div>
             <JsonValue value={selectedEntry.inputEvent} depth={0} />
             {selectedEntry.outputEvent && (
