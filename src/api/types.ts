@@ -90,6 +90,11 @@ export interface CommonTemplatePageConfig {
   screenSize?: string | number;
   autoWidth?: number;
   selectedLayoutTemplateId?: string | null;
+  /**
+   * 2 = uiTree 节点 props 为脱水形态（仅键→原始值）；缺省/1 = 历史完整 schema（含 name、editType、payload）。
+   * 由前端写入；后端透传即可。
+   */
+  propsStorageVersion?: number;
   [key: string]: unknown;
 }
 

@@ -20,25 +20,25 @@ const createChartDefaultData = (chartType: EChartSeriesType) => {
 
   if (chartType === 'candlestick') {
     return [
-      { name: 'Mon', open: 12, close: 15, low: 10, high: 18 },
-      { name: 'Tue', open: 15, close: 13, low: 12, high: 16 },
-      { name: 'Wed', open: 13, close: 17, low: 11, high: 19 },
+      { name: '周一', open: 12, close: 15, low: 10, high: 18 },
+      { name: '周二', open: 15, close: 13, low: 12, high: 16 },
+      { name: '周三', open: 13, close: 17, low: 11, high: 19 },
     ];
   }
 
   if (chartType === 'boxplot') {
     return [
-      { name: 'Q1', min: 12, q1: 18, median: 22, q3: 28, max: 36 },
-      { name: 'Q2', min: 14, q1: 20, median: 25, q3: 30, max: 38 },
+      { name: '样本一', min: 12, q1: 18, median: 22, q3: 28, max: 36 },
+      { name: '样本二', min: 14, q1: 20, median: 25, q3: 30, max: 38 },
     ];
   }
 
   return [
-    { name: 'Mon', value: 120 },
-    { name: 'Tue', value: 200 },
-    { name: 'Wed', value: 150 },
-    { name: 'Thu', value: 80 },
-    { name: 'Fri', value: 70 },
+    { name: '周一', value: 120 },
+    { name: '周二', value: 200 },
+    { name: '周三', value: 150 },
+    { name: '周四', value: 80 },
+    { name: '周五', value: 70 },
   ];
 };
 
@@ -74,12 +74,12 @@ const createChartComponent = (
       editType: 'dataSourceConfig',
     },
     xField: {
-      name: 'X轴字段',
+      name: '横轴字段',
       value: 'name',
       editType: 'input',
     },
     yField: {
-      name: 'Y轴字段',
+      name: '纵轴字段',
       value: 'value',
       editType: 'input',
     },
@@ -104,12 +104,12 @@ const createChartComponent = (
       editType: 'input',
     },
     nameField: {
-      name: '名称字段(饼图)',
+      name: '饼图名称字段',
       value: 'name',
       editType: 'input',
     },
     valueField: {
-      name: '数值字段(饼图)',
+      name: '饼图数值字段',
       value: 'value',
       editType: 'input',
     },
@@ -149,7 +149,7 @@ const createChartComponent = (
       editType: 'input',
     },
     q1Field: {
-      name: 'Q1字段',
+      name: '下四分位字段',
       value: 'q1',
       editType: 'input',
     },
@@ -159,7 +159,7 @@ const createChartComponent = (
       editType: 'input',
     },
     q3Field: {
-      name: 'Q3字段',
+      name: '上四分位字段',
       value: 'q3',
       editType: 'input',
     },
@@ -200,7 +200,7 @@ const createChartComponent = (
       editType: 'switch',
     },
     height: {
-      name: '高度(px)',
+      name: '高度',
       value: 320,
       editType: 'inputNumber',
       payload: {
@@ -369,12 +369,12 @@ const componentCatalog = [
         editType: 'iconSelect',
       },
       duration: {
-        name: '回顶时长(ms)',
+        name: '回顶时长',
         value: 200,
         editType: 'inputNumber',
       },
       offset: {
-        name: '位置偏移(offset)',
+        name: '位置偏移',
         value: '24px,80px',
         editType: 'input',
       },
@@ -403,7 +403,7 @@ const componentCatalog = [
         },
       },
       target: {
-        name: '滚动目标(target)',
+        name: '滚动目标',
         value: 'body',
         editType: 'input',
       },
@@ -420,12 +420,12 @@ const componentCatalog = [
     name: '抽屉',
     props: {
       className: {
-        name: '类名(className)',
+        name: '类名',
         value: '',
         editType: 'input',
       },
       body: {
-        name: '内容(body)',
+        name: '内容',
         value: '抽屉内容',
         editType: 'input',
       },
@@ -435,7 +435,7 @@ const componentCatalog = [
         editType: 'switch',
       },
       header: {
-        name: '头部内容(header)',
+        name: '头部内容',
         value: '抽屉标题',
         editType: 'input',
       },
@@ -460,7 +460,7 @@ const componentCatalog = [
         editType: 'switch',
       },
       closeOnEscKeydown: {
-        name: 'ESC 关闭',
+        name: '退出键关闭',
         value: true,
         editType: 'switch',
       },
@@ -475,12 +475,12 @@ const componentCatalog = [
         editType: 'switch',
       },
       lazy: {
-        name: '懒加载(lazy)',
+        name: '懒加载',
         value: true,
         editType: 'switch',
       },
       placement: {
-        name: '方向(placement)',
+        name: '方向',
         value: 'right',
         editType: 'select',
         payload: {
@@ -503,7 +503,7 @@ const componentCatalog = [
         editType: 'switch',
       },
       size: {
-        name: '尺寸(size)',
+        name: '尺寸',
         value: 'small',
         editType: 'input',
       },
@@ -523,12 +523,12 @@ const componentCatalog = [
         editType: 'inputNumber',
       },
       visible: {
-        name: '可见(visible)',
+        name: '可见',
         value: false,
         editType: 'switch',
       },
       zIndex: {
-        name: '层级(zIndex)',
+        name: '层级',
         value: 1500,
         editType: 'inputNumber',
       },
@@ -760,7 +760,7 @@ const componentCatalog = [
         editType: 'switch',
       },
       mockProgressDuration: {
-        name: '模拟进度间隔(ms)',
+        name: '模拟进度间隔',
         value: 300,
         editType: 'inputNumber',
         payload: {
@@ -844,7 +844,7 @@ const componentCatalog = [
   },
   {
     type: 'Flex',
-    name: 'Flex容器',
+    name: '弹性布局容器',
     props: {
       direction: {
         name: '主轴方向',
@@ -884,7 +884,7 @@ const componentCatalog = [
   },
   {
     type: 'Flex.Item',
-    name: 'Flex子项',
+    name: '弹性布局子项',
     props: {
       grow: {
         name: '放大系数',
@@ -1135,7 +1135,7 @@ const componentCatalog = [
     name: '表格',
     props: {
       rowKey: {
-        name: '行唯一键(rowKey)',
+        name: '行唯一键',
         value: 'id',
         editType: 'input',
       },
@@ -1171,7 +1171,7 @@ const componentCatalog = [
         },
       },
       maxHeight: {
-        name: '最大高度(px)',
+        name: '最大高度',
         value: 360,
         editType: 'inputNumber',
       },
@@ -1322,7 +1322,7 @@ const componentCatalog = [
   },
   {
     type: 'List.Item',
-    name: '列表项（抽象）',
+    name: '列表项抽象',
     props: {
       showImage: {
         name: '显示图片',
@@ -1375,12 +1375,12 @@ const componentCatalog = [
         editType: 'switch'
       },
       current: {
-        name: '当前步骤(current)',
+        name: '当前步骤',
         value: '0',
         editType: 'input'
       },
       defaultCurrent: {
-        name: '默认步骤(defaultCurrent)',
+        name: '默认步骤',
         value: '0',
         editType: 'input'
       },
@@ -1447,7 +1447,7 @@ const componentCatalog = [
         }
       },
       value: {
-        name: '标识(value)',
+        name: '标识',
         value: '',
         editType: 'input'
       }
@@ -1534,12 +1534,12 @@ const componentCatalog = [
         },
       },
       value: {
-        name: '当前值(value)',
+        name: '当前值',
         value: '',
         editType: 'input',
       },
       defaultValue: {
-        name: '默认值(defaultValue)',
+        name: '默认值',
         value: 'tab-1',
         editType: 'input',
       },
@@ -1569,12 +1569,12 @@ const componentCatalog = [
         editType: 'tabsConfig',
       },
       value: {
-        name: '当前展开(value)',
+        name: '当前展开',
         value: '',
         editType: 'input',
       },
       defaultValue: {
-        name: '默认展开(defaultValue)',
+        name: '默认展开',
         value: 'collapse-1',
         editType: 'input',
       },
@@ -1622,12 +1622,12 @@ const componentCatalog = [
         },
       },
       expanded: {
-        name: '展开项(expanded)',
+        name: '展开项',
         value: '',
         editType: 'input',
       },
       defaultExpanded: {
-        name: '默认展开(defaultExpanded)',
+        name: '默认展开项',
         value: '',
         editType: 'input',
       },
@@ -1640,12 +1640,12 @@ const componentCatalog = [
         },
       },
       value: {
-        name: '激活项(value)',
+        name: '激活项',
         value: '',
         editType: 'input',
       },
       defaultValue: {
-        name: '默认激活(defaultValue)',
+        name: '默认激活',
         value: '',
         editType: 'input',
       },
@@ -1657,7 +1657,7 @@ const componentCatalog = [
     name: '侧边菜单',
     props: {
       collapsed: {
-        name: '收起(collapsed)',
+        name: '收起',
         value: false,
         editType: 'switch',
       },
@@ -1675,12 +1675,12 @@ const componentCatalog = [
         },
       },
       expanded: {
-        name: '展开项(expanded)',
+        name: '展开项',
         value: '',
         editType: 'input',
       },
       defaultExpanded: {
-        name: '默认展开(defaultExpanded)',
+        name: '默认展开项',
         value: '',
         editType: 'input',
       },
@@ -1693,17 +1693,17 @@ const componentCatalog = [
         },
       },
       value: {
-        name: '激活项(value)',
+        name: '激活项',
         value: '',
         editType: 'input',
       },
       defaultValue: {
-        name: '默认激活(defaultValue)',
+        name: '默认激活',
         value: '',
         editType: 'input',
       },
       width: {
-        name: '宽度(width)',
+        name: '宽度',
         value: '232px',
         editType: 'input',
       },
@@ -1725,7 +1725,7 @@ const componentCatalog = [
         editType: 'input',
       },
       value: {
-        name: '标识(value)',
+        name: '标识',
         value: '',
         editType: 'input',
       },
@@ -1751,7 +1751,7 @@ const componentCatalog = [
         editType: 'input',
       },
       value: {
-        name: '标识(value)',
+        name: '标识',
         value: '',
         editType: 'input',
       },
@@ -1964,7 +1964,7 @@ const componentCatalog = [
         }
       },
       gallery: {
-        name: '启用图片预览(ImageViewer)',
+        name: '启用图片预览',
         value: false,
         editType: 'switch',
       }
@@ -2019,12 +2019,12 @@ const componentCatalog = [
         editType: 'switch'
       },
       value: {
-        name: '受控值(value)',
+        name: '受控值',
         value: false,
         editType: 'switch'
       },
       defaultValue: {
-        name: '非受控默认值(defaultValue)',
+        name: '非受控默认值',
         value: false,
         editType: 'switch'
       },
@@ -2093,7 +2093,7 @@ const componentCatalog = [
         editType: 'switch'
       },
       value: {
-        name: '高亮日期(value)',
+        name: '高亮日期',
         value: '',
         editType: 'input'
       }
@@ -2118,12 +2118,12 @@ const componentCatalog = [
         }
       },
       value: {
-        name: '色值(value)',
+        name: '色值',
         value: '',
         editType: 'input'
       },
       defaultValue: {
-        name: '默认色值(defaultValue)',
+        name: '默认色值',
         value: '',
         editType: 'input'
       },
@@ -2170,12 +2170,12 @@ const componentCatalog = [
         editType: 'input'
       },
       value: {
-        name: '时间值(value)',
+        name: '时间值',
         value: '',
         editType: 'input'
       },
       defaultValue: {
-        name: '默认时间(defaultValue)',
+        name: '默认时间',
         value: '',
         editType: 'input'
       },
@@ -2201,7 +2201,7 @@ const componentCatalog = [
         }
       },
       steps: {
-        name: '步长(时,分,秒)',
+        name: '步长',
         value: '1,1,1',
         editType: 'input'
       },
@@ -2248,12 +2248,12 @@ const componentCatalog = [
         editType: 'input'
       },
       value: {
-        name: '范围值(value)',
+        name: '范围值',
         value: '',
         editType: 'input'
       },
       defaultValue: {
-        name: '默认范围(defaultValue)',
+        name: '默认范围',
         value: '',
         editType: 'input'
       },
@@ -2284,7 +2284,7 @@ const componentCatalog = [
         }
       },
       steps: {
-        name: '步长(时,分,秒)',
+        name: '步长',
         value: '1,1,1',
         editType: 'input'
       },
@@ -2326,12 +2326,12 @@ const componentCatalog = [
     name: '输入框',
     props: {
       className: {
-        name: '类名(className)',
+        name: '类名',
         value: '',
         editType: 'input'
       },
       style: {
-        name: '内联样式(style)',
+        name: '内联样式',
         value: '',
         editType: 'jsonCode'
       },
@@ -2359,7 +2359,7 @@ const componentCatalog = [
         editType: 'switch'
       },
       autocomplete: {
-        name: '自动填充(autocomplete)',
+        name: '自动填充',
         value: '',
         editType: 'input'
       },
@@ -2374,12 +2374,12 @@ const componentCatalog = [
         editType: 'switch'
       },
       value: {
-        name: '值(value)',
+        name: '值',
         value: '',
         editType: 'input'
       },
       defaultValue: {
-        name: '默认值(defaultValue)',
+        name: '默认值',
         value: '',
         editType: 'input'
       },
@@ -2420,7 +2420,7 @@ const componentCatalog = [
         editType: 'switch'
       },
       maxcharacter: {
-        name: '最大字符数(maxcharacter)',
+        name: '最大字符数',
         value: undefined,
         editType: 'inputNumber',
         payload: {
@@ -2428,7 +2428,7 @@ const componentCatalog = [
         }
       },
       maxlength: {
-        name: '最大长度(maxlength)',
+        name: '最大长度',
         value: undefined,
         editType: 'inputNumber',
         payload: {
@@ -2436,7 +2436,7 @@ const componentCatalog = [
         }
       },
       name: {
-        name: '名称(name)',
+        name: '名称',
         value: '',
         editType: 'input'
       },
@@ -2456,12 +2456,12 @@ const componentCatalog = [
         editType: 'switch'
       },
       tips: {
-        name: '提示文案(tips)',
+        name: '提示文案',
         value: '',
         editType: 'input'
       },
       type: {
-        name: '类型(type)',
+        name: '类型',
         value: 'text',
         editType: 'select',
         payload: {
@@ -2493,7 +2493,7 @@ const componentCatalog = [
     name: '多行文本框',
     props: {
       className: {
-        name: '类名(className)',
+        name: '类名',
         value: '',
         editType: 'input'
       },
@@ -2513,22 +2513,22 @@ const componentCatalog = [
         editType: 'switch'
       },
       autosize: {
-        name: '自动高度(autosize)',
+        name: '自动高度',
         value: false,
         editType: 'jsonCode'
       },
       count: {
-        name: '计数器(count)',
+        name: '计数器',
         value: false,
         editType: 'switch'
       },
       value: {
-        name: '值(value)',
+        name: '值',
         value: '',
         editType: 'input'
       },
       defaultValue: {
-        name: '默认值(defaultValue)',
+        name: '默认值',
         value: '',
         editType: 'input'
       },
@@ -2538,7 +2538,7 @@ const componentCatalog = [
         editType: 'input'
       },
       status: {
-        name: '状态(status)',
+        name: '状态',
         value: 'default',
         editType: 'select',
         payload: {
@@ -2551,17 +2551,17 @@ const componentCatalog = [
         editType: 'switch'
       },
       readOnly: {
-        name: '只读(readOnly)',
+        name: '只读',
         value: false,
         editType: 'switch'
       },
       readonly: {
-        name: '只读(兼容 readonly)',
+        name: '只读兼容',
         value: false,
         editType: 'switch'
       },
       maxcharacter: {
-        name: '最大字符数(maxcharacter)',
+        name: '最大字符数',
         value: undefined,
         editType: 'inputNumber',
         payload: {
@@ -2569,7 +2569,7 @@ const componentCatalog = [
         }
       },
       maxlength: {
-        name: '最大长度(maxlength)',
+        name: '最大长度',
         value: undefined,
         editType: 'inputNumber',
         payload: {
@@ -2577,12 +2577,12 @@ const componentCatalog = [
         }
       },
       name: {
-        name: '名称(name)',
+        name: '名称',
         value: '',
         editType: 'input'
       },
       tips: {
-        name: '提示文案(tips)',
+        name: '提示文案',
         value: '',
         editType: 'input'
       }
@@ -2599,12 +2599,12 @@ const componentCatalog = [
         editType: 'switch'
       },
       value: {
-        name: '值(value)',
+        name: '值',
         value: 0,
         editType: 'input'
       },
       defaultValue: {
-        name: '默认值(defaultValue)',
+        name: '默认值',
         value: 0,
         editType: 'input'
       },
@@ -2614,17 +2614,17 @@ const componentCatalog = [
         editType: 'input'
       },
       min: {
-        name: '最小值(min)',
+        name: '最小值',
         value: '',
         editType: 'input'
       },
       max: {
-        name: '最大值(max)',
+        name: '最大值',
         value: '',
         editType: 'input'
       },
       step: {
-        name: '步长(step)',
+        name: '步长',
         value: 1,
         editType: 'input'
       },
@@ -2703,12 +2703,12 @@ const componentCatalog = [
         editType: 'switch'
       },
       value: {
-        name: '值(value)',
+        name: '值',
         value: '50',
         editType: 'input'
       },
       defaultValue: {
-        name: '默认值(defaultValue)',
+        name: '默认值',
         value: '50',
         editType: 'input'
       },
@@ -2721,22 +2721,22 @@ const componentCatalog = [
         }
       },
       min: {
-        name: '最小值(min)',
+        name: '最小值',
         value: '0',
         editType: 'input'
       },
       max: {
-        name: '最大值(max)',
+        name: '最大值',
         value: '100',
         editType: 'input'
       },
       step: {
-        name: '步长(step)',
+        name: '步长',
         value: '1',
         editType: 'input'
       },
       range: {
-        name: '双游标(range)',
+        name: '双游标',
         value: false,
         editType: 'switch'
       },
@@ -2773,7 +2773,7 @@ const componentCatalog = [
         editType: 'swiperImages'
       },
       height: {
-        name: '高度(px)',
+        name: '高度',
         value: 240,
         editType: 'inputNumber'
       }
@@ -2899,7 +2899,7 @@ const visibleInjectedComponentCatalog = componentCatalog.map((item) => {
     props: {
       ...props,
       visible: {
-        name: '可见(visible)',
+        name: '可见',
         value: true,
         editType: 'switch',
       },

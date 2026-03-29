@@ -11,6 +11,7 @@ import type {
   UpdatePageDraftPayload,
   WithdrawTemplatePayload,
 } from './types';
+import { hydratePageDetailFromApi } from '../builder/template/propsHydration';
 
 const isLikelyPageItem = (item: PageBaseInfo) => {
   if (item.entityType) {
@@ -64,7 +65,12 @@ export const getPageTemplateDetail = async (pageId: string) => {
       entityType: 'page',
     },
   });
-  return response.data;
+  const payload = response.data;
+  if (payload?.data?.template) {
+    const hydrated = await hydratePageDetailFromApi(payload.data);
+    return { ...payload, data: hydrated };
+  }
+  return payload;
 };
 
 export const getPageDetail = getPageTemplateDetail;

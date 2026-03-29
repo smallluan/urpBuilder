@@ -13,6 +13,7 @@ import { emitApiAlert } from '../../api/alertBus';
 import { findNodeByKey, updateNodeByKey } from '../../utils/createComponentTree';
 import { useTeam } from '../../team/context';
 import UnifiedBuilderTopbar, { TopbarGroup, TopbarIconButton } from './UnifiedBuilderTopbar';
+import { dehydrateUiTree, PROPS_STORAGE_VERSION } from '../template/propsHydration';
 
 type Props = {
   mode: 'component' | 'flow';
@@ -651,14 +652,14 @@ const HeaderControls: React.FC<Props> = ({
         : [];
 
       const templatePayload = {
-        uiTree: uiTreeData as unknown as Record<string, unknown>,
+        uiTree: dehydrateUiTree(uiTreeData) as unknown as Record<string, unknown>,
         flowNodes: flowNodes as unknown as Array<Record<string, unknown>>,
         flowEdges: flowEdges as unknown as Array<Record<string, unknown>>,
         ...(resolvedPageRoutes.length > 0 ? {
           routes: resolvedPageRoutes.map((route) => ({
             routeId: route.routeId,
             routeConfig: route.routeConfig,
-            uiTree: route.uiTree as unknown as Record<string, unknown>,
+            uiTree: dehydrateUiTree(route.uiTree) as unknown as Record<string, unknown>,
             flowNodes: route.flowNodes as unknown as Array<Record<string, unknown>>,
             flowEdges: route.flowEdges as unknown as Array<Record<string, unknown>>,
             selectedLayoutTemplateId: route.selectedLayoutTemplateId,
@@ -668,10 +669,13 @@ const HeaderControls: React.FC<Props> = ({
           screenSize,
           autoWidth,
           selectedLayoutTemplateId,
+          propsStorageVersion: PROPS_STORAGE_VERSION,
           ...(enablePageRouteConfig && pageRouteConfig ? { routeConfig: pageRouteConfig } : {}),
           ...(enablePageRouteConfig ? {
             ...(activeRouteOutletKey ? { activeRouteOutletKey } : {}),
-            ...(sharedUiTree ? { sharedUiTree: sharedUiTree as unknown as Record<string, unknown> } : {}),
+            ...(sharedUiTree
+              ? { sharedUiTree: dehydrateUiTree(sharedUiTree) as unknown as Record<string, unknown> }
+              : {}),
             sharedFlowNodes: sharedFlowNodes as unknown as Array<Record<string, unknown>>,
             sharedFlowEdges: sharedFlowEdges as unknown as Array<Record<string, unknown>>,
           } : {}),

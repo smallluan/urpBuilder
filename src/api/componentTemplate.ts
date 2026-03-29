@@ -13,6 +13,7 @@ import type {
   UpdateComponentDraftPayload,
   WithdrawTemplatePayload,
 } from './types';
+import { hydrateComponentDetailFromApi } from '../builder/template/propsHydration';
 
 const isLikelyComponentItem = (item: PageBaseInfo) => {
   if (item.entityType) {
@@ -59,7 +60,12 @@ export const getComponentTemplateDetail = async (componentId: string, options?: 
         : {}),
     },
   });
-  return response.data;
+  const payload = response.data;
+  if (payload?.data?.template) {
+    const hydrated = await hydrateComponentDetailFromApi(payload.data);
+    return { ...payload, data: hydrated };
+  }
+  return payload;
 };
 
 export const batchGetComponentMeta = async (payload: ComponentMetaBatchRequest) => {
