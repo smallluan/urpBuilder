@@ -1,13 +1,14 @@
 import React, { useEffect, useMemo, useRef } from 'react';
-import { Input, Tree } from 'tdesign-react';
+import { Input, MessagePlugin, Tree } from 'tdesign-react';
 import type { TreeInstanceFunctions } from 'tdesign-react';
 import { SearchIcon } from 'tdesign-icons-react';
 import DragableWrapper from '../../components/DragableWrapper';
 import { useBuilderContext } from '../context/BuilderContext';
-import type { UiTreeNode } from '../store/types';
+import type { UiTreeInstance, UiTreeNode } from '../store/types';
 import { isSlotNode } from '../utils/slot';
 import type { FlowComponentDragPayload } from '../../types/flow';
 import { BUILDER_STRUCTURE_TREE_SCROLL } from '../config/builderStructureTreeScroll';
+import { findFirstFlowNodeIdBySourceKey, getFlowNodeStructureSourceKey } from '../utils/flowNodeSourceKey';
 
 interface RenderUiTreeNode extends Omit<UiTreeNode, 'label' | 'children'> {
 	label: React.ReactNode;
@@ -17,11 +18,24 @@ interface RenderUiTreeNode extends Omit<UiTreeNode, 'label' | 'children'> {
 const FlowAsideLeft: React.FC = () => {
 	const { useStore } = useBuilderContext();
 	const uiPageData = useStore((state) => state.uiPageData);
-	const activeNodeKey = useStore((state) => state.activeNodeKey);
-	const setTreeInstance = useStore((state) => state.setTreeInstance);
-	const toggleActiveNode = useStore((state) => state.toggleActiveNode);
+	const flowNodes = useStore((state) => state.flowNodes);
+	const flowActiveNodeId = useStore((state) => state.flowActiveNodeId);
+	const setFlowActiveNodeId = useStore((state) => state.setFlowActiveNodeId);
+	const setFlowStructureTreeInstance = useStore((state) => state.setFlowStructureTreeInstance);
 
 	const treeRef = useRef<TreeInstanceFunctions<any>>(null);
+
+	const flowTreeActivedKeys = useMemo(() => {
+		if (!flowActiveNodeId) {
+			return [] as string[];
+		}
+		const node = flowNodes.find((item) => item.id === flowActiveNodeId);
+		if (!node) {
+			return [];
+		}
+		const sk = getFlowNodeStructureSourceKey(node);
+		return sk ? [sk] : [];
+	}, [flowActiveNodeId, flowNodes]);
 
 	const handleDragStart = (event: React.DragEvent<HTMLDivElement>, node: UiTreeNode) => {
 		if (isSlotNode(node)) {
@@ -75,13 +89,18 @@ const FlowAsideLeft: React.FC = () => {
 			return;
 		}
 
-		toggleActiveNode(key);
+		const flowNodeId = findFirstFlowNodeIdBySourceKey(flowNodes, key);
+		if (!flowNodeId) {
+			void MessagePlugin.info('当前结构节点未在流程图中放置为组件/属性暴露节点');
+			return;
+		}
+		setFlowActiveNodeId(flowNodeId);
 	};
 
 	useEffect(() => {
-		setTreeInstance(treeRef.current);
-		return () => setTreeInstance(null);
-	}, [setTreeInstance]);
+		setFlowStructureTreeInstance(treeRef.current as unknown as UiTreeInstance);
+		return () => setFlowStructureTreeInstance(null);
+	}, [setFlowStructureTreeInstance]);
 
 	return (
 		<aside className="aside-left">
@@ -104,7 +123,7 @@ const FlowAsideLeft: React.FC = () => {
 							line
 							scroll={BUILDER_STRUCTURE_TREE_SCROLL}
 							data={flowTreeData}
-							actived={activeNodeKey ? [activeNodeKey] : []}
+							actived={flowTreeActivedKeys}
 							onClick={handleTreeClick}
 						/>
 					</div>

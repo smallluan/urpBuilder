@@ -842,7 +842,9 @@ const HeaderControls: React.FC<Props> = ({
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <div>核心快捷键：Ctrl/Cmd+Z（撤销）、Ctrl/Cmd+Shift+Z（重做）、Esc（关闭浮层/退出聚焦）。</div>
           <div>流程模式快捷键：Ctrl/Cmd+Shift+L / V / K。</div>
-          <div>组件模式快捷键：Alt + 方向键（同级微调）。</div>
+          <div>
+            组件树/画布：Ctrl/Cmd+Shift+C 清空子节点；Ctrl/Cmd+↑↓ 同级移动；Ctrl/Cmd+Shift+↑↓ 置顶/置底；Alt+方向键（同级微调另一套）。
+          </div>
           <div style={{ color: '#64748b', fontSize: 12 }}>
             该入口用于查看全局快捷键，后续可扩展为可编辑映射。
           </div>

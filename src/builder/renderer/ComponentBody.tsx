@@ -646,7 +646,7 @@ const ComponentBody: React.FC = () => {
     closeContextMenu();
   };
 
-  const handleClearNodeChildren = (targetNode: any) => {
+  const handleClearNodeChildren = (targetNode: any, closeMenu = true) => {
     if (!targetNode) {
       return;
     }
@@ -654,7 +654,9 @@ const ComponentBody: React.FC = () => {
     const children = targetNode.children ?? [];
     if (children.length === 0) {
       MessagePlugin.info('当前节点内部为空');
-      closeContextMenu();
+      if (closeMenu) {
+        closeContextMenu();
+      }
       return;
     }
 
@@ -664,7 +666,9 @@ const ComponentBody: React.FC = () => {
 
     setActiveNode(targetNode.key);
     MessagePlugin.success('已清空内部元素');
-    closeContextMenu();
+    if (closeMenu) {
+      closeContextMenu();
+    }
   };
 
   const handleDeleteNode = (nodeKey: string) => {
@@ -949,7 +953,14 @@ const ComponentBody: React.FC = () => {
           runToggleVisible();
         }
       }
-      if (withMeta && event.key.toLowerCase() === 'c') {
+      if (withMeta && event.shiftKey && event.key.toLowerCase() === 'c') {
+        event.preventDefault();
+        if (!readOnly && activeNode) {
+          handleClearNodeChildren(activeNode, false);
+        }
+        return;
+      }
+      if (withMeta && event.key.toLowerCase() === 'c' && !event.shiftKey) {
         runCopyActiveNode();
       }
       if (withMeta && event.key.toLowerCase() === 'v' && !event.shiftKey) {
@@ -961,6 +972,31 @@ const ComponentBody: React.FC = () => {
         event.preventDefault();
         if (!readOnly) {
           runDeleteActiveNode();
+        }
+      }
+      if (withMeta && activeNodeKey && !readOnly && !event.altKey) {
+        const siblingInfo = getNodeSiblingInfo(uiPageData, activeNodeKey);
+        if (siblingInfo && activeNode && canOperateNode(activeNode)) {
+          if (event.shiftKey && event.key === 'ArrowUp' && siblingInfo.index > 0) {
+            event.preventDefault();
+            moveUiNode(activeNodeKey, siblingInfo.parentKey, 0);
+            return;
+          }
+          if (event.shiftKey && event.key === 'ArrowDown' && siblingInfo.index < siblingInfo.siblingCount - 1) {
+            event.preventDefault();
+            moveUiNode(activeNodeKey, siblingInfo.parentKey, siblingInfo.siblingCount - 1);
+            return;
+          }
+          if (!event.shiftKey && event.key === 'ArrowUp' && siblingInfo.index > 0) {
+            event.preventDefault();
+            moveUiNode(activeNodeKey, siblingInfo.parentKey, siblingInfo.index - 1);
+            return;
+          }
+          if (!event.shiftKey && event.key === 'ArrowDown' && siblingInfo.index < siblingInfo.siblingCount - 1) {
+            event.preventDefault();
+            moveUiNode(activeNodeKey, siblingInfo.parentKey, siblingInfo.index + 1);
+            return;
+          }
         }
       }
       if (event.altKey && activeNodeKey) {
@@ -981,7 +1017,7 @@ const ComponentBody: React.FC = () => {
 
     window.addEventListener('keydown', handleKeydown);
     return () => window.removeEventListener('keydown', handleKeydown);
-  }, [activeNode, activeNodeKey, readOnly, treeClipboard, uiPageData]);
+  }, [activeNode, activeNodeKey, moveUiNode, readOnly, treeClipboard, uiPageData]);
 
   const getMenuItemStyle = (enabled: boolean): React.CSSProperties => ({
     opacity: enabled ? 1 : 0.45,

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import cloneDeep from 'lodash/cloneDeep';
 import { computePosition, flip, offset, shift } from '@floating-ui/dom';
 import { v4 as uuidv4 } from 'uuid';
@@ -9,7 +9,7 @@ import type { TreeInstanceFunctions } from 'tdesign-react';
 import { Icon, SearchIcon } from 'tdesign-icons-react';
 import { GripHorizontal, LayoutGrid, Minus, Palette, PlusSquare } from 'lucide-react';
 import { useBuilderAccess, useBuilderContext } from '../context/BuilderContext';
-import type { UiTreeNode } from '../store/types';
+import type { UiTreeInstance, UiTreeNode } from '../store/types';
 import NodeStyleDrawer from './NodeStyleDrawer';
 import { getNodeSlotKey, isSlotNode } from '../utils/slot';
 import componentCatalog from '../../config/componentCatalog';
@@ -411,6 +411,8 @@ const ComponentAsideLeft: React.FC = () => {
   const { readOnly } = useBuilderAccess();
   const uiPageData = useStore((state) => state.uiPageData);
   const setTreeInstance = useStore((state) => state.setTreeInstance);
+  const uiStructureTreeScrollRequest = useStore((state) => state.uiStructureTreeScrollRequest);
+  const clearUiStructureTreeScrollRequest = useStore((state) => state.clearUiStructureTreeScrollRequest);
   const activeNodeKey = useStore((state) => state.activeNodeKey);
   const setActiveNode = useStore((state) => state.setActiveNode);
   const toggleActiveNode = useStore((state) => state.toggleActiveNode);
@@ -486,7 +488,7 @@ const ComponentAsideLeft: React.FC = () => {
     closeContextMenu();
   };
 
-  const handleClearNodeChildren = (targetNode: UiTreeNode | null) => {
+  const handleClearNodeChildren = (targetNode: UiTreeNode | null, closeMenu = true) => {
     if (!targetNode) {
       return;
     }
@@ -494,7 +496,9 @@ const ComponentAsideLeft: React.FC = () => {
     const children = targetNode.children ?? [];
     if (children.length === 0) {
       MessagePlugin.info('当前节点内部为空');
-      closeContextMenu();
+      if (closeMenu) {
+        closeContextMenu();
+      }
       return;
     }
 
@@ -505,7 +509,9 @@ const ComponentAsideLeft: React.FC = () => {
 
     setActiveNode(targetNode.key);
     MessagePlugin.success('已清空内部元素');
-    closeContextMenu();
+    if (closeMenu) {
+      closeContextMenu();
+    }
   };
 
   const canOperateNode = (node: UiTreeNode | null) => {
@@ -867,6 +873,14 @@ const ComponentAsideLeft: React.FC = () => {
   const treeData = useMemo(() => [uiPageDataWithWrappedLabel], [uiPageDataWithWrappedLabel]);
   const treeRef = useRef<TreeInstanceFunctions<any>>(null);
 
+  const bindTreeRef = useCallback(
+    (el: TreeInstanceFunctions<any> | null) => {
+      treeRef.current = el;
+      setTreeInstance(el as unknown as UiTreeInstance);
+    },
+    [setTreeInstance],
+  );
+
   const handleTreeClick = (context: any) => {
     const key = context?.node?.value ?? context?.node?.key;
     if (typeof key !== 'string') {
@@ -876,9 +890,49 @@ const ComponentAsideLeft: React.FC = () => {
   };
 
   useEffect(() => {
-    setTreeInstance(treeRef.current);
     return () => setTreeInstance(null);
   }, [setTreeInstance]);
+
+  useEffect(() => {
+    if (!uiStructureTreeScrollRequest) {
+      return;
+    }
+    const path = findNodePathByKey(uiPageData, uiStructureTreeScrollRequest.key);
+    if (!path?.length) {
+      clearUiStructureTreeScrollRequest();
+      return;
+    }
+    const ancestors = path.slice(0, -1).map((item) => item.key);
+    setExpandedKeys((previous) => {
+      const merged = [...new Set([...previous, ...ancestors])];
+      if (merged.length === previous.length && merged.every((key, index) => key === previous[index])) {
+        return previous;
+      }
+      return merged;
+    });
+  }, [clearUiStructureTreeScrollRequest, uiPageData, uiStructureTreeScrollRequest]);
+
+  useLayoutEffect(() => {
+    if (!uiStructureTreeScrollRequest) {
+      return;
+    }
+    const path = findNodePathByKey(uiPageData, uiStructureTreeScrollRequest.key);
+    if (!path?.length) {
+      clearUiStructureTreeScrollRequest();
+      return;
+    }
+    const ancestors = path.slice(0, -1).map((item) => item.key);
+    if (!ancestors.every((key) => expandedKeys.includes(key))) {
+      return;
+    }
+    treeRef.current?.scrollTo?.({ key: uiStructureTreeScrollRequest.key });
+    clearUiStructureTreeScrollRequest();
+  }, [
+    clearUiStructureTreeScrollRequest,
+    expandedKeys,
+    uiPageData,
+    uiStructureTreeScrollRequest,
+  ]);
 
   useEffect(() => {
     const allKeys = collectTreeKeys(uiPageData);
@@ -980,7 +1034,7 @@ const ComponentAsideLeft: React.FC = () => {
 
       const activeNode = activeNodeKey ? findNodePathByKey(uiPageData, activeNodeKey)?.at(-1) ?? null : null;
 
-      if (event.key.toLowerCase() === 'c') {
+      if (event.key.toLowerCase() === 'c' && !event.shiftKey) {
         if (!activeNode || !canOperateNode(activeNode)) {
           return;
         }
@@ -998,7 +1052,7 @@ const ComponentAsideLeft: React.FC = () => {
         return;
       }
 
-      if (event.key.toLowerCase() === 'v') {
+      if (event.key.toLowerCase() === 'v' && !event.shiftKey) {
         if (!activeNode || !treeClipboard) {
           return;
         }
@@ -1024,7 +1078,7 @@ const ComponentAsideLeft: React.FC = () => {
           <div className="structure-tree" role="tree">
             <Tree
               keys={{ value: 'key' }}
-              ref={treeRef}
+              ref={bindTreeRef}
               activable
               expanded={expandedKeys}
               line

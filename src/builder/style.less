@@ -168,6 +168,7 @@
       display: flex;
       flex-direction: column;
       min-height: 0;
+      min-width: 0;
       overflow: hidden;
 
       .structure-panel {
@@ -180,6 +181,7 @@
         // border-radius: 8px;
         padding: 10px;
         min-height: 0;
+        min-width: 0;
       }
 
       .structure-title {
@@ -228,19 +230,43 @@
         flex-direction: column;
         overflow: hidden;
         min-height: 0;
+        min-width: 0;
         padding: 2px;
         font-size: 13px;
         color: #333;
 
+        /* 根节点限制在侧栏内，横向溢出留在本节点滚动（勿用 fit-content 撑破父级 overflow:hidden） */
         .t-tree {
           flex: 1 1 auto;
           min-height: 0;
-          width: fit-content;
+          min-width: 0;
+          width: 100%;
+          max-width: 100%;
+        }
+
+        /* 虚拟列表内层要随最宽行撑开，否则 TDesign 默认 label 省略号不会产生横向 scrollWidth */
+        .t-tree__list {
+          width: max-content;
           min-width: 100%;
+          box-sizing: border-box;
+        }
+
+        .t-tree__item {
+          min-width: max-content;
+        }
+
+        /* 覆盖 tdesign .t-tree__label 的 overflow:hidden + ellipsis，否则宽文案永远裁在列宽里 */
+        .t-tree__label {
+          flex: 1 1 auto;
+          min-width: min-content;
+          max-width: none;
+          overflow: visible;
+          text-overflow: clip;
         }
 
         .t-tree.t-tree__vscroll {
-          overflow-x: hidden;
+          overflow-x: auto;
+          overflow-y: auto;
           scrollbar-width: thin;
           scrollbar-color: #c9d2e5 transparent;
 
@@ -285,11 +311,11 @@
         }
 
         .tree-node-item__left {
-          min-width: 0;
+          min-width: min-content;
           display: inline-flex;
           align-items: center;
           gap: 6px;
-          flex: 1;
+          flex: 1 1 auto;
         }
 
         .tree-node-item__icon {
@@ -488,7 +514,7 @@
       flex-shrink: 0;
       background: linear-gradient(180deg, #ffffff 0%, #fbfcff 100%);
       border: 1px solid #eef0f4;
-      padding: 10px 14px;
+      padding: 4px;
       border-radius: 4px;
       box-sizing: border-box;
       overflow-x: auto;
@@ -499,7 +525,7 @@
       min-width: fit-content;
       display: flex;
       align-items: center;
-      justify-content: space-between;
+      // justify-content: space-between;
       gap: 16px;
     }
 
@@ -3251,7 +3277,7 @@
   padding: 0;
   min-width: 304px;
   max-width: min(380px, 94vw);
-  border-radius: 12px;
+  border-radius: 4px;
   overflow: hidden;
   box-shadow: 0 12px 40px rgba(15, 23, 42, 0.12);
 }
@@ -3267,8 +3293,8 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
-  padding: 14px 16px 12px;
-  background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+  padding: 7px 8px 8px;
+  // background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%); 
   border-bottom: 1px solid #e2e8f0;
 }
 
@@ -3360,7 +3386,7 @@
 }
 
 .builder-viewport-popup__summary-value {
-  font-size: 22px;
+  font-size: 16px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   color: #0f172a;
@@ -3515,4 +3541,138 @@
 
 .builder-viewport-popup__reset-btn {
   width: 100%;
+}
+
+/* 搭建页 / 组件页：Ctrl/Cmd+F 快速查找（视口固定，不占文档流，类似浏览器查找） */
+.builder-quick-find {
+  position: fixed;
+  z-index: 8000;
+  top: 0px;
+  right: 200px;
+  left: auto;
+  max-width: min(520px, calc(100vw - 32px));
+  padding: 0;
+  margin: 0;
+  pointer-events: none;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+}
+
+.builder-quick-find__inner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 12px;
+  pointer-events: auto;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  box-shadow: 0 8px 28px rgba(15, 23, 42, 0.12), 0 0 0 1px rgba(15, 23, 42, 0.04);
+}
+
+.builder-quick-find__ac-wrap {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.builder-quick-find__ac {
+  width: 100%;
+}
+
+.builder-quick-find__ac.t-auto-complete {
+  width: 100%;
+}
+
+.builder-quick-find__input {
+  width: 100%;
+}
+
+.builder-quick-find__popup {
+  z-index: 9500;
+}
+
+.builder-quick-find__popup-inner {
+  max-height: min(360px, 50vh);
+  overflow-y: auto;
+  padding: 4px 0;
+  border-radius: 8px;
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.14);
+}
+
+.builder-quick-find__option {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 2px 0;
+  line-height: 1.35;
+}
+
+.builder-quick-find__option-badge {
+  flex-shrink: 0;
+  margin-top: 1px;
+  padding: 0 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #475569;
+  background: #e2e8f0;
+  border-radius: 4px;
+}
+
+.builder-quick-find__option-badge--route {
+  color: #1d4ed8;
+  background: #dbeafe;
+}
+
+.builder-quick-find__option-badge--ui {
+  color: #047857;
+  background: #d1fae5;
+}
+
+.builder-quick-find__option-badge--flow {
+  color: #7c3aed;
+  background: #ede9fe;
+}
+
+.builder-quick-find__option-main {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.builder-quick-find__option-title {
+  font-size: 13px;
+  color: #0f172a;
+  word-break: break-all;
+}
+
+.builder-quick-find__option-sub {
+  margin-top: 2px;
+  font-size: 11px;
+  color: #64748b;
+  word-break: break-all;
+}
+
+.builder-quick-find__meta {
+  flex-shrink: 0;
+  font-size: 12px;
+  color: #64748b;
+  white-space: nowrap;
+}
+
+.builder-quick-find__close {
+  flex-shrink: 0;
+  margin: 0;
+  padding: 4px 10px;
+  font-size: 12px;
+  color: #475569;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.builder-quick-find__close:hover {
+  background: #f8fafc;
+  border-color: #cbd5e1;
 }

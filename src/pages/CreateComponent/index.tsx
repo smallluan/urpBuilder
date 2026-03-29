@@ -17,6 +17,7 @@ import { initModeLongTaskObserver, markModeSwitchEnd, markModeSwitchStart } from
 import { collectCustomComponentInstances, fetchLatestComponentBundle, upgradeCustomComponentsInTree } from '../../utils/customComponentUpgrade';
 import type { ComponentDetail, ComponentTemplateBaseInfo } from '../../api/types';
 import DependencyUpgradeIndicator, { type DependencyUpgradeItem } from '../../builder/components/DependencyUpgradeIndicator';
+import BuilderQuickFind from '../../builder/components/BuilderQuickFind';
 
 const resolveValidTemplateIdFromUrl = () => {
   const searchParams = new URLSearchParams(window.location.search);
@@ -266,6 +267,7 @@ const CreateComponent: React.FC = () => {
           />
         }
       >
+        <BuilderQuickFind mode={mode} />
         <div className="mode-keepalive-host">
           <div className={`mode-keepalive-pane${mode === 'component' ? ' is-active' : ''}`}>
             {componentLayoutMounted ? <ComponentLayout /> : null}

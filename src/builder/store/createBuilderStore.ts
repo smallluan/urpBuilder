@@ -519,6 +519,7 @@ export const createBuilderStore = (options: CreateBuilderStoreOptions = {}) => {
     flowNodes: [],
     flowEdges: [],
     flowActiveNodeId: null,
+    flowViewportFocusNonce: 0,
 
     // ===== UI 树状态 =====
     uiPageData: rootNode,
@@ -526,6 +527,8 @@ export const createBuilderStore = (options: CreateBuilderStoreOptions = {}) => {
     activeNode: null,
     selectedLayoutTemplateId: null,
     treeInstance: null,
+    flowStructureTreeInstance: null,
+    uiStructureTreeScrollRequest: null,
 
     // ===== 历史系统 =====
     history: createEmptyHistory(),
@@ -587,6 +590,10 @@ export const createBuilderStore = (options: CreateBuilderStoreOptions = {}) => {
           activeNodeKey: null,
           activeNode: null,
           flowActiveNodeId: null,
+          flowViewportFocusNonce: 0,
+          treeInstance: null,
+          flowStructureTreeInstance: null,
+          uiStructureTreeScrollRequest: null,
           activeRouteOutletKey: resolveEffectiveOutletKey(composedUiTree, null),
           sharedUiTree: null,
           sharedFlowNodes: [],
@@ -647,6 +654,10 @@ export const createBuilderStore = (options: CreateBuilderStoreOptions = {}) => {
           activeNodeKey: null,
           activeNode: null,
           flowActiveNodeId: null,
+          flowViewportFocusNonce: 0,
+          treeInstance: null,
+          flowStructureTreeInstance: null,
+          uiStructureTreeScrollRequest: null,
         };
       }),
 
@@ -706,6 +717,10 @@ export const createBuilderStore = (options: CreateBuilderStoreOptions = {}) => {
           activeNodeKey: null,
           activeNode: null,
           flowActiveNodeId: null,
+          flowViewportFocusNonce: 0,
+          treeInstance: null,
+          flowStructureTreeInstance: null,
+          uiStructureTreeScrollRequest: null,
         };
       }),
 
@@ -768,6 +783,10 @@ export const createBuilderStore = (options: CreateBuilderStoreOptions = {}) => {
           activeNodeKey: null,
           activeNode: null,
           flowActiveNodeId: null,
+          flowViewportFocusNonce: 0,
+          treeInstance: null,
+          flowStructureTreeInstance: null,
+          uiStructureTreeScrollRequest: null,
         };
       }),
 
@@ -814,6 +833,12 @@ export const createBuilderStore = (options: CreateBuilderStoreOptions = {}) => {
       })),
 
     setFlowActiveNodeId: (flowActiveNodeId) => set({ flowActiveNodeId }),
+
+    requestFlowViewportFocus: (nodeId) =>
+      set((state) => ({
+        flowActiveNodeId: nodeId,
+        flowViewportFocusNonce: state.flowViewportFocusNonce + 1,
+      })),
 
     // ===== Actions — UI 树 =====
 
@@ -1044,6 +1069,18 @@ export const createBuilderStore = (options: CreateBuilderStoreOptions = {}) => {
       }),
 
     setTreeInstance: (instance) => set({ treeInstance: instance }),
+
+    setFlowStructureTreeInstance: (instance) => set({ flowStructureTreeInstance: instance }),
+
+    requestUiStructureTreeScrollToKey: (key) =>
+      set((state) => ({
+        uiStructureTreeScrollRequest: {
+          key: String(key),
+          nonce: (state.uiStructureTreeScrollRequest?.nonce ?? 0) + 1,
+        },
+      })),
+
+    clearUiStructureTreeScrollRequest: () => set({ uiStructureTreeScrollRequest: null }),
 
     insertToUiPageData: (parentKey, componentData, slotKey) =>
       set((state) => {

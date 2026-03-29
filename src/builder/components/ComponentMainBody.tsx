@@ -1,17 +1,13 @@
 import React, { useEffect, useState } from 'react';
-import { Button, Dialog, Input, Popup, Select, Tooltip } from 'tdesign-react';
+import { Button, Dialog, Input, Popup, Row, Select, Space, Tooltip, Typography } from 'tdesign-react';
 import ComponentBody from '../renderer/ComponentBody';
 import SCREEN_SIZES from '../config/screenSizes';
 import { useBuilderAccess, useBuilderContext } from '../context/BuilderContext';
 import { getBreakpointByWidth, resolveBuilderViewportWidth } from '../utils/gridResponsive';
-import { Monitor, RotateCcw, Settings2 } from 'lucide-react';
+import { Monitor, Settings2 } from 'lucide-react';
 import UnifiedBuilderTopbar, { TopbarGroup, TopbarIconButton } from './UnifiedBuilderTopbar';
 
-const WIDTH_PRESETS: Array<{ label: string; width: number }> = [
-  { label: '手机', width: 390 },
-  { label: '平板', width: 768 },
-  { label: '桌面', width: 1200 },
-];
+const { Text } = Typography;
 
 const ComponentMainBody: React.FC<{ toolbarExtra?: React.ReactNode }> = ({ toolbarExtra }) => {
   const { useStore } = useBuilderContext();
@@ -59,21 +55,6 @@ const ComponentMainBody: React.FC<{ toolbarExtra?: React.ReactNode }> = ({ toolb
 
     setDraftInputValue(String(autoWidth));
   };
-
-  const handleApplyWidthPreset = (width: number) => {
-    if (readOnly) {
-      return;
-    }
-    setScreenSize('auto');
-    setAutoWidth(width);
-  };
-
-  const handleResetWidth = () => {
-    if (readOnly) return;
-    setScreenSize('auto');
-    setAutoWidth(1800);
-  };
-
   const handleViewportPopupVisibleChange: NonNullable<React.ComponentProps<typeof Popup>['onVisibleChange']> = (
     visible,
     ctx,
@@ -91,8 +72,10 @@ const ComponentMainBody: React.FC<{ toolbarExtra?: React.ReactNode }> = ({ toolb
     <div className="builder-viewport-popup">
       <header className="builder-viewport-popup__header">
         <div className="builder-viewport-popup__header-main">
-          <span className="builder-viewport-popup__title">画布尺寸</span>
-          <span className="builder-viewport-popup__subtitle">模拟预览宽度与栅格断点</span>
+          <span className="builder-viewport-popup__summary-value">
+            {simulatorWidth}
+            <span className="builder-viewport-popup__summary-unit">px</span>
+          </span>
         </div>
         <span
           className={`builder-viewport-popup__bp-badge builder-viewport-popup__bp-badge--${simulatorBreakpoint}`}
@@ -101,22 +84,6 @@ const ComponentMainBody: React.FC<{ toolbarExtra?: React.ReactNode }> = ({ toolb
           {simulatorBreakpoint.toUpperCase()}
         </span>
       </header>
-
-      <div className="builder-viewport-popup__summary">
-        <div className="builder-viewport-popup__summary-row">
-          <span className="builder-viewport-popup__summary-label">有效宽度</span>
-          <span className="builder-viewport-popup__summary-value">
-            {simulatorWidth}
-            <span className="builder-viewport-popup__summary-unit">px</span>
-          </span>
-        </div>
-        <p className="builder-viewport-popup__summary-meta">
-          {screenSize === 'auto'
-            ? '自适应：可改下方数值或使用快捷端型'
-            : `已锁定设备宽度 ${screenSize}px，与自定义宽度互斥`}
-        </p>
-      </div>
-
       <div className="builder-viewport-popup__body">
         <section className="builder-viewport-popup__section">
           <div className="builder-viewport-popup__section-head">
@@ -156,43 +123,7 @@ const ComponentMainBody: React.FC<{ toolbarExtra?: React.ReactNode }> = ({ toolb
             </span>
           </div>
         </section>
-
-        <section className="builder-viewport-popup__section">
-          <div className="builder-viewport-popup__section-head">
-            <span className="builder-viewport-popup__section-title">快捷端型</span>
-          </div>
-          <div className="builder-viewport-popup__preset-grid" role="group" aria-label="快捷端型宽度">
-            {WIDTH_PRESETS.map((preset) => {
-              const active = screenSize === 'auto' && autoWidth === preset.width;
-              return (
-                <button
-                  key={preset.label}
-                  type="button"
-                  className={`builder-viewport-popup__preset-cell${active ? ' is-active' : ''}`}
-                  disabled={readOnly}
-                  onClick={() => handleApplyWidthPreset(preset.width)}
-                >
-                  <span className="builder-viewport-popup__preset-name">{preset.label}</span>
-                  <span className="builder-viewport-popup__preset-w">{preset.width}px</span>
-                </button>
-              );
-            })}
-          </div>
-        </section>
       </div>
-
-      <footer className="builder-viewport-popup__footer">
-        <Button
-          size="small"
-          variant="outline"
-          className="builder-viewport-popup__reset-btn"
-          disabled={readOnly}
-          icon={<RotateCcw size={14} />}
-          onClick={handleResetWidth}
-        >
-          重置为自适应 1800px
-        </Button>
-      </footer>
     </div>
   );
 
@@ -218,12 +149,8 @@ const ComponentMainBody: React.FC<{ toolbarExtra?: React.ReactNode }> = ({ toolb
                   disabled={readOnly}
                 />
               </Popup>
-            </TopbarGroup>
-          )}
-          right={(
-            <TopbarGroup className="component-main-toolbar__extra">
               {toolbarExtra ? <div className="component-main-toolbar__extra-slot">{toolbarExtra}</div> : null}
-              <Tooltip content="快捷键说明" placement="bottom">
+              <Tooltip content="快捷键" placement="bottom">
                 <Button size="small" variant="text" className="builder-topbar__icon-btn" onClick={() => setShortcutDialogVisible(true)}>
                   <Settings2 size={16} />
                 </Button>
@@ -239,18 +166,50 @@ const ComponentMainBody: React.FC<{ toolbarExtra?: React.ReactNode }> = ({ toolb
 
       <Dialog
         visible={shortcutDialogVisible}
-        header="快捷键说明"
-        confirmBtn="知道了"
+        header="快捷键"
+        confirmBtn="知道了（Esc）"
         cancelBtn={null}
         onConfirm={() => setShortcutDialogVisible(false)}
         onClose={() => setShortcutDialogVisible(false)}
       >
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <div>全局能力：点击工具栏左侧显示器图标调整画布尺寸；居中画布、回到顶部等。</div>
-          <div>流程模式：Ctrl/Cmd+Shift+L / V / K。</div>
-          <div>通用：Ctrl/Cmd+Z、Ctrl/Cmd+Shift+Z、Esc。</div>
-          <div>节点级操作请在结构树或右键菜单中执行。</div>
-        </div>
+        <Space size={4} style={{ width: '100%', height: '400px', overflow: 'auto' }} direction="vertical">
+          <Row justify="space-between" align="middle">
+            <div>复制节点：</div>
+            <Text code>Ctrl/Cmd+C</Text>
+          </Row>
+          <Row justify="space-between" align="middle">
+            <div>粘贴节点：</div>
+            <Text code>Ctrl/Cmd+V</Text>
+          </Row>
+          <Row justify="space-between" align="middle">
+            <div>剪切节点：</div>
+            <Text code>Ctrl/Cmd+X</Text>
+          </Row>
+          <Row justify="space-between" align="middle">
+            <div>删除节点：</div>
+            <Text code>Ctrl/Cmd+Del </Text>
+          </Row>
+          <Row justify="space-between" align="middle">
+            <div>清空子节点：</div>
+            <Text code>Ctrl/Cmd+Shift+C</Text>
+          </Row>
+          <Row justify="space-between" align="middle">
+            <div>同级上移 / 下移：</div>
+            <Text code>Ctrl/Cmd+↑ / ↓</Text>
+          </Row>
+          <Row justify="space-between" align="middle">
+            <div>同级置顶 / 置底：</div>
+            <Text code>Ctrl/Cmd+Shift+↑ / ↓</Text>
+          </Row>
+          <Row justify="space-between" align="middle">
+            <div>上一步：</div>
+            <Text code>Ctrl/Cmd+Z </Text>
+          </Row>
+          <Row justify="space-between" align="middle">
+            <div>退出（全局对话框）：</div>
+            <Text code>Esc </Text>
+          </Row>
+        </Space>
       </Dialog>
     </main>
   );

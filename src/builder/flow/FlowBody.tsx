@@ -113,6 +113,8 @@ const FlowCanvas: React.FC = () => {
   const nodes = useStore((state) => state.flowNodes);
   const edges = useStore((state) => state.flowEdges);
   const flowActiveNodeId = useStore((state) => state.flowActiveNodeId);
+  const flowViewportFocusNonce = useStore((state) => state.flowViewportFocusNonce);
+  const requestFlowViewportFocus = useStore((state) => state.requestFlowViewportFocus);
   const setFlowNodes = useStore((state) => state.setFlowNodes);
   const setFlowEdges = useStore((state) => state.setFlowEdges);
   const setFlowActiveNodeId = useStore((state) => state.setFlowActiveNodeId);
@@ -151,6 +153,30 @@ const FlowCanvas: React.FC = () => {
     edgeId: null,
   });
   const { screenToFlowPosition, fitView, setCenter } = useReactFlow();
+
+  const panToFlowNodeId = useCallback(
+    (nodeId: string) => {
+      const list = useStore.getState().flowNodes;
+      const node = list.find((item) => item.id === nodeId);
+      if (!node?.position) {
+        return;
+      }
+      setTraceActiveNodeId(nodeId);
+      void setCenter(node.position.x + 120, node.position.y + 40, { duration: 220, zoom: 1 });
+    },
+    [setCenter, useStore],
+  );
+
+  useEffect(() => {
+    if (flowViewportFocusNonce === 0) {
+      return;
+    }
+    const { flowActiveNodeId: id } = useStore.getState();
+    if (!id) {
+      return;
+    }
+    panToFlowNodeId(id);
+  }, [flowViewportFocusNonce, panToFlowNodeId]);
 
   const applyFlowEdit = useCallback(
     (
@@ -1157,12 +1183,8 @@ const FlowCanvas: React.FC = () => {
     if (!flowActiveNodeId) {
       return;
     }
-    setTraceActiveNodeId(flowActiveNodeId);
-    const node = nodes.find((item) => item.id === flowActiveNodeId);
-    if (node?.position) {
-      void setCenter(node.position.x + 120, node.position.y + 40, { duration: 220, zoom: 1 });
-    }
-  }, [flowActiveNodeId, nodes, setCenter]);
+    panToFlowNodeId(flowActiveNodeId);
+  }, [flowActiveNodeId, panToFlowNodeId]);
 
   const clearFocus = useCallback(() => {
     setTraceActiveNodeId(null);
@@ -1172,14 +1194,12 @@ const FlowCanvas: React.FC = () => {
     setLayoutDirection((previous) => (previous === 'LR' ? 'TB' : 'LR'));
   }, []);
 
-  const handleLocateDiagnosticNode = useCallback((nodeId: string) => {
-    setFlowActiveNodeId(nodeId);
-    setTraceActiveNodeId(nodeId);
-    const node = nodes.find((item) => item.id === nodeId);
-    if (node?.position) {
-      void setCenter(node.position.x + 120, node.position.y + 40, { duration: 220, zoom: 1 });
-    }
-  }, [nodes, setCenter, setFlowActiveNodeId]);
+  const handleLocateDiagnosticNode = useCallback(
+    (nodeId: string) => {
+      requestFlowViewportFocus(nodeId);
+    },
+    [requestFlowViewportFocus],
+  );
 
   const diagnosticsLevelMap = useMemo(() => {
     const levelByNode = new Map<string, 'error' | 'warning' | 'info'>();

@@ -67,6 +67,8 @@ export type UiDropDataHandler = (
 export interface UiTreeInstance {
   appendTo: (value: string | number, newData: UiTreeNode | UiTreeNode[]) => void;
   getItem: (value: string | number) => { data: UiTreeNode } | undefined;
+  /** TDesign Tree 等实例上的滚动定位（可选） */
+  scrollTo?: (params: { key?: string | number }) => void;
 }
 
 // ===========================
@@ -210,6 +212,8 @@ export interface BuilderStore {
   flowNodes: Node[];
   flowEdges: Edge[];
   flowActiveNodeId: string | null;
+  /** 自增；FlowBody 监听以程序化将视口对准 flowActiveNodeId */
+  flowViewportFocusNonce: number;
 
   // UI 树状态
   uiPageData: UiTreeNode;
@@ -217,6 +221,12 @@ export interface BuilderStore {
   activeNode: UiTreeNode | null;
   selectedLayoutTemplateId: BuiltInLayoutTemplateId | null;
   treeInstance: UiTreeInstance | null;
+  /** 流程模式左侧结构树（与搭建模式 treeInstance 分离，避免 keep-alive 双挂载覆盖） */
+  flowStructureTreeInstance: UiTreeInstance | null;
+  /**
+   * 搭建模式左侧组件树：先展开祖先再 scrollTo（TDesign 仅对 visibleNodes 生效；与 setActiveNode 的展开 effect 存在时序差）
+   */
+  uiStructureTreeScrollRequest: { key: string; nonce: number } | null;
 
   // 历史系统
   history: UiHistoryState;
@@ -244,6 +254,7 @@ export interface BuilderStore {
   setFlowNodes: (nodes: StateAction<Node[]>) => void;
   setFlowEdges: (edges: StateAction<Edge[]>) => void;
   setFlowActiveNodeId: (nodeId: string | null) => void;
+  requestFlowViewportFocus: (nodeId: string) => void;
 
   // Actions — UI 树
   setActiveNode: (nodeKey?: string) => void;
@@ -252,6 +263,9 @@ export interface BuilderStore {
   updateActiveNodeKey: (nextKey: string) => UpdateNodeKeyResult;
   updateActiveNodeProp: (propKey: string, value: unknown) => void;
   setTreeInstance: (instance: UiTreeInstance | null) => void;
+  setFlowStructureTreeInstance: (instance: UiTreeInstance | null) => void;
+  requestUiStructureTreeScrollToKey: (key: string) => void;
+  clearUiStructureTreeScrollRequest: () => void;
   insertToUiPageData: (parentKey: string, componentData: Record<string, unknown>, slotKey?: string) => void;
   removeFromUiPageData: (nodeKey: string) => void;
   moveUiNode: (nodeKey: string, targetParentKey: string, targetIndex: number, slotKey?: string) => void;
