@@ -1,13 +1,27 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import cloneDeep from 'lodash/cloneDeep';
 import { Radio, Button, Drawer, Timeline, Tag, Dialog, DialogPlugin, Input, Textarea } from 'tdesign-react';
-import { UploadIcon, ViewImageIcon, ArrowLeftIcon, ArrowRightIcon, HistoryIcon, SettingIcon } from 'tdesign-icons-react';
+import {
+  UploadIcon,
+  ViewImageIcon,
+  ArrowLeftIcon,
+  ArrowRightIcon,
+  HistoryIcon,
+  SettingIcon,
+  JumpIcon,
+} from 'tdesign-icons-react';
 import { useBuilderAccess, useBuilderContext } from '../context/BuilderContext';
 import type { UiHistoryAction } from '../store/types';
 import { serializePreviewSnapshot } from '../../pages/PreviewEngine/utils/snapshot';
 import { buildComponentContract } from '../flow/componentContract';
-import { getPageTemplateBaseList, savePageDraft, updatePageDraft } from '../../api/pageTemplate';
-import { getComponentBaseList, getComponentTemplateDetail, saveComponentDraft, updateComponentDraft } from '../../api/componentTemplate';
+import { getPageTemplateBaseList, publishPage, savePageDraft, updatePageDraft } from '../../api/pageTemplate';
+import {
+  getComponentBaseList,
+  getComponentTemplateDetail,
+  publishComponent,
+  saveComponentDraft,
+  updateComponentDraft,
+} from '../../api/componentTemplate';
 import type { ComponentTemplateListParams, PageTemplateListParams } from '../../api/types';
 import { emitApiAlert } from '../../api/alertBus';
 import { findNodeByKey, updateNodeByKey } from '../../utils/createComponentTree';
@@ -371,7 +385,7 @@ const toActionDescription = (action: UiHistoryAction) => {
   };
 };
 
-const HeaderControls: React.FC<Props> = ({
+export default function HeaderControls({
   mode,
   onChange,
   designLabel = '组件',
@@ -380,7 +394,7 @@ const HeaderControls: React.FC<Props> = ({
   enableComponentContract = false,
   enablePageRouteConfig = false,
   extraRight,
-}) => {
+}: Props) {
   const { useStore } = useBuilderContext();
   const { readOnly } = useBuilderAccess();
   const { currentTeamId, currentTeam, workspaceMode } = useTeam();
@@ -404,6 +418,7 @@ const HeaderControls: React.FC<Props> = ({
   const jumpToHistory = useStore((state) => state.jumpToHistory);
   const [historyVisible, setHistoryVisible] = useState(false);
   const [saveDialogVisible, setSaveDialogVisible] = useState(false);
+  const [saveIntent, setSaveIntent] = useState<'save' | 'saveAndPublish'>('save');
   const [componentName, setComponentName] = useState('');
   const [componentId, setComponentId] = useState('');
   const [componentDescription, setComponentDescription] = useState('');
@@ -505,6 +520,15 @@ const HeaderControls: React.FC<Props> = ({
   };
 
   const handleOpenSaveDialog = () => {
+    setSaveIntent('save');
+    setComponentName(currentPageName || '');
+    setComponentId(currentPageId || '');
+    setComponentDescription(currentPageDescription || '');
+    setSaveDialogVisible(true);
+  };
+
+  const handleOpenSaveAndPublishDialog = () => {
+    setSaveIntent('saveAndPublish');
     setComponentName(currentPageName || '');
     setComponentId(currentPageId || '');
     setComponentDescription(currentPageDescription || '');
@@ -547,6 +571,7 @@ const HeaderControls: React.FC<Props> = ({
       return;
     }
 
+    setSaveIntent('save');
     setSaveDialogVisible(false);
   };
 
@@ -733,7 +758,33 @@ const HeaderControls: React.FC<Props> = ({
         description: pageDescription,
         visibility: (currentPageVisibility ?? 'private') as 'private' | 'public',
       });
-      emitApiAlert('保存成功', `${saveEntityLabel} ${pageName} 已保存`, 'success');
+
+      const shouldPublish = saveIntent === 'saveAndPublish';
+      if (shouldPublish) {
+        try {
+          if (entityType === 'component') {
+            await publishComponent({ pageId });
+          } else {
+            await publishPage({ pageId });
+          }
+          emitApiAlert('保存并发布成功', `${saveEntityLabel} ${pageName} 已保存并发布`, 'success');
+        } catch (error: unknown) {
+          const message =
+            error && typeof error === 'object' && 'message' in error
+              ? String((error as { message?: unknown }).message ?? '')
+              : '';
+          emitApiAlert(
+            '发布失败',
+            message
+              ? `${saveEntityLabel} 已保存，但发布失败：${message}`
+              : `${saveEntityLabel} 已保存，但发布失败，请稍后在列表中重试发布。`,
+          );
+        }
+      } else {
+        emitApiAlert('保存成功', `${saveEntityLabel} ${pageName} 已保存`, 'success');
+      }
+
+      setSaveIntent('save');
       setSaveDialogVisible(false);
     } finally {
       setSaving(false);
@@ -764,6 +815,16 @@ const HeaderControls: React.FC<Props> = ({
               <TopbarIconButton tip="高级快捷键设置" icon={<SettingIcon />} onClick={() => setShortcutDialogVisible(true)} />
               {extraRight}
               <Button theme="primary" size="small" icon={<UploadIcon />} disabled={readOnly} onClick={handleOpenSaveDialog}>保存</Button>
+              <Button
+                theme="default"
+                size="small"
+                variant="outline"
+                icon={<JumpIcon />}
+                disabled={readOnly}
+                onClick={handleOpenSaveAndPublishDialog}
+              >
+                保存并发布
+              </Button>
               <Button theme="default" size="small" icon={<ViewImageIcon />} onClick={handlePreview}>预览</Button>
             </TopbarGroup>
           )}
@@ -772,9 +833,9 @@ const HeaderControls: React.FC<Props> = ({
 
       <Dialog
         visible={saveDialogVisible}
-        header={`保存${saveEntityLabel}`}
+        header={saveIntent === 'saveAndPublish' ? `保存并发布${saveEntityLabel}` : `保存${saveEntityLabel}`}
         confirmBtn={{
-          content: '确认保存',
+          content: saveIntent === 'saveAndPublish' ? '保存并发布' : '确认保存',
           loading: saving,
         }}
         cancelBtn={{
@@ -925,6 +986,4 @@ const HeaderControls: React.FC<Props> = ({
       </Drawer>
     </div>
   );
-};
-
-export default HeaderControls;
+}

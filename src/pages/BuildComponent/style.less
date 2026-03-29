@@ -84,68 +84,29 @@
       font-size: 13px;
     }
 
-    .card-grid-row {
-      margin-bottom: 6px;
+    .resource-table {
+      width: 100%;
+
+      .t-table {
+        width: 100%;
+      }
+
+      .meta-item {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        font-size: 12px;
+        color: #5f6b7a;
+      }
     }
 
-    .resource-card {
-      height: 100%;
+    .build-resource-table__owner-cell {
+      flex-wrap: wrap;
+    }
 
-      .t-card__body {
-        padding: 12px;
-      }
-
-      &__title-wrap {
-        min-width: 0;
-      }
-
-      &__title {
-        font-size: 14px;
-        font-weight: 600;
-        color: #111827;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-      }
-
-      &__tags {
-        display: flex;
-        flex-wrap: wrap;
-      }
-
-      &__meta {
-        .meta-item {
-          display: inline-flex;
-          align-items: center;
-          gap: 4px;
-          font-size: 12px;
-          color: #5f6b7a;
-        }
-      }
-
-      &__description {
-        color: #6b7280;
-        font-size: 12px;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-      }
-
-      &__foot {
-        margin-top: 2px;
-      }
-
-      &__time-text {
-        color: #8b92a1;
-        font-size: 12px;
-      }
-
-      &__more-button {
-        min-width: 28px;
-        padding: 0 6px;
-        color: #667085;
-        font-size: 16px;
-      }
+    .resource-table__ops {
+      flex-wrap: wrap;
+      row-gap: 4px;
     }
 
     .participant-avatars-trigger {
@@ -174,37 +135,6 @@
       padding: 8px 10px;
       color: #8b92a1;
       font-size: 12px;
-    }
-
-    .card-action-popup {
-      min-width: 148px;
-      padding: 6px;
-      display: flex;
-      flex-direction: column;
-      gap: 2px;
-
-      &__item {
-        border: 0;
-        background: transparent;
-        text-align: left;
-        padding: 8px 10px;
-        border-radius: 8px;
-        color: #344054;
-        font-size: 12px;
-        cursor: pointer;
-
-        &:hover {
-          background: #f5f8ff;
-        }
-
-        &.is-primary {
-          color: #2f5cf3;
-        }
-
-        &.is-danger {
-          color: #d14343;
-        }
-      }
     }
 
     .pagination-wrap {
