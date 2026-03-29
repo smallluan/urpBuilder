@@ -23,6 +23,7 @@ import {
   type TreeClipboardPayload,
 } from '../utils/treeClipboard';
 import { BUILDER_STRUCTURE_TREE_SCROLL } from '../config/builderStructureTreeScroll';
+import { applyBuilderDragPreview } from '../utils/dragPreview';
 
 interface RenderUiTreeNode extends Omit<UiTreeNode, 'label' | 'children'> {
   label: React.ReactNode;
@@ -797,6 +798,12 @@ const ComponentAsideLeft: React.FC = () => {
                       return;
                     }
                     event.stopPropagation();
+                    applyBuilderDragPreview(event, {
+                      kind: 'page',
+                      title,
+                      componentType: String(node.type ?? ''),
+                      pageUiTreeNode: node,
+                    });
                     setDraggingTreeNodeKey(node.key);
                     event.dataTransfer.setData(TREE_NODE_DRAG_KEY, node.key);
                     event.dataTransfer.setData('text/plain', node.key);

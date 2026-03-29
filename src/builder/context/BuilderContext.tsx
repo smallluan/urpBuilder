@@ -16,10 +16,9 @@
  *   const screenSize = useStore((s) => s.screenSize);
  */
 
-import React, { createContext, useContext, useEffect, useMemo } from 'react';
+import React, { createContext, useContext, useMemo } from 'react';
 import type { StoreApi, UseBoundStore } from 'zustand';
 import type { BuilderStore } from '../store/types';
-import { setBuilderDragPreviewContext } from '../utils/builderDragPreviewBridge';
 
 type BuilderStoreHook = UseBoundStore<StoreApi<BuilderStore>>;
 export type BuilderEntityType = 'component' | 'page';
@@ -31,7 +30,8 @@ export interface BuilderContextValue {
   entityType: BuilderEntityType;
 }
 
-const BuilderContext = createContext<BuilderContextValue | null>(null);
+/** 预览挂载等场景仅用 Provider、勿反复写全局 bridge 时请用此 Context，勿用 BuilderProvider 包一层。 */
+export const BuilderContext = createContext<BuilderContextValue | null>(null);
 
 export interface BuilderProviderProps {
   /** 当前页面的 builder store hook（如 useCreateComponentStore） */
@@ -53,11 +53,6 @@ export const BuilderProvider: React.FC<BuilderProviderProps> = ({
     () => ({ useStore, readOnly, readOnlyReason, entityType }),
     [useStore, readOnly, readOnlyReason, entityType],
   );
-
-  useEffect(() => {
-    setBuilderDragPreviewContext(value);
-    return () => setBuilderDragPreviewContext(null);
-  }, [value]);
 
   return <BuilderContext.Provider value={value}>{children}</BuilderContext.Provider>;
 };

@@ -1,14 +1,9 @@
 import type React from 'react';
-import { getBuilderDragPreviewContext } from './builderDragPreviewBridge';
-import {
-  mountBuilderPageDragPreview,
-  shouldUseStaticPageDragPreview,
-  teardownDragPreviewReactRoot,
-} from './mountPageDragPreview';
-import { mountFlowBuiltinDragPreview, mountFlowComponentDragPreview } from './mountFlowDragPreview';
+import type { UiTreeNode } from '../store/types';
+import componentCatalog from '../../config/componentCatalog';
 
-const TITLE_MAX = 22;
-const TYPE_MAX = 18;
+const TITLE_MAX = 16;
+const META_MAX = 14;
 
 function truncate(text: string, max: number): string {
   const t = String(text ?? '').trim();
@@ -18,16 +13,49 @@ function truncate(text: string, max: number): string {
   return `${t.slice(0, Math.max(0, max - 1))}…`;
 }
 
-function resolvePageVariant(componentType: string): string {
-  const t = componentType.trim();
-  if (t === 'Button') {
-    return 'td-button';
+const CATALOG_TYPE_TO_ZH = new Map<string, string>();
+for (const item of componentCatalog) {
+  const t = String(item.type ?? '').trim();
+  const n = String(item.name ?? '').trim();
+  if (t && n) {
+    CATALOG_TYPE_TO_ZH.set(t, n);
   }
-  if (t === 'Link') {
-    return 'td-link';
+}
+
+/** 无目录条目时的中文归类（不出现英文 type） */
+function categoryZhByType(type: string): string {
+  const t = String(type ?? '').trim();
+  if (!t) {
+    return '';
+  }
+  if (t === 'CustomComponent') {
+    return '自定义';
+  }
+  if (t.startsWith('ECharts.') || t.endsWith('Chart') || t === 'EChart') {
+    return '图表';
+  }
+  if (t === 'Table') {
+    return '表格';
+  }
+  if (t.startsWith('Typography.')) {
+    return '文本';
+  }
+  if (t.startsWith('Grid.') || t.startsWith('Layout.') || t === 'Layout') {
+    return '布局';
   }
   if (
-    t === 'Input'
+    t.startsWith('Menu')
+    || t === 'Tabs'
+    || t === 'Collapse'
+    || t === 'Steps'
+    || t === 'Swiper'
+  ) {
+    return '导航';
+  }
+  if (
+    t === 'Button'
+    || t === 'Link'
+    || t === 'Input'
     || t === 'Textarea'
     || t === 'InputNumber'
     || t === 'Select'
@@ -38,41 +66,48 @@ function resolvePageVariant(componentType: string): string {
     || t === 'TimePicker'
     || t === 'TimeRangePicker'
   ) {
-    return 'td-input';
-  }
-  if (t.startsWith('Typography.')) {
-    return 'td-text';
+    return '表单';
   }
   if (t === 'Image' || t === 'Avatar') {
-    return 'media';
+    return '媒体';
   }
-  if (t.startsWith('ECharts.') || t.includes('Chart')) {
-    return 'chart';
+  if (t === 'List') {
+    return '列表';
   }
-  if (t === 'CustomComponent') {
-    return 'custom';
+  if (t.startsWith('Flex') || t === 'Stack' || t === 'Space' || t === 'Inline') {
+    return '布局';
   }
-  if (
-    t.startsWith('Grid.')
-    || t.startsWith('Flex')
-    || t === 'Stack'
-    || t === 'Space'
-    || t === 'Inline'
-    || t.startsWith('Layout.')
-    || t === 'Layout'
-    || t === 'RouteOutlet'
-    || t === 'ComponentSlotOutlet'
-    || t.startsWith('Menu')
-    || t === 'Tabs'
-    || t === 'Collapse'
-    || t === 'Steps'
-    || t === 'Swiper'
-    || t === 'List'
-    || t === 'Drawer'
-  ) {
-    return 'layout';
+  return '';
+}
+
+function componentTypeLabelZh(
+  type: string,
+  catalogData?: Record<string, unknown>,
+): string {
+  const t = String(type ?? '').trim();
+  const fromCatalog = CATALOG_TYPE_TO_ZH.get(t);
+  if (fromCatalog) {
+    return fromCatalog;
   }
-  return 'chip';
+  const nameFromPayload = catalogData && typeof catalogData.name === 'string' ? String(catalogData.name).trim() : '';
+  if (nameFromPayload) {
+    return nameFromPayload;
+  }
+  return categoryZhByType(t);
+}
+
+const FLOW_NODE_META: Record<string, string> = {
+  eventFilterNode: '事件过滤',
+  codeNode: '代码',
+  networkRequestNode: '网络请求',
+  timerNode: '定时器',
+  propExposeNode: '属性暴露',
+  lifecycleExposeNode: '生命周期',
+};
+
+function flowNodeMeta(nodeType: string): string {
+  const k = String(nodeType ?? '').trim();
+  return FLOW_NODE_META[k] || '';
 }
 
 export type BuilderDragPreviewKind = 'page' | 'flow-builtin' | 'flow-component';
@@ -81,122 +116,76 @@ export interface BuilderDragPreviewOptions {
   kind: BuilderDragPreviewKind;
   title: string;
   componentType?: string;
-  /** 与 insertToUiPageData 相同的完整 schema（页面组件库拖拽） */
   catalogData?: Record<string, unknown>;
+  pageUiTreeNode?: UiTreeNode;
   flowBuiltinTheme?: string;
   flowNodeType?: string;
 }
 
-function buildPagePreview(root: HTMLElement, title: string, componentType: string): void {
-  const variant = resolvePageVariant(componentType);
-  root.className = `builder-drag-preview builder-drag-preview--page-${variant}`;
+/** 小卡片：闪亮图标 + 角标 + 主文案 + 可选补充（全中文优先） */
+function buildDragChip(
+  root: HTMLElement,
+  options: {
+    badge: string;
+    title: string;
+    meta: string;
+    accent?: 'default' | 'event' | 'code' | 'request' | 'timer' | 'page' | 'flow';
+  },
+): void {
+  const { badge, title, meta, accent = 'default' } = options;
   const safeTitle = truncate(title, TITLE_MAX);
+  const safeMetaRaw = String(meta ?? '').trim();
+  const safeMeta =
+    safeMetaRaw && safeMetaRaw !== safeTitle ? truncate(safeMetaRaw, META_MAX) : '';
 
-  if (variant === 'td-button') {
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = 'builder-drag-preview__td-button';
-    btn.textContent = safeTitle;
-    btn.tabIndex = -1;
-    root.appendChild(btn);
-    return;
-  }
+  root.className = [
+    'builder-drag-chip',
+    accent !== 'default' ? `builder-drag-chip--accent-${accent}` : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
 
-  if (variant === 'td-link') {
-    const span = document.createElement('span');
-    span.className = 'builder-drag-preview__td-link';
-    span.textContent = safeTitle;
-    root.appendChild(span);
-    return;
-  }
+  const glow = document.createElement('div');
+  glow.className = 'builder-drag-chip__glow';
+  glow.setAttribute('aria-hidden', 'true');
+  const spark = document.createElement('span');
+  spark.className = 'builder-drag-chip__spark';
+  spark.textContent = '✦';
+  glow.appendChild(spark);
 
-  if (variant === 'td-input') {
-    const inner = document.createElement('span');
-    inner.className = 'builder-drag-preview__td-input-ph';
-    inner.textContent = safeTitle;
-    root.appendChild(inner);
-    return;
-  }
-
-  if (variant === 'td-text') {
-    root.textContent = safeTitle;
-    return;
-  }
-
-  if (variant === 'media') {
-    const sq = document.createElement('div');
-    sq.className = 'builder-drag-preview__media-sq';
-    root.appendChild(sq);
-    const cap = document.createElement('span');
-    cap.className = 'builder-drag-preview__media-cap';
-    cap.textContent = safeTitle;
-    root.appendChild(cap);
-    return;
-  }
-
-  if (variant === 'chart') {
-    root.textContent = safeTitle;
-    return;
-  }
-
-  if (variant === 'layout') {
-    root.textContent = safeTitle;
-    return;
-  }
-
-  if (variant === 'custom') {
-    const tag = document.createElement('span');
-    tag.className = 'builder-drag-preview__custom-tag';
-    tag.textContent = '自定义';
-    root.appendChild(tag);
-    const name = document.createElement('span');
-    name.className = 'builder-drag-preview__custom-name';
-    name.textContent = safeTitle;
-    root.appendChild(name);
-    return;
-  }
-
-  root.textContent = safeTitle;
-}
-
-function buildFlowBuiltinPreview(root: HTMLElement, title: string, theme: string): void {
-  const t = theme || 'event';
-  root.className = `builder-drag-preview builder-drag-preview--flow-builtin builder-drag-preview--fb-${t}`;
-  root.textContent = truncate(title, TITLE_MAX);
-}
-
-function buildFlowComponentPreview(root: HTMLElement, title: string, componentType: string): void {
-  root.className = 'flow-component-node builder-drag-preview--flow-snapshot';
-
-  const top = document.createElement('div');
-  top.className = 'flow-component-node__top';
-
-  const badge = document.createElement('span');
-  badge.className = 'flow-component-node__badge';
-  badge.textContent = '组件节点';
-  top.appendChild(badge);
-
-  const typeEl = document.createElement('span');
-  typeEl.className = 'flow-component-node__type';
-  typeEl.textContent = truncate(componentType || 'Unknown', TYPE_MAX);
-  top.appendChild(typeEl);
-
-  root.appendChild(top);
+  const main = document.createElement('div');
+  main.className = 'builder-drag-chip__main';
 
   const titleEl = document.createElement('div');
-  titleEl.className = 'flow-component-node__title';
-  titleEl.textContent = truncate(title, TITLE_MAX);
-  root.appendChild(titleEl);
+  titleEl.className = 'builder-drag-chip__title';
+  titleEl.textContent = safeTitle;
 
-  const meta = document.createElement('div');
-  meta.className = 'flow-component-node__meta';
-  meta.textContent = '从结构树拖入';
-  root.appendChild(meta);
+  const badgeText = String(badge ?? '').trim();
+  if (badgeText) {
+    const badgeEl = document.createElement('div');
+    badgeEl.className = 'builder-drag-chip__badge';
+    badgeEl.textContent = badgeText;
+    main.appendChild(badgeEl);
+  }
+  main.appendChild(titleEl);
+  if (safeMeta) {
+    const metaEl = document.createElement('div');
+    metaEl.className = 'builder-drag-chip__meta';
+    metaEl.textContent = safeMeta;
+    main.appendChild(metaEl);
+  }
+
+  root.appendChild(glow);
+  root.appendChild(main);
 }
 
-function clearHost(host: HTMLElement): void {
-  teardownDragPreviewReactRoot(host);
-  host.replaceChildren();
+function themeToAccent(theme: string): 'event' | 'code' | 'request' | 'timer' | 'default' {
+  const t = String(theme ?? '').trim();
+  if (t === 'event') return 'event';
+  if (t === 'code') return 'code';
+  if (t === 'request' || t === 'network') return 'request';
+  if (t === 'timer') return 'timer';
+  return 'default';
 }
 
 export function applyBuilderDragPreview(
@@ -211,55 +200,47 @@ export function applyBuilderDragPreview(
   const host = document.createElement('div');
   host.className = 'builder-drag-preview-host';
 
-  let usedReact = false;
+  const inner = document.createElement('div');
 
-  try {
-    if (options.kind === 'flow-builtin') {
-      const nodeType = String(options.flowNodeType ?? '');
-      if (nodeType) {
-        usedReact = mountFlowBuiltinDragPreview(host, nodeType, options.title);
-      }
-      if (!usedReact) {
-        clearHost(host);
-        const inner = document.createElement('div');
-        buildFlowBuiltinPreview(inner, options.title, String(options.flowBuiltinTheme ?? 'event'));
-        host.appendChild(inner);
-      }
-    } else if (options.kind === 'flow-component') {
-      usedReact = mountFlowComponentDragPreview(host, options.title, String(options.componentType ?? ''));
-      if (!usedReact) {
-        clearHost(host);
-        const inner = document.createElement('div');
-        buildFlowComponentPreview(inner, options.title, String(options.componentType ?? ''));
-        host.appendChild(inner);
-      }
-    } else {
-      const catalog = options.catalogData;
-      const type = String(options.componentType ?? (catalog?.type as string) ?? '');
-      const ctx = getBuilderDragPreviewContext();
-      if (catalog && ctx && !shouldUseStaticPageDragPreview(type)) {
-        usedReact = mountBuilderPageDragPreview(host, catalog, ctx);
-      }
-      if (!usedReact) {
-        clearHost(host);
-        const inner = document.createElement('div');
-        buildPagePreview(inner, options.title, type);
-        host.appendChild(inner);
-      }
-    }
-  } catch {
-    clearHost(host);
-    const inner = document.createElement('div');
-    if (options.kind === 'flow-builtin') {
-      buildFlowBuiltinPreview(inner, options.title, String(options.flowBuiltinTheme ?? 'event'));
-    } else if (options.kind === 'flow-component') {
-      buildFlowComponentPreview(inner, options.title, String(options.componentType ?? ''));
-    } else {
-      const type = String(options.componentType ?? (options.catalogData?.type as string) ?? '');
-      buildPagePreview(inner, options.title, type);
-    }
-    host.appendChild(inner);
+  if (options.kind === 'flow-builtin') {
+    const theme = String(options.flowBuiltinTheme ?? 'event');
+    const sub = flowNodeMeta(String(options.flowNodeType ?? ''));
+    buildDragChip(inner, {
+      badge: '内置',
+      title: options.title,
+      meta: sub,
+      accent: themeToAccent(theme),
+    });
+  } else if (options.kind === 'flow-component') {
+    const ctype = String(options.componentType ?? '').trim();
+    const sub = componentTypeLabelZh(ctype, undefined) || categoryZhByType(ctype);
+    buildDragChip(inner, {
+      badge: '流程',
+      title: options.title,
+      meta: sub,
+      accent: 'flow',
+    });
+  } else {
+    const type = String(
+      options.componentType
+        ?? options.pageUiTreeNode?.type
+        ?? (options.catalogData?.type as string)
+        ?? '',
+    );
+    const sub = componentTypeLabelZh(type, options.catalogData)
+      || (options.pageUiTreeNode?.label
+        ? String(options.pageUiTreeNode.label).trim()
+        : '')
+      || categoryZhByType(type);
+    buildDragChip(inner, {
+      badge: '',
+      title: options.title,
+      meta: sub,
+      accent: 'page',
+    });
   }
+
+  host.appendChild(inner);
 
   Object.assign(host.style, {
     position: 'fixed',
@@ -272,21 +253,19 @@ export function applyBuilderDragPreview(
   });
 
   document.body.appendChild(host);
-
-  const rect = host.getBoundingClientRect();
-  const ox = Math.max(12, Math.round(Math.min(rect.width / 2, 56)));
-  const oy = Math.max(10, Math.round(Math.min(rect.height / 2, 32)));
+  void host.offsetWidth;
 
   try {
+    const rect = host.getBoundingClientRect();
+    const ox = Math.max(10, Math.round(Math.min(rect.width / 2, 52)));
+    const oy = Math.max(8, Math.round(Math.min(rect.height / 2, 28)));
     dt.setDragImage(host, ox, oy);
   } catch {
-    teardownDragPreviewReactRoot(host);
     host.remove();
     return;
   }
 
   const cleanup = () => {
-    teardownDragPreviewReactRoot(host);
     host.remove();
   };
   document.addEventListener('dragend', cleanup, { once: true });
