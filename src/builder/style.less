@@ -264,15 +264,18 @@
           text-overflow: clip;
         }
 
+        /*
+         * 仅隐藏纵向滚动条、保留横向：虚拟滚动监听挂在 .t-tree 根节点，不能改嵌套滚动层。
+         * 勿使用 scrollbar-width: thin —— Chrome 121+ 会绘制原生纵向条，与 ::-webkit-scrollbar width:0 冲突。
+         * Firefox 无法在单元素上只隐藏纵轴滚动条；此处以 Blink/WebKit 为主，Firefox 仍为系统默认双轴。
+         */
         .t-tree.t-tree__vscroll {
           overflow-x: auto;
           overflow-y: auto;
-          scrollbar-width: thin;
-          scrollbar-color: #c9d2e5 transparent;
 
           &::-webkit-scrollbar {
-            width: 6px;
-            height: 6px;
+            width: 0 !important;
+            height: 6px !important;
           }
 
           &::-webkit-scrollbar-track {
@@ -612,15 +615,63 @@
         position: relative;
         height: 100%;
         min-height: 0;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .simulator-scroll {
+        flex: 1 1 auto;
+        min-height: 0;
+        position: relative;
         overflow: auto;
         overscroll-behavior: contain;
         contain: layout paint style;
       }
 
-      .simulator-container > .drop-area-root {
+      .simulator-scroll > .drop-area-root {
         position: relative;
         min-height: 100%;
         width: 100%;
+      }
+
+      .simulator-device-chrome {
+        flex: 0 0 auto;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        height: 26px;
+        padding: 0 10px 0 12px;
+        box-sizing: border-box;
+        background: linear-gradient(180deg, #1c1c1e 0%, #000 100%);
+        color: rgba(255, 255, 255, 0.92);
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.02em;
+        pointer-events: none;
+        user-select: none;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      }
+
+      .simulator-device-chrome__time {
+        font-variant-numeric: tabular-nums;
+      }
+
+      .simulator-device-chrome__icons {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        opacity: 0.95;
+      }
+
+      .simulator-device-chrome__wifi {
+        width: 15px;
+        height: 15px;
+      }
+
+      .simulator-device-chrome__battery {
+        width: 22px;
+        height: 11px;
       }
 
       .simulator-selection-overlay {

@@ -10,6 +10,7 @@ import { useBuilderAccess, useBuilderContext } from '../context/BuilderContext';
 import DropArea from '../../components/DropArea';
 import { LIST_TEMPLATE_ALLOWED_TYPES } from '../../constants/componentBuilder';
 import { findNodePathByKey } from '../utils/tree';
+import SimulatorDeviceChrome from '../components/SimulatorDeviceChrome';
 import SimulatorSelectionOverlay from '../components/SimulatorSelectionOverlay';
 import componentCatalog from '../../config/componentCatalog';
 import { getNodeSlotKey, isSlotNode } from '../utils/slot';
@@ -22,6 +23,7 @@ import {
   type TreeClipboardPayload,
 } from '../utils/treeClipboard';
 import { resolveSimulatorStyle } from '../utils/simulatorStyle';
+import { isHandheldSimulatorScreenSize } from '../utils/simulatorViewport';
 import { getEffectiveBoundingRect, getScrollTargetForBuilderNode } from '../utils/builderNodeDomRect';
 
 const { Text } = Typography;
@@ -335,6 +337,7 @@ const ComponentBody: React.FC = () => {
   const updateActiveNodeProp = useStore((state) => state.updateActiveNodeProp);
   const hiddenHintKeyRef = useRef<string | null>(null);
   const simulatorContainerRef = useRef<HTMLDivElement | null>(null);
+  const simulatorScrollRef = useRef<HTMLDivElement | null>(null);
   const [contextMenuState, setContextMenuState] = useState<{
     visible: boolean;
     nodeKey: string | null;
@@ -430,6 +433,8 @@ const ComponentBody: React.FC = () => {
     }, 0);
   };
 
+  const showDeviceChrome = useMemo(() => isHandheldSimulatorScreenSize(screenSize), [screenSize]);
+
   const simulatorStyle: React.CSSProperties = useMemo(() => {
     const width = screenSize === 'auto' ? `${autoWidth}px` : `${screenSize}px`;
     return {
@@ -439,15 +444,13 @@ const ComponentBody: React.FC = () => {
       margin: '0 auto',
       transition: 'width 0.2s ease',
       boxSizing: 'content-box',
-      display: 'flex',
-      overflow: 'auto',
       position: 'relative',
       isolation: 'isolate',
     };
   }, [screenSize, autoWidth]);
 
   useEffect(() => {
-    const host = simulatorContainerRef.current;
+    const host = simulatorScrollRef.current;
     if (!host) {
       return;
     }
@@ -469,7 +472,7 @@ const ComponentBody: React.FC = () => {
     return () => {
       resizeObserver.disconnect();
     };
-  }, [screenSize, autoWidth]);
+  }, [screenSize, autoWidth, showDeviceChrome]);
 
   useEffect(() => {
     if (!activeNodeKey) {
@@ -1028,18 +1031,24 @@ const ComponentBody: React.FC = () => {
       <div
         ref={simulatorContainerRef}
         className="simulator-container"
-        data-builder-scroll-container="true"
         style={simulatorStyle}
         onContextMenu={handleCanvasContextMenu}
       >
-        <DropArea
-          className="drop-area-root"
-          style={resolveSimulatorStyle({ minHeight: '100%', height: 'auto', flex: '0 0 auto' })}
-          data={uiPageData}
-          onDropData={handleDropData}
-          selectable={false}
-        />
-        <SimulatorSelectionOverlay scrollContainerRef={simulatorContainerRef} />
+        {showDeviceChrome ? <SimulatorDeviceChrome /> : null}
+        <div
+          ref={simulatorScrollRef}
+          className="simulator-scroll"
+          data-builder-scroll-container="true"
+        >
+          <DropArea
+            className="drop-area-root"
+            style={resolveSimulatorStyle({ minHeight: '100%', height: 'auto', flex: '0 0 auto' })}
+            data={uiPageData}
+            onDropData={handleDropData}
+            selectable={false}
+          />
+          <SimulatorSelectionOverlay scrollContainerRef={simulatorScrollRef} />
+        </div>
 
         {contextMenuState.visible && contextMenuNode ? (
           <div
