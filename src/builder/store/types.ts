@@ -270,9 +270,6 @@ export interface BuilderStore {
     actionLabel?: string,
   ) => void;
 
-  // Actions — 布局模板
-  applyBuiltInLayoutTemplate: (templateId: BuiltInLayoutTemplateId) => void;
-
   // Actions — 历史记录
   undo: () => void;
   redo: () => void;

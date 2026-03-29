@@ -1155,8 +1155,6 @@ const ComponentConfigPanel: React.FC = () => {
     }
   };
 
-  const keyHintText = keyError || '仅支持字母、数字、下划线(_)和中划线(-)';
-
   const applySwiperImageDraft = () => {
     updateActiveNodeProp(
       'images',
@@ -1459,10 +1457,6 @@ const ComponentConfigPanel: React.FC = () => {
             onEnter={handleApplyNodeKey}
           />
         </div>
-        <div className="config-row">
-          <span className="config-label" style={{ color: keyError ? '#d54941' : '#8b92a1' }}>{keyHintText}</span>
-        </div>
-
         <Collapse
           className="config-props-collapse config-props-collapse--airy"
           borderless

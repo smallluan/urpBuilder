@@ -3,7 +3,7 @@
  *
  * 设计目标：
  * 1. 零副作用：调用方独立控制 store 实例生命周期。
- * 2. 可插拔：通过 options 注入页面级差异能力（布局节点生成、初始根节点等），
+ * 2. 可插拔：通过 options 注入初始根节点等页面级差异能力，
  *    方便 CreateComponent / CreatePage 复用同一套 store 骨架。
  * 3. 向后兼容：CreateComponent 直接调用此工厂，对外导出名保持 useCreateComponentStore 不变。
  */
@@ -14,7 +14,6 @@ import cloneDeep from 'lodash/cloneDeep';
 import type { Edge, Node } from '@xyflow/react';
 import type {
   BuilderStore,
-  BuiltInLayoutTemplateId,
   PageRouteConfig,
   PageRouteRecord,
   RouteScopeConfig,
@@ -51,13 +50,6 @@ import {
 void cleanupNodePool;
 
 export interface CreateBuilderStoreOptions {
-  /**
-   * 根据内置布局模板 ID 生成初始子节点列表。
-  * 由使用方（如 CreateComponent）注入具体实现，避免 builder 内核直接依赖
-  * 页面实例层的布局模板数据（循环依赖隔离）。
-   */
-  buildLayoutNodes?: (templateId: BuiltInLayoutTemplateId) => UiTreeNode[];
-
   /**
    * Store 初始化时根节点的覆盖配置。
    * 不传时使用通用默认值（空 label，通用 lifetimes）。
@@ -500,7 +492,7 @@ const syncRouteSnapshotsWithActiveState = (
 };
 
 export const createBuilderStore = (options: CreateBuilderStoreOptions = {}) => {
-  const { buildLayoutNodes, initialRootNode } = options;
+  const { initialRootNode } = options;
   const rootNode: UiTreeNode = {
     ...DEFAULT_ROOT_NODE,
     ...initialRootNode,
@@ -1374,44 +1366,6 @@ export const createBuilderStore = (options: CreateBuilderStoreOptions = {}) => {
         };
         const nextHistory = pushHistoryAction(state.history.actions, state.history.pointer, action);
         return { flowNodes: nextFlowNodes, history: nextHistory };
-      }),
-
-    // ===== Actions — 布局模板 =====
-
-    applyBuiltInLayoutTemplate: (templateId) =>
-      set((state) => {
-        if (!buildLayoutNodes) return state;
-
-        const nextChildren = buildLayoutNodes(templateId);
-        const prevChildren = cloneDeep(state.uiPageData.children ?? []);
-        const prevLayoutTemplateId = state.selectedLayoutTemplateId;
-
-        const nextTree: UiTreeNode = {
-          ...state.uiPageData,
-          props: {
-            ...(state.uiPageData.props ?? {}),
-            __layoutTemplate: { name: '布局模板', value: templateId },
-          },
-          children: nextChildren,
-        };
-
-        const action: UiHistoryAction = {
-          type: 'replace-layout',
-          prevChildren,
-          nextChildren: cloneDeep(nextChildren),
-          prevLayoutTemplateId,
-          nextLayoutTemplateId: templateId,
-          timestamp: Date.now(),
-        };
-        const nextHistory = pushHistoryAction(state.history.actions, state.history.pointer, action);
-
-        return {
-          uiPageData: nextTree,
-          activeNodeKey: null,
-          activeNode: null,
-          selectedLayoutTemplateId: templateId,
-          history: nextHistory,
-        };
       }),
 
     // ===== Actions — 历史记录 =====

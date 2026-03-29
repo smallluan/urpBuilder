@@ -23,6 +23,7 @@ import {
   subscribeTreeClipboard,
   type TreeClipboardPayload,
 } from '../utils/treeClipboard';
+import { BUILDER_STRUCTURE_TREE_SCROLL } from '../config/builderStructureTreeScroll';
 
 interface RenderUiTreeNode extends Omit<UiTreeNode, 'label' | 'children'> {
   label: React.ReactNode;
@@ -1027,6 +1028,7 @@ const ComponentAsideLeft: React.FC = () => {
               activable
               expanded={expandedKeys}
               line
+              scroll={BUILDER_STRUCTURE_TREE_SCROLL}
               data={treeData}
               actived={activeNodeKey ? [activeNodeKey] : []}
               onClick={handleTreeClick}

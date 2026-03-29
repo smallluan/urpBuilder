@@ -4,7 +4,6 @@ import { useDebugStore } from './debugStore';
 
 const DebugPauseOverlay: React.FC = () => {
   const paused = useDebugStore((s) => s.paused);
-  const pausedAtNodeId = useDebugStore((s) => s.pausedAtNodeId);
   const resume = useDebugStore((s) => s.resume);
   const stepOver = useDebugStore((s) => s.stepOver);
 

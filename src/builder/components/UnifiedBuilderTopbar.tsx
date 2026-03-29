@@ -17,13 +17,13 @@ interface TopbarIconButtonProps {
 }
 
 export const TopbarIconButton: React.FC<TopbarIconButtonProps> = ({
-  tip,
+  // tip,
   icon,
   disabled,
   active,
   onClick,
 }) => (
-  <Tooltip content={tip} placement="bottom">
+  <Tooltip placement="bottom">
     <Button
       size="small"
       variant="text"

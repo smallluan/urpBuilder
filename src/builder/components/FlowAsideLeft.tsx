@@ -7,6 +7,7 @@ import { useBuilderContext } from '../context/BuilderContext';
 import type { UiTreeNode } from '../store/types';
 import { isSlotNode } from '../utils/slot';
 import type { FlowComponentDragPayload } from '../../types/flow';
+import { BUILDER_STRUCTURE_TREE_SCROLL } from '../config/builderStructureTreeScroll';
 
 interface RenderUiTreeNode extends Omit<UiTreeNode, 'label' | 'children'> {
 	label: React.ReactNode;
@@ -101,6 +102,7 @@ const FlowAsideLeft: React.FC = () => {
 							activable
 							expandAll
 							line
+							scroll={BUILDER_STRUCTURE_TREE_SCROLL}
 							data={flowTreeData}
 							actived={activeNodeKey ? [activeNodeKey] : []}
 							onClick={handleTreeClick}
