@@ -184,6 +184,19 @@ const ComponentMainBody: React.FC<{ toolbarExtra?: React.ReactNode }> = ({ toolb
             <Text code>Ctrl/Cmd+Shift+F</Text>
           </Row>
           <Row justify="space-between" align="middle">
+            <div>结构树仅展示子树（右键菜单）：</div>
+            <Text code>展示为根节点</Text>
+          </Row>
+          <Row justify="space-between" align="middle">
+            <div>结构树展示根 / 恢复整树：</div>
+            <Text code>Ctrl/Cmd+Alt+R</Text>
+          </Row>
+          <Row justify="space-between" align="middle" style={{ color: '#64748b', fontSize: 12 }}>
+            <div style={{ flex: 1, paddingRight: 12 }}>
+              说明：避免与浏览器 Ctrl/Cmd+R 刷新冲突，使用 Ctrl/Cmd+Alt+R（Mac 为 ⌘+Option+R）。选中结构节点后按下可将该节点设为临时展示根，再次按下则恢复整树。
+            </div>
+          </Row>
+          <Row justify="space-between" align="middle">
             <div>复制节点：</div>
             <Text code>Ctrl/Cmd+C</Text>
           </Row>

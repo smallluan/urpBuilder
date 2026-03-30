@@ -7,13 +7,18 @@ import { Button, Divider, Input, Row, Space, Tree, Typography, MessagePlugin } f
 const { Text } = Typography;
 import type { TreeInstanceFunctions } from 'tdesign-react';
 import { Icon, SearchIcon } from 'tdesign-icons-react';
-import { GripHorizontal, LayoutGrid, Minus, PlusSquare } from 'lucide-react';
+import { FolderTree, GripHorizontal, LayoutGrid, Minus, PlusSquare } from 'lucide-react';
 import { useBuilderAccess, useBuilderContext } from '../context/BuilderContext';
 import type { UiTreeInstance, UiTreeNode } from '../store/types';
 import { getNodeSlotKey, isSlotNode } from '../utils/slot';
 import componentCatalog from '../../config/componentCatalog';
 import { LIST_TEMPLATE_ALLOWED_TYPES } from '../../constants/componentBuilder';
 import { findNodePathByKey } from '../utils/tree';
+import StructureVirtualRootBanner from './StructureVirtualRootBanner';
+import {
+  isVirtualStructureRootKeyValid,
+  resolveStructureDisplayRoot,
+} from '../utils/structureTreeVirtualRoot';
 import { getTabsPanelSlotKey, normalizeTabsList, normalizeTabsValue } from '../utils/tabs';
 import {
   clearTreeClipboard,
@@ -426,6 +431,7 @@ const ComponentAsideLeft: React.FC = () => {
   const [dragOverNodeKey, setDragOverNodeKey] = useState<string | null>(null);
   const [draggingTreeNodeKey, setDraggingTreeNodeKey] = useState<string | null>(null);
   const [expandedKeys, setExpandedKeys] = useState<string[]>(() => collectTreeKeys(uiPageData));
+  const [virtualStructureRootKey, setVirtualStructureRootKey] = useState<string | null>(null);
   const [contextMenuState, setContextMenuState] = useState<{
     visible: boolean;
     nodeKey: string | null;
@@ -439,6 +445,30 @@ const ComponentAsideLeft: React.FC = () => {
   });
   const contextMenuRef = useRef<HTMLDivElement | null>(null);
   const contextMenuAnchorRef = useRef<{ x: number; y: number } | null>(null);
+
+  const displayRoot = useMemo(
+    () => resolveStructureDisplayRoot(uiPageData, virtualStructureRootKey),
+    [uiPageData, virtualStructureRootKey],
+  );
+
+  useEffect(() => {
+    if (virtualStructureRootKey && !isVirtualStructureRootKeyValid(uiPageData, virtualStructureRootKey)) {
+      setVirtualStructureRootKey(null);
+    }
+  }, [uiPageData, virtualStructureRootKey]);
+
+  useEffect(() => {
+    const v = virtualStructureRootKey?.trim() || null;
+    const root = useStore.getState().uiPageData;
+    if (v && v !== root.key) {
+      const dr = resolveStructureDisplayRoot(root, v);
+      if (dr.key === v) {
+        setExpandedKeys(collectTreeKeys(dr));
+      }
+    } else {
+      setExpandedKeys(collectTreeKeys(root));
+    }
+  }, [virtualStructureRootKey, useStore]);
 
   const closeContextMenu = () => {
     contextMenuAnchorRef.current = null;
@@ -827,8 +857,8 @@ const ComponentAsideLeft: React.FC = () => {
       };
     };
 
-    return transformNode(uiPageData);
-  }, [dragOverNodeKey, uiPageData]);
+    return transformNode(displayRoot);
+  }, [dragOverNodeKey, uiPageData, displayRoot]);
 
   const contextMenuNode = useMemo(() => {
     if (!contextMenuState.nodeKey) {
@@ -869,6 +899,7 @@ const ComponentAsideLeft: React.FC = () => {
   );
   const canMoveUp = canMoveToTop;
   const canMoveDown = canMoveToBottom;
+  const canShowAsVirtualRoot = Boolean(contextMenuNode && contextMenuNode.key !== uiPageData.key);
 
   const getMenuItemStyle = (enabled: boolean): React.CSSProperties => ({
     opacity: enabled ? 1 : 0.45,
@@ -1037,6 +1068,23 @@ const ComponentAsideLeft: React.FC = () => {
         return;
       }
 
+      // Ctrl/Cmd+R 为浏览器刷新，改用 Ctrl/Cmd+Alt+R 避免冲突
+      if (event.key.toLowerCase() === 'r' && !event.shiftKey && event.altKey) {
+        const vKey = virtualStructureRootKey?.trim() || null;
+        if (vKey) {
+          event.preventDefault();
+          event.stopPropagation();
+          setVirtualStructureRootKey(null);
+          return;
+        }
+        if (activeNodeKey && activeNodeKey !== uiPageData.key) {
+          event.preventDefault();
+          event.stopPropagation();
+          setVirtualStructureRootKey(activeNodeKey);
+        }
+        return;
+      }
+
       const activeNode = activeNodeKey ? findNodePathByKey(uiPageData, activeNodeKey)?.at(-1) ?? null : null;
 
       if (event.key.toLowerCase() === 'c' && !event.shiftKey) {
@@ -1070,7 +1118,7 @@ const ComponentAsideLeft: React.FC = () => {
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [activeNodeKey, readOnly, treeClipboard, uiPageData]);
+  }, [activeNodeKey, readOnly, treeClipboard, uiPageData, virtualStructureRootKey]);
 
   return (
     <aside className="aside-left">
@@ -1079,6 +1127,12 @@ const ComponentAsideLeft: React.FC = () => {
           <div className="search-row">
             <Input placeholder="搜索组件（示例）" clearable suffix={<SearchIcon />} />
           </div>
+
+          <StructureVirtualRootBanner
+            visible={Boolean(virtualStructureRootKey && virtualStructureRootKey !== uiPageData.key)}
+            rootLabel={String(displayRoot.label ?? displayRoot.key)}
+            onClear={() => setVirtualStructureRootKey(null)}
+          />
 
           <div className="structure-tree" role="tree">
             <Tree
@@ -1305,6 +1359,26 @@ const ComponentAsideLeft: React.FC = () => {
                   添加栅格列
                 </Button>
               ) : null}
+
+              <Divider size={4} />
+              <div
+                style={getMenuItemStyle(canShowAsVirtualRoot)}
+                onClick={() => {
+                  if (!canShowAsVirtualRoot || !contextMenuNode) {
+                    return;
+                  }
+                  setVirtualStructureRootKey(contextMenuNode.key);
+                  closeContextMenu();
+                }}
+              >
+                <Row className="tree-node-context-menu-item" justify="space-between" align="center">
+                  <Space style={{ alignItems: 'center' }} size={12} align="center">
+                    <FolderTree size={16} strokeWidth={2} />
+                    <Text>展示为根节点</Text>
+                  </Space>
+                  <Text>Ctrl/⌘+Alt+R</Text>
+                </Row>
+              </div>
 
             </div>
           ) : null}

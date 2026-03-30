@@ -963,6 +963,9 @@ export default function HeaderControls({
           <div>
             组件树/画布：Ctrl/Cmd+Shift+C 清空子节点；Ctrl/Cmd+↑↓ 同级移动；Ctrl/Cmd+Shift+↑↓ 置顶/置底；Alt+方向键（同级微调另一套）。
           </div>
+          <div>
+            左侧结构树（搭建 UI / 搭建流程）：右键「展示为根节点」可仅展示该节点子树；搜索栏下方可关闭提示条恢复整树。Ctrl/Cmd+Alt+R：将当前选中结构节点设为展示根，已在展示根模式时再次按下则恢复（避免与浏览器 Ctrl/Cmd+R 刷新冲突）。
+          </div>
           <div style={{ color: '#64748b', fontSize: 12 }}>
             该入口用于查看全局快捷键，后续可扩展为可编辑映射。
           </div>
