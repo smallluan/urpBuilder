@@ -4,7 +4,7 @@ import { HelpCircleIcon, LayoutIcon } from 'tdesign-icons-react';
 import { useBuilderAccess, useBuilderContext } from '../context/BuilderContext';
 import { useBuilderThemeStore } from '../theme/builderThemeStore';
 import type { UiTreeNode } from '../store/types';
-import { NodeStylePanel } from './NodeStylePanel';
+import NodeStyleTab from './NodeStyleTab';
 import { isSlotNode } from '../utils/slot';
 import CodeEditorDialog, { type CodeEditorValue } from './CodeEditorDialog';
 import AssetPickerModal from './AssetPickerModal';
@@ -1566,19 +1566,17 @@ const ComponentConfigPanel: React.FC = () => {
       </div>
         </Tabs.TabPanel>
         <Tabs.TabPanel value="style" label="样式" destroyOnHide={false}>
-          <div className="config-panel-style-tab">
-            <NodeStylePanel
-              compact
-              targetKey={activeNode.key}
-              value={styleValue}
-              onChange={(nextStyle: Record<string, unknown>) => {
-                if (!activeNode || activeNode.key !== activeNodeKey) {
-                  return;
-                }
-                updateActiveNodeProp('__style', nextStyle);
-              }}
-            />
-          </div>
+          <NodeStyleTab
+            targetKey={activeNode.key}
+            readOnly={readOnly}
+            value={styleValue}
+            onChange={(nextStyle: Record<string, unknown>) => {
+              if (!activeNode || activeNode.key !== activeNodeKey) {
+                return;
+              }
+              updateActiveNodeProp('__style', nextStyle);
+            }}
+          />
         </Tabs.TabPanel>
       </Tabs>
 
