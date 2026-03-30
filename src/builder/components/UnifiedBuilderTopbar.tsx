@@ -11,30 +11,43 @@ interface UnifiedBuilderTopbarProps {
 interface TopbarIconButtonProps {
   tip: string;
   icon: React.ReactNode;
+  /** 图标下方说明（搭建页工具栏等）；小字号淡灰居中 */
+  label?: string;
   disabled?: boolean;
   active?: boolean;
   onClick?: () => void;
 }
 
 export const TopbarIconButton: React.FC<TopbarIconButtonProps> = ({
-  // tip,
+  tip,
   icon,
+  label,
   disabled,
   active,
   onClick,
-}) => (
-  <Tooltip placement="bottom">
-    <Button
-      size="small"
-      variant="text"
-      disabled={disabled}
-      onClick={onClick}
-      className={`builder-topbar__icon-btn${active ? ' is-active' : ''}`}
-    >
-      {icon}
-    </Button>
-  </Tooltip>
-);
+}) => {
+  const labeled = Boolean(label);
+  return (
+    <Tooltip content={tip} placement="bottom">
+      <Button
+        size="small"
+        variant="text"
+        disabled={disabled}
+        onClick={onClick}
+        className={`builder-topbar__icon-btn${active ? ' is-active' : ''}${labeled ? ' builder-topbar__icon-btn--labeled' : ''}`}
+      >
+        {labeled ? (
+          <span className="builder-topbar__icon-btn-stack">
+            <span className="builder-topbar__icon-btn-icon">{icon}</span>
+            <span className="builder-topbar__icon-btn-caption">{label}</span>
+          </span>
+        ) : (
+          icon
+        )}
+      </Button>
+    </Tooltip>
+  );
+};
 
 export const TopbarGroup: React.FC<{ children: React.ReactNode; className?: string }> = ({
   children,

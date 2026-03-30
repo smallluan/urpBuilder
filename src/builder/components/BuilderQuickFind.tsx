@@ -248,7 +248,9 @@ const BuilderQuickFind: React.FC<{ mode: Mode }> = ({ mode }) => {
         return;
       }
 
-      const isFindShortcut = (event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'f';
+      // 无 Shift：避免与 Ctrl/Cmd+Shift+F（切换到流程搭建）冲突
+      const isFindShortcut =
+        (event.ctrlKey || event.metaKey) && !event.shiftKey && event.key.toLowerCase() === 'f';
       if (!isFindShortcut) {
         return;
       }

@@ -694,8 +694,23 @@ const ComponentBody: React.FC = () => {
       return;
     }
 
-    const targetElement = (event.target as HTMLElement | null)?.closest<HTMLElement>('[data-builder-node-key]');
-    const nodeKey = targetElement?.dataset.builderNodeKey;
+    const resolveBuilderNodeKey = (): string | undefined => {
+      const target = event.target as HTMLElement | null;
+      const fromClosest = target?.closest<HTMLElement>('[data-builder-node-key]');
+      const k = fromClosest?.dataset.builderNodeKey;
+      if (k) {
+        return k;
+      }
+      const path = event.nativeEvent.composedPath?.() ?? [];
+      for (const n of path) {
+        if (n instanceof HTMLElement && n.dataset.builderNodeKey) {
+          return n.dataset.builderNodeKey;
+        }
+      }
+      return undefined;
+    };
+
+    const nodeKey = resolveBuilderNodeKey();
     if (!nodeKey) {
       closeContextMenu();
       return;

@@ -7,6 +7,7 @@ import type {
   ComponentTemplateListParams,
   ComponentMetaBatchRequest,
   ComponentMetaBatchResult,
+  ComponentVersionListResult,
   PublishComponentPayload,
   SaveComponentDraftPayload,
   UpdateTemplateVisibilityPayload,
@@ -47,6 +48,17 @@ export const deleteComponentTemplate = async (componentId: string) => {
       entityType: 'component',
     },
   });
+  return response.data;
+};
+
+export const getComponentVersionList = async (componentId: string) => {
+  const id = String(componentId ?? '').trim();
+  const response = await requestClient.get<ApiResponse<ComponentVersionListResult>>(
+    `/page-template/${encodeURIComponent(id)}/versions`,
+    {
+      params: { entityType: 'component' },
+    },
+  );
   return response.data;
 };
 

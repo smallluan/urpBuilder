@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import './style.less';
 import type { Edge, Node } from '@xyflow/react';
 import { getPageTemplateDetail } from '../../api/pageTemplate';
@@ -15,12 +15,23 @@ import { findNodeByKey, updateNodeByKey } from '../../utils/createComponentTree'
 import { useCreatePageStore } from './store';
 import PageRouteToolbar from './components/PageRouteToolbar.tsx';
 import { useAuth } from '../../auth/context';
+import { useBuilderModeHotkeys } from '../../builder/hooks/useBuilderModeHotkeys';
 import { initModeLongTaskObserver, markModeSwitchEnd, markModeSwitchStart } from '../../builder/utils/perf';
 import { MessagePlugin } from 'tdesign-react';
-import { getComponentTemplateDetail } from '../../api/componentTemplate';
-import type { ComponentDetail, ComponentTemplateBaseInfo } from '../../api/types';
-import { collectCustomComponentInstances, fetchLatestComponentBundle, upgradeCustomComponentsInTree } from '../../utils/customComponentUpgrade';
-import DependencyUpgradeIndicator, { type DependencyUpgradeItem } from '../../builder/components/DependencyUpgradeIndicator';
+import {
+  fetchLatestComponentBundle,
+  fetchComponentTemplateBundle,
+  applyBundlesToPageEditorSnapshot,
+  type ComponentTemplateBundle,
+} from '../../utils/customComponentUpgrade';
+import { computeDependencyUpgradeItems, fetchLatestComponentInfoMap } from '../../utils/componentDependencyMeta';
+import {
+  aggregateDirectCustomDependencyRows,
+  collectPageDirectCustomInstances,
+} from '../../utils/directCustomDependencies';
+import { collectPageCustomComponentNodesForId } from '../../utils/customComponentVersionRisk';
+import type { DependencyUpgradeItem } from '../../builder/components/DependencyUpgradeIndicator';
+import DependencyManagerDrawer from '../../builder/components/DependencyManagerDrawer';
 import BuilderQuickFind from '../../builder/components/BuilderQuickFind';
 import { computePersistedTemplateFingerprint } from '../../builder/save/templateFingerprint';
 
@@ -174,16 +185,6 @@ const composeRouteFlow = (
   };
 };
 
-const PageLayout: React.FC = () => {
-  return (
-    <div className="create-body">
-      <ComponentAsideLeft />
-      <ComponentMainBody toolbarExtra={<PageRouteToolbar />} />
-      <ComponentAsideRight />
-    </div>
-  );
-};
-
 const CreatePage: React.FC = () => {
   const { user } = useAuth();
   const [mode, setMode] = useState<'component' | 'flow'>('component');
@@ -192,10 +193,128 @@ const CreatePage: React.FC = () => {
   const [readOnly, setReadOnly] = useState(false);
   const [readOnlyReason, setReadOnlyReason] = useState('');
   const [dependencyUpdates, setDependencyUpdates] = useState<DependencyUpgradeItem[]>([]);
-  const latestByIdRef = useRef<Map<string, { base: ComponentTemplateBaseInfo; detail: ComponentDetail | null }>>(new Map());
+  const latestByIdRef = useRef<Map<string, ComponentTemplateBundle>>(new Map());
   const ignoredDependencyIdsRef = useRef<Set<string>>(new Set());
   const loadedPageIdRef = useRef<string | null>(null);
   const pageIdFromUrl = resolveValidTemplateIdFromUrl();
+
+  const refreshDependencyUpdates = useCallback(async () => {
+    const state = useCreatePageStore.getState();
+    const instances = collectPageDirectCustomInstances(state.pageRoutes, state.sharedUiTree);
+    const componentIds = Array.from(new Set(instances.map((i) => i.componentId)));
+    if (componentIds.length === 0) {
+      latestByIdRef.current = new Map();
+      setDependencyUpdates([]);
+      return;
+    }
+    const latestMap = await fetchLatestComponentInfoMap(componentIds);
+    latestByIdRef.current = latestMap;
+    setDependencyUpdates(computeDependencyUpgradeItems(instances, latestMap, ignoredDependencyIdsRef.current));
+  }, []);
+
+  const collectDependencyRows = useCallback(
+    () =>
+      aggregateDirectCustomDependencyRows(
+        collectPageDirectCustomInstances(useCreatePageStore.getState().pageRoutes, useCreatePageStore.getState().sharedUiTree),
+      ),
+    [],
+  );
+
+  const collectInstanceNodesForComponent = useCallback((componentId: string) => {
+    const state = useCreatePageStore.getState();
+    return collectPageCustomComponentNodesForId(state.pageRoutes, state.sharedUiTree, componentId);
+  }, []);
+
+  const applyVersionToEditor = useCallback(
+    async (componentId: string, version: number) => {
+      const bundle = await fetchComponentTemplateBundle(componentId, version);
+      if (!bundle?.detail) {
+        MessagePlugin.warning('无法加载该版本');
+        return false;
+      }
+      const state = useCreatePageStore.getState();
+      const bundleMap = new Map([[componentId, bundle]]);
+      const next = applyBundlesToPageEditorSnapshot(state, bundleMap);
+      if (!next.didMutate) {
+        MessagePlugin.warning('未找到该依赖实例');
+        return false;
+      }
+      useCreatePageStore.setState({
+        sharedUiTree: next.sharedUiTree,
+        pageRoutes: next.pageRoutes,
+        uiPageData: next.uiPageData,
+      });
+      await refreshDependencyUpdates();
+      MessagePlugin.success('已切换版本，请保存草稿以同步到服务端');
+      return true;
+    },
+    [refreshDependencyUpdates],
+  );
+
+  const handleUpgradeDependencyToLatest = useCallback(async (componentId: string) => {
+    const bundle = await fetchLatestComponentBundle(componentId);
+    if (!bundle) {
+      MessagePlugin.warning('获取最新依赖失败，请稍后重试');
+      return;
+    }
+    latestByIdRef.current.set(componentId, bundle);
+    const latestById = new Map([[componentId, bundle]]);
+    const state = useCreatePageStore.getState();
+    const next = applyBundlesToPageEditorSnapshot(state, latestById);
+    if (!next.didMutate) {
+      MessagePlugin.warning('未检测到可升级变更，请稍后重试或刷新依赖列表');
+      return;
+    }
+    useCreatePageStore.setState({
+      sharedUiTree: next.sharedUiTree,
+      pageRoutes: next.pageRoutes,
+      uiPageData: next.uiPageData,
+    });
+    setDependencyUpdates((prev) => prev.filter((item) => item.componentId !== componentId));
+    MessagePlugin.success('已升级到最新');
+  }, []);
+
+  const handleUpgradeAllPending = useCallback(async () => {
+    if (dependencyUpdates.length === 0) {
+      return;
+    }
+    const bundles = await Promise.all(
+      dependencyUpdates.map((item) => fetchLatestComponentBundle(item.componentId)),
+    );
+    const latestById = new Map<string, ComponentTemplateBundle>();
+    let failedCount = 0;
+    dependencyUpdates.forEach((item, index) => {
+      const bundle = bundles[index];
+      if (bundle) {
+        latestById.set(item.componentId, bundle);
+        latestByIdRef.current.set(item.componentId, bundle);
+      } else {
+        failedCount += 1;
+      }
+    });
+    if (latestById.size === 0) {
+      MessagePlugin.warning('获取最新依赖失败，请稍后重试');
+      return;
+    }
+    if (failedCount > 0) {
+      MessagePlugin.warning(`部分依赖拉取失败（${failedCount} 个），已跳过`);
+    }
+    const state = useCreatePageStore.getState();
+    const next = applyBundlesToPageEditorSnapshot(state, latestById);
+    if (!next.didMutate) {
+      MessagePlugin.warning('未检测到可升级变更，请稍后重试或刷新依赖列表');
+      return;
+    }
+    useCreatePageStore.setState({
+      sharedUiTree: next.sharedUiTree,
+      pageRoutes: next.pageRoutes,
+      uiPageData: next.uiPageData,
+    });
+    dependencyUpdates.forEach((item) => ignoredDependencyIdsRef.current.delete(item.componentId));
+    setDependencyUpdates([]);
+    MessagePlugin.success('已全部升级到最新');
+  }, [dependencyUpdates]);
+
   const setCurrentPageMeta = useCreatePageStore((state) => state.setCurrentPageMeta);
   const pageRoutes = useCreatePageStore((state) => state.pageRoutes);
   const activePageRouteId = useCreatePageStore((state) => state.activePageRouteId);
@@ -223,6 +342,8 @@ const CreatePage: React.FC = () => {
     });
     return () => window.cancelAnimationFrame(rafId);
   }, [mode]);
+
+  useBuilderModeHotkeys(mode, setMode);
 
   useEffect(() => {
     if (pageRoutes.length > 0 || loadedPageIdRef.current || pageIdFromUrl.trim()) {
@@ -302,66 +423,16 @@ const CreatePage: React.FC = () => {
           ? (pageConfig.sharedFlowEdges as unknown as Edge[])
           : [];
 
-        const resolveLatestComponentInfo = async (componentIds: string[]) => {
-          const tasks = componentIds.map(async (componentId) => {
-            try {
-              const res = await getComponentTemplateDetail(componentId);
-              const base = (res.data?.base ?? {}) as ComponentTemplateBaseInfo;
-              return { componentId, base, detail: res.data as ComponentDetail };
-            } catch {
-              return { componentId, base: null as unknown as ComponentTemplateBaseInfo, detail: null as ComponentDetail | null };
-            }
-          });
-          const results = await Promise.all(tasks);
-          const map = new Map<string, { base: ComponentTemplateBaseInfo; detail: ComponentDetail | null }>();
-          results.forEach((item) => {
-            if (!item?.componentId || !item.base) return;
-            map.set(item.componentId, { base: item.base, detail: item.detail });
-          });
-          return map;
-        };
-
-        const resolveDependencyUpdates = async (routes: PageRouteRecord[], shared: UiTreeNode | null) => {
-          const roots: UiTreeNode[] = [];
-          if (shared) {
-            roots.push(shared);
-          }
-          routes.forEach((r) => roots.push(r.uiTree));
-
-          const instances = roots.flatMap((root) => collectCustomComponentInstances(root));
-          const componentIds = Array.from(new Set(instances.map((i) => i.componentId)));
-          if (componentIds.length === 0) {
-            latestByIdRef.current = new Map();
-            setDependencyUpdates([]);
-            return;
-          }
-
-          const latestMap = await resolveLatestComponentInfo(componentIds);
+        const depInstances = collectPageDirectCustomInstances(normalizedRoutes, sharedUiTree);
+        const depIds = Array.from(new Set(depInstances.map((i) => i.componentId)));
+        if (depIds.length === 0) {
+          latestByIdRef.current = new Map();
+          setDependencyUpdates([]);
+        } else {
+          const latestMap = await fetchLatestComponentInfoMap(depIds);
           latestByIdRef.current = latestMap;
-          const merged = new Map<string, DependencyUpgradeItem>();
-          instances.forEach((instance) => {
-            if (ignoredDependencyIdsRef.current.has(instance.componentId)) {
-              return;
-            }
-            const latest = latestMap.get(instance.componentId);
-            if (!latest) return;
-            const latestVersion = Number(latest.base.currentVersion);
-            if (!Number.isFinite(latestVersion)) return;
-            const normalizedUsedVersion = typeof instance.usedVersion === 'number' ? instance.usedVersion : 0;
-            if (normalizedUsedVersion >= latestVersion && normalizedUsedVersion > 0) return;
-            const prev = merged.get(instance.componentId);
-            const usedVersion = prev ? Math.min(prev.usedVersion, normalizedUsedVersion) : normalizedUsedVersion;
-            merged.set(instance.componentId, {
-              componentId: instance.componentId,
-              usedVersion,
-              latestVersion,
-              name: String(latest.base.pageName ?? instance.componentId),
-            });
-          });
-          setDependencyUpdates(Array.from(merged.values()));
-        };
-
-        await resolveDependencyUpdates(normalizedRoutes, sharedUiTree);
+          setDependencyUpdates(computeDependencyUpgradeItems(depInstances, latestMap, ignoredDependencyIdsRef.current));
+        }
 
         const firstRoute = normalizedRoutes[0] ?? null;
         const activeRouteOutletKey = resolveEffectiveOutletKey(
@@ -435,119 +506,42 @@ const CreatePage: React.FC = () => {
             saveEntityLabel="页面"
             entityType="page"
             enablePageRouteConfig
-            extraRight={(
-              <DependencyUpgradeIndicator
-                items={dependencyUpdates}
-                onIgnoreOne={(componentId) => {
-                  ignoredDependencyIdsRef.current.add(componentId);
-                  setDependencyUpdates((prev) => prev.filter((item) => item.componentId !== componentId));
-                }}
-                onUpgradeOne={async (componentId) => {
-                  const bundle = await fetchLatestComponentBundle(componentId);
-                  if (!bundle) {
-                    MessagePlugin.warning('获取最新依赖失败，请稍后重试');
-                    return;
-                  }
-                  latestByIdRef.current.set(componentId, bundle);
-                  const latestById = new Map<string, { base: ComponentTemplateBaseInfo; detail: ComponentDetail | null }>();
-                  latestById.set(componentId, bundle);
-
-                  const state = useCreatePageStore.getState();
-                  const nextShared = state.sharedUiTree ? upgradeCustomComponentsInTree(state.sharedUiTree, latestById) : state.sharedUiTree;
-                  const nextRoutes = (state.pageRoutes ?? []).map((r) => ({
-                    ...r,
-                    uiTree: upgradeCustomComponentsInTree(r.uiTree, latestById),
-                  }));
-                  const didUpgrade = (
-                    nextShared !== state.sharedUiTree
-                    || (state.pageRoutes ?? []).some((route, index) => nextRoutes[index]?.uiTree !== route.uiTree)
-                  );
-                  if (!didUpgrade) {
-                    MessagePlugin.warning('未检测到可升级变更，请稍后重试或刷新依赖列表');
-                    return;
-                  }
-                  const activeRouteId = state.activePageRouteId;
-                  const activeRoute = nextRoutes.find((r) => r.routeId === activeRouteId) ?? nextRoutes[0];
-                  const nextUi = activeRoute
-                    ? composeRouteUiTree(activeRoute.uiTree, nextShared, state.activeRouteOutletKey ?? null)
-                    : state.uiPageData;
-
-                  useCreatePageStore.setState({
-                    sharedUiTree: nextShared,
-                    pageRoutes: nextRoutes,
-                    uiPageData: nextUi,
-                  });
-                  setDependencyUpdates((prev) => prev.filter((item) => item.componentId !== componentId));
-                  MessagePlugin.success('已升级该组件依赖');
-                }}
-                onUpgradeAll={async () => {
-                  if (dependencyUpdates.length === 0) {
-                    return;
-                  }
-                  const bundles = await Promise.all(
-                    dependencyUpdates.map((item) => fetchLatestComponentBundle(item.componentId)),
-                  );
-                  const latestById = new Map<string, { base: ComponentTemplateBaseInfo; detail: ComponentDetail | null }>();
-                  let failedCount = 0;
-                  dependencyUpdates.forEach((item, index) => {
-                    const bundle = bundles[index];
-                    if (bundle) {
-                      latestById.set(item.componentId, bundle);
-                      latestByIdRef.current.set(item.componentId, bundle);
-                    } else {
-                      failedCount += 1;
-                    }
-                  });
-                  if (latestById.size === 0) {
-                    MessagePlugin.warning('获取最新依赖失败，请稍后重试');
-                    return;
-                  }
-                  if (failedCount > 0) {
-                    MessagePlugin.warning(`部分依赖拉取失败（${failedCount} 个），已跳过`);
-                  }
-
-                  const state = useCreatePageStore.getState();
-                  const nextShared = state.sharedUiTree ? upgradeCustomComponentsInTree(state.sharedUiTree, latestById) : state.sharedUiTree;
-                  const nextRoutes = (state.pageRoutes ?? []).map((r) => ({
-                    ...r,
-                    uiTree: upgradeCustomComponentsInTree(r.uiTree, latestById),
-                  }));
-                  const didUpgrade = (
-                    nextShared !== state.sharedUiTree
-                    || (state.pageRoutes ?? []).some((route, index) => nextRoutes[index]?.uiTree !== route.uiTree)
-                  );
-                  if (!didUpgrade) {
-                    MessagePlugin.warning('未检测到可升级变更，请稍后重试或刷新依赖列表');
-                    return;
-                  }
-                  const activeRouteId = state.activePageRouteId;
-                  const activeRoute = nextRoutes.find((r) => r.routeId === activeRouteId) ?? nextRoutes[0];
-                  const nextUi = activeRoute
-                    ? composeRouteUiTree(activeRoute.uiTree, nextShared, state.activeRouteOutletKey ?? null)
-                    : state.uiPageData;
-
-                  useCreatePageStore.setState({
-                    sharedUiTree: nextShared,
-                    pageRoutes: nextRoutes,
-                    uiPageData: nextUi,
-                  });
-                  dependencyUpdates.forEach((item) => ignoredDependencyIdsRef.current.delete(item.componentId));
-                  setDependencyUpdates([]);
-                  MessagePlugin.success('已完成无感升级');
-                }}
-                onIgnoreAll={() => {
-                  dependencyUpdates.forEach((item) => ignoredDependencyIdsRef.current.add(item.componentId));
-                  setDependencyUpdates([]);
-                }}
-              />
-            )}
           />
         }
       >
         <BuilderQuickFind mode={mode} />
         <div className="mode-keepalive-host">
           <div className={`mode-keepalive-pane${mode === 'component' ? ' is-active' : ''}`}>
-            {componentLayoutMounted ? <PageLayout /> : null}
+            {componentLayoutMounted ? (
+              <div className="create-body">
+                <ComponentAsideLeft />
+                <ComponentMainBody
+                  toolbarExtra={(
+                    <div className="builder-compose-toolbar-extras">
+                      <PageRouteToolbar />
+                      <DependencyManagerDrawer
+                        readOnly={readOnly}
+                        collectDependencyRows={collectDependencyRows}
+                        collectInstanceNodesForComponent={collectInstanceNodesForComponent}
+                        onIgnoreDependency={(componentId) => {
+                          ignoredDependencyIdsRef.current.add(componentId);
+                          void refreshDependencyUpdates();
+                        }}
+                        applyVersionToEditor={applyVersionToEditor}
+                        pendingUpgrades={dependencyUpdates}
+                        onUpgradeDependencyToLatest={handleUpgradeDependencyToLatest}
+                        onUpgradeAllPending={handleUpgradeAllPending}
+                        onIgnoreAllPendingUpgrades={() => {
+                          dependencyUpdates.forEach((item) => ignoredDependencyIdsRef.current.add(item.componentId));
+                          void refreshDependencyUpdates();
+                        }}
+                      />
+                    </div>
+                  )}
+                />
+                <ComponentAsideRight />
+              </div>
+            ) : null}
           </div>
           <div className={`mode-keepalive-pane${mode === 'flow' ? ' is-active' : ''}`}>
             {flowLayoutMounted ? <FlowLayout /> : null}

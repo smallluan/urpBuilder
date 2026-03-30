@@ -15,6 +15,7 @@ const UserAdmin = lazy(() => import('../pages/UserAdmin'));
 const TeamAdmin = lazy(() => import('../pages/TeamAdmin'));
 const CreateComponent = lazy(() => import('../pages/CreateComponent'));
 const CreatePage = lazy(() => import('../pages/CreatePage'));
+const ComponentVersionCatalog = lazy(() => import('../pages/ComponentVersionCatalog'));
 const PreviewEngine = lazy(() => import('../pages/PreviewEngine'));
 const Login = lazy(() => import('../pages/Login'));
 const Register = lazy(() => import('../pages/Register'));
@@ -86,6 +87,10 @@ export const router = createBrowserRouter([
   {
     path: '/create-page',
     element: <RequireAuth>{load(<CreatePage />)}</RequireAuth>,
+  },
+  {
+    path: '/component-version-catalog',
+    element: <RequireAuth>{load(<ComponentVersionCatalog />)}</RequireAuth>,
   },
   {
     path: '/preview-engine',

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { Button, Dialog, Drawer, Input, Select, Switch, Tooltip } from 'tdesign-react';
+import { Button, Dialog, Drawer, Input, Select, Switch } from 'tdesign-react';
 import { AddIcon, SettingIcon } from 'tdesign-icons-react';
+import { TopbarIconButton } from '../../../builder/components/UnifiedBuilderTopbar';
 import { useBuilderContext } from '../../../builder/context/BuilderContext';
 import type { UiTreeNode } from '../../../builder/store/types';
 import { emitApiAlert } from '../../../api/alertBus';
@@ -220,19 +221,13 @@ const PageRouteToolbar: React.FC = () => {
             onChange={(value) => setActiveRouteOutletKey(String(value ?? ''))}
           />
         ) : null}
-        <Tooltip content="路由设置" placement="bottom">
-          <Button
-            size="small"
-            theme="default"
-            variant="text"
-            className="builder-topbar__icon-btn"
-            icon={<SettingIcon />}
-            onClick={handleOpenRouteSettings}
-          />
-        </Tooltip>
-        <Tooltip content="新增路由" placement="bottom">
-          <Button size="small" theme="default" variant="text" className="builder-topbar__icon-btn" icon={<AddIcon />} onClick={handleCreateRoute} />
-        </Tooltip>
+        <TopbarIconButton
+          tip="当前路由的路径、标题与布局等"
+          label="路由设置"
+          icon={<SettingIcon />}
+          onClick={handleOpenRouteSettings}
+        />
+        <TopbarIconButton tip="新增一条页面路由" label="新增路由" icon={<AddIcon />} onClick={handleCreateRoute} />
       </div>
 
       <Drawer

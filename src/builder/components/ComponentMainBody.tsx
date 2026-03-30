@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Button, Dialog, Input, Popup, Row, Select, Space, Tooltip, Typography } from 'tdesign-react';
+import { Dialog, Input, Popup, Row, Select, Space, Typography } from 'tdesign-react';
 import ComponentBody from '../renderer/ComponentBody';
 import SCREEN_SIZES from '../config/screenSizes';
 import { useBuilderAccess, useBuilderContext } from '../context/BuilderContext';
@@ -144,17 +144,19 @@ const ComponentMainBody: React.FC<{ toolbarExtra?: React.ReactNode }> = ({ toolb
                 content={viewportPopupContent}
               >
                 <TopbarIconButton
-                  tip="画布尺寸"
+                  tip="画布尺寸与栅格断点"
+                  label="画布"
                   icon={<Monitor size={16} strokeWidth={2} />}
                   disabled={readOnly}
                 />
               </Popup>
               {toolbarExtra ? <div className="component-main-toolbar__extra-slot">{toolbarExtra}</div> : null}
-              <Tooltip content="快捷键" placement="bottom">
-                <Button size="small" variant="text" className="builder-topbar__icon-btn" onClick={() => setShortcutDialogVisible(true)}>
-                  <Settings2 size={16} />
-                </Button>
-              </Tooltip>
+              <TopbarIconButton
+                tip="快捷键"
+                label="快捷键"
+                icon={<Settings2 size={16} strokeWidth={2} />}
+                onClick={() => setShortcutDialogVisible(true)}
+              />
             </TopbarGroup>
           )}
         />
@@ -173,6 +175,14 @@ const ComponentMainBody: React.FC<{ toolbarExtra?: React.ReactNode }> = ({ toolb
         onClose={() => setShortcutDialogVisible(false)}
       >
         <Space size={4} style={{ width: '100%', height: '400px', overflow: 'auto' }} direction="vertical">
+          <Row justify="space-between" align="middle">
+            <div>切换到搭建 UI：</div>
+            <Text code>Ctrl/Cmd+Shift+U</Text>
+          </Row>
+          <Row justify="space-between" align="middle">
+            <div>切换到搭建流程：</div>
+            <Text code>Ctrl/Cmd+Shift+F</Text>
+          </Row>
           <Row justify="space-between" align="middle">
             <div>复制节点：</div>
             <Text code>Ctrl/Cmd+C</Text>

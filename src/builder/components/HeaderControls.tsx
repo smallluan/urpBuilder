@@ -958,6 +958,7 @@ export default function HeaderControls({
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <div>核心快捷键：Ctrl/Cmd+Z（撤销）、Ctrl/Cmd+Shift+Z（重做）、Esc（关闭浮层/退出聚焦）。</div>
+          <div>切换搭建：Ctrl/Cmd+Shift+U（搭建 UI）、Ctrl/Cmd+Shift+F（搭建流程）。</div>
           <div>流程模式快捷键：Ctrl/Cmd+Shift+L / V / K。</div>
           <div>
             组件树/画布：Ctrl/Cmd+Shift+C 清空子节点；Ctrl/Cmd+↑↓ 同级移动；Ctrl/Cmd+Shift+↑↓ 置顶/置底；Alt+方向键（同级微调另一套）。

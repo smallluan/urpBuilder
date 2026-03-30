@@ -544,7 +544,7 @@
     .component-main-toolbar .builder-topbar__left,
     .component-main-toolbar .builder-topbar__right {
       display: inline-flex;
-      align-items: center;
+      align-items: flex-end;
     }
 
     .component-main-toolbar__group {
@@ -583,7 +583,7 @@
 
     .page-route-toolbar {
       display: inline-flex;
-      align-items: center;
+      align-items: flex-end;
       gap: 6px;
       flex-wrap: nowrap;
       white-space: nowrap;
@@ -591,6 +591,123 @@
 
     .page-route-toolbar__select {
       width: 126px;
+    }
+
+    .builder-compose-toolbar-extras {
+      display: inline-flex;
+      align-items: flex-end;
+      gap: 10px;
+      flex-wrap: nowrap;
+      margin-left: 4px;
+    }
+
+    .dependency-manager-drawer {
+      &__intro {
+        margin-bottom: 14px;
+        padding: 10px 12px;
+        background: var(--td-bg-color-container-select, #f3f3f3);
+        border-radius: 8px;
+        font-size: 12px;
+        line-height: 1.5;
+        color: var(--td-text-color-secondary);
+      }
+
+      &__toolbar {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 14px;
+      }
+
+      &__table {
+        .t-table__header th {
+          font-weight: 600;
+        }
+      }
+
+      &__actions {
+        max-width: 260px;
+      }
+    }
+
+    .component-version-history-dialog {
+      .t-dialog__body {
+        padding-top: 8px;
+      }
+
+      &__meta {
+        margin-bottom: 16px;
+        padding-bottom: 12px;
+        border-bottom: 1px solid var(--td-component-border);
+      }
+
+      &__meta-id {
+        font-family: ui-monospace, monospace;
+        font-size: 12px;
+      }
+
+      &__loading,
+      &__empty {
+        display: block;
+        padding: 12px 0;
+      }
+
+      &__timeline-wrap {
+        max-height: 460px;
+        overflow: auto;
+        padding-right: 4px;
+        margin-top: 4px;
+      }
+
+      &__timeline.t-timeline {
+        --td-timeline-item-min-height: 72px;
+      }
+
+      &__axis-label {
+        display: inline-flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 4px;
+        min-width: 72px;
+      }
+
+      &__ver {
+        font-size: 14px;
+      }
+
+      &__card {
+        padding: 12px 14px;
+        background: var(--td-bg-color-container, #fff);
+        border: 1px solid var(--td-component-border);
+        border-radius: 10px;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+        max-width: 320px;
+      }
+
+      &__time {
+        display: block;
+        color: var(--td-text-color-secondary);
+        margin-bottom: 6px;
+      }
+
+      &__note {
+        display: block;
+        font-size: 13px;
+        line-height: 1.5;
+        margin-bottom: 10px;
+        color: var(--td-text-color-primary);
+      }
+
+      &__apply {
+        width: 100%;
+      }
+
+      &__risk-list {
+        margin: 8px 0 0 18px;
+        padding: 0;
+        font-size: 13px;
+      }
     }
 
     .main-inner {
@@ -3339,6 +3456,42 @@
   display: flex;
   align-items: center;
   gap: 4px;
+}
+
+/* 工具栏：图标 + 底部说明文案（搭建页等） */
+.builder-topbar__icon-btn--labeled {
+  width: auto !important;
+  min-width: 48px !important;
+  height: auto !important;
+  min-height: 46px;
+  padding: 4px 6px 3px !important;
+}
+
+.builder-topbar__icon-btn-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 2px;
+  min-width: 0;
+}
+
+.builder-topbar__icon-btn-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 0;
+}
+
+.builder-topbar__icon-btn-caption {
+  font-size: 10px;
+  line-height: 1.15;
+  color: #94a3b8;
+  text-align: center;
+  max-width: 64px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* 画布尺寸 Popup：TDesign 默认挂到 body，须用根级选择器 */

@@ -194,6 +194,19 @@ export interface ComponentMetaBatchResult {
   list: ComponentMetaBatchResultItem[];
 }
 
+/** 与 GET /page-template/{componentId}/versions?entityType=component 的 list 项一致 */
+export interface ComponentVersionListItem {
+  version: number;
+  status: 'published';
+  publishedAt?: string;
+  createdAt?: string;
+  versionNote?: string | null;
+}
+
+export interface ComponentVersionListResult {
+  list: ComponentVersionListItem[];
+}
+
 export type PageTemplateListParams = {
   pageName?: string;
   status?: TemplateStatus;
