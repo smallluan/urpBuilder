@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import cloneDeep from 'lodash/cloneDeep';
-import { Radio, Button, Drawer, Timeline, Tag, Dialog, DialogPlugin, Input, Textarea, MessagePlugin } from 'tdesign-react';
+import { Radio, Button, Drawer, Timeline, Tag, Dialog, DialogPlugin, Input, Textarea, MessagePlugin, Switch, Tooltip, Space } from 'tdesign-react';
 import {
   UploadIcon,
   ViewImageIcon,
@@ -27,6 +27,7 @@ import { emitApiAlert } from '../../api/alertBus';
 import { findNodeByKey, updateNodeByKey } from '../../utils/createComponentTree';
 import { useTeam } from '../../team/context';
 import UnifiedBuilderTopbar, { TopbarGroup, TopbarIconButton } from './UnifiedBuilderTopbar';
+import { useBuilderThemeStore } from '../theme/builderThemeStore';
 import { dehydrateUiTree, PROPS_STORAGE_VERSION } from '../template/propsHydration';
 import { getBlockMessageWhenNoPersistableChanges } from '../save/assertPersistableChanges';
 import { computePersistedTemplateFingerprint } from '../save/templateFingerprint';
@@ -426,6 +427,8 @@ export default function HeaderControls({
   const [componentDescription, setComponentDescription] = useState('');
   const [saving, setSaving] = useState(false);
   const [shortcutDialogVisible, setShortcutDialogVisible] = useState(false);
+  const colorMode = useBuilderThemeStore((s) => s.colorMode);
+  const setColorMode = useBuilderThemeStore((s) => s.setColorMode);
 
   const canUndo = history.pointer >= 0;
   const canRedo = history.pointer < history.actions.length - 1;
@@ -854,6 +857,16 @@ export default function HeaderControls({
           )}
           right={(
             <TopbarGroup>
+              <Tooltip content={colorMode === 'dark' ? '切换为浅色模式' : '切换为深色模式'} placement="bottom">
+                <Space size={4} align="center" className="builder-theme-toggle">
+                  <span className="builder-theme-toggle__label">深色</span>
+                  <Switch
+                    size="small"
+                    value={colorMode === 'dark'}
+                    onChange={(v) => setColorMode(v ? 'dark' : 'light')}
+                  />
+                </Space>
+              </Tooltip>
               <TopbarIconButton tip="高级快捷键设置" icon={<SettingIcon />} onClick={() => setShortcutDialogVisible(true)} />
               {extraRight}
               <Button

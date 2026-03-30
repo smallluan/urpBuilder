@@ -13,12 +13,12 @@
     align-items: center;
     padding: 6px 8px;
     border-radius: 4px;
-    color: #a6a6a6;
+    color: var(--app-text-muted);
     transition: background-color .2s ease-in-out;
     cursor: pointer;
     
     &:hover {
-      background-color: #f3f3f3;
+      background-color: var(--app-sidebar-hover);
     }
 
     &_left {
@@ -28,7 +28,7 @@
       font-size: 12px;
 
       .label {
-        color: #181818;
+        color: var(--app-text-primary);
       }
       .icon {
         margin-right: 8px;
@@ -37,7 +37,7 @@
   }
 
   .action-btns {
-    border-top: 1px solid #f3f3f3;
+    border-top: 1px solid var(--app-border-subtle);
 
     .btn-deleteAccount,
     .btn-logout {
@@ -47,7 +47,7 @@
     }
 
     .btn-deleteAccount {
-      border-right: 1px solid #f3f3f3;
+      border-right: 1px solid var(--app-border-subtle);
     }
   }
 }

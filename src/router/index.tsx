@@ -1,5 +1,6 @@
 import React, { lazy, Suspense } from 'react';
 import { createBrowserRouter } from 'react-router-dom';
+import { Loading } from 'tdesign-react';
 import { PublicOnlyRoute, RequireAuth } from './guards';
 
 const AppLayout = lazy(() => import('../components/Layout'));
@@ -20,9 +21,11 @@ const PreviewEngine = lazy(() => import('../pages/PreviewEngine'));
 const Login = lazy(() => import('../pages/Login'));
 const Register = lazy(() => import('../pages/Register'));
 
-const load = (el: React.ReactElement) => (
-  <Suspense fallback={<div>加载中...</div>}>{el}</Suspense>
+const routeSuspenseFallback = (
+  <Loading fullscreen loading preventScrollThrough showOverlay />
 );
+
+const load = (el: React.ReactElement) => <Suspense fallback={routeSuspenseFallback}>{el}</Suspense>;
 
 export const router = createBrowserRouter([
   {

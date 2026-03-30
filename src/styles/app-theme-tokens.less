@@ -1,0 +1,64 @@
+/* 应用壳层语义色：随 :root theme-mode 切换，供 Layout / 登录 / 内页使用 */
+
+:root,
+:root[theme-mode='light'] {
+  --app-surface-page: #f5f7fa;
+  --app-surface-elevated: #ffffff;
+  --app-surface-muted: #f0f2f5;
+  --app-border-subtle: #e7e7e7;
+  --app-border-default: #dcdcdc;
+  --app-text-primary: #1f2329;
+  --app-text-secondary: #5c6370;
+  --app-text-muted: #8b95a7;
+  --app-shadow-header: 0 1px 0 rgba(0, 0, 0, 0.06);
+  --app-login-bg: linear-gradient(135deg, #f4f7fb 0%, #eef5ff 48%, #f9fbfd 100%);
+  --app-login-panel-bg: rgba(255, 255, 255, 0.92);
+  --app-login-panel-shadow: 0 24px 80px rgba(15, 23, 42, 0.12);
+  --app-sidebar-hover: #f3f3f3;
+  --app-sidebar-active-bg: #edf4ff;
+  --app-sidebar-active-border: #c7ddff;
+  --app-header-pill-bg: #fcfdff;
+  --app-header-pill-border: #e7ecf2;
+  --app-header-pill-hover-bg: #f6f9fd;
+  --app-select-pill-bg: #fbfcfe;
+  --app-login-avatar-border: #e5ebf3;
+  --app-login-avatar-inner-bg: #f9fbff;
+  --app-login-badge-bg: #e0f2fe;
+  --app-login-badge-fg: #0c4a6e;
+  --app-notice-drawer-bg: linear-gradient(180deg, #f8fbff 0%, #f5f8fc 100%);
+  --app-notice-card-bg: #ffffff;
+  --app-notice-card-border: #e6edf5;
+  --app-notice-card-unread-bg: #fbfdff;
+  --app-notice-card-unread-border: #c8d8ff;
+}
+
+:root[theme-mode='dark'] {
+  --app-surface-page: var(--td-bg-color-page);
+  --app-surface-elevated: var(--td-bg-color-container);
+  --app-surface-muted: var(--td-bg-color-secondarycontainer);
+  --app-border-subtle: var(--td-component-border);
+  --app-border-default: var(--td-gray-color-8);
+  --app-text-primary: var(--td-text-color-primary);
+  --app-text-secondary: var(--td-text-color-secondary);
+  --app-text-muted: var(--td-text-color-placeholder);
+  --app-shadow-header: 0 1px 0 rgba(255, 255, 255, 0.08);
+  --app-login-bg: linear-gradient(135deg, #0f1419 0%, #151b24 48%, #0d1117 100%);
+  --app-login-panel-bg: rgba(30, 35, 42, 0.92);
+  --app-login-panel-shadow: 0 24px 80px rgba(0, 0, 0, 0.45);
+  --app-sidebar-hover: var(--td-bg-color-container-hover);
+  --app-sidebar-active-bg: var(--td-brand-color-1);
+  --app-sidebar-active-border: var(--td-brand-color-4);
+  --app-header-pill-bg: var(--td-bg-color-secondarycontainer);
+  --app-header-pill-border: var(--td-component-border);
+  --app-header-pill-hover-bg: var(--td-bg-color-container-hover);
+  --app-select-pill-bg: var(--td-bg-color-secondarycontainer);
+  --app-login-avatar-border: var(--td-component-border);
+  --app-login-avatar-inner-bg: var(--td-bg-color-secondarycontainer);
+  --app-login-badge-bg: var(--td-brand-color-1);
+  --app-login-badge-fg: var(--td-brand-color-8);
+  --app-notice-drawer-bg: var(--td-bg-color-page);
+  --app-notice-card-bg: var(--td-bg-color-container);
+  --app-notice-card-border: var(--td-component-border);
+  --app-notice-card-unread-bg: var(--td-brand-color-1);
+  --app-notice-card-unread-border: var(--td-brand-color-4);
+}

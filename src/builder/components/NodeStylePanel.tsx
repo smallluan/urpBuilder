@@ -1,7 +1,9 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Button, Space, Switch, Typography } from 'tdesign-react';
 import CodeMirror from '@uiw/react-codemirror';
+import { vscodeDark, vscodeLight } from '@uiw/codemirror-theme-vscode';
 import { css } from '@codemirror/lang-css';
+import { useBuilderThemeStore } from '../theme/builderThemeStore';
 import './NodeStylePanel.less';
 
 export interface NodeStylePanelProps {
@@ -119,6 +121,11 @@ export const NodeStylePanel: React.FC<NodeStylePanelProps> = ({ value, onChange,
   const [autoApply, setAutoApply] = useState(false);
   const [hasUserEdited, setHasUserEdited] = useState(false);
   const lastBoundTargetKeyRef = useRef<string | undefined>(targetKey);
+  const colorMode = useBuilderThemeStore((s) => s.colorMode);
+  const codeMirrorTheme = useMemo(
+    () => (colorMode === 'dark' ? vscodeDark : vscodeLight),
+    [colorMode],
+  );
 
   const normalized = useMemo(() => normalizeStyleValue(value), [value]);
   const parseResult = useMemo(() => parseCssText(cssDraft), [cssDraft]);
@@ -176,6 +183,7 @@ export const NodeStylePanel: React.FC<NodeStylePanelProps> = ({ value, onChange,
         <CodeMirror
           value={cssDraft}
           height={compact ? '280px' : '360px'}
+          theme={codeMirrorTheme}
           extensions={[css()]}
           basicSetup={{
             lineNumbers: true,

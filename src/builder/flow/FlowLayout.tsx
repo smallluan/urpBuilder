@@ -8,6 +8,7 @@ import DragableWrapper from '../../components/DragableWrapper';
 import { applyBuilderDragPreview } from '../utils/dragPreview';
 import RightPanelHeader, { type RightPanelMode } from '../components/RightPanelHeader';
 import { useBuilderAccess, useBuilderContext } from '../context/BuilderContext';
+import { useBuilderThemeStore } from '../theme/builderThemeStore';
 import {
   BODY_TYPE_OPTIONS,
   CODE_LANGUAGE_OPTIONS,
@@ -27,6 +28,8 @@ interface CodeNodeFormState extends CodeEditorValue {}
 const FlowLayout: React.FC = () => {
   const { useStore } = useBuilderContext();
   const { readOnly, readOnlyReason } = useBuilderAccess();
+  const colorMode = useBuilderThemeStore((s) => s.colorMode);
+  const codeMirrorDefaultTheme = colorMode === 'dark' ? 'vscode-dark' : 'vscode-light';
   const flowNodes = useStore((state) => state.flowNodes);
   const flowEdges = useStore((state) => state.flowEdges);
   const flowActiveNodeId = useStore((state) => state.flowActiveNodeId);
@@ -148,11 +151,12 @@ const FlowLayout: React.FC = () => {
     setCodeDraft({
       label: String(nodeData.label ?? '代码节点'),
       language: String(nodeData.language ?? 'javascript'),
-      editorTheme: (String(nodeData.editorTheme ?? 'vscode-dark') === 'vscode-light' ? 'vscode-light' : 'vscode-dark'),
+      editorTheme:
+        String(nodeData.editorTheme ?? codeMirrorDefaultTheme) === 'vscode-light' ? 'vscode-light' : 'vscode-dark',
       note: String(nodeData.note ?? ''),
       code: String(nodeData.code ?? ''),
     });
-  }, [activeFlowNode]);
+  }, [activeFlowNode, codeMirrorDefaultTheme]);
 
   useEffect(() => {
     if (!activeFlowNode || activeFlowNode.type !== 'eventFilterNode') {
@@ -301,13 +305,14 @@ const FlowLayout: React.FC = () => {
     const currentComparable = {
       label: String(nodeData.label ?? '代码节点'),
       language: String(nodeData.language ?? 'javascript'),
-      editorTheme: (String(nodeData.editorTheme ?? 'vscode-dark') === 'vscode-light' ? 'vscode-light' : 'vscode-dark'),
+      editorTheme:
+        String(nodeData.editorTheme ?? codeMirrorDefaultTheme) === 'vscode-light' ? 'vscode-light' : 'vscode-dark',
       note: String(nodeData.note ?? ''),
       code: String(nodeData.code ?? ''),
     };
 
     return JSON.stringify(currentComparable) !== JSON.stringify(codeDraft);
-  }, [activeFlowNode, codeDraft]);
+  }, [activeFlowNode, codeDraft, codeMirrorDefaultTheme]);
 
   const canApplyEventFilterDraft = useMemo(() => {
     if (!activeFlowNode || activeFlowNode.type !== 'eventFilterNode' || !eventFilterDraft) {
@@ -1259,7 +1264,7 @@ const FlowLayout: React.FC = () => {
             codeDraft ?? {
               label: '代码节点',
               language: 'javascript',
-              editorTheme: 'vscode-dark',
+              editorTheme: codeMirrorDefaultTheme,
               note: '',
               code: '',
             }

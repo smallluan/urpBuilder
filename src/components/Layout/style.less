@@ -9,13 +9,14 @@
 
   .layout-header {
     padding: 0 20px;
-    background: #fff;
-    border-bottom: 1px solid #eef1f4;
+    background: var(--app-surface-elevated);
+    border-bottom: 1px solid var(--app-border-subtle);
     height: 60px;
     line-height: 60px;
     display: flex;
     align-items: center;
     justify-content: space-between;
+    box-shadow: var(--app-shadow-header);
 
     .header-left {
       display: flex;
@@ -43,8 +44,8 @@
       .t-select {
         .t-input {
           border-radius: 999px;
-          border-color: #e7ecf2;
-          background: #fbfcfe;
+          border-color: var(--app-header-pill-border);
+          background: var(--app-select-pill-bg);
         }
       }
     }
@@ -58,15 +59,15 @@
       max-width: 180px;
       padding: 0 10px 0 6px;
       height: 36px;
-      border: 1px solid #e7ecf2;
+      border: 1px solid var(--app-header-pill-border);
       border-radius: 999px;
-      background: #fcfdff;
+      background: var(--app-header-pill-bg);
       cursor: pointer;
       transition: border-color 0.2s ease, background-color 0.2s ease;
 
       &:hover {
-        border-color: #d0d9e6;
-        background: #f6f9fd;
+        border-color: var(--app-border-default);
+        background: var(--app-header-pill-hover-bg);
       }
 
       &__avatar {
@@ -82,7 +83,7 @@
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
-        color: #111827;
+        color: var(--app-text-primary);
         font-size: 13px;
         font-weight: 600;
         line-height: 1;
@@ -111,12 +112,12 @@
       &__name {
         font-size: 14px;
         font-weight: 600;
-        color: #111827;
+        color: var(--app-text-primary);
       }
 
       &__sub {
         font-size: 12px;
-        color: #7b8794;
+        color: var(--app-text-secondary);
         max-width: 190px;
         white-space: nowrap;
         overflow: hidden;
@@ -129,7 +130,7 @@
     flex: 1;
     min-height: 0;
     padding: 24px;
-    background: white;
+    background: var(--app-surface-page);
     overflow: auto;
   }
 
@@ -139,24 +140,24 @@
     flex-direction: column;
     gap: 12px;
     height: 100vh;
-    background: #fff;
-    border-right: 1px solid #eef1f4;
+    background: var(--app-surface-elevated);
+    border-right: 1px solid var(--app-border-subtle);
 
     .sidebar-space-switcher {
       display: flex;
       align-items: center;
       width: fit-content;
-      background: white;
+      background: var(--app-surface-elevated);
       min-height: 42px;
       padding: 0 10px;
       text-align: left;
-      color: #1f2937;
+      color: var(--app-text-primary);
       cursor: pointer;
       border-radius: 4px;
       transition: background-color .2s ease-in-out;
 
       &:hover {
-        background-color: #f3f3f3;
+        background-color: var(--app-sidebar-hover);
       }
 
       .t-space {
@@ -194,7 +195,7 @@
 
       &__title {
         font-size: 12px;
-        color: #8a94a6;
+        color: var(--app-text-muted);
         padding: 0 8px;
         margin-bottom: 6px;
       }
@@ -221,7 +222,7 @@
       text-align: center;
       font-size: 18px;
       font-weight: bold;
-      color: #0052d9;
+      color: var(--td-brand-color, #0052d9);
     }
 
     .sidebar-menu {
@@ -244,7 +245,7 @@
 
   &__section-title {
     font-size: 12px;
-    color: #8a94a6;
+    color: var(--app-text-muted);
     margin-top: 2px;
   }
 
@@ -256,7 +257,7 @@
 
   &__empty {
     font-size: 12px;
-    color: #8a94a6;
+    color: var(--app-text-muted);
     padding: 8px;
   }
 }
@@ -273,12 +274,12 @@
   transition: background-color .2s ease-in-out;
 
   &:hover {
-    background-color: #f3f3f3;
+    background-color: var(--app-sidebar-hover);
   }
 
   &.is-active {
-    border-color: #c7ddff;
-    background: #edf4ff;
+    border-color: var(--app-sidebar-active-border);
+    background: var(--app-sidebar-active-bg);
   }
 
   &__meta {
@@ -290,13 +291,19 @@
 
   &__name {
     font-size: 14px;
-    color: #111827;
+    color: var(--app-text-primary);
     line-height: 1.2;
   }
 
   &__sub {
     font-size: 12px;
-    color: #7c8797;
+    color: var(--app-text-secondary);
     line-height: 1.2;
   }
+}
+
+.app-layout-theme-toggle__label {
+  font-size: 12px;
+  color: var(--app-text-secondary);
+  user-select: none;
 }

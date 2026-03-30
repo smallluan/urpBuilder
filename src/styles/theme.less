@@ -1,4 +1,6 @@
-:root {
+/* 品牌与浅色语义：仅作用于亮色，避免覆盖 TDesign 在 theme-mode=dark 下的 :root 变量 */
+:root,
+:root[theme-mode='light'] {
   --td-brand-color-1: #e6f4ff;
   --td-brand-color-2: #b3d4ff;
   --td-brand-color-3: #80b4ff;
@@ -42,4 +44,11 @@
   --app-gradient-purple: linear-gradient(135deg, #f3e8ff 0%, #e9d5ff 100%);
   --app-gradient-success: linear-gradient(135deg, #e6fff0 0%, #b3f0d6 100%);
   --app-gradient-warning: linear-gradient(135deg, #fff7e6 0%, #ffe0b3 100%);
+}
+
+:root[theme-mode='dark'] {
+  --app-gradient-brand-start: linear-gradient(135deg, #1b2f51 0%, #173463 100%);
+  --app-gradient-purple: linear-gradient(135deg, #2a1f3d 0%, #35204a 100%);
+  --app-gradient-success: linear-gradient(135deg, #193a2a 0%, #1a4230 100%);
+  --app-gradient-warning: linear-gradient(135deg, #4f2a1d 0%, #582f21 100%);
 }

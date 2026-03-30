@@ -22,6 +22,7 @@ import '@xyflow/react/dist/style.css';
 import { flowNodeTypes } from './nodes';
 import AnnotatedEdge, { type AnnotatedEdgeData } from './edges/AnnotatedEdge';
 import { useBuilderAccess, useBuilderContext } from '../context/BuilderContext';
+import { useBuilderThemeStore } from '../theme/builderThemeStore';
 import FlowTopbar from './components/FlowTopbar';
 import FlowDiagnosticsPanel from './components/FlowDiagnosticsPanel';
 import type {
@@ -42,7 +43,6 @@ import { normalizeEdgesWithReport } from './utils/edgeNormalize';
 
 const FLOW_DRAG_DATA_KEY = 'drag-component-data';
 
-const DEFAULT_EDGE_COLOR = '#9aa5b5';
 const COMPONENT_TRACE_COLOR = '#0052d9';
 const EVENT_FILTER_TRACE_COLOR = '#2ba471';
 const CODE_TRACE_COLOR = '#6f5af0';
@@ -110,6 +110,9 @@ const flowEdgeTypes: EdgeTypes = {
 const FlowCanvas: React.FC = () => {
   const { useStore } = useBuilderContext();
   const { readOnly } = useBuilderAccess();
+  const colorMode = useBuilderThemeStore((s) => s.colorMode);
+  const defaultEdgeColor = colorMode === 'dark' ? '#7a8799' : '#9aa5b5';
+  const minimapNeutralColor = colorMode === 'dark' ? '#4a5568' : '#c9d2e4';
   const nodes = useStore((state) => state.flowNodes);
   const edges = useStore((state) => state.flowEdges);
   const flowActiveNodeId = useStore((state) => state.flowActiveNodeId);
@@ -409,14 +412,14 @@ const FlowCanvas: React.FC = () => {
         } as AnnotatedEdgeData,
         style: {
           ...edge.style,
-          stroke: highlighted ? traceColor : DEFAULT_EDGE_COLOR,
+          stroke: highlighted ? traceColor : defaultEdgeColor,
           strokeWidth: highlighted ? 2 : 1.6,
           strokeDasharray: highlighted ? '6 4' : undefined,
           opacity: hasTrace ? (highlighted ? 1 : 0.28) : 1,
         },
         markerEnd: {
           type: MarkerType.ArrowClosed,
-          color: highlighted ? traceColor : DEFAULT_EDGE_COLOR,
+          color: highlighted ? traceColor : defaultEdgeColor,
         },
       } as Edge;
     });
@@ -430,6 +433,7 @@ const FlowCanvas: React.FC = () => {
     handleStartEditEdge,
     traceColor,
     traceNodeIds,
+    defaultEdgeColor,
   ]);
 
   const handleAnnotationTextChange = useCallback(
@@ -785,10 +789,10 @@ const FlowCanvas: React.FC = () => {
         type: 'annotatedEdge',
         markerEnd: {
           type: MarkerType.ArrowClosed,
-          color: DEFAULT_EDGE_COLOR,
+          color: defaultEdgeColor,
         },
         style: {
-          stroke: DEFAULT_EDGE_COLOR,
+          stroke: defaultEdgeColor,
           strokeWidth: 1.6,
         },
       };
@@ -799,7 +803,7 @@ const FlowCanvas: React.FC = () => {
         edges: nextEdges,
       }));
     },
-    [applyFlowEdit],
+    [applyFlowEdit, defaultEdgeColor],
   );
 
   const isValidConnection = useCallback((params: Edge | Connection) => {
@@ -1277,6 +1281,7 @@ const FlowCanvas: React.FC = () => {
         onDrop={handleDrop}
       >
         <ReactFlow
+        className={colorMode === 'dark' ? 'dark' : undefined}
         nodes={renderedNodes}
         edges={renderedEdges}
         nodeTypes={flowNodeTypes}
@@ -1321,10 +1326,10 @@ const FlowCanvas: React.FC = () => {
           animated: false,
           markerEnd: {
             type: MarkerType.ArrowClosed,
-            color: DEFAULT_EDGE_COLOR,
+            color: defaultEdgeColor,
           },
           style: {
-            stroke: DEFAULT_EDGE_COLOR,
+            stroke: defaultEdgeColor,
             strokeWidth: 1.6,
           },
         }}
@@ -1344,7 +1349,7 @@ const FlowCanvas: React.FC = () => {
               if (level === 'info') {
                 return '#2f7cf6';
               }
-              return '#c9d2e4';
+              return minimapNeutralColor;
             }}
           />
           <Controls />

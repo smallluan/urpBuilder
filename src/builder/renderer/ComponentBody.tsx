@@ -440,7 +440,7 @@ const ComponentBody: React.FC = () => {
     return {
       width,
       height: '100%',
-      backgroundColor: '#fff',
+      backgroundColor: 'var(--builder-simulator-device-bg)',
       margin: '0 auto',
       transition: 'width 0.2s ease',
       boxSizing: 'content-box',

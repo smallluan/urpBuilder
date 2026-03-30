@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Button, Collapse, ColorPicker, Dialog, Empty, Input, InputNumber, MessagePlugin, Popup, Select, Slider, Space, Switch, Table, Tag, Tabs, Typography, Row, Textarea } from 'tdesign-react';
 import { HelpCircleIcon, LayoutIcon } from 'tdesign-icons-react';
 import { useBuilderAccess, useBuilderContext } from '../context/BuilderContext';
+import { useBuilderThemeStore } from '../theme/builderThemeStore';
 import type { UiTreeNode } from '../store/types';
 import { NodeStylePanel } from './NodeStylePanel';
 import { isSlotNode } from '../utils/slot';
@@ -522,12 +523,15 @@ const ComponentConfigPanel: React.FC = () => {
   const [iconQuickFilters, setIconQuickFilters] = useState<Record<string, IconQuickFilterKey>>({});
   const [iconInitialFilters, setIconInitialFilters] = useState<Record<string, IconInitialFilterKey>>({});
   const [customComponentFallbackProps, setCustomComponentFallbackProps] = useState<Array<[string, ComponentPropSchema]>>([]);
-  const [jsonCodeValue, setJsonCodeValue] = useState<CodeEditorValue>({
-    label: 'JSON示例数据',
-    language: 'json',
-    editorTheme: 'vscode-dark',
-    note: '',
-    code: '[]',
+  const [jsonCodeValue, setJsonCodeValue] = useState<CodeEditorValue>(() => {
+    const dark = useBuilderThemeStore.getState().colorMode === 'dark';
+    return {
+      label: 'JSON示例数据',
+      language: 'json',
+      editorTheme: dark ? 'vscode-dark' : 'vscode-light',
+      note: '',
+      code: '[]',
+    };
   });
   const [configMainTab, setConfigMainTab] = useState<'props' | 'style'>('props');
 

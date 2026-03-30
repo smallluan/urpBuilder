@@ -7,14 +7,14 @@
   background:
     radial-gradient(circle at top left, rgba(0, 82, 217, 0.12), transparent 32%),
     radial-gradient(circle at bottom right, rgba(20, 184, 166, 0.14), transparent 26%),
-    linear-gradient(135deg, #f4f7fb 0%, #eef5ff 48%, #f9fbfd 100%);
+    var(--app-login-bg);
 
   &__panel {
     width: min(460px, 100%);
     padding: 32px;
     border-radius: 24px;
-    background: rgba(255, 255, 255, 0.92);
-    box-shadow: 0 24px 80px rgba(15, 23, 42, 0.12);
+    background: var(--app-login-panel-bg);
+    box-shadow: var(--app-login-panel-shadow);
     backdrop-filter: blur(16px);
   }
 
@@ -27,12 +27,12 @@
     h1 {
       margin: 0 0 8px;
       font-size: 28px;
-      color: #102a43;
+      color: var(--app-text-primary);
     }
 
     p {
       margin: 0;
-      color: #52606d;
+      color: var(--app-text-secondary);
       line-height: 1.6;
     }
   }
@@ -54,9 +54,9 @@
     align-items: center;
     gap: 14px;
     padding: 12px 14px;
-    border: 1px solid #e5ebf3;
+    border: 1px solid var(--app-login-avatar-border);
     border-radius: 12px;
-    background: #f9fbff;
+    background: var(--app-login-avatar-inner-bg);
   }
 
   &__avatar-stage {
@@ -66,7 +66,7 @@
 
   &__avatar-preview {
     flex: 0 0 auto;
-    border: 2px solid #fff;
+    border: 2px solid var(--app-surface-elevated);
     box-shadow: 0 10px 24px rgba(15, 23, 42, 0.16);
   }
 
@@ -87,13 +87,13 @@
   }
 
   &__avatar-title {
-    color: #102a43;
+    color: var(--app-text-primary);
     font-size: 14px;
     font-weight: 600;
   }
 
   &__avatar-sub {
-    color: #52606d;
+    color: var(--app-text-secondary);
     font-size: 12px;
     line-height: 1.5;
   }
@@ -102,7 +102,7 @@
     padding: 2px 8px;
     border-radius: 999px;
     font-size: 11px;
-    color: #0c4a6e;
-    background: #e0f2fe;
+    color: var(--app-login-badge-fg);
+    background: var(--app-login-badge-bg);
   }
 }

@@ -3,7 +3,11 @@ import { createRoot } from 'react-dom/client'
 import './styles/reset.less'
 import './styles/theme.less'
 import 'tdesign-react/dist/tdesign.min.css'
+import './styles/app-theme-tokens.less'
 import App from './App.tsx'
+import { applyColorModeToDocument, getResolvedColorMode } from './builder/theme/builderThemeStore'
+
+applyColorModeToDocument(getResolvedColorMode())
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
