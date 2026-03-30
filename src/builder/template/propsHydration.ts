@@ -36,32 +36,51 @@ export const isLegacyPropEntry = (v: unknown): boolean => {
   return typeof o.editType === 'string' || typeof o.editInput === 'string';
 };
 
+/**
+ * 无 editType 的简写：如插槽 __slot 仅有 { value: 'header' }，或历史数据仅有 { name, value }。
+ * 若不识别，水合时会再包一层 jsonCode schema，导致 getNodeSlotKey 等读不到 string。
+ */
+export const isShorthandPropValue = (v: unknown): boolean => {
+  if (!v || typeof v !== 'object' || Array.isArray(v)) {
+    return false;
+  }
+  const o = v as Record<string, unknown>;
+  if (typeof o.editType === 'string' || typeof o.editInput === 'string') {
+    return false;
+  }
+  const keys = Object.keys(o).filter((k) => o[k] !== undefined);
+  if (keys.length === 1 && keys[0] === 'value') {
+    return true;
+  }
+  if (keys.length === 2 && keys.includes('value') && keys.includes('name')) {
+    return true;
+  }
+  return false;
+};
+
 export const extractStoredPropValue = (raw: unknown): unknown => {
-  if (isLegacyPropEntry(raw)) {
+  if (isLegacyPropEntry(raw) || isShorthandPropValue(raw)) {
     return cloneDeep((raw as { value?: unknown }).value);
   }
   return cloneDeep(raw);
 };
 
-/** 插槽节点 props.__slot 仅存 { value: slotKey }，不能走通用 hydrate（否则会被包成 editor schema，导致 getNodeSlotKey 失效）。 */
+/** 插槽节点 props.__slot 最终必须是 { value: string }，与 createSlotNode 一致。 */
 const normalizeHydratedSlotProp = (raw: unknown): { value: string } | undefined => {
   let cur: unknown = raw;
-  for (let i = 0; i < 8 && cur != null; i += 1) {
-    if (typeof cur === 'string' && cur.trim()) {
-      return { value: cur.trim() };
+  for (let i = 0; i < 16 && cur != null; i += 1) {
+    if (typeof cur === 'string') {
+      const t = cur.trim();
+      return t ? { value: t } : undefined;
     }
     if (!cur || typeof cur !== 'object' || Array.isArray(cur)) {
       return undefined;
     }
-    if (isLegacyPropEntry(cur)) {
-      cur = (cur as { value?: unknown }).value;
-      continue;
+    const next = extractStoredPropValue(cur);
+    if (next === cur) {
+      return undefined;
     }
-    if ('value' in (cur as object)) {
-      cur = (cur as { value: unknown }).value;
-      continue;
-    }
-    return undefined;
+    cur = next;
   }
   return undefined;
 };
@@ -76,7 +95,7 @@ const normalizeHydratedStylePropValue = (raw: unknown): Record<string, unknown> 
     if (typeof cur !== 'object' || Array.isArray(cur)) {
       return {};
     }
-    if (isLegacyPropEntry(cur)) {
+    if (isLegacyPropEntry(cur) || isShorthandPropValue(cur)) {
       cur = (cur as { value?: unknown }).value;
       continue;
     }
@@ -102,7 +121,7 @@ export const dehydrateProps = (props: Record<string, unknown> | undefined): Reco
   const out: Record<string, unknown> = {};
   Object.keys(props).forEach((key) => {
     const v = props[key];
-    if (isLegacyPropEntry(v)) {
+    if (isLegacyPropEntry(v) || isShorthandPropValue(v)) {
       out[key] = cloneDeep((v as { value?: unknown }).value);
     } else {
       out[key] = cloneDeep(v);
@@ -224,7 +243,7 @@ export const hydrateProps = (
         ...cloneDeep(bp),
         value: extracted !== undefined ? extracted : cloneDeep((bp as { value?: unknown }).value),
       };
-    } else if (isLegacyPropEntry(raw)) {
+    } else if (isLegacyPropEntry(raw) || isShorthandPropValue(raw)) {
       out[key] = cloneDeep(raw) as Record<string, unknown>;
     } else {
       out[key] = {
@@ -291,7 +310,7 @@ function hydrateCustomComponentProps(
         ...cloneDeep(bp),
         value: extracted !== undefined ? extracted : cloneDeep((bp as { value?: unknown }).value),
       };
-    } else if (isLegacyPropEntry(raw)) {
+    } else if (isLegacyPropEntry(raw) || isShorthandPropValue(raw)) {
       out[key] = cloneDeep(raw) as Record<string, unknown>;
     } else {
       out[key] = {

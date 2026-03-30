@@ -532,6 +532,7 @@ export const createBuilderStore = (options: CreateBuilderStoreOptions = {}) => {
 
     // ===== 历史系统 =====
     history: createEmptyHistory(),
+    lastPersistedTemplateFingerprint: '',
 
     // ===== Actions — 视图环境 =====
 
@@ -1481,5 +1482,10 @@ export const createBuilderStore = (options: CreateBuilderStoreOptions = {}) => {
           history: { pointer: clampedTarget, actions },
         };
       }),
+
+    resetHistoryBaseline: () => set({ history: createEmptyHistory() }),
+
+    setLastPersistedTemplateFingerprint: (fingerprint) =>
+      set({ lastPersistedTemplateFingerprint: fingerprint }),
   }));
 };

@@ -230,6 +230,8 @@ export interface BuilderStore {
 
   // 历史系统
   history: UiHistoryState;
+  /** 与保存 payload 对齐的模板指纹；详情加载或保存成功后更新，用于「无实质变更」判断 */
+  lastPersistedTemplateFingerprint: string;
 
   // Actions — 视图环境
   setScreenSize: (screenSize: ScreenSize) => void;
@@ -288,4 +290,7 @@ export interface BuilderStore {
   undo: () => void;
   redo: () => void;
   jumpToHistory: (pointer: number) => void;
+  /** 持久化成功后清空撤销栈，使「无改动」判断与当前已保存状态一致 */
+  resetHistoryBaseline: () => void;
+  setLastPersistedTemplateFingerprint: (fingerprint: string) => void;
 }

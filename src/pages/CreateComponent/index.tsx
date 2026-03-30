@@ -18,6 +18,7 @@ import { collectCustomComponentInstances, fetchLatestComponentBundle, upgradeCus
 import type { ComponentDetail, ComponentTemplateBaseInfo } from '../../api/types';
 import DependencyUpgradeIndicator, { type DependencyUpgradeItem } from '../../builder/components/DependencyUpgradeIndicator';
 import BuilderQuickFind from '../../builder/components/BuilderQuickFind';
+import { computePersistedTemplateFingerprint } from '../../builder/save/templateFingerprint';
 
 const resolveValidTemplateIdFromUrl = () => {
   const searchParams = new URLSearchParams(window.location.search);
@@ -177,6 +178,12 @@ const CreateComponent: React.FC = () => {
             actions: [],
           },
         });
+        useCreateComponentStore.getState().setLastPersistedTemplateFingerprint(
+          computePersistedTemplateFingerprint(useCreateComponentStore.getState(), {
+            enablePageRouteConfig: false,
+            enableComponentContract: true,
+          }),
+        );
       } catch {
         emitApiAlert('加载失败', '组件详情请求失败，请稍后重试');
       }

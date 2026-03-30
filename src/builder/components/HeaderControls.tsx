@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import cloneDeep from 'lodash/cloneDeep';
-import { Radio, Button, Drawer, Timeline, Tag, Dialog, DialogPlugin, Input, Textarea } from 'tdesign-react';
+import { Radio, Button, Drawer, Timeline, Tag, Dialog, DialogPlugin, Input, Textarea, MessagePlugin } from 'tdesign-react';
 import {
   UploadIcon,
   ViewImageIcon,
@@ -28,6 +28,8 @@ import { findNodeByKey, updateNodeByKey } from '../../utils/createComponentTree'
 import { useTeam } from '../../team/context';
 import UnifiedBuilderTopbar, { TopbarGroup, TopbarIconButton } from './UnifiedBuilderTopbar';
 import { dehydrateUiTree, PROPS_STORAGE_VERSION } from '../template/propsHydration';
+import { getBlockMessageWhenNoPersistableChanges } from '../save/assertPersistableChanges';
+import { computePersistedTemplateFingerprint } from '../save/templateFingerprint';
 
 type Props = {
   mode: 'component' | 'flow';
@@ -575,6 +577,10 @@ export default function HeaderControls({
     setSaveDialogVisible(false);
   };
 
+  /**
+   * 保存 / 保存并发布主流程：先做同步校验，再进入耗时阶段（全局 Message loading + 弹窗按钮 loading）。
+   * 后续可在「同步校验」与 try 块之间继续插入保存前校验。
+   */
   const handleSave = async () => {
     const { uiPageData: uiTreeData, flowNodes, flowEdges } = useStore.getState();
     const pageName = componentName.trim();
@@ -593,6 +599,29 @@ export default function HeaderControls({
 
     if (!/^[A-Za-z0-9_-]+$/.test(pageId)) {
       emitApiAlert('保存失败', `${saveEntityLabel} ID 仅支持字母、数字、下划线和中划线`);
+      return;
+    }
+
+    const storeSnapshot = useStore.getState();
+    const currentTemplateFingerprint = computePersistedTemplateFingerprint(storeSnapshot, {
+      enablePageRouteConfig,
+      enableComponentContract,
+    });
+    const noPersistableChangeMessage = getBlockMessageWhenNoPersistableChanges({
+      isEditingExisting: isEditMode,
+      historyPointer: history.pointer,
+      currentTemplateFingerprint,
+      lastPersistedTemplateFingerprint: storeSnapshot.lastPersistedTemplateFingerprint,
+      formPageName: pageName,
+      formDescription: pageDescription,
+      storedPageName: currentPageName || '',
+      storedDescription: currentPageDescription || '',
+    });
+    if (noPersistableChangeMessage) {
+      emitApiAlert(
+        saveIntent === 'saveAndPublish' ? '无法保存并发布' : '无法保存',
+        noPersistableChangeMessage,
+      );
       return;
     }
 
@@ -621,6 +650,8 @@ export default function HeaderControls({
       return;
     }
 
+    const loadingText = saveIntent === 'saveAndPublish' ? '正在保存并发布…' : '正在保存…';
+    const loadingMessagePromise = MessagePlugin.loading({ content: loadingText, duration: 0 });
     setSaving(true);
 
     try {
@@ -759,6 +790,16 @@ export default function HeaderControls({
         visibility: (currentPageVisibility ?? 'private') as 'private' | 'public',
       });
 
+      const storeApi = useStore.getState();
+      storeApi.resetHistoryBaseline();
+      const postSaveSnapshot = useStore.getState();
+      postSaveSnapshot.setLastPersistedTemplateFingerprint(
+        computePersistedTemplateFingerprint(postSaveSnapshot, {
+          enablePageRouteConfig,
+          enableComponentContract,
+        }),
+      );
+
       const shouldPublish = saveIntent === 'saveAndPublish';
       if (shouldPublish) {
         try {
@@ -788,6 +829,7 @@ export default function HeaderControls({
       setSaveDialogVisible(false);
     } finally {
       setSaving(false);
+      MessagePlugin.close(loadingMessagePromise);
     }
   };
 
@@ -814,13 +856,23 @@ export default function HeaderControls({
             <TopbarGroup>
               <TopbarIconButton tip="高级快捷键设置" icon={<SettingIcon />} onClick={() => setShortcutDialogVisible(true)} />
               {extraRight}
-              <Button theme="primary" size="small" icon={<UploadIcon />} disabled={readOnly} onClick={handleOpenSaveDialog}>保存</Button>
+              <Button
+                theme="primary"
+                size="small"
+                icon={<UploadIcon />}
+                disabled={readOnly}
+                loading={saving}
+                onClick={handleOpenSaveDialog}
+              >
+                保存
+              </Button>
               <Button
                 theme="default"
                 size="small"
                 variant="outline"
                 icon={<JumpIcon />}
                 disabled={readOnly}
+                loading={saving}
                 onClick={handleOpenSaveAndPublishDialog}
               >
                 保存并发布

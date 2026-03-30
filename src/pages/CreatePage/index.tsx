@@ -22,6 +22,7 @@ import type { ComponentDetail, ComponentTemplateBaseInfo } from '../../api/types
 import { collectCustomComponentInstances, fetchLatestComponentBundle, upgradeCustomComponentsInTree } from '../../utils/customComponentUpgrade';
 import DependencyUpgradeIndicator, { type DependencyUpgradeItem } from '../../builder/components/DependencyUpgradeIndicator';
 import BuilderQuickFind from '../../builder/components/BuilderQuickFind';
+import { computePersistedTemplateFingerprint } from '../../builder/save/templateFingerprint';
 
 const resolveValidTemplateIdFromUrl = () => {
   const searchParams = new URLSearchParams(window.location.search);
@@ -406,6 +407,12 @@ const CreatePage: React.FC = () => {
             actions: [],
           },
         });
+        useCreatePageStore.getState().setLastPersistedTemplateFingerprint(
+          computePersistedTemplateFingerprint(useCreatePageStore.getState(), {
+            enablePageRouteConfig: true,
+            enableComponentContract: false,
+          }),
+        );
       } catch {
         emitApiAlert('加载失败', '页面详情请求失败，请稍后重试');
       }
