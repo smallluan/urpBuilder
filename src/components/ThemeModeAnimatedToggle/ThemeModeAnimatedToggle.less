@@ -1,0 +1,417 @@
+/* 窄视口：左太阳 / 右一朵白云居中；右月亮 / 左一朵夜云居中；星小且偏左 */
+
+@keyframes theme-toggle-star-twinkle {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: scale(0.88);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.05);
+  }
+}
+
+@keyframes theme-toggle-cloud-drift {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  50% {
+    transform: translateX(1.5px);
+  }
+}
+
+.theme-mode-animated-toggle {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  border-radius: 999px;
+  flex-shrink: 0;
+
+  &:focus {
+    outline: none;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--td-brand-color, #0052d9);
+    outline-offset: 3px;
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+  }
+
+  &__viewport {
+    position: relative;
+    width: 40px;
+    height: 20px;
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow:
+      inset 0 1px 2px rgba(255, 255, 255, 0.35),
+      0 1px 5px rgba(15, 23, 42, 0.1),
+      0 0 0 1px rgba(15, 23, 42, 0.06);
+    transition: box-shadow 0.45s ease;
+  }
+
+  &__sky {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(165deg, #6ec4f5 0%, #9fdcff 42%, #dff4ff 100%);
+    transition: background 0.65s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  &--dark &__sky {
+    background: linear-gradient(168deg, #0a0c14 0%, #141b2e 45%, #1e2842 100%);
+  }
+
+  /* 白天：右侧条带内一朵云垂直水平居中 */
+  &__day-clouds {
+    position: absolute;
+    top: 0;
+    right: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 17px;
+    height: 100%;
+    pointer-events: none;
+    z-index: 2;
+    opacity: 1;
+    transition: opacity 0.45s ease;
+  }
+
+  &--dark &__day-clouds {
+    opacity: 0;
+  }
+
+  /* 夜里：月亮左侧条带内一朵云居中（与 lunar right:3、宽 14px 左缘相接） */
+  &__night-clouds {
+    position: absolute;
+    top: 0;
+    right: 17px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 12px;
+    height: 100%;
+    pointer-events: none;
+    z-index: 2;
+    opacity: 0;
+    transition: opacity 0.45s ease;
+  }
+
+  &--dark &__night-clouds {
+    opacity: 1;
+  }
+
+  &__puff-group {
+    position: relative;
+    flex-shrink: 0;
+    animation: theme-toggle-cloud-drift 5.5s ease-in-out infinite;
+  }
+
+  &__night-clouds &__puff-group {
+    animation-duration: 6.5s;
+    animation-direction: reverse;
+  }
+
+  &__puff-bubble {
+    position: absolute;
+    border-radius: 50%;
+  }
+
+  /* 白天云：纯白实色 */
+  &__puff-group--day {
+    width: 14px;
+    height: 9px;
+  }
+
+  &__puff-group--day &__puff-bubble--a {
+    width: 6px;
+    height: 5px;
+    left: 0;
+    top: 3px;
+    background: #ffffff;
+  }
+
+  &__puff-group--day &__puff-bubble--b {
+    width: 7px;
+    height: 6px;
+    left: 4px;
+    top: 1px;
+    background: #ffffff;
+  }
+
+  &__puff-group--day &__puff-bubble--c {
+    width: 5px;
+    height: 4px;
+    left: 7px;
+    top: 4px;
+    background: #ffffff;
+  }
+
+  /* 夜云：实色灰蓝（略差色以便叠层有边） */
+  &__puff-group--night {
+    width: 11px;
+    height: 7px;
+  }
+
+  &__puff-group--night &__puff-bubble--a {
+    width: 5px;
+    height: 4px;
+    left: 0;
+    top: 2px;
+    background: #9eb0cc;
+  }
+
+  &__puff-group--night &__puff-bubble--b {
+    width: 6px;
+    height: 5px;
+    left: 3px;
+    top: 0;
+    background: #b4c2d9;
+  }
+
+  &__puff-group--night &__puff-bubble--c {
+    width: 4px;
+    height: 3px;
+    left: 6px;
+    top: 3px;
+    background: #8fa3bf;
+  }
+
+  /* 太阳：仅左侧 */
+  &__sun {
+    position: absolute;
+    left: 4px;
+    top: 5px;
+    width: 10px;
+    height: 10px;
+    z-index: 4;
+    border-radius: 50%;
+    background: radial-gradient(circle at 32% 32%, #fffef5 0%, #ffe566 38%, #ffb020 88%);
+    box-shadow:
+      0 0 4px rgba(255, 210, 100, 0.85),
+      0 0 9px rgba(255, 180, 60, 0.36);
+    transition: transform 0.65s cubic-bezier(0.45, 0, 0.2, 1), opacity 0.5s ease, filter 0.5s ease;
+  }
+
+  &__sun-rays {
+    position: absolute;
+    left: 1px;
+    top: 1px;
+    width: 17px;
+    height: 17px;
+    pointer-events: none;
+    opacity: 0.46;
+    z-index: 3;
+    transition: opacity 0.4s ease;
+  }
+
+  &__sun-rays svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+    color: rgba(255, 220, 120, 0.9);
+  }
+
+  &--dark &__sun {
+    transform: translate(-6px, 12px) scale(0.26) rotate(-14deg);
+    opacity: 0;
+    filter: blur(0.8px);
+    box-shadow: none;
+  }
+
+  &--dark &__sun-rays {
+    opacity: 0;
+  }
+
+  /* 月亮：贴右，略大于原尺寸以接近太阳视觉权重（太阳 10px 实心圆） */
+  &__lunar {
+    position: absolute;
+    right: 3px;
+    top: 3px;
+    width: 14px;
+    height: 14px;
+    z-index: 5;
+    opacity: 0;
+    transform: translate(6px, 10px) scale(0.35);
+    transition:
+      transform 0.72s cubic-bezier(0.34, 1.15, 0.64, 1),
+      opacity 0.48s ease;
+  }
+
+  &--dark &__lunar {
+    transform: translate(0, 0) scale(1);
+    opacity: 1;
+  }
+
+  &__moon {
+    position: absolute;
+    left: 1px;
+    top: 1px;
+    width: 11px;
+    height: 11px;
+    border-radius: 50%;
+    background: transparent;
+    box-shadow: inset -2.5px 1px 0 1px #ece8dc;
+    transform: rotate(-14deg);
+    filter: drop-shadow(0 0 2px rgba(200, 210, 255, 0.35));
+  }
+
+  &__stars {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 1;
+    color: #e8eeff;
+    opacity: 0;
+    transition: opacity 0.5s ease 0.06s;
+  }
+
+  &--dark &__stars {
+    opacity: 1;
+  }
+
+  &__star {
+    position: absolute;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    animation: theme-toggle-star-twinkle 2.5s ease-in-out infinite;
+  }
+
+  &__star-shape {
+    display: block;
+    width: 100%;
+    height: 100%;
+    filter: drop-shadow(0 0 1px rgba(255, 255, 255, 0.65));
+  }
+
+  &--dark &__star {
+    opacity: 1;
+  }
+
+  &__star--1 &__star-shape {
+    width: 3.5px;
+    height: 3.5px;
+  }
+
+  &__star--2 &__star-shape {
+    width: 3px;
+    height: 3px;
+  }
+
+  &__star--3 &__star-shape {
+    width: 2.5px;
+    height: 2.5px;
+  }
+
+  /* 星集中在左侧约 6%～40% */
+  &--dark &__star:nth-child(1) {
+    top: 10%;
+    left: 8%;
+    animation-delay: 0s;
+  }
+  &--dark &__star:nth-child(2) {
+    top: 18%;
+    left: 22%;
+    animation-delay: 0.35s;
+  }
+  &--dark &__star:nth-child(3) {
+    top: 8%;
+    left: 34%;
+    animation-delay: 0.7s;
+  }
+  &--dark &__star:nth-child(4) {
+    top: 24%;
+    left: 14%;
+    animation-delay: 1s;
+  }
+  &--dark &__star:nth-child(5) {
+    top: 42%;
+    left: 6%;
+    animation-delay: 1.25s;
+  }
+  &--dark &__star:nth-child(6) {
+    top: 38%;
+    left: 28%;
+    animation-delay: 0.5s;
+  }
+  &--dark &__star:nth-child(7) {
+    top: 52%;
+    left: 18%;
+    animation-delay: 1.45s;
+  }
+  &--dark &__star:nth-child(8) {
+    top: 62%;
+    left: 32%;
+    animation-delay: 0.85s;
+  }
+
+  &__crater {
+    position: absolute;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.14);
+    opacity: 0;
+    transition: opacity 0.35s ease 0.12s;
+  }
+
+  &--dark &__crater {
+    opacity: 1;
+  }
+
+  &__crater--1 {
+    width: 1.5px;
+    height: 1.5px;
+    left: 7px;
+    top: 4px;
+  }
+  &__crater--2 {
+    width: 1.5px;
+    height: 1.5px;
+    left: 4px;
+    top: 8px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .theme-mode-animated-toggle {
+    &__sun,
+    &__moon,
+    &__lunar,
+    &__sky,
+    &__day-clouds,
+    &__night-clouds,
+    &__stars,
+    &__viewport {
+      transition-duration: 0.01ms !important;
+    }
+
+    &__puff-group,
+    &__star {
+      animation: none !important;
+    }
+
+    &--dark &__star {
+      opacity: 0.88;
+    }
+  }
+}
+
+html[theme-mode='dark'] .theme-mode-animated-toggle__viewport {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 1px 6px rgba(0, 0, 0, 0.32),
+    0 0 0 1px rgba(255, 255, 255, 0.06);
+}

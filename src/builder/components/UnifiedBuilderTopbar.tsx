@@ -3,7 +3,8 @@ import { Button, Tooltip } from 'tdesign-react';
 import "../style.less"
 
 interface UnifiedBuilderTopbarProps {
-  left: React.ReactNode;
+  /** 省略时不渲染左侧槽位（右侧条可独占一行并靠右对齐，见 .component-topbar--header-actions） */
+  left?: React.ReactNode;
   right?: React.ReactNode;
   className?: string;
 }
@@ -61,12 +62,8 @@ export const TopbarGroup: React.FC<{ children: React.ReactNode; className?: stri
 const UnifiedBuilderTopbar: React.FC<UnifiedBuilderTopbarProps> = ({ left, right, className }) => {
   return (
     <div className={`builder-topbar${className ? ` ${className}` : ''}`}>
-      <div className="builder-topbar__left">
-        {left}
-      </div>
-      <div className="builder-topbar__right">
-        {right}
-      </div>
+      {left != null ? <div className="builder-topbar__left">{left}</div> : null}
+      <div className="builder-topbar__right">{right}</div>
     </div>
   );
 };

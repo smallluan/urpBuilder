@@ -1,5 +1,5 @@
 import React from 'react';
-import { Avatar, Button, Layout, Popup, Space, Row, Switch, Tooltip } from 'tdesign-react';
+import { Avatar, Button, Layout, Popup, Space, Row } from 'tdesign-react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import {
   AddIcon,
@@ -18,7 +18,7 @@ import { useTeam } from '../../team/context';
 import { resolveTeamAvatar, resolveUserAvatar } from '../../utils/avatar';
 import GlobalNoticeCenter from '../GlobalNoticeCenter';
 import AccountInfoPopup from './components/AccountInfoPopup';
-import { useBuilderThemeStore } from '../../builder/theme/builderThemeStore';
+import { ThemeModeAnimatedToggle } from '../ThemeModeAnimatedToggle';
 import './style.less';
 
 const { Header, Aside, Content } = Layout;
@@ -31,8 +31,6 @@ type FlatMenuSection = {
 const AppLayout: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const colorMode = useBuilderThemeStore((s) => s.colorMode);
-  const setColorMode = useBuilderThemeStore((s) => s.setColorMode);
   const { user } = useAuth();
   const {
     teams,
@@ -268,16 +266,7 @@ const AppLayout: React.FC = () => {
             <img src="/urpBuilder.png" alt="URP" className="header-logo" />
           </div>
           <Row className="header-right" style={{alignItems: 'center', gap: 24}}>
-            <Tooltip content={colorMode === 'dark' ? '切换为浅色模式' : '切换为深色模式'} placement="bottom">
-              <Space size={4} align="center" className="app-layout-theme-toggle">
-                <span className="app-layout-theme-toggle__label">深色</span>
-                <Switch
-                  size="small"
-                  value={colorMode === 'dark'}
-                  onChange={(v) => setColorMode(v ? 'dark' : 'light')}
-                />
-              </Space>
-            </Tooltip>
+            <ThemeModeAnimatedToggle className="app-layout-theme-toggle" />
             <GlobalNoticeCenter />
             <Popup
               trigger="click"

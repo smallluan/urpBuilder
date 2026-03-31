@@ -34,6 +34,14 @@
         align-items: center;
       }
 
+      .header-controls-topbar-trail {
+        display: flex;
+        align-items: center;
+        flex-wrap: nowrap;
+        flex-shrink: 0;
+        min-width: 0;
+      }
+
       .header-right-control {
         display: flex;
         align-items: center;
@@ -100,6 +108,15 @@
 
       .component-topbar .builder-topbar__right .builder-topbar__group {
         gap: 8px;
+      }
+
+      /* 搭建页顶栏：仅右侧一条操作带时整体靠右 */
+      .component-topbar--header-actions.builder-topbar {
+        justify-content: flex-end;
+      }
+
+      .header-controls-topbar-trail .builder-theme-toggle {
+        flex-shrink: 0;
       }
 
     }

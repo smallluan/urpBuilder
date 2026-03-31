@@ -1,13 +1,13 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import cloneDeep from 'lodash/cloneDeep';
-import { Radio, Button, Drawer, Timeline, Tag, Dialog, DialogPlugin, Input, Textarea, MessagePlugin, Switch, Tooltip, Space } from 'tdesign-react';
+import { Radio, Button, Drawer, Timeline, Tag, Dialog, DialogPlugin, Input, Textarea, MessagePlugin } from 'tdesign-react';
+import { ThemeModeAnimatedToggle } from '../../components/ThemeModeAnimatedToggle';
 import {
   UploadIcon,
   ViewImageIcon,
   ArrowLeftIcon,
   ArrowRightIcon,
   HistoryIcon,
-  SettingIcon,
   JumpIcon,
 } from 'tdesign-icons-react';
 import { useBuilderAccess, useBuilderContext } from '../context/BuilderContext';
@@ -27,7 +27,6 @@ import { emitApiAlert } from '../../api/alertBus';
 import { findNodeByKey, updateNodeByKey } from '../../utils/createComponentTree';
 import { useTeam } from '../../team/context';
 import UnifiedBuilderTopbar, { TopbarGroup, TopbarIconButton } from './UnifiedBuilderTopbar';
-import { useBuilderThemeStore } from '../theme/builderThemeStore';
 import { dehydrateUiTree, PROPS_STORAGE_VERSION } from '../template/propsHydration';
 import { getBlockMessageWhenNoPersistableChanges } from '../save/assertPersistableChanges';
 import { computePersistedTemplateFingerprint } from '../save/templateFingerprint';
@@ -426,10 +425,6 @@ export default function HeaderControls({
   const [componentId, setComponentId] = useState('');
   const [componentDescription, setComponentDescription] = useState('');
   const [saving, setSaving] = useState(false);
-  const [shortcutDialogVisible, setShortcutDialogVisible] = useState(false);
-  const colorMode = useBuilderThemeStore((s) => s.colorMode);
-  const setColorMode = useBuilderThemeStore((s) => s.setColorMode);
-
   const canUndo = history.pointer >= 0;
   const canRedo = history.pointer < history.actions.length - 1;
   const isEditMode = Boolean(currentPageId);
@@ -847,51 +842,45 @@ export default function HeaderControls({
 
       <div className="header-right-control">
         <UnifiedBuilderTopbar
-          className="component-topbar"
-          left={(
-            <TopbarGroup>
-              <TopbarIconButton tip="上一步" icon={<ArrowLeftIcon />} disabled={readOnly || !canUndo} onClick={undo} />
-              <TopbarIconButton tip="下一步" icon={<ArrowRightIcon />} disabled={readOnly || !canRedo} onClick={redo} />
-              <TopbarIconButton tip="操作历史" icon={<HistoryIcon />} onClick={() => setHistoryVisible(true)} />
-            </TopbarGroup>
-          )}
+          className="component-topbar component-topbar--header-actions"
           right={(
-            <TopbarGroup>
-              <Tooltip content={colorMode === 'dark' ? '切换为浅色模式' : '切换为深色模式'} placement="bottom">
-                <Space size={4} align="center" className="builder-theme-toggle">
-                  <span className="builder-theme-toggle__label">深色</span>
-                  <Switch
-                    size="small"
-                    value={colorMode === 'dark'}
-                    onChange={(v) => setColorMode(v ? 'dark' : 'light')}
-                  />
-                </Space>
-              </Tooltip>
-              <TopbarIconButton tip="高级快捷键设置" icon={<SettingIcon />} onClick={() => setShortcutDialogVisible(true)} />
-              {extraRight}
-              <Button
-                theme="primary"
-                size="small"
-                icon={<UploadIcon />}
-                disabled={readOnly}
-                loading={saving}
-                onClick={handleOpenSaveDialog}
-              >
-                保存
-              </Button>
-              <Button
-                theme="default"
-                size="small"
-                variant="outline"
-                icon={<JumpIcon />}
-                disabled={readOnly}
-                loading={saving}
-                onClick={handleOpenSaveAndPublishDialog}
-              >
-                保存并发布
-              </Button>
-              <Button theme="default" size="small" icon={<ViewImageIcon />} onClick={handlePreview}>预览</Button>
-            </TopbarGroup>
+            <div className="header-controls-topbar-trail">
+              <TopbarGroup>
+                <ThemeModeAnimatedToggle className="builder-theme-toggle" />
+              </TopbarGroup>
+              <span className="divider" aria-hidden />
+              <TopbarGroup>
+                <TopbarIconButton tip="上一步" icon={<ArrowLeftIcon />} disabled={readOnly || !canUndo} onClick={undo} />
+                <TopbarIconButton tip="下一步" icon={<ArrowRightIcon />} disabled={readOnly || !canRedo} onClick={redo} />
+                <TopbarIconButton tip="操作历史" icon={<HistoryIcon />} onClick={() => setHistoryVisible(true)} />
+              </TopbarGroup>
+              <span className="divider" aria-hidden />
+              <TopbarGroup>
+                {extraRight}
+                <Button
+                  theme="primary"
+                  size="small"
+                  icon={<UploadIcon />}
+                  disabled={readOnly}
+                  loading={saving}
+                  onClick={handleOpenSaveDialog}
+                >
+                  保存
+                </Button>
+                <Button
+                  theme="default"
+                  size="small"
+                  variant="outline"
+                  icon={<JumpIcon />}
+                  disabled={readOnly}
+                  loading={saving}
+                  onClick={handleOpenSaveAndPublishDialog}
+                >
+                  保存并发布
+                </Button>
+                <Button theme="default" size="small" icon={<ViewImageIcon />} onClick={handlePreview}>预览</Button>
+              </TopbarGroup>
+            </div>
           )}
         />
       </div>
@@ -958,30 +947,6 @@ export default function HeaderControls({
           </div>
 
 
-        </div>
-      </Dialog>
-
-      <Dialog
-        visible={shortcutDialogVisible}
-        header="快捷键设置"
-        confirmBtn="关闭"
-        cancelBtn={null}
-        onConfirm={() => setShortcutDialogVisible(false)}
-        onClose={() => setShortcutDialogVisible(false)}
-      >
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <div>核心快捷键：Ctrl/Cmd+Z（撤销）、Ctrl/Cmd+Shift+Z（重做）、Esc（关闭浮层/退出聚焦）。</div>
-          <div>切换搭建：Ctrl/Cmd+Shift+U（搭建 UI）、Ctrl/Cmd+Shift+F（搭建流程）。</div>
-          <div>流程模式快捷键：Ctrl/Cmd+Shift+L / V / K。</div>
-          <div>
-            组件树/画布：Ctrl/Cmd+Shift+C 清空子节点；Ctrl/Cmd+↑↓ 同级移动；Ctrl/Cmd+Shift+↑↓ 置顶/置底；Alt+方向键（同级微调另一套）。
-          </div>
-          <div>
-            左侧结构树（搭建 UI / 搭建流程）：右键「展示为根节点」可仅展示该节点子树；搜索栏下方可关闭提示条恢复整树。Ctrl/Cmd+Alt+R：将当前选中结构节点设为展示根，已在展示根模式时再次按下则恢复（避免与浏览器 Ctrl/Cmd+R 刷新冲突）。
-          </div>
-          <div style={{ color: '#64748b', fontSize: 12 }}>
-            该入口用于查看全局快捷键，后续可扩展为可编辑映射。
-          </div>
         </div>
       </Dialog>
 

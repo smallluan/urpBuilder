@@ -4,9 +4,12 @@ import router from './router';
 import ApiAlertHost from './api/ApiAlertHost';
 import { AuthProvider } from './auth/context';
 import { TeamProvider } from './team/context';
+import { useBuilderThemeHotkey } from './builder/hooks/useBuilderThemeHotkey';
 import { applyColorModeToDocument, useBuilderThemeStore } from './builder/theme/builderThemeStore';
 
 function App() {
+  useBuilderThemeHotkey();
+
   useEffect(() => {
     applyColorModeToDocument(useBuilderThemeStore.getState().colorMode);
     const unsubHydrate = useBuilderThemeStore.persist.onFinishHydration(() => {
