@@ -23,11 +23,15 @@ import type { BuilderStore } from '../store/types';
 type BuilderStoreHook = UseBoundStore<StoreApi<BuilderStore>>;
 export type BuilderEntityType = 'component' | 'page';
 
+/** 与页面 Header 模式一致：流程画布与搭建 UI 可能同时挂载（keepalive），用于避免快捷键双触发。 */
+export type BuilderViewMode = 'component' | 'flow';
+
 export interface BuilderContextValue {
   useStore: BuilderStoreHook;
   readOnly: boolean;
   readOnlyReason?: string;
   entityType: BuilderEntityType;
+  builderViewMode: BuilderViewMode;
 }
 
 /** 预览挂载等场景仅用 Provider、勿反复写全局 bridge 时请用此 Context，勿用 BuilderProvider 包一层。 */
@@ -39,6 +43,8 @@ export interface BuilderProviderProps {
   readOnly?: boolean;
   readOnlyReason?: string;
   entityType?: BuilderEntityType;
+  /** 当前可见模式；流程模式下搭建画布应让出 C/V 等与流程冲突的快捷键 */
+  builderViewMode?: BuilderViewMode;
   children: React.ReactNode;
 }
 
@@ -47,11 +53,12 @@ export const BuilderProvider: React.FC<BuilderProviderProps> = ({
   readOnly = false,
   readOnlyReason,
   entityType = 'component',
+  builderViewMode = 'component',
   children,
 }) => {
   const value = useMemo<BuilderContextValue>(
-    () => ({ useStore, readOnly, readOnlyReason, entityType }),
-    [useStore, readOnly, readOnlyReason, entityType],
+    () => ({ useStore, readOnly, readOnlyReason, entityType, builderViewMode }),
+    [useStore, readOnly, readOnlyReason, entityType, builderViewMode],
   );
 
   return <BuilderContext.Provider value={value}>{children}</BuilderContext.Provider>;

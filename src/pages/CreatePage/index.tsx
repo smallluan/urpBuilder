@@ -493,7 +493,13 @@ const CreatePage: React.FC = () => {
   }, [setCurrentPageMeta, user?.id]);
 
   return (
-    <BuilderProvider useStore={useCreatePageStore} readOnly={readOnly} readOnlyReason={readOnlyReason} entityType="page">
+    <BuilderProvider
+      useStore={useCreatePageStore}
+      readOnly={readOnly}
+      readOnlyReason={readOnlyReason}
+      entityType="page"
+      builderViewMode={mode}
+    >
       <BuilderShell
         header={
           <HeaderControls

@@ -402,6 +402,26 @@
   }
 }
 
+button.tree-node-context-menu-item {
+  display: block;
+  width: 100%;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+  color: var(--builder-text-title);
+  text-align: left;
+}
+
+button.tree-node-context-menu-item:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+button.tree-node-context-menu-item:disabled:hover {
+  background: transparent;
+}
+
 .tree-node-context-action {
   width: 100%;
   justify-content: flex-start;
@@ -1138,15 +1158,16 @@
   color: #1f2329;
 }
 
+/* 流程浮层菜单已改用 .tree-node-context-menu；保留别名以免旧引用断裂 */
 .flow-context-menu {
   position: fixed;
-  z-index: 30;
-  min-width: 120px;
-  background: #fff;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.15);
+  z-index: 60;
+  width: 180px;
   padding: 6px;
+  border-radius: 4px;
+  border: 1px solid var(--builder-context-border);
+  background: var(--builder-surface);
+  box-shadow: 0 8px 8px rgba(15, 23, 42, 0.16);
 }
 
 .flow-context-menu__item {
@@ -1154,16 +1175,21 @@
   border: none;
   background: transparent;
   text-align: left;
-  font-size: 13px;
-  color: #1f2329;
-  padding: 8px 10px;
-  border-radius: 6px;
+  font-size: 12px;
+  color: var(--builder-text-title);
+  padding: 4px 8px;
+  border-radius: 4px;
   cursor: pointer;
+  transition: background .2s ease-in-out;
 }
 
 .flow-context-menu__item:hover {
-  background: #f2f3ff;
-  color: #0052d9;
+  background: var(--builder-context-hover);
+}
+
+.flow-context-menu__item:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 
 .flow-alert {

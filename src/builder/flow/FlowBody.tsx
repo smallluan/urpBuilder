@@ -1,15 +1,19 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import cloneDeep from 'lodash/cloneDeep';
 import { Alert } from 'tdesign-react';
+import { calcAutoPan } from '@xyflow/system';
 import {
   ReactFlow,
   ReactFlowProvider,
   Background,
   Controls,
   MiniMap,
+  SelectionMode,
   addEdge,
   applyEdgeChanges,
   applyNodeChanges,
   useReactFlow,
+  useStoreApi,
   MarkerType,
   type EdgeTypes,
   type EdgeChange,
@@ -23,8 +27,9 @@ import { flowNodeTypes } from './nodes';
 import AnnotatedEdge, { type AnnotatedEdgeData } from './edges/AnnotatedEdge';
 import { useBuilderAccess, useBuilderContext } from '../context/BuilderContext';
 import { useBuilderThemeStore } from '../theme/builderThemeStore';
-import FlowTopbar from './components/FlowTopbar';
-import FlowDiagnosticsPanel from './components/FlowDiagnosticsPanel';
+import FlowTopbar, { type FlowCanvasTool } from './components/FlowTopbar';
+import { isEditableTarget } from '../hooks/useBuilderModeHotkeys';
+import { cloneFlowSubgraphWithNewIds } from './utils/cloneFlowSubgraphPaste';
 import type {
   AnnotationNodeData,
   ComponentFlowNodeData,
@@ -36,20 +41,9 @@ import type {
 } from '../../types/flow';
 import { CORE_LIFETIMES } from '../../constants/componentBuilder';
 import { findNodeByKey } from '../../utils/createComponentTree';
-import { buildAdjacency } from './utils/graphAnalyze';
-import { runFlowDiagnostics, type FlowDiagnosticItem } from './utils/flowValidate';
-import { autoLayoutNodes } from './utils/autoLayout';
-import { normalizeEdgesWithReport } from './utils/edgeNormalize';
 
 const FLOW_DRAG_DATA_KEY = 'drag-component-data';
 
-const COMPONENT_TRACE_COLOR = '#0052d9';
-const EVENT_FILTER_TRACE_COLOR = '#2ba471';
-const CODE_TRACE_COLOR = '#6f5af0';
-const NETWORK_REQUEST_TRACE_COLOR = '#eb6f0a';
-const TIMER_TRACE_COLOR = '#0f766e';
-const PROP_EXPOSE_TRACE_COLOR = '#2f7cf6';
-const LIFECYCLE_EXPOSE_TRACE_COLOR = '#7b61ff';
 const COMPONENT_FALLBACK_LIFETIMES: Record<string, string[]> = {
   Slider: ['onChange'],
 };
@@ -112,25 +106,16 @@ const FlowCanvas: React.FC = () => {
   const { readOnly } = useBuilderAccess();
   const colorMode = useBuilderThemeStore((s) => s.colorMode);
   const defaultEdgeColor = colorMode === 'dark' ? '#7a8799' : '#9aa5b5';
-  const minimapNeutralColor = colorMode === 'dark' ? '#4a5568' : '#c9d2e4';
   const nodes = useStore((state) => state.flowNodes);
   const edges = useStore((state) => state.flowEdges);
-  const flowActiveNodeId = useStore((state) => state.flowActiveNodeId);
   const flowViewportFocusNonce = useStore((state) => state.flowViewportFocusNonce);
-  const requestFlowViewportFocus = useStore((state) => state.requestFlowViewportFocus);
   const setFlowNodes = useStore((state) => state.setFlowNodes);
   const setFlowEdges = useStore((state) => state.setFlowEdges);
   const setFlowActiveNodeId = useStore((state) => state.setFlowActiveNodeId);
   const recordFlowEditHistory = useStore((state) => state.recordFlowEditHistory);
-  const [traceActiveNodeId, setTraceActiveNodeId] = useState<string | null>(null);
   const [flowAlertMessage, setFlowAlertMessage] = useState<string | null>(null);
   const [editingEdgeId, setEditingEdgeId] = useState<string | null>(null);
   const [editingEdgeValue, setEditingEdgeValue] = useState('');
-  const [layoutDirection, setLayoutDirection] = useState<'LR' | 'TB'>('LR');
-  const [lockSelectedLayout, setLockSelectedLayout] = useState(false);
-  const [focusDepth, setFocusDepth] = useState<1 | 2 | 99>(99);
-  const [diagnosticsVisible, setDiagnosticsVisible] = useState(false);
-  const [diagnostics, setDiagnostics] = useState<FlowDiagnosticItem[]>([]);
   const [annotationMenu, setAnnotationMenu] = useState<{
     visible: boolean;
     x: number;
@@ -155,7 +140,67 @@ const FlowCanvas: React.FC = () => {
     y: 0,
     edgeId: null,
   });
-  const { screenToFlowPosition, fitView, setCenter } = useReactFlow();
+  const [canvasTool, setCanvasTool] = useState<FlowCanvasTool>('pan');
+  const [paneSelectionMenu, setPaneSelectionMenu] = useState<{
+    visible: boolean;
+    x: number;
+    y: number;
+    anchorFlow?: { x: number; y: number };
+  }>({
+    visible: false,
+    x: 0,
+    y: 0,
+  });
+  const [hasFlowClipboard, setHasFlowClipboard] = useState(false);
+  const flowClipboardRef = useRef<{ nodes: Node[]; edges: Edge[] } | null>(null);
+  const lastPointerFlowRef = useRef<{ x: number; y: number } | null>(null);
+  const flowCanvasRef = useRef<HTMLDivElement | null>(null);
+  const { screenToFlowPosition, setCenter } = useReactFlow();
+  const reactFlowStore = useStoreApi();
+
+  useEffect(() => {
+    if (readOnly) {
+      setCanvasTool('pan');
+    }
+  }, [readOnly]);
+
+  /** 框选边缘自动平移：RF 在 pointerdown 时对 pane 调用了 setPointerCapture，pointermove 须在 document 捕获阶段监听；用 store.userSelectionRect 判断正在拖选。平移量与 RF 连线/拖节点一致（calcAutoPan + domNode 坐标）。不设 e.buttons：capture 后部分环境 buttons 恒为 0。 */
+  useEffect(() => {
+    if (readOnly) {
+      return;
+    }
+    const EDGE_DISTANCE = 40;
+    const onPointerMoveCapture = (e: PointerEvent) => {
+      const state = reactFlowStore.getState();
+      if (!state.userSelectionRect) {
+        return;
+      }
+      const el = state.domNode ?? flowCanvasRef.current;
+      if (!el) {
+        return;
+      }
+      const rect = el.getBoundingClientRect();
+      if (rect.width <= 0 || rect.height <= 0) {
+        return;
+      }
+      const pos = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+      const speed = state.autoPanSpeed ?? 15;
+      const [xMovement, yMovement] = calcAutoPan(pos, { width: rect.width, height: rect.height }, speed, EDGE_DISTANCE);
+      if (xMovement === 0 && yMovement === 0) {
+        return;
+      }
+      void state.panBy({ x: xMovement, y: yMovement });
+    };
+    document.addEventListener('pointermove', onPointerMoveCapture, true);
+    return () => document.removeEventListener('pointermove', onPointerMoveCapture, true);
+  }, [readOnly, reactFlowStore]);
+
+  const nodesForCanvas = useMemo(() => nodes, [nodes]);
+
+  const edgesForCanvas = useMemo(() => {
+    const ids = new Set(nodesForCanvas.map((n) => n.id));
+    return edges.filter((edge) => ids.has(edge.source) && ids.has(edge.target));
+  }, [edges, nodesForCanvas]);
 
   const panToFlowNodeId = useCallback(
     (nodeId: string) => {
@@ -164,7 +209,6 @@ const FlowCanvas: React.FC = () => {
       if (!node?.position) {
         return;
       }
-      setTraceActiveNodeId(nodeId);
       void setCenter(node.position.x + 120, node.position.y + 40, { duration: 220, zoom: 1 });
     },
     [setCenter, useStore],
@@ -194,14 +238,6 @@ const FlowCanvas: React.FC = () => {
     [recordFlowEditHistory],
   );
 
-  const applyFlowToolEdit = useCallback(
-    (
-      actionLabel: string,
-      updater: (payload: { nodes: Node[]; edges: Edge[] }) => { nodes: Node[]; edges: Edge[] },
-    ) => applyFlowEdit(`[FlowTool] ${actionLabel}`, updater),
-    [applyFlowEdit],
-  );
-
   const createAnnotationNode = useCallback(
     (x: number, y: number, text = '') => {
       const nodeId = createFlowNodeId('annotation-node');
@@ -222,106 +258,6 @@ const FlowCanvas: React.FC = () => {
     },
     [applyFlowEdit],
   );
-
-  const traceColor = useMemo(() => {
-    if (!traceActiveNodeId) {
-      return COMPONENT_TRACE_COLOR;
-    }
-
-    const activeNode = nodes.find((item) => item.id === traceActiveNodeId);
-    if (!activeNode) {
-      return COMPONENT_TRACE_COLOR;
-    }
-
-    if (activeNode.type === 'eventFilterNode') {
-      return EVENT_FILTER_TRACE_COLOR;
-    }
-
-    if (activeNode.type === 'codeNode') {
-      return CODE_TRACE_COLOR;
-    }
-
-    if (activeNode.type === 'networkRequestNode') {
-      return NETWORK_REQUEST_TRACE_COLOR;
-    }
-
-    if (activeNode.type === 'timerNode') {
-      return TIMER_TRACE_COLOR;
-    }
-
-    if (activeNode.type === 'propExposeNode') {
-      return PROP_EXPOSE_TRACE_COLOR;
-    }
-
-    if (activeNode.type === 'lifecycleExposeNode') {
-      return LIFECYCLE_EXPOSE_TRACE_COLOR;
-    }
-
-    return COMPONENT_TRACE_COLOR;
-  }, [traceActiveNodeId, nodes]);
-
-  const traceNodeIds = useMemo(() => {
-    if (!traceActiveNodeId) {
-      return new Set<string>();
-    }
-
-    const activeNode = nodes.find((item) => item.id === traceActiveNodeId);
-    if (!activeNode) {
-      return new Set<string>();
-    }
-
-    if (activeNode.type === 'annotationNode') {
-      return new Set<string>();
-    }
-
-    const seedNodeIds = new Set<string>([activeNode.id]);
-
-    if (activeNode.type === 'componentNode') {
-      const activeSourceKey = (activeNode.data as ComponentFlowNodeData | undefined)?.sourceKey;
-      if (activeSourceKey) {
-        nodes.forEach((item) => {
-          if (item.type !== 'componentNode') {
-            return;
-          }
-
-          const sourceKey = (item.data as ComponentFlowNodeData | undefined)?.sourceKey;
-          if (sourceKey === activeSourceKey) {
-            seedNodeIds.add(item.id);
-          }
-        });
-      }
-    }
-
-    const adjacency = buildAdjacency(nodes, edges);
-
-    const visited = new Set<string>();
-    const queue = Array.from(seedNodeIds).map((nodeId) => ({ nodeId, depth: 0 }));
-    const maxDepth = focusDepth;
-
-    while (queue.length > 0) {
-      const next = queue.shift();
-      if (!next || visited.has(next.nodeId)) {
-        continue;
-      }
-
-      visited.add(next.nodeId);
-
-      if (maxDepth !== 99 && next.depth >= maxDepth) {
-        continue;
-      }
-
-      const downstream = adjacency.outgoing.get(next.nodeId) ?? [];
-      const upstream = adjacency.incoming.get(next.nodeId) ?? [];
-
-      [...downstream, ...upstream].forEach((neighborId) => {
-        if (!visited.has(neighborId)) {
-          queue.push({ nodeId: neighborId, depth: next.depth + 1 });
-        }
-      });
-    }
-
-    return visited;
-  }, [traceActiveNodeId, nodes, edges, focusDepth]);
 
   const handleChangeEditingValue = useCallback((value: string) => {
     setEditingEdgeValue(value);
@@ -388,18 +324,14 @@ const FlowCanvas: React.FC = () => {
   }, []);
 
   const renderedEdges = useMemo(() => {
-    const hasTrace = traceNodeIds.size > 0;
-
-    return edges.map((edge) => {
+    return edgesForCanvas.map((edge) => {
       const edgeData = (edge.data ?? {}) as Record<string, unknown>;
       const annotation = typeof edgeData.annotation === 'string' ? edgeData.annotation : '';
-      const highlighted =
-        traceNodeIds.size > 0 && traceNodeIds.has(edge.source) && traceNodeIds.has(edge.target);
 
       return {
         ...edge,
         type: 'annotatedEdge',
-        animated: highlighted,
+        animated: false,
         data: {
           ...edgeData,
           annotation,
@@ -412,27 +344,23 @@ const FlowCanvas: React.FC = () => {
         } as AnnotatedEdgeData,
         style: {
           ...edge.style,
-          stroke: highlighted ? traceColor : defaultEdgeColor,
-          strokeWidth: highlighted ? 2 : 1.6,
-          strokeDasharray: highlighted ? '6 4' : undefined,
-          opacity: hasTrace ? (highlighted ? 1 : 0.28) : 1,
+          stroke: defaultEdgeColor,
+          strokeWidth: 1.6,
         },
         markerEnd: {
           type: MarkerType.ArrowClosed,
-          color: highlighted ? traceColor : defaultEdgeColor,
+          color: defaultEdgeColor,
         },
       } as Edge;
     });
   }, [
     editingEdgeId,
     editingEdgeValue,
-    edges,
+    edgesForCanvas,
     handleCancelEdgeEditing,
     handleChangeEditingValue,
     handleCommitEdgeAnnotation,
     handleStartEditEdge,
-    traceColor,
-    traceNodeIds,
     defaultEdgeColor,
   ]);
 
@@ -465,7 +393,6 @@ const FlowCanvas: React.FC = () => {
         edges: previousEdges.filter((edge) => edge.source !== nodeId && edge.target !== nodeId),
       }));
 
-      setTraceActiveNodeId((previous) => (previous === nodeId ? null : previous));
       const currentActiveNodeId = useStore.getState().flowActiveNodeId;
       if (currentActiveNodeId === nodeId) {
         setFlowActiveNodeId(null);
@@ -575,7 +502,6 @@ const FlowCanvas: React.FC = () => {
         nodes: nextNodes,
         edges: nextEdges,
       }));
-      setTraceActiveNodeId((previous) => (previous === nodeId ? nextNodeId : previous));
       const currentActiveNodeId = useStore.getState().flowActiveNodeId;
       setFlowActiveNodeId(currentActiveNodeId === nodeId ? nextNodeId : currentActiveNodeId);
     },
@@ -583,7 +509,7 @@ const FlowCanvas: React.FC = () => {
   );
 
   const renderedNodes = useMemo(() => {
-    return nodes.map((node) => {
+    return nodesForCanvas.map((node) => {
       const nodeData = (node.data ?? {}) as AnnotationNodeData;
       return {
         ...node,
@@ -597,7 +523,7 @@ const FlowCanvas: React.FC = () => {
         },
       };
     });
-  }, [nodes, handleAnnotationTextChange, handleDeleteFlowNode, handleFlipFlowNode]);
+  }, [nodesForCanvas, handleAnnotationTextChange, handleDeleteFlowNode, handleFlipFlowNode]);
 
   const onNodesChange = useCallback(
     (changes: NodeChange<Node>[]) => {
@@ -1074,6 +1000,19 @@ const FlowCanvas: React.FC = () => {
 
       setEdgeMenu((previous) => ({ ...previous, visible: false, edgeId: null }));
 
+      const selectedCount = useStore.getState().flowNodes.filter((n) => n.selected).length;
+      if (!readOnly && selectedCount > 0) {
+        setPaneSelectionMenu({
+          visible: true,
+          x: event.clientX,
+          y: event.clientY,
+          anchorFlow: position,
+        });
+        setAnnotationMenu((previous) => ({ ...previous, visible: false }));
+        return;
+      }
+
+      setPaneSelectionMenu((previous) => ({ ...previous, visible: false }));
       setAnnotationMenu({
         visible: true,
         x: event.clientX,
@@ -1082,11 +1021,15 @@ const FlowCanvas: React.FC = () => {
         flowY: position.y,
       });
     },
-    [screenToFlowPosition],
+    [readOnly, screenToFlowPosition, useStore],
   );
 
   const closeAnnotationMenu = useCallback(() => {
     setAnnotationMenu((previous) => ({ ...previous, visible: false }));
+  }, []);
+
+  const closePaneSelectionMenu = useCallback(() => {
+    setPaneSelectionMenu((previous) => ({ ...previous, visible: false }));
   }, []);
 
   const closeEdgeMenu = useCallback(() => {
@@ -1099,6 +1042,7 @@ const FlowCanvas: React.FC = () => {
       event.stopPropagation();
 
       closeAnnotationMenu();
+      closePaneSelectionMenu();
       setFlowAlertMessage(null);
 
       setEdgeMenu({
@@ -1108,7 +1052,58 @@ const FlowCanvas: React.FC = () => {
         edgeId: edge.id,
       });
     },
-    [closeAnnotationMenu],
+    [closeAnnotationMenu, closePaneSelectionMenu],
+  );
+
+  const handleNodeContextMenu = useCallback(
+    (event: React.MouseEvent<Element, MouseEvent>, node: Node) => {
+      const selectedOnCanvas = useStore.getState().flowNodes.filter((n) => n.selected);
+      if (selectedOnCanvas.length === 0 || !selectedOnCanvas.some((n) => n.id === node.id)) {
+        return;
+      }
+      if (readOnly) {
+        return;
+      }
+      event.preventDefault();
+      event.stopPropagation();
+      setFlowAlertMessage(null);
+      closeAnnotationMenu();
+      setEdgeMenu((previous) => ({ ...previous, visible: false, edgeId: null }));
+      const anchorFlow = screenToFlowPosition({ x: event.clientX, y: event.clientY });
+      setPaneSelectionMenu({
+        visible: true,
+        x: event.clientX,
+        y: event.clientY,
+        anchorFlow,
+      });
+    },
+    [closeAnnotationMenu, readOnly, screenToFlowPosition, useStore],
+  );
+
+  /** 选区矩形（.react-flow__nodesselection-rect）上右键：与多选 pane 菜单一致 */
+  const handleSelectionContextMenu = useCallback(
+    (event: React.MouseEvent<Element, MouseEvent>) => {
+      event.preventDefault();
+      event.stopPropagation();
+      if (readOnly) {
+        return;
+      }
+      const selectedCount = useStore.getState().flowNodes.filter((n) => n.selected).length;
+      if (selectedCount === 0) {
+        return;
+      }
+      setFlowAlertMessage(null);
+      const position = screenToFlowPosition({ x: event.clientX, y: event.clientY });
+      setEdgeMenu((previous) => ({ ...previous, visible: false, edgeId: null }));
+      setAnnotationMenu((previous) => ({ ...previous, visible: false }));
+      setPaneSelectionMenu({
+        visible: true,
+        x: event.clientX,
+        y: event.clientY,
+        anchorFlow: position,
+      });
+    },
+    [readOnly, screenToFlowPosition, useStore],
   );
 
   const handleDeleteEdgeFromMenu = useCallback(() => {
@@ -1130,155 +1125,120 @@ const FlowCanvas: React.FC = () => {
     closeAnnotationMenu();
   }, [annotationMenu.flowX, annotationMenu.flowY, closeAnnotationMenu, createAnnotationNode]);
 
-  const runCycleDetection = useCallback(() => {
-    const result = runFlowDiagnostics(nodes, edges);
-    const cycles = result.filter((item) => item.kind === 'cycle');
-    if (cycles.length === 0) {
-      setFlowAlertMessage('未检测到循环依赖。');
+  const deleteSelectedFlowNodes = useCallback(() => {
+    if (readOnly) {
       return;
     }
-    setFlowAlertMessage(`检测到 ${cycles.length} 处循环依赖。`);
-    setDiagnostics(result);
-    setDiagnosticsVisible(true);
-  }, [edges, nodes]);
-
-  const runFlowValidation = useCallback(() => {
-    const result = runFlowDiagnostics(nodes, edges);
-    setDiagnostics(result);
-    setDiagnosticsVisible(true);
-    setFlowAlertMessage(result.length > 0 ? `诊断完成：发现 ${result.length} 项问题/提示。` : '诊断完成：未发现问题。');
-  }, [edges, nodes]);
-
-  const runAutoLayout = useCallback((direction: 'LR' | 'TB') => {
-    const lockedNodeIds = lockSelectedLayout && flowActiveNodeId
-      ? new Set<string>([flowActiveNodeId])
-      : new Set<string>();
-    const nextNodes = autoLayoutNodes(nodes, edges, { direction, lockedNodeIds });
-    applyFlowToolEdit(`自动整理布局（${direction === 'LR' ? '横向' : '纵向'}）`, ({ edges: previousEdges }) => ({
-      nodes: nextNodes,
-      edges: previousEdges,
-    }));
-    setLayoutDirection(direction);
-    setTimeout(() => {
-      void fitView({ padding: 0.2, duration: 220 });
-    }, 0);
-  }, [applyFlowToolEdit, edges, fitView, flowActiveNodeId, lockSelectedLayout, nodes]);
-
-  const runEdgeCleanup = useCallback(() => {
-    const { edges: nextEdges } = normalizeEdgesWithReport(edges);
-    applyFlowToolEdit('连线清理与规范化', ({ nodes: previousNodes }) => ({
-      nodes: previousNodes,
-      edges: nextEdges,
-    }));
-    setFlowAlertMessage('连线清理已完成。');
-  }, [applyFlowToolEdit, edges]);
-
-  const runQuickFix = useCallback(() => {
-    const { edges: nextEdges, report } = normalizeEdgesWithReport(edges);
-    applyFlowToolEdit('一键修复', ({ nodes: previousNodes }) => ({
-      nodes: previousNodes,
-      edges: nextEdges,
-    }));
-    setFlowAlertMessage(`一键修复完成：去重 ${report.dedupedCount} 条，清理空注释 ${report.clearedAnnotationCount} 条。`);
-    setDiagnostics(runFlowDiagnostics(nodes, nextEdges));
-  }, [applyFlowToolEdit, edges, nodes]);
-
-  const focusActivePath = useCallback(() => {
-    if (!flowActiveNodeId) {
+    const selectedIds = useStore.getState().flowNodes.filter((n) => n.selected).map((n) => n.id);
+    if (selectedIds.length === 0) {
       return;
     }
-    panToFlowNodeId(flowActiveNodeId);
-  }, [flowActiveNodeId, panToFlowNodeId]);
+    const remove = new Set(selectedIds);
+    applyFlowEdit('删除选中流程节点', ({ nodes: previousNodes, edges: previousEdges }) => ({
+      nodes: previousNodes.filter((node) => !remove.has(node.id)),
+      edges: previousEdges.filter((edge) => !remove.has(edge.source) && !remove.has(edge.target)),
+    }));
+    setFlowActiveNodeId(null);
+    setPaneSelectionMenu((previous) => ({ ...previous, visible: false }));
+  }, [applyFlowEdit, readOnly, setFlowActiveNodeId]);
 
-  const clearFocus = useCallback(() => {
-    setTraceActiveNodeId(null);
-  }, []);
+  const copyFlowSelection = useCallback(() => {
+    const allNodes = useStore.getState().flowNodes;
+    const selected = allNodes.filter((n) => n.selected);
+    if (selected.length === 0) {
+      return;
+    }
+    const idSet = new Set(selected.map((n) => n.id));
+    const selectedEdges = useStore.getState().flowEdges.filter(
+      (e) => idSet.has(e.source) && idSet.has(e.target),
+    );
+    flowClipboardRef.current = {
+      nodes: cloneDeep(selected),
+      edges: cloneDeep(selectedEdges),
+    };
+    setHasFlowClipboard(true);
+  }, [useStore]);
 
-  const switchLayoutDirection = useCallback(() => {
-    setLayoutDirection((previous) => (previous === 'LR' ? 'TB' : 'LR'));
-  }, []);
-
-  const handleLocateDiagnosticNode = useCallback(
-    (nodeId: string) => {
-      requestFlowViewportFocus(nodeId);
-    },
-    [requestFlowViewportFocus],
-  );
-
-  const diagnosticsLevelMap = useMemo(() => {
-    const levelByNode = new Map<string, 'error' | 'warning' | 'info'>();
-    const rank: Record<'error' | 'warning' | 'info', number> = { error: 3, warning: 2, info: 1 };
-    diagnostics.forEach((item) => {
-      item.nodeIds.forEach((nodeId) => {
-        const previous = levelByNode.get(nodeId);
-        if (!previous || rank[item.level] > rank[previous]) {
-          levelByNode.set(nodeId, item.level);
-        }
+  const pasteFlowClipboard = useCallback(
+    (anchorFlow?: { x: number; y: number }) => {
+      if (readOnly) {
+        return;
+      }
+      const clip = flowClipboardRef.current;
+      if (!clip?.nodes.length) {
+        return;
+      }
+      const anchor = anchorFlow ?? lastPointerFlowRef.current ?? undefined;
+      const { nodes: pastedNodes, edges: pastedEdges } = cloneFlowSubgraphWithNewIds(clip.nodes, clip.edges, {
+        ...(anchor ? { anchorFlow: anchor } : { fallbackOffset: { x: 48, y: 48 } }),
+        selectPasted: true,
       });
-    });
-    return levelByNode;
-  }, [diagnostics]);
+      applyFlowEdit('粘贴流程子图', ({ nodes: previousNodes, edges: previousEdges }) => ({
+        nodes: [...previousNodes.map((n) => ({ ...n, selected: false })), ...pastedNodes],
+        edges: [...previousEdges, ...pastedEdges],
+      }));
+      setFlowActiveNodeId(pastedNodes[0]?.id ?? null);
+    },
+    [applyFlowEdit, readOnly, setFlowActiveNodeId],
+  );
 
   useEffect(() => {
     const handleKeydown = (event: KeyboardEvent) => {
-      const target = event.target as HTMLElement | null;
-      const tagName = target?.tagName?.toLowerCase();
-      if (tagName === 'input' || tagName === 'textarea' || target?.isContentEditable) {
+      if (isEditableTarget(event.target)) {
         return;
       }
 
       const withMeta = event.ctrlKey || event.metaKey;
-      if (withMeta && event.shiftKey && event.key.toLowerCase() === 'l') {
+      if (withMeta && !event.shiftKey && event.key.toLowerCase() === 'c') {
         event.preventDefault();
-        if (!readOnly) {
-          runAutoLayout(layoutDirection);
+        copyFlowSelection();
+      }
+      if (withMeta && !event.shiftKey && event.key.toLowerCase() === 'v') {
+        event.preventDefault();
+        pasteFlowClipboard();
+      }
+      if (!readOnly && (event.key === 'Delete' || event.key === 'Backspace')) {
+        const hasSelected = useStore.getState().flowNodes.some((n) => n.selected);
+        if (hasSelected) {
+          event.preventDefault();
+          deleteSelectedFlowNodes();
         }
       }
-      if (withMeta && event.shiftKey && event.key.toLowerCase() === 'v') {
-        event.preventDefault();
-        runFlowValidation();
-      }
-      if (withMeta && event.shiftKey && event.key.toLowerCase() === 'k') {
-        event.preventDefault();
-        runCycleDetection();
-      }
       if (event.key === 'Escape') {
-        clearFocus();
-        setDiagnosticsVisible(false);
+        handleCancelEdgeAnnotation();
+        closeEdgeMenu();
+        closeAnnotationMenu();
+        closePaneSelectionMenu();
       }
     };
 
     window.addEventListener('keydown', handleKeydown);
     return () => window.removeEventListener('keydown', handleKeydown);
-  }, [clearFocus, layoutDirection, readOnly, runAutoLayout, runCycleDetection, runFlowValidation]);
+  }, [
+    closeAnnotationMenu,
+    closeEdgeMenu,
+    closePaneSelectionMenu,
+    copyFlowSelection,
+    deleteSelectedFlowNodes,
+    handleCancelEdgeAnnotation,
+    pasteFlowClipboard,
+    readOnly,
+    useStore,
+  ]);
 
   return (
     <div className="flow-body-content">
       <div className="flow-body-topbar">
-        <FlowTopbar
-          readOnly={readOnly}
-          hasActiveNode={Boolean(flowActiveNodeId)}
-          diagnosticsCount={diagnostics.length}
-          layoutDirection={layoutDirection}
-          focusDepth={focusDepth}
-          lockSelected={lockSelectedLayout}
-          onRunCycleDetect={runCycleDetection}
-          onRunValidate={runFlowValidation}
-          onRunAutoLayout={runAutoLayout}
-          onRunEdgeCleanup={runEdgeCleanup}
-          onRunQuickFix={runQuickFix}
-          onFocusActivePath={focusActivePath}
-          onClearFocus={clearFocus}
-          onSwitchLayoutDirection={switchLayoutDirection}
-          onToggleLockSelected={() => setLockSelectedLayout((previous) => !previous)}
-          onChangeFocusDepth={setFocusDepth}
-          onToggleDiagnosticsPanel={() => setDiagnosticsVisible((previous) => !previous)}
-        />
+        <FlowTopbar readOnly={readOnly} canvasTool={canvasTool} onCanvasToolChange={setCanvasTool} />
       </div>
       <div
+        ref={flowCanvasRef}
         className="flow-canvas"
         onDragOver={handleDragOver}
         onDrop={handleDrop}
+        onPointerMove={(e) => {
+          lastPointerFlowRef.current = screenToFlowPosition({ x: e.clientX, y: e.clientY });
+        }}
       >
         <ReactFlow
         className={colorMode === 'dark' ? 'dark' : undefined}
@@ -1291,25 +1251,29 @@ const FlowCanvas: React.FC = () => {
         onConnect={onConnect}
         isValidConnection={isValidConnection}
         zoomOnDoubleClick={false}
+        selectionOnDrag={!readOnly && canvasTool === 'select'}
+        selectionMode={SelectionMode.Partial}
+        /* 不可含 2：@xyflow 在 panOnDrag.includes(2) 时会 preventDefault 并跳过 onPaneContextMenu，导致多选右键无菜单 */
+        panOnDrag={!readOnly && canvasTool === 'select' ? [1] : true}
+        panActivationKeyCode="Space"
+        deleteKeyCode={null}
+        nodesDraggable={!readOnly}
+        nodesConnectable={!readOnly}
+        elementsSelectable={!readOnly}
         onNodeClick={(_, node) => {
           handleCancelEdgeAnnotation();
           closeEdgeMenu();
           closeAnnotationMenu();
+          closePaneSelectionMenu();
           setFlowAlertMessage(null);
           setFlowActiveNodeId(node.id);
-          if (node.type === 'annotationNode') {
-            setTraceActiveNodeId(null);
-            return;
-          }
-
-          setTraceActiveNodeId(node.id);
         }}
         onPaneClick={() => {
-          setTraceActiveNodeId(null);
           setFlowActiveNodeId(null);
           handleCommitEdgeAnnotation();
           closeEdgeMenu();
           closeAnnotationMenu();
+          closePaneSelectionMenu();
           setFlowAlertMessage(null);
         }}
         onEdgeDoubleClick={(_, edge) => {
@@ -1320,7 +1284,9 @@ const FlowCanvas: React.FC = () => {
           handleStartEditEdge(edge.id);
         }}
         onEdgeContextMenu={handleEdgeContextMenu}
+        onNodeContextMenu={handleNodeContextMenu}
         onPaneContextMenu={handlePaneContextMenu}
+        onSelectionContextMenu={handleSelectionContextMenu}
         defaultEdgeOptions={{
           type: 'annotatedEdge',
           animated: false,
@@ -1338,52 +1304,85 @@ const FlowCanvas: React.FC = () => {
           <MiniMap
             zoomable
             pannable
-            nodeColor={(node) => {
-              const level = diagnosticsLevelMap.get(node.id);
-              if (level === 'error') {
-                return '#d54941';
-              }
-              if (level === 'warning') {
-                return '#ed7b2f';
-              }
-              if (level === 'info') {
-                return '#2f7cf6';
-              }
-              return minimapNeutralColor;
-            }}
+            nodeColor={() => (colorMode === 'dark' ? '#4a5568' : '#c9d2e4')}
           />
           <Controls />
           <Background gap={16} size={1} />
         </ReactFlow>
 
-        <FlowDiagnosticsPanel
-          visible={diagnosticsVisible}
-          diagnostics={diagnostics}
-          onLocate={handleLocateDiagnosticNode}
-          onQuickFix={runQuickFix}
-          onClose={() => setDiagnosticsVisible(false)}
-        />
-
         {annotationMenu.visible ? (
-          <div className="flow-context-menu" style={{ left: annotationMenu.x, top: annotationMenu.y }}>
+          <div className="tree-node-context-menu" style={{ left: annotationMenu.x, top: annotationMenu.y }}>
             <button
-              className="flow-context-menu__item"
+              className="tree-node-context-menu-item"
               type="button"
               onClick={handleCreateAnnotationFromMenu}
             >
               新建注释
             </button>
+            {!readOnly && hasFlowClipboard ? (
+              <button
+                className="tree-node-context-menu-item"
+                type="button"
+                onClick={() => {
+                  pasteFlowClipboard({ x: annotationMenu.flowX, y: annotationMenu.flowY });
+                  closeAnnotationMenu();
+                }}
+              >
+                粘贴到此处
+              </button>
+            ) : null}
           </div>
         ) : null}
 
         {edgeMenu.visible ? (
-          <div className="flow-context-menu" style={{ left: edgeMenu.x, top: edgeMenu.y }}>
+          <div className="tree-node-context-menu" style={{ left: edgeMenu.x, top: edgeMenu.y }}>
             <button
-              className="flow-context-menu__item"
+              className="tree-node-context-menu-item"
               type="button"
               onClick={handleDeleteEdgeFromMenu}
             >
               删除连线
+            </button>
+          </div>
+        ) : null}
+
+        {paneSelectionMenu.visible ? (
+          <div className="tree-node-context-menu" style={{ left: paneSelectionMenu.x, top: paneSelectionMenu.y }}>
+            <button className="tree-node-context-menu-item" type="button" onClick={copyFlowSelection}>
+              复制选中 (Ctrl/Cmd+C)
+            </button>
+            <button
+              className="tree-node-context-menu-item"
+              type="button"
+              disabled={readOnly || !hasFlowClipboard}
+              onClick={() => {
+                pasteFlowClipboard();
+                closePaneSelectionMenu();
+              }}
+            >
+              粘贴 (Ctrl/Cmd+V)
+            </button>
+            {!readOnly && hasFlowClipboard ? (
+              <button
+                className="tree-node-context-menu-item"
+                type="button"
+                onClick={() => {
+                  const a = paneSelectionMenu.anchorFlow;
+                  if (a) {
+                    pasteFlowClipboard(a);
+                  }
+                  closePaneSelectionMenu();
+                }}
+              >
+                粘贴到此处
+              </button>
+            ) : null}
+            <button
+              className="tree-node-context-menu-item tree-node-context-action--danger"
+              type="button"
+              onClick={deleteSelectedFlowNodes}
+            >
+              删除选中
             </button>
           </div>
         ) : null}

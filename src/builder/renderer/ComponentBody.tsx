@@ -321,7 +321,7 @@ const getNodeSiblingInfo = (root: any, nodeKey: string): NodeSiblingInfo | null 
 };
 
 const ComponentBody: React.FC = () => {
-  const { useStore } = useBuilderContext();
+  const { useStore, builderViewMode } = useBuilderContext();
   const { readOnly } = useBuilderAccess();
   const screenSize = useStore((state) => state.screenSize);
   const autoWidth = useStore((state) => state.autoWidth);
@@ -957,41 +957,42 @@ const ComponentBody: React.FC = () => {
       if (tagName === 'input' || tagName === 'textarea' || target?.isContentEditable) {
         return;
       }
+      const flowMode = builderViewMode === 'flow';
       const withMeta = event.ctrlKey || event.metaKey;
-      if (withMeta && event.shiftKey && event.key.toLowerCase() === 'l') {
+      if (!flowMode && withMeta && event.shiftKey && event.key.toLowerCase() === 'l') {
         event.preventDefault();
         if (!readOnly) {
           runQuickOrganize();
         }
       }
-      if (withMeta && event.shiftKey && event.key.toLowerCase() === 'v') {
+      if (!flowMode && withMeta && event.shiftKey && event.key.toLowerCase() === 'v') {
         event.preventDefault();
         if (!readOnly) {
           runToggleVisible();
         }
       }
-      if (withMeta && event.shiftKey && event.key.toLowerCase() === 'c') {
+      if (!flowMode && withMeta && event.shiftKey && event.key.toLowerCase() === 'c') {
         event.preventDefault();
         if (!readOnly && activeNode) {
           handleClearNodeChildren(activeNode, false);
         }
         return;
       }
-      if (withMeta && event.key.toLowerCase() === 'c' && !event.shiftKey) {
+      if (!flowMode && withMeta && event.key.toLowerCase() === 'c' && !event.shiftKey) {
         runCopyActiveNode();
       }
-      if (withMeta && event.key.toLowerCase() === 'v' && !event.shiftKey) {
+      if (!flowMode && withMeta && event.key.toLowerCase() === 'v' && !event.shiftKey) {
         if (!readOnly) {
           runPasteToActiveNode();
         }
       }
-      if (withMeta && event.key === 'Delete') {
+      if (!flowMode && withMeta && event.key === 'Delete') {
         event.preventDefault();
         if (!readOnly) {
           runDeleteActiveNode();
         }
       }
-      if (withMeta && activeNodeKey && !readOnly && !event.altKey) {
+      if (!flowMode && withMeta && activeNodeKey && !readOnly && !event.altKey) {
         const siblingInfo = getNodeSiblingInfo(uiPageData, activeNodeKey);
         if (siblingInfo && activeNode && canOperateNode(activeNode)) {
           if (event.shiftKey && event.key === 'ArrowUp' && siblingInfo.index > 0) {
@@ -1016,7 +1017,7 @@ const ComponentBody: React.FC = () => {
           }
         }
       }
-      if (event.altKey && activeNodeKey) {
+      if (!flowMode && event.altKey && activeNodeKey) {
         const siblingInfo = getNodeSiblingInfo(uiPageData, activeNodeKey);
         if (!siblingInfo) {
           return;
@@ -1034,7 +1035,7 @@ const ComponentBody: React.FC = () => {
 
     window.addEventListener('keydown', handleKeydown);
     return () => window.removeEventListener('keydown', handleKeydown);
-  }, [activeNode, activeNodeKey, moveUiNode, readOnly, treeClipboard, uiPageData]);
+  }, [activeNode, activeNodeKey, builderViewMode, moveUiNode, readOnly, treeClipboard, uiPageData]);
 
   const getMenuItemStyle = (enabled: boolean): React.CSSProperties => ({
     opacity: enabled ? 1 : 0.45,

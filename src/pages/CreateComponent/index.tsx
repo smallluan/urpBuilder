@@ -264,7 +264,13 @@ const CreateComponent: React.FC = () => {
   }, [setCurrentPageMeta, user?.id]);
 
   return (
-    <BuilderProvider useStore={useCreateComponentStore} readOnly={readOnly} readOnlyReason={readOnlyReason} entityType="component">
+    <BuilderProvider
+      useStore={useCreateComponentStore}
+      readOnly={readOnly}
+      readOnlyReason={readOnlyReason}
+      entityType="component"
+      builderViewMode={mode}
+    >
       <BuilderShell
         header={
           <HeaderControls

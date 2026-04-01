@@ -915,14 +915,31 @@
         gap: 8px;
       }
 
+      .flow-topbar .builder-topbar__left {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: flex-end;
+        gap: 8px;
+        min-width: 0;
+      }
+
+      .flow-topbar .builder-topbar__icon-btn.is-active {
+        color: var(--builder-icon-hover-color);
+        background: var(--builder-icon-active-bg);
+      }
+
+      .flow-topbar .builder-topbar__icon-btn--labeled .builder-topbar__icon-btn-caption {
+        color: var(--builder-text-muted);
+      }
+
+      .flow-topbar .builder-topbar__icon-btn--labeled:hover .builder-topbar__icon-btn-caption {
+        color: var(--builder-icon-hover-color);
+      }
+
       .flow-topbar__group {
         display: inline-flex;
         align-items: center;
         gap: 4px;
-      }
-
-      .flow-topbar__group--right {
-        margin-left: auto;
       }
 
       .flow-topbar .builder-topbar__icon-btn {
@@ -936,162 +953,6 @@
       .flow-topbar .builder-topbar__icon-btn:hover {
         color: var(--builder-icon-hover-color);
         background: var(--builder-icon-hover-bg);
-      }
-
-      .flow-topbar__diagnostics {
-        border: 1px solid var(--builder-flow-topbar-diagnostics-border);
-        background: var(--builder-flow-topbar-diagnostics-bg);
-        color: var(--builder-flow-topbar-diagnostics-fg);
-        border-radius: 999px;
-        height: 28px;
-        padding: 0 10px;
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        cursor: pointer;
-        font-size: 12px;
-      }
-
-      .flow-topbar__focus-depth {
-        display: inline-flex;
-        align-items: center;
-        gap: 4px;
-        padding: 2px;
-        border-radius: 999px;
-        border: 1px solid var(--builder-flow-topbar-diagnostics-border);
-        background: var(--builder-flow-topbar-diagnostics-bg);
-      }
-
-      .flow-topbar__depth-btn {
-        border: 0;
-        background: transparent;
-        color: var(--builder-text-muted);
-        font-size: 12px;
-        padding: 0 8px;
-        height: 22px;
-        border-radius: 999px;
-        cursor: pointer;
-      }
-
-      .flow-topbar__depth-btn.is-active {
-        color: var(--builder-icon-hover-color);
-        background: var(--builder-icon-hover-bg);
-      }
-
-      .flow-topbar__dot {
-        width: 8px;
-        height: 8px;
-        border-radius: 999px;
-        background: #94a3b8;
-      }
-
-      .flow-topbar__dot.is-warning {
-        background: #f59e0b;
-      }
-
-      .flow-topbar__count {
-        min-width: 16px;
-        text-align: center;
-        color: #64748b;
-      }
-
-      .flow-diagnostics-panel {
-        position: absolute;
-        top: 12px;
-        right: 12px;
-        width: 380px;
-        max-width: calc(100% - 24px);
-        max-height: calc(100% - 24px);
-        border: 1px solid var(--builder-border-strong);
-        border-radius: 10px;
-        background: var(--builder-surface);
-        box-shadow: 0 12px 26px rgba(15, 23, 42, 0.14);
-        z-index: 35;
-        display: flex;
-        flex-direction: column;
-      }
-
-      .flow-diagnostics-panel__head {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 10px 12px;
-        border-bottom: 1px solid var(--builder-border-muted);
-      }
-
-      .flow-diagnostics-panel__head-actions {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-      }
-
-      .flow-diagnostics-panel__title {
-        font-size: 13px;
-        font-weight: 600;
-        color: var(--builder-text-title);
-      }
-
-      .flow-diagnostics-panel__body {
-        overflow: auto;
-        padding: 8px;
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-      }
-
-      .flow-diagnostics-panel__item {
-        border: 1px solid var(--builder-border-muted);
-        border-radius: 8px;
-        background: var(--builder-structure-panel-bg);
-        padding: 8px;
-      }
-
-      .flow-diagnostics-panel__item-head {
-        display: flex;
-        align-items: flex-start;
-        gap: 8px;
-      }
-
-      .flow-diagnostics-panel__item-text {
-        font-size: 12px;
-        color: var(--builder-text-soft);
-        line-height: 18px;
-      }
-
-      .flow-diagnostics-panel__actions {
-        margin-top: 8px;
-        display: flex;
-        justify-content: flex-end;
-      }
-
-      .flow-diagnostics-panel__empty {
-        padding: 14px 8px;
-        text-align: center;
-        color: var(--builder-text-desc);
-        font-size: 12px;
-      }
-
-      .flow-canvas-toolbar {
-        position: absolute;
-        top: 12px;
-        left: 12px;
-        z-index: 10;
-      }
-
-      .flow-canvas-toolbar__button {
-        border: 1px solid var(--builder-flow-canvas-toolbar-border);
-        background: var(--builder-flow-canvas-toolbar-bg);
-        color: var(--builder-flow-canvas-toolbar-fg);
-        border-radius: 6px;
-        font-size: 12px;
-        line-height: 20px;
-        padding: 2px 10px;
-        cursor: pointer;
-      }
-
-      .flow-canvas-toolbar__button:hover {
-        border-color: var(--builder-icon-hover-color);
-        color: var(--builder-icon-hover-color);
       }
     }
 
