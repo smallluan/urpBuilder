@@ -1475,7 +1475,7 @@ button.tree-node-context-menu-item:disabled:hover {
 .builder-viewport-popup__panel.t-popup__content {
   padding: 0;
   min-width: 304px;
-  max-width: min(380px, 94vw);
+  max-width: min(420px, 94vw);
   border-radius: 4px;
   overflow: hidden;
   background: var(--builder-viewport-popup-body-bg);
@@ -1490,11 +1490,25 @@ button.tree-node-context-menu-item:disabled:hover {
 
 .builder-viewport-popup__header {
   display: flex;
-  align-items: flex-start;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0;
+  padding: 10px 16px 12px;
+  border-bottom: 1px solid var(--builder-viewport-popup-header-border);
+}
+
+.builder-viewport-popup__header-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.builder-viewport-popup__header-meta-row {
+  display: flex;
+  align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 7px 8px 8px;
-  border-bottom: 1px solid var(--builder-viewport-popup-header-border);
 }
 
 .builder-viewport-popup__header-main {
@@ -1622,8 +1636,20 @@ button.tree-node-context-menu-item:disabled:hover {
   padding: 14px 16px 16px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 14px;
   background: transparent;
+}
+
+.builder-viewport-popup__divider {
+  margin: 0;
+}
+
+.builder-viewport-popup__section-note {
+  display: block;
+  margin: -2px 0 4px;
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--builder-viewport-popup-hint);
 }
 
 .builder-viewport-popup__section {

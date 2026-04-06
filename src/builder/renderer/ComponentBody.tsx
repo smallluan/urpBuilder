@@ -23,6 +23,7 @@ import {
   type TreeClipboardPayload,
 } from '../utils/treeClipboard';
 import { resolveSimulatorStyle } from '../utils/simulatorStyle';
+import { SIMULATOR_CHROME_FLOATING_PAD_PX } from '../constants/simulatorChromeStyle';
 import { isHandheldSimulatorScreenSize } from '../utils/simulatorViewport';
 import { getEffectiveBoundingRect, getScrollTargetForBuilderNode } from '../utils/builderNodeDomRect';
 
@@ -325,6 +326,7 @@ const ComponentBody: React.FC = () => {
   const { readOnly } = useBuilderAccess();
   const screenSize = useStore((state) => state.screenSize);
   const autoWidth = useStore((state) => state.autoWidth);
+  const simulatorChromeStyle = useStore((state) => state.simulatorChromeStyle);
   const uiPageData = useStore((state) => state.uiPageData);
   const activeNodeKey = useStore((state) => state.activeNodeKey);
   const setActiveNode = useStore((state) => state.setActiveNode);
@@ -434,20 +436,28 @@ const ComponentBody: React.FC = () => {
   };
 
   const showDeviceChrome = useMemo(() => isHandheldSimulatorScreenSize(screenSize), [screenSize]);
+  const chromeFloating = showDeviceChrome && simulatorChromeStyle === 'dynamic-island';
 
   const simulatorStyle: React.CSSProperties = useMemo(() => {
     const width = screenSize === 'auto' ? `${autoWidth}px` : `${screenSize}px`;
     return {
       width,
       height: '100%',
-      backgroundColor: 'var(--builder-simulator-device-bg)',
+      ...(showDeviceChrome
+        ? {}
+        : { backgroundColor: 'var(--builder-simulator-device-bg)' }),
       margin: '0 auto',
       transition: 'width 0.2s ease',
-      boxSizing: 'content-box',
+      boxSizing: showDeviceChrome ? 'border-box' : 'content-box',
       position: 'relative',
       isolation: 'isolate',
     };
-  }, [screenSize, autoWidth]);
+  }, [screenSize, autoWidth, showDeviceChrome]);
+
+  const simulatorFrameInnerStyle: React.CSSProperties = useMemo(
+    () => (showDeviceChrome ? { width: '100%', height: '100%', minHeight: 0 } : {}),
+    [showDeviceChrome],
+  );
 
   useEffect(() => {
     const host = simulatorScrollRef.current;
@@ -472,7 +482,7 @@ const ComponentBody: React.FC = () => {
     return () => {
       resizeObserver.disconnect();
     };
-  }, [screenSize, autoWidth, showDeviceChrome]);
+  }, [screenSize, autoWidth, showDeviceChrome, simulatorChromeStyle]);
 
   useEffect(() => {
     if (!activeNodeKey) {
@@ -1042,31 +1052,50 @@ const ComponentBody: React.FC = () => {
     pointerEvents: enabled ? 'auto' : 'none',
   });
 
-  return (
-    <div className="component-body">
-      <div
-        ref={simulatorContainerRef}
-        className="simulator-container"
-        style={simulatorStyle}
-        onContextMenu={handleCanvasContextMenu}
-      >
-        {showDeviceChrome ? <SimulatorDeviceChrome /> : null}
-        <div
-          ref={simulatorScrollRef}
-          className="simulator-scroll"
-          data-builder-scroll-container="true"
-        >
-          <DropArea
-            className="drop-area-root"
-            style={resolveSimulatorStyle({ minHeight: '100%', height: 'auto', flex: '0 0 auto' })}
-            data={uiPageData}
-            onDropData={handleDropData}
-            selectable={false}
-          />
-          <SimulatorSelectionOverlay scrollContainerRef={simulatorScrollRef} />
-        </div>
+  const simulatorContainerClassName = [
+    'simulator-container',
+    showDeviceChrome ? 'simulator-container--device-frame' : '',
+    chromeFloating ? 'simulator-container--chrome-floating' : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
 
-        {contextMenuState.visible && contextMenuNode ? (
+  const simulatorContainerStyle: React.CSSProperties = {
+    ...(showDeviceChrome ? simulatorFrameInnerStyle : simulatorStyle),
+    ...(chromeFloating
+      ? ({ ['--simulator-chrome-pad' as string]: `${SIMULATOR_CHROME_FLOATING_PAD_PX}px` } as React.CSSProperties)
+      : {}),
+  };
+
+  const simulatorPanel = (
+    <div
+      ref={simulatorContainerRef}
+      className={simulatorContainerClassName}
+      style={simulatorContainerStyle}
+      onContextMenu={handleCanvasContextMenu}
+    >
+      {showDeviceChrome && !chromeFloating ? (
+        <SimulatorDeviceChrome variant={simulatorChromeStyle} />
+      ) : null}
+      <div
+        ref={simulatorScrollRef}
+        className={['simulator-scroll', chromeFloating ? 'simulator-scroll--chrome-inset' : ''].filter(Boolean).join(' ')}
+        data-builder-scroll-container="true"
+      >
+        <DropArea
+          className="drop-area-root"
+          style={resolveSimulatorStyle({ minHeight: '100%', height: 'auto', flex: '0 0 auto' })}
+          data={uiPageData}
+          onDropData={handleDropData}
+          selectable={false}
+        />
+        <SimulatorSelectionOverlay scrollContainerRef={simulatorScrollRef} />
+      </div>
+      {showDeviceChrome && chromeFloating ? (
+        <SimulatorDeviceChrome variant={simulatorChromeStyle} />
+      ) : null}
+
+      {contextMenuState.visible && contextMenuNode ? (
           <div
             ref={contextMenuRef}
             className="tree-node-context-menu"
@@ -1253,7 +1282,22 @@ const ComponentBody: React.FC = () => {
             ) : null}
           </div>
         ) : null}
-      </div>
+    </div>
+  );
+
+  return (
+    <div className="component-body">
+      {showDeviceChrome ? (
+        <div className="simulator-device-wrap" style={simulatorStyle}>
+          <span className="simulator-device-sidekey simulator-device-sidekey--silence" aria-hidden />
+          <span className="simulator-device-sidekey simulator-device-sidekey--vol-up" aria-hidden />
+          <span className="simulator-device-sidekey simulator-device-sidekey--vol-down" aria-hidden />
+          <span className="simulator-device-sidekey simulator-device-sidekey--power" aria-hidden />
+          {simulatorPanel}
+        </div>
+      ) : (
+        simulatorPanel
+      )}
     </div>
   );
 };

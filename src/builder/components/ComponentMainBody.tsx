@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { Dialog, Input, Popup, Row, Select, Space, Typography } from 'tdesign-react';
+import { Dialog, Divider, Input, Popup, Row, Select, Space, Typography } from 'tdesign-react';
 import ComponentBody from '../renderer/ComponentBody';
 import SCREEN_SIZES from '../config/screenSizes';
 import { useBuilderAccess, useBuilderContext } from '../context/BuilderContext';
 import { getBreakpointByWidth, resolveBuilderViewportWidth } from '../utils/gridResponsive';
 import { Monitor, Settings2 } from 'lucide-react';
+import { SimulatorAppearancePopupContent } from './SimulatorAppearancePopup';
 import UnifiedBuilderTopbar, { TopbarGroup, TopbarIconButton } from './UnifiedBuilderTopbar';
 
 const { Text } = Typography;
@@ -16,6 +17,8 @@ const ComponentMainBody: React.FC<{ toolbarExtra?: React.ReactNode }> = ({ toolb
   const autoWidth = useStore((state) => state.autoWidth);
   const setScreenSize = useStore((state) => state.setScreenSize);
   const setAutoWidth = useStore((state) => state.setAutoWidth);
+  const simulatorChromeStyle = useStore((state) => state.simulatorChromeStyle);
+  const setSimulatorChromeStyle = useStore((state) => state.setSimulatorChromeStyle);
   const inputDisabled = screenSize !== 'auto';
   const [draftInputValue, setDraftInputValue] = useState<string>(String(autoWidth));
   const [shortcutDialogVisible, setShortcutDialogVisible] = useState(false);
@@ -71,18 +74,23 @@ const ComponentMainBody: React.FC<{ toolbarExtra?: React.ReactNode }> = ({ toolb
   const viewportPopupContent = (
     <div className="builder-viewport-popup">
       <header className="builder-viewport-popup__header">
-        <div className="builder-viewport-popup__header-main">
-          <span className="builder-viewport-popup__summary-value">
-            {simulatorWidth}
-            <span className="builder-viewport-popup__summary-unit">px</span>
-          </span>
+        <div className="builder-viewport-popup__header-stack">
+          <span className="builder-viewport-popup__title">画布</span>
+          <div className="builder-viewport-popup__header-meta-row">
+            <div className="builder-viewport-popup__header-main">
+              <span className="builder-viewport-popup__summary-value">
+                {simulatorWidth}
+                <span className="builder-viewport-popup__summary-unit">px</span>
+              </span>
+            </div>
+            <span
+              className={`builder-viewport-popup__bp-badge builder-viewport-popup__bp-badge--${simulatorBreakpoint}`}
+              title="当前宽度对应的栅格断点"
+            >
+              {simulatorBreakpoint.toUpperCase()}
+            </span>
+          </div>
         </div>
-        <span
-          className={`builder-viewport-popup__bp-badge builder-viewport-popup__bp-badge--${simulatorBreakpoint}`}
-          title="当前宽度对应的栅格断点"
-        >
-          {simulatorBreakpoint.toUpperCase()}
-        </span>
       </header>
       <div className="builder-viewport-popup__body">
         <section className="builder-viewport-popup__section">
@@ -99,6 +107,8 @@ const ComponentMainBody: React.FC<{ toolbarExtra?: React.ReactNode }> = ({ toolb
             popupProps={{ overlayClassName: 'builder-viewport-popup__select-overlay', zIndex: 5600 }}
           />
         </section>
+
+        <Divider layout="horizontal" className="builder-viewport-popup__divider" />
 
         <section className="builder-viewport-popup__section">
           <div className="builder-viewport-popup__section-head">
@@ -123,6 +133,23 @@ const ComponentMainBody: React.FC<{ toolbarExtra?: React.ReactNode }> = ({ toolb
             </span>
           </div>
         </section>
+
+        <Divider layout="horizontal" className="builder-viewport-popup__divider" />
+
+        <section className="builder-viewport-popup__section">
+          <div className="builder-viewport-popup__section-head">
+            <span className="builder-viewport-popup__section-title">顶栏样式</span>
+          </div>
+          <Text className="builder-viewport-popup__section-note">
+            固定宽度 ≤1024px。
+          </Text>
+          <SimulatorAppearancePopupContent
+            embedded
+            value={simulatorChromeStyle}
+            onChange={setSimulatorChromeStyle}
+            readOnly={readOnly}
+          />
+        </section>
       </div>
     </div>
   );
@@ -144,7 +171,7 @@ const ComponentMainBody: React.FC<{ toolbarExtra?: React.ReactNode }> = ({ toolb
                 content={viewportPopupContent}
               >
                 <TopbarIconButton
-                  tip="画布尺寸与栅格断点"
+                  tip="画布尺寸、断点与手机顶栏样式"
                   label="画布"
                   icon={<Monitor size={16} strokeWidth={2} />}
                   disabled={readOnly}

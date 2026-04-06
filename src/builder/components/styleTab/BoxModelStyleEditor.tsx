@@ -13,6 +13,8 @@ export interface BoxModelStyleEditorProps {
   value?: Record<string, unknown>;
   onPatch: (patch: Record<string, string | undefined>) => void;
   readOnly?: boolean;
+  /** 画布节点 getComputedStyle，用于 __style 未写某键时展示实际渲染值 */
+  computedHints?: Record<string, string>;
 }
 
 const gv = (style: Record<string, unknown>, key: string): string => normalizeStyleValue(style)[key] ?? '';
@@ -365,7 +367,28 @@ const RingLayer: React.FC<{
   );
 };
 
-const BoxModelStyleEditor: React.FC<BoxModelStyleEditorProps> = ({ value, onPatch, readOnly }) => {
+const effKey = (
+  style: Record<string, unknown>,
+  key: string,
+  hints: Record<string, string> | undefined,
+  preferExplicitOnly: boolean,
+): string => {
+  const ex = gv(style, key);
+  if (preferExplicitOnly) {
+    return ex;
+  }
+  if (ex.trim()) {
+    return ex;
+  }
+  return hints?.[key] ?? '';
+};
+
+const BoxModelStyleEditor: React.FC<BoxModelStyleEditorProps> = ({
+  value,
+  onPatch,
+  readOnly,
+  computedHints,
+}) => {
   const style = value ?? {};
   const sh = hasShorthandSpacing(style);
   const borderBlocked = hasBorderShorthand(style);
@@ -400,20 +423,62 @@ const BoxModelStyleEditor: React.FC<BoxModelStyleEditorProps> = ({ value, onPatc
   );
 
   const marginVals = useMemo(
-    () => Object.fromEntries(SIDES.map((s) => [s, gv(style, `margin${s}`)])) as Record<Side, string>,
-    [style],
+    () =>
+      Object.fromEntries(
+        SIDES.map((s) => [s, effKey(style, `margin${s}`, computedHints, sh.margin)]),
+      ) as Record<Side, string>,
+    [style, computedHints, sh.margin],
   );
   const paddingVals = useMemo(
-    () => Object.fromEntries(SIDES.map((s) => [s, gv(style, `padding${s}`)])) as Record<Side, string>,
-    [style],
+    () =>
+      Object.fromEntries(
+        SIDES.map((s) => [s, effKey(style, `padding${s}`, computedHints, sh.padding)]),
+      ) as Record<Side, string>,
+    [style, computedHints, sh.padding],
   );
   const borderWVals = useMemo(
-    () => Object.fromEntries(SIDES.map((s) => [s, gv(style, `border${s}Width`)])) as Record<Side, string>,
-    [style],
+    () =>
+      Object.fromEntries(
+        SIDES.map((s) => [s, effKey(style, `border${s}Width`, computedHints, borderBlocked)]),
+      ) as Record<Side, string>,
+    [style, computedHints, borderBlocked],
   );
 
-  const borderStyleVal = gv(style, 'borderStyle');
-  const borderColorVal = gv(style, 'borderColor');
+  const borderStyleVal = useMemo(() => {
+    const ex = gv(style, 'borderStyle');
+    if (borderBlocked || ex.trim()) {
+      return ex;
+    }
+    if (!computedHints) {
+      return '';
+    }
+    const t0 = (computedHints.borderTopStyle ?? '').trim();
+    if (!t0) {
+      return '';
+    }
+    if (SIDES.every((s) => (computedHints[`border${s}Style`] ?? '').trim() === t0)) {
+      return t0;
+    }
+    return '';
+  }, [style, borderBlocked, computedHints]);
+
+  const borderColorVal = useMemo(() => {
+    const ex = gv(style, 'borderColor');
+    if (borderBlocked || ex.trim()) {
+      return ex;
+    }
+    if (!computedHints) {
+      return '';
+    }
+    const c0 = (computedHints.borderTopColor ?? '').trim();
+    if (!c0) {
+      return '';
+    }
+    if (SIDES.every((s) => (computedHints[`border${s}Color`] ?? '').trim() === c0)) {
+      return c0;
+    }
+    return '';
+  }, [style, borderBlocked, computedHints]);
 
   const draftMarginSide = useCallback(
     (side: Side, raw: string) => {

@@ -1,4 +1,5 @@
 import type { Edge, Node } from '@xyflow/react';
+import type { SimulatorChromeStyle } from '../constants/simulatorChromeStyle';
 
 // ===========================
 // 基础类型
@@ -196,6 +197,8 @@ export interface BuilderStore {
   // 视图环境
   screenSize: ScreenSize;
   autoWidth: number;
+  /** 手机模拟器顶部状态栏样式（窄屏预览时） */
+  simulatorChromeStyle: SimulatorChromeStyle;
   currentPageId: string;
   currentPageName: string;
   currentPageDescription: string;
@@ -236,6 +239,7 @@ export interface BuilderStore {
   // Actions — 视图环境
   setScreenSize: (screenSize: ScreenSize) => void;
   setAutoWidth: (width: number) => void;
+  setSimulatorChromeStyle: (style: SimulatorChromeStyle) => void;
   setCurrentPageMeta: (payload: {
     pageId?: string;
     pageName?: string;

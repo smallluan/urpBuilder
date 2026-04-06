@@ -1,6 +1,8 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useLayoutEffect, useState } from 'react';
+import { collectComputedLayoutHints } from '../utils/computedLayoutHints';
 import { patchStyle } from '../utils/nodeStyleCodec';
 import BoxModelStyleEditor from './styleTab/BoxModelStyleEditor';
+import BoxShadowStyleEditor from './styleTab/BoxShadowStyleEditor';
 import './NodeStyleTab.less';
 
 export interface NodeStyleTabProps {
@@ -11,6 +13,42 @@ export interface NodeStyleTabProps {
 }
 
 const NodeStyleTab: React.FC<NodeStyleTabProps> = ({ value, onChange, readOnly, targetKey }) => {
+  const [computedHints, setComputedHints] = useState<Record<string, string>>({});
+
+  useLayoutEffect(() => {
+    if (!targetKey) {
+      setComputedHints({});
+      return;
+    }
+    let alive = true;
+    const run = () => {
+      if (!alive) {
+        return;
+      }
+      const safeKey =
+        typeof CSS !== 'undefined' && typeof CSS.escape === 'function'
+          ? CSS.escape(targetKey)
+          : targetKey.replace(/"/g, '\\"');
+      const el = document.querySelector<HTMLElement>(`[data-builder-node-key="${safeKey}"]`);
+      if (!alive) {
+        return;
+      }
+      setComputedHints(el ? collectComputedLayoutHints(el) : {});
+    };
+    run();
+    const id1 = requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        if (alive) {
+          run();
+        }
+      });
+    });
+    return () => {
+      alive = false;
+      cancelAnimationFrame(id1);
+    };
+  }, [targetKey, value]);
+
   const handlePatch = useCallback(
     (patch: Record<string, string | undefined>) => {
       if (readOnly) {
@@ -28,6 +66,14 @@ const NodeStyleTab: React.FC<NodeStyleTabProps> = ({ value, onChange, readOnly, 
         value={value}
         onPatch={handlePatch}
         readOnly={readOnly}
+        computedHints={computedHints}
+      />
+      <BoxShadowStyleEditor
+        key={`${targetKey ?? '__style__'}__shadow`}
+        value={value}
+        onPatch={handlePatch}
+        readOnly={readOnly}
+        computedHints={computedHints}
       />
     </div>
   );

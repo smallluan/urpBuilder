@@ -176,6 +176,22 @@
   --builder-viewport-popup-preset-active-w: #2563eb;
   /* 搭建 UI 中间模拟器「手机屏幕」底色 */
   --builder-simulator-device-bg: #ffffff;
+  /* 手持预设：圆角 + 哑光中框 + 轻投影（仅 .simulator-container--device-frame） */
+  --builder-simulator-frame-radius: 36px;
+  --builder-simulator-frame-border-width: 3px;
+  /* 中性灰包边，接近设计稿里常见设备示意，不做强反光渐变 */
+  --builder-simulator-frame-outline: #c8ccd6;
+  --builder-simulator-frame-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.75),
+    0 20px 50px -18px rgba(15, 23, 42, 0.14), 0 10px 28px -14px rgba(15, 23, 42, 0.08);
+  --builder-simulator-screen-lip: inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  --builder-simulator-screen-edge: inset 0 0 0 1px rgba(0, 0, 0, 0.04);
+  /* 机身侧键（静音 / 音量 ± / 电源） */
+  --builder-simulator-sidekey-bg: linear-gradient(90deg, #e4e7ee 0%, #c2c6d2 38%, #a8adb9 100%);
+  --builder-simulator-sidekey-bg-power: linear-gradient(270deg, #e4e7ee 0%, #c2c6d2 38%, #a8adb9 100%);
+  --builder-simulator-sidekey-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.55),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.1), 0 1px 3px rgba(0, 0, 0, 0.1);
+  /* 刘海模式：状态条底色（两侧浅色区），中间刘海为纯黑 */
+  --builder-simulator-notch-strip-bg: #ffffff;
 }
 
 :root[theme-mode='dark'] {
@@ -347,4 +363,18 @@
   --builder-viewport-popup-preset-active-name: var(--td-brand-color-9);
   --builder-viewport-popup-preset-active-w: var(--td-brand-color-8);
   --builder-simulator-device-bg: var(--td-gray-color-13);
+  /* 与 gray-13 面板底色拉开对比，否则 3px 边框与圆角在视觉上会「消失」 */
+  --builder-simulator-frame-radius: 36px;
+  --builder-simulator-frame-border-width: 3px;
+  --builder-simulator-frame-outline: rgba(255, 255, 255, 0.2);
+  --builder-simulator-frame-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    0 0 0 1px rgba(255, 255, 255, 0.08), 0 22px 52px -14px rgba(0, 0, 0, 0.5),
+    0 10px 26px -12px rgba(0, 0, 0, 0.32);
+  --builder-simulator-screen-lip: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  --builder-simulator-screen-edge: inset 0 0 0 1px rgba(0, 0, 0, 0.38);
+  --builder-simulator-sidekey-bg: linear-gradient(90deg, #4f535c 0%, #3a3e47 42%, #2f323a 100%);
+  --builder-simulator-sidekey-bg-power: linear-gradient(270deg, #4f535c 0%, #3a3e47 42%, #2f323a 100%);
+  --builder-simulator-sidekey-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.45), 0 1px 4px rgba(0, 0, 0, 0.35);
+  --builder-simulator-notch-strip-bg: var(--builder-simulator-device-bg);
 }

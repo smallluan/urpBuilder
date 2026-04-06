@@ -28,6 +28,7 @@ import {
   toUiTreeNode,
   updateNodeByKey,
 } from '../../utils/createComponentTree';
+import { DEFAULT_SIMULATOR_CHROME_STYLE } from '../constants/simulatorChromeStyle';
 import { normalizeTabsList, syncTabsSlotNodes } from '../utils/tabs';
 import { normalizeCollapseList, syncCollapseSlotNodes } from '../utils/collapse';
 import {
@@ -503,6 +504,7 @@ export const createBuilderStore = (options: CreateBuilderStoreOptions = {}) => {
     // ===== 视图环境 =====
     screenSize: 'auto',
     autoWidth: 1800,
+    simulatorChromeStyle: DEFAULT_SIMULATOR_CHROME_STYLE,
     currentPageId: '',
     currentPageName: '',
     currentPageDescription: '',
@@ -539,6 +541,8 @@ export const createBuilderStore = (options: CreateBuilderStoreOptions = {}) => {
     setScreenSize: (screenSize) => set({ screenSize }),
 
     setAutoWidth: (width) => set({ autoWidth: width }),
+
+    setSimulatorChromeStyle: (simulatorChromeStyle) => set({ simulatorChromeStyle }),
 
     setCurrentPageMeta: ({ pageId, pageName, description, visibility }) =>
       set((state) => ({

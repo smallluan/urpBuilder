@@ -347,7 +347,6 @@ const FlowAsideLeft: React.FC = () => {
                     <FolderTree size={16} strokeWidth={2} />
                     <Text>展示为根节点</Text>
                   </Space>
-                  <Text>Ctrl/⌘+Alt+R</Text>
                 </Row>
               </div>
             </div>
