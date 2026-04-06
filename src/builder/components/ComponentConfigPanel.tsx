@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Button, Collapse, ColorPicker, Dialog, Empty, Input, InputNumber, MessagePlugin, Popup, Select, Slider, Space, Switch, Table, Tag, Tabs, Typography, Row, Textarea } from 'tdesign-react';
 import { HelpCircleIcon, LayoutIcon } from 'tdesign-icons-react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useBuilderAccess, useBuilderContext } from '../context/BuilderContext';
 import { useBuilderThemeStore } from '../theme/builderThemeStore';
 import type { UiTreeNode } from '../store/types';
@@ -37,6 +38,12 @@ import { getCloudFunctionList, type CloudFunctionRecord } from '../../api/cloudF
 import type { ComponentDataSourceType } from '../../types/dataSource';
 import { normalizeDataSourceConfig } from '../../types/dataSource';
 import { getMediaAssetUrlFromDrop } from '../../utils/mediaAssetDrag';
+import {
+  clearCodeWorkbenchResult,
+  createCodeWorkbenchSessionId,
+  readCodeWorkbenchResult,
+  writeCodeWorkbenchPayload,
+} from './codeEditor/workbenchSession';
 
 type EditType =
   | 'switch'
@@ -482,6 +489,8 @@ const resolveEditType = (schema: ComponentPropSchema): EditType => {
 };
 
 const ComponentConfigPanel: React.FC = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
   const { useStore } = useBuilderContext();
   const { readOnly, readOnlyReason } = useBuilderAccess();
   const { workspaceMode, currentTeamId } = useTeam();
@@ -776,6 +785,36 @@ const ComponentConfigPanel: React.FC = () => {
       cancelled = true;
     };
   }, [activeNode]);
+
+  useEffect(() => {
+    const navState = (location.state ?? {}) as {
+      codeWorkbenchSessionId?: string;
+      codeWorkbenchApplied?: boolean;
+    };
+    const sessionId = typeof navState.codeWorkbenchSessionId === 'string' ? navState.codeWorkbenchSessionId.trim() : '';
+    if (!sessionId) {
+      return;
+    }
+
+    if (navState.codeWorkbenchApplied !== true) {
+      navigate({ pathname: location.pathname, search: location.search }, { replace: true, state: null });
+      return;
+    }
+
+    const result = readCodeWorkbenchResult(sessionId);
+    const file = result?.files?.[0];
+    if (file) {
+      setJsonCodeValue((previous) => ({
+        ...previous,
+        code: file.code,
+        editorTheme: file.editorTheme === 'vscode-light' ? 'vscode-light' : 'vscode-dark',
+      }));
+      updateActiveNodeProp(file.id, file.code);
+    }
+
+    clearCodeWorkbenchResult(sessionId);
+    navigate({ pathname: location.pathname, search: location.search }, { replace: true, state: null });
+  }, [location.pathname, location.search, location.state, navigate, updateActiveNodeProp]);
 
   if (!activeNode) {
     return (
@@ -1186,6 +1225,32 @@ const ComponentConfigPanel: React.FC = () => {
 
     setJsonCodeDialogVisible(false);
     setJsonCodeTargetPropKey(null);
+  };
+
+  const handleOpenJsonWorkbench = (value: Pick<CodeEditorValue, 'label' | 'language'> & {
+    code: string;
+    editorTheme: CodeEditorValue['editorTheme'];
+  }) => {
+    if (!jsonCodeTargetPropKey) {
+      return;
+    }
+
+    const sessionId = createCodeWorkbenchSessionId();
+    writeCodeWorkbenchPayload({
+      sessionId,
+      returnTo: `${location.pathname}${location.search}`,
+      title: `JSON 编辑工作台 · ${value.label || jsonCodeTargetPropKey}`,
+      context: 'json',
+      files: [{
+        id: jsonCodeTargetPropKey,
+        path: `${value.label || jsonCodeTargetPropKey}.json`,
+        code: value.code,
+        language: 'json',
+        editorTheme: value.editorTheme,
+      }],
+      activeFileId: jsonCodeTargetPropKey,
+    });
+    navigate(`/code-workbench?sid=${encodeURIComponent(sessionId)}`);
   };
 
   const applyTabsDraft = () => {
@@ -2270,7 +2335,9 @@ const ComponentConfigPanel: React.FC = () => {
 
       <CodeEditorDialog
         visible={jsonCodeDialogVisible}
+        title={jsonCodeValue.label || '代码编辑'}
         value={jsonCodeValue}
+        onOpenWorkbench={handleOpenJsonWorkbench}
         onClose={() => {
           setJsonCodeDialogVisible(false);
           setJsonCodeTargetPropKey(null);

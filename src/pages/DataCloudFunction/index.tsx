@@ -19,9 +19,16 @@ import {
   Textarea,
 } from 'tdesign-react';
 import { AddIcon, DeleteIcon, EditIcon, RefreshIcon, SearchIcon } from 'tdesign-icons-react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useTeam } from '../../team/context';
 import WorkspaceModePanel from '../../components/WorkspaceModePanel';
 import CodeEditorDialog, { type CodeEditorValue } from '../../builder/components/CodeEditorDialog';
+import {
+  clearCodeWorkbenchResult,
+  createCodeWorkbenchSessionId,
+  readCodeWorkbenchResult,
+  writeCodeWorkbenchPayload,
+} from '../../builder/components/codeEditor/workbenchSession';
 import {
   createCloudFunction,
   deployCloudFunction,
@@ -196,6 +203,8 @@ const stringifyValue = (value: unknown): string => {
 };
 
 const DataCloudFunction: React.FC = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
   const { workspaceMode, currentTeamId } = useTeam();
   const ownerType: ResourceOwnerType = workspaceMode === 'team' ? 'team' : 'user';
   const canQuery = ownerType === 'user' || Boolean(currentTeamId);
@@ -890,6 +899,69 @@ const DataCloudFunction: React.FC = () => {
     setCodeEditorVisible(true);
   };
 
+  useEffect(() => {
+    const navState = (location.state ?? {}) as {
+      codeWorkbenchSessionId?: string;
+      codeWorkbenchApplied?: boolean;
+    };
+    const sessionId = typeof navState.codeWorkbenchSessionId === 'string' ? navState.codeWorkbenchSessionId.trim() : '';
+    if (!sessionId) {
+      return;
+    }
+
+    if (navState.codeWorkbenchApplied !== true) {
+      navigate({ pathname: location.pathname, search: location.search }, { replace: true, state: null });
+      return;
+    }
+
+    const result = readCodeWorkbenchResult(sessionId);
+    const file = result?.files?.[0];
+    if (!file) {
+      navigate({ pathname: location.pathname, search: location.search }, { replace: true, state: null });
+      return;
+    }
+
+    const nextTheme = file.editorTheme === 'vscode-light' ? 'vscode-light' : 'vscode-dark';
+    if (file.id === 'create') {
+      setFunctionCreateDraft((previous) => ({ ...previous, code: file.code }));
+      setCreateEditorTheme(nextTheme);
+    } else {
+      setFunctionDraft((previous) => (previous ? { ...previous, code: file.code } : previous));
+      setDetailEditorTheme(nextTheme);
+    }
+
+    clearCodeWorkbenchResult(sessionId);
+    navigate({ pathname: location.pathname, search: location.search }, { replace: true, state: null });
+  }, [location.pathname, location.search, location.state, navigate]);
+
+  const handleOpenFunctionWorkbench = (value: Pick<CodeEditorValue, 'label' | 'language'> & {
+    code: string;
+    editorTheme: CodeEditorValue['editorTheme'];
+  }) => {
+    const sessionId = createCodeWorkbenchSessionId();
+    const targetFileId = codeEditorTarget === 'create' ? 'create' : 'detail';
+    const fallbackName = targetFileId === 'create'
+      ? (functionCreateDraft.name.trim() || 'new-cloud-function')
+      : (activeFunctionDetail?.name || 'cloud-function');
+    const fileName = `${fallbackName}.js`;
+
+    writeCodeWorkbenchPayload({
+      sessionId,
+      returnTo: `${location.pathname}${location.search}`,
+      title: targetFileId === 'create' ? '初始化函数代码工作台' : '云函数代码工作台',
+      context: 'cloud-function',
+      files: [{
+        id: targetFileId,
+        path: fileName,
+        code: value.code,
+        language: value.language || 'javascript',
+        editorTheme: value.editorTheme,
+      }],
+      activeFileId: targetFileId,
+    });
+    navigate(`/code-workbench?sid=${encodeURIComponent(sessionId)}`);
+  };
+
   const saveFunctionDraft = async (showSuccessMessage = true) => {
     if (!activeFunctionDetail?.id || !functionDraft || savingFunction) return null;
     setSavingFunction(true);
@@ -1446,7 +1518,9 @@ const DataCloudFunction: React.FC = () => {
 
       <CodeEditorDialog
         visible={codeEditorVisible}
+        title={codeEditorTarget === 'create' ? '初始化函数代码' : '云函数代码编辑'}
         value={codeEditorValue}
+        onOpenWorkbench={handleOpenFunctionWorkbench}
         onClose={() => setCodeEditorVisible(false)}
         onApply={({ code, editorTheme }) => {
           if (codeEditorTarget === 'create') {

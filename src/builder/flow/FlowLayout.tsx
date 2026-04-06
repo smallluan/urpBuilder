@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Button, Drawer, Input, InputNumber, Select, Switch, Textarea } from 'tdesign-react';
 import { ApiIcon, CodeIcon, UploadIcon } from 'tdesign-icons-react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import FlowBody from './FlowBody';
 import FlowAsideLeft from '../components/FlowAsideLeft';
 import CodeEditorDialog, { type CodeEditorValue } from '../components/CodeEditorDialog';
@@ -15,6 +16,12 @@ import {
   ERROR_OPTIONS,
   METHOD_OPTIONS,
 } from '../../constants/flowBuilder';
+import {
+  clearCodeWorkbenchResult,
+  createCodeWorkbenchSessionId,
+  readCodeWorkbenchResult,
+  writeCodeWorkbenchPayload,
+} from '../components/codeEditor/workbenchSession';
 import type {
   EventFilterFormState,
   LifecycleExposeNodeFormState,
@@ -26,6 +33,8 @@ import type {
 interface CodeNodeFormState extends CodeEditorValue {}
 
 const FlowLayout: React.FC = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
   const { useStore } = useBuilderContext();
   const { readOnly, readOnlyReason } = useBuilderAccess();
   const colorMode = useBuilderThemeStore((s) => s.colorMode);
@@ -64,6 +73,7 @@ const FlowLayout: React.FC = () => {
     return count;
   });
   const updateFlowNodeData = useStore((state) => state.updateFlowNodeData);
+  const flowNodes = useStore((state) => state.flowNodes);
   const nodeTypeLabelMap: Record<string, string> = {
     componentNode: '组件节点',
     eventFilterNode: '事件过滤节点',
@@ -544,6 +554,114 @@ const FlowLayout: React.FC = () => {
       }),
       '更新生命周期暴露节点配置',
     );
+  };
+
+  useEffect(() => {
+    const navState = (location.state ?? {}) as {
+      codeWorkbenchSessionId?: string;
+      codeWorkbenchApplied?: boolean;
+    };
+    const sessionId = typeof navState.codeWorkbenchSessionId === 'string' ? navState.codeWorkbenchSessionId.trim() : '';
+    if (!sessionId || navState.codeWorkbenchApplied !== true) {
+      return;
+    }
+
+    const result = readCodeWorkbenchResult(sessionId);
+    if (!result || !Array.isArray(result.files)) {
+      navigate({ pathname: location.pathname, search: location.search }, { replace: true, state: null });
+      return;
+    }
+
+    const codeById = new Map(result.files.map((item) => [item.id, item]));
+    let activeUpdatedDraft: CodeNodeFormState | null = null;
+
+    flowNodes.forEach((node) => {
+      if (node.type !== 'codeNode') {
+        return;
+      }
+      const nextFile = codeById.get(node.id);
+      if (!nextFile) {
+        return;
+      }
+      updateFlowNodeData(
+        node.id,
+        (previous) => ({
+          ...previous,
+          code: nextFile.code,
+          editorTheme: nextFile.editorTheme || previous.editorTheme,
+        }),
+        '应用工作台代码改动',
+      );
+
+      if (activeFlowNode?.id === node.id && codeDraft) {
+        activeUpdatedDraft = {
+          ...codeDraft,
+          code: nextFile.code,
+          editorTheme:
+            (nextFile.editorTheme === 'vscode-light' || nextFile.editorTheme === 'vscode-dark')
+              ? nextFile.editorTheme
+              : codeDraft.editorTheme,
+        };
+      }
+    });
+
+    if (activeUpdatedDraft) {
+      setCodeDraft(activeUpdatedDraft);
+    }
+
+    clearCodeWorkbenchResult(sessionId);
+    navigate({ pathname: location.pathname, search: location.search }, { replace: true, state: null });
+  }, [
+    activeFlowNode?.id,
+    codeDraft,
+    flowNodes,
+    location.pathname,
+    location.search,
+    location.state,
+    navigate,
+    updateFlowNodeData,
+  ]);
+
+  const handleOpenFlowWorkbench = (draftValue: Pick<CodeEditorValue, 'label' | 'language'> & {
+    code: string;
+    editorTheme: CodeEditorValue['editorTheme'];
+  }) => {
+    if (!activeFlowNode || activeFlowNode.type !== 'codeNode') {
+      return;
+    }
+
+    const sessionId = createCodeWorkbenchSessionId();
+    const returnTo = `${location.pathname}${location.search}`;
+    const files = flowNodes
+      .filter((node) => node.type === 'codeNode')
+      .map((node) => {
+        const data = (node.data ?? {}) as Record<string, unknown>;
+        const nodeLabel = String(data.label ?? '').trim();
+        const language = String(data.language ?? 'javascript').trim();
+        const normalizedLanguage = language || 'javascript';
+        const suffix = normalizedLanguage === 'typescript' ? 'ts' : normalizedLanguage === 'json' ? 'json' : 'js';
+        const editorTheme: 'vscode-light' | 'vscode-dark' =
+          String(data.editorTheme ?? codeMirrorDefaultTheme) === 'vscode-light'
+            ? 'vscode-light'
+            : 'vscode-dark';
+        return {
+          id: node.id,
+          path: nodeLabel || `code-${node.id}.${suffix}`,
+          code: node.id === activeFlowNode.id ? draftValue.code : String(data.code ?? ''),
+          language: normalizedLanguage,
+          editorTheme,
+        };
+      });
+
+    writeCodeWorkbenchPayload({
+      sessionId,
+      returnTo,
+      title: '流程图代码工作台',
+      context: 'flow',
+      files,
+      activeFileId: activeFlowNode.id,
+    });
+    navigate(`/code-workbench?sid=${encodeURIComponent(sessionId)}`);
   };
 
   return (
@@ -1282,6 +1400,7 @@ const FlowLayout: React.FC = () => {
 
         <CodeEditorDialog
           visible={codeEditorVisible && !!activeFlowNode && activeFlowNode.type === 'codeNode' && !!codeDraft}
+          title={codeDraft?.label ? `代码节点编辑 · ${codeDraft.label}` : '代码节点编辑'}
           value={
             codeDraft ?? {
               label: '代码节点',
@@ -1292,6 +1411,7 @@ const FlowLayout: React.FC = () => {
             }
           }
           onClose={() => setCodeEditorVisible(false)}
+          onOpenWorkbench={handleOpenFlowWorkbench}
           onApply={(nextCode) => {
             if (!codeDraft) {
               return;

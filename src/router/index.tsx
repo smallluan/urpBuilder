@@ -18,6 +18,7 @@ const CreateComponent = lazy(() => import('../pages/CreateComponent'));
 const CreatePage = lazy(() => import('../pages/CreatePage'));
 const ComponentVersionCatalog = lazy(() => import('../pages/ComponentVersionCatalog'));
 const PreviewEngine = lazy(() => import('../pages/PreviewEngine'));
+const CodeWorkbench = lazy(() => import('../pages/CodeWorkbench'));
 const Login = lazy(() => import('../pages/Login'));
 const Register = lazy(() => import('../pages/Register'));
 
@@ -98,6 +99,10 @@ export const router = createBrowserRouter([
   {
     path: '/preview-engine',
     element: <RequireAuth>{load(<PreviewEngine />)}</RequireAuth>,
+  },
+  {
+    path: '/code-workbench',
+    element: <RequireAuth>{load(<CodeWorkbench />)}</RequireAuth>,
   },
   {
     path: '/site-preview/*',

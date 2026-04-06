@@ -1,19 +1,15 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Button, Dialog, Select, Space } from 'tdesign-react';
-import CodeMirror from '@uiw/react-codemirror';
 import { undo, redo } from '@codemirror/commands';
-import { autocompletion, completeFromList } from '@codemirror/autocomplete';
-import { javascript, javascriptLanguage } from '@codemirror/lang-javascript';
-import { json } from '@codemirror/lang-json';
-import { css } from '@codemirror/lang-css';
-import { vscodeDark, vscodeLight } from '@uiw/codemirror-theme-vscode';
+import type { Completion } from '@codemirror/autocomplete';
 import type { Extension } from '@codemirror/state';
 import type { EditorView } from '@codemirror/view';
 import {
-	CODE_EDITOR_JS_GLOBAL_COMPLETIONS,
 	CODE_EDITOR_THEME_LABEL_MAP,
 	CODE_EDITOR_THEME_OPTIONS,
 } from '../../constants/codeEditor';
+import CodeMirrorEditor from './codeEditor/CodeMirrorEditor';
+import { buildCodeMirrorExtensions } from './codeEditor/buildCodeMirrorExtensions';
 
 export interface CodeEditorValue {
 	label: string;
@@ -26,6 +22,14 @@ export interface CodeEditorValue {
 interface CodeEditorDialogProps {
 	visible: boolean;
 	value: CodeEditorValue;
+	title?: string;
+	extraCompletions?: Completion[];
+	extraExtensions?: Extension[];
+	completionMode?: 'append' | 'replace';
+	onOpenWorkbench?: (payload: Pick<CodeEditorValue, 'label' | 'language'> & {
+		code: string;
+		editorTheme: CodeEditorValue['editorTheme'];
+	}) => void;
 	onClose: () => void;
 	onApply: (nextValue: Pick<CodeEditorValue, 'code' | 'editorTheme'>) => void;
 }
@@ -33,7 +37,17 @@ interface CodeEditorDialogProps {
 const MIN_FONT_SIZE = 12;
 const MAX_FONT_SIZE = 20;
 
-const CodeEditorDialog: React.FC<CodeEditorDialogProps> = ({ visible, value, onClose, onApply }) => {
+const CodeEditorDialog: React.FC<CodeEditorDialogProps> = ({
+	visible,
+	value,
+	title,
+	extraCompletions,
+	extraExtensions,
+	completionMode,
+	onOpenWorkbench,
+	onClose,
+	onApply,
+}) => {
 	const [draftCode, setDraftCode] = useState(value.code);
 	const [draftTheme, setDraftTheme] = useState<CodeEditorValue['editorTheme']>(value.editorTheme);
 	const [isFullscreen, setIsFullscreen] = useState(false);
@@ -55,31 +69,16 @@ const CodeEditorDialog: React.FC<CodeEditorDialogProps> = ({ visible, value, onC
 		[draftCode, draftTheme, value.code, value.editorTheme],
 	);
 
-	const editorExtensions = useMemo<Extension[]>(() => {
-		const lang = String(value.language || 'javascript').toLowerCase();
-
-		const jsCompletion = javascriptLanguage.data.of({
-			autocomplete: completeFromList(CODE_EDITOR_JS_GLOBAL_COMPLETIONS),
-		});
-
-		if (lang === 'typescript') {
-			return [javascript({ typescript: true }), jsCompletion, autocompletion({ activateOnTyping: true })];
-		}
-
-		if (lang === 'json') {
-			return [json(), autocompletion({ activateOnTyping: true })];
-		}
-
-		if (lang === 'css') {
-			return [css(), autocompletion({ activateOnTyping: true })];
-		}
-
-		return [javascript(), jsCompletion, autocompletion({ activateOnTyping: true })];
-	}, [value.language]);
-
-	const editorTheme = useMemo(() => {
-		return draftTheme === 'vscode-light' ? vscodeLight : vscodeDark;
-	}, [draftTheme]);
+	const editorExtensions = useMemo<Extension[]>(
+		() =>
+			buildCodeMirrorExtensions({
+				language: value.language,
+				extraCompletions,
+				extraExtensions,
+				completionMode,
+			}),
+		[completionMode, extraCompletions, extraExtensions, value.language],
+	);
 
 	const handleUndo = () => {
 		if (!editorViewRef.current) {
@@ -114,7 +113,7 @@ const CodeEditorDialog: React.FC<CodeEditorDialogProps> = ({ visible, value, onC
 	return (
 		<Dialog
 			visible={visible}
-			header="代码节点编辑"
+			header={title || '代码节点编辑'}
 			draggable
 			width={isFullscreen ? '96vw' : '880px'}
 			top={isFullscreen ? '2vh' : '64px'}
@@ -181,25 +180,37 @@ const CodeEditorDialog: React.FC<CodeEditorDialogProps> = ({ visible, value, onC
 							<Button size="small" variant="outline" onClick={() => setIsFullscreen((previous) => !previous)}>
 								{isFullscreen ? '退出全屏' : '全屏'}
 							</Button>
+							{onOpenWorkbench ? (
+								<Button
+									size="small"
+									variant="outline"
+									onClick={() =>
+										onOpenWorkbench({
+											label: value.label,
+											language: value.language,
+											code: draftCode,
+											editorTheme: draftTheme,
+										})
+									}
+								>
+									在工作台中打开
+								</Button>
+							) : null}
 						</Space>
 					</div>
 
 					<div className="code-editor-dialog__editor" style={{ fontSize }}>
-						<CodeMirror
+						<CodeMirrorEditor
 							value={draftCode}
 							height="100%"
-							theme={editorTheme}
+							editorTheme={draftTheme}
 							extensions={editorExtensions}
-							basicSetup={{
-								lineNumbers: true,
-								foldGutter: true,
-								highlightActiveLine: true,
-								autocompletion: true,
-							}}
+							fontSize={fontSize}
+							className="code-editor-shell"
 							onCreateEditor={(view) => {
 								editorViewRef.current = view;
 							}}
-							onChange={(nextValue) => setDraftCode(nextValue)}
+							onChange={setDraftCode}
 						/>
 					</div>
 				</div>

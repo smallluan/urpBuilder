@@ -1,8 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Button, Card, Drawer, Form, Input, InputNumber, MessagePlugin, Radio, Select, Space, Table, Tag, Textarea } from 'tdesign-react';
-import CodeMirror from '@uiw/react-codemirror';
-import { json } from '@codemirror/lang-json';
-import { vscodeLight } from '@uiw/codemirror-theme-vscode';
+import CodeMirrorEditor from '../../builder/components/codeEditor/CodeMirrorEditor';
+import { buildCodeMirrorExtensions } from '../../builder/components/codeEditor/buildCodeMirrorExtensions';
 import { useTeam } from '../../team/context';
 import WorkspaceModePanel from '../../components/WorkspaceModePanel';
 import {
@@ -92,6 +91,7 @@ const DataConstance: React.FC = () => {
   const ownerType = workspaceMode === 'team' ? 'team' : 'user';
   const scopeLabel = workspaceMode === 'team' ? `团队空间（${currentTeam?.name || currentTeamId}）` : '个人空间';
   const canQuery = ownerType === 'user' || Boolean(currentTeamId);
+  const jsonEditorExtensions = useMemo(() => buildCodeMirrorExtensions({ language: 'json' }), []);
 
   const loadData = useCallback(async (nextPage?: number, nextPageSize?: number) => {
     if (!canQuery) {
@@ -412,16 +412,11 @@ const DataConstance: React.FC = () => {
           {draft.valueType === 'object' || draft.valueType === 'array' ? (
             <Form.FormItem label="JSON 值" requiredMark>
               <div className="data-constance-page__json-editor">
-                <CodeMirror
+                <CodeMirrorEditor
                   value={draft.jsonValue}
                   height="260px"
-                  theme={vscodeLight}
-                  extensions={[json()]}
-                  basicSetup={{
-                    lineNumbers: true,
-                    foldGutter: true,
-                    highlightActiveLine: true,
-                  }}
+                  editorTheme="vscode-light"
+                  extensions={jsonEditorExtensions}
                   onChange={(value) => setDraft((previous) => ({ ...previous, jsonValue: value }))}
                 />
               </div>
