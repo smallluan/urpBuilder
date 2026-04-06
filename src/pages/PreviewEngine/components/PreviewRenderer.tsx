@@ -37,6 +37,11 @@ import {
   resolveExposedLifecycles,
 } from '../../../utils/customComponentRuntime';
 import { resolveSimulatorStyle } from '../../../builder/utils/simulatorStyle';
+import type { PreviewDataHub } from '../runtime/dataHub';
+
+const PreviewDataHubRefContext = React.createContext<React.RefObject<PreviewDataHub | null>>({ current: null });
+
+export { PreviewDataHubRefContext };
 
 interface PreviewRendererProps {
   node: UiTreeNode;
@@ -1337,6 +1342,7 @@ function PreviewCustomComponentRenderer({
   const [renderTree, setRenderTree] = React.useState<UiTreeNode | null>(null);
   const [loading, setLoading] = React.useState(false);
   const runtimeRef = React.useRef<PreviewFlowRuntime | null>(null);
+  const innerHubRef = React.useRef<PreviewDataHub | null>(null);
 
   const componentId = getNodeStringProp(node, '__componentId');
   const componentVersion = React.useMemo(() => {
@@ -1503,6 +1509,7 @@ function PreviewCustomComponentRenderer({
     }
 
     const hub = createPreviewDataHub(runtimeSeed.tree, { scopeId: 'root' });
+    innerHubRef.current = hub;
     const runtime = createPreviewFlowRuntime(runtimeSeed.flowNodes, runtimeSeed.flowEdges, hub);
     const unsubscribePatched = hub.subscribe('component:patched', () => {
       setRenderTree(hub.getTreeSnapshot());
@@ -1554,6 +1561,9 @@ function PreviewCustomComponentRenderer({
       if (runtimeRef.current === runtime) {
         runtimeRef.current = null;
       }
+      if (innerHubRef.current === hub) {
+        innerHubRef.current = null;
+      }
     };
   }, [node.key, onLifecycle, runtimeSeed]);
 
@@ -1601,7 +1611,9 @@ function PreviewCustomComponentRenderer({
   }
 
   return (
-    <PreviewRenderer key={renderTree.key} node={renderTree} onLifecycle={handleInnerLifecycle} />
+    <PreviewDataHubRefContext.Provider value={innerHubRef}>
+      <PreviewRenderer key={renderTree.key} node={renderTree} onLifecycle={handleInnerLifecycle} />
+    </PreviewDataHubRefContext.Provider>
   );
 }
 
@@ -1610,6 +1622,7 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) 
   const type = typeof node.type === 'string' ? node.type.trim() : node.type;
   const { Header, Content, Aside, Footer } = Layout;
   const { ListItem, ListItemMeta } = List;
+  const scopedHubRef = React.useContext(PreviewDataHubRefContext);
   if (isSlotNode(node)) {
     return null;
   }
@@ -1826,12 +1839,22 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) 
 
     setDrawerInnerVisible(nextVisible);
     lastDrawerVisiblePropRef.current = nextVisible;
-    window.dataHub?.applyComponentPatch(node.key, { visible: nextVisible });
-  }, [isDrawerNode, node.key]);
+    const hub = scopedHubRef.current;
+    if (hub) {
+      hub.applyComponentPatch(node.key, { visible: nextVisible });
+    } else {
+      window.dataHub?.applyComponentPatch(node.key, { visible: nextVisible });
+    }
+  }, [isDrawerNode, node.key, scopedHubRef]);
 
   const syncNodeValue = React.useCallback((nextValue: unknown) => {
-    window.dataHub?.applyComponentPatch(node.key, { value: nextValue });
-  }, [node.key]);
+    const hub = scopedHubRef.current;
+    if (hub) {
+      hub.applyComponentPatch(node.key, { value: nextValue });
+    } else {
+      window.dataHub?.applyComponentPatch(node.key, { value: nextValue });
+    }
+  }, [node.key, scopedHubRef]);
 
   if (visible === false && !isDrawerNode) {
     return null;

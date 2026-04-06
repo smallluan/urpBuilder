@@ -2,7 +2,7 @@ import React from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import type { Edge, Node } from '@xyflow/react';
 import cloneDeep from 'lodash/cloneDeep';
-import PreviewRenderer from './components/PreviewRenderer';
+import PreviewRenderer, { PreviewDataHubRefContext } from './components/PreviewRenderer';
 import { deserializePreviewSnapshot, type PreviewSnapshot } from './utils/snapshot';
 import { createPreviewDataHub, type DataHubRouterState, type PreviewDataHub } from './runtime/dataHub';
 import { createPreviewFlowRuntime, type PreviewFlowRuntime } from './runtime/flowRuntime';
@@ -472,7 +472,9 @@ const PreviewEngine: React.FC = () => {
               <div className="preview-route-status__desc">页面中暂无可渲染组件，请先在搭建器中添加内容。</div>
             </div>
           ) : (
-            <PreviewRenderer key={renderTree.key} node={renderTree} onLifecycle={handleLifecycle} />
+            <PreviewDataHubRefContext.Provider value={dataHubRef}>
+              <PreviewRenderer key={renderTree.key} node={renderTree} onLifecycle={handleLifecycle} />
+            </PreviewDataHubRefContext.Provider>
           )}
         </div>
         {debugEnabled && debugPaused && <DebugPauseOverlay />}
