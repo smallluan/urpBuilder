@@ -30,12 +30,40 @@ const FlowLayout: React.FC = () => {
   const { readOnly, readOnlyReason } = useBuilderAccess();
   const colorMode = useBuilderThemeStore((s) => s.colorMode);
   const codeMirrorDefaultTheme = colorMode === 'dark' ? 'vscode-dark' : 'vscode-light';
-  const flowNodes = useStore((state) => state.flowNodes);
-  const flowEdges = useStore((state) => state.flowEdges);
-  const flowActiveNodeId = useStore((state) => state.flowActiveNodeId);
+  const activeFlowNode = useStore((state) => {
+    const id = state.flowActiveNodeId;
+    if (!id) {
+      return null;
+    }
+    return state.flowNodes.find((item) => item.id === id) ?? null;
+  });
+  const inputEdgesCount = useStore((state) => {
+    const id = state.flowActiveNodeId;
+    if (!id) {
+      return 0;
+    }
+    let count = 0;
+    for (const edge of state.flowEdges) {
+      if (edge.target === id) {
+        count += 1;
+      }
+    }
+    return count;
+  });
+  const outputEdgesCount = useStore((state) => {
+    const id = state.flowActiveNodeId;
+    if (!id) {
+      return 0;
+    }
+    let count = 0;
+    for (const edge of state.flowEdges) {
+      if (edge.source === id) {
+        count += 1;
+      }
+    }
+    return count;
+  });
   const updateFlowNodeData = useStore((state) => state.updateFlowNodeData);
-
-  const activeFlowNode = flowNodes.find((item) => item.id === flowActiveNodeId) ?? null;
   const nodeTypeLabelMap: Record<string, string> = {
     componentNode: '组件节点',
     eventFilterNode: '事件过滤节点',
@@ -48,12 +76,6 @@ const FlowLayout: React.FC = () => {
   };
 
   const activeNodeData = (activeFlowNode?.data ?? {}) as Record<string, unknown>;
-  const inputEdgesCount = activeFlowNode
-    ? flowEdges.filter((edge) => edge.target === activeFlowNode.id).length
-    : 0;
-  const outputEdgesCount = activeFlowNode
-    ? flowEdges.filter((edge) => edge.source === activeFlowNode.id).length
-    : 0;
 
   const [networkDraft, setNetworkDraft] = useState<NetworkRequestFormState | null>(null);
   const [networkEditorVisible, setNetworkEditorVisible] = useState(false);

@@ -1,10 +1,12 @@
 import React from 'react';
 import { Handle, Position, type NodeProps } from '@xyflow/react';
+import { useFlowNodeChromeActions } from '../hooks/useFlowNodeChromeActions';
 import NodeActionButtons from './NodeActionButtons';
 import type { PropExposeNodeData } from '../../../types/flow';
 
 const PropExposeNode: React.FC<NodeProps> = ({ id, data, selected }) => {
   const nodeData = (data ?? {}) as PropExposeNodeData;
+  const chrome = useFlowNodeChromeActions(id, nodeData);
   const selectedPropKeys = Array.isArray(nodeData.selectedPropKeys) ? nodeData.selectedPropKeys : [];
   const selectedMappings = Array.isArray(nodeData.selectedMappings) ? nodeData.selectedMappings : [];
   const maxVisibleTags = 3;
@@ -57,9 +59,9 @@ const PropExposeNode: React.FC<NodeProps> = ({ id, data, selected }) => {
       <div className="flow-node-actions-row flow-node-actions-row--end">
         <NodeActionButtons
           suppress={Boolean(nodeData.__suppressFlowActions)}
-          onDelete={() => nodeData.onDeleteNode?.(id)}
-          onFlipHorizontal={() => nodeData.onFlipHorizontal?.(id)}
-          onFlipVertical={() => nodeData.onFlipVertical?.(id)}
+          onDelete={chrome.onDelete}
+          onFlipHorizontal={chrome.onFlipHorizontal}
+          onFlipVertical={chrome.onFlipVertical}
         />
       </div>
 

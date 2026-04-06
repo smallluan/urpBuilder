@@ -38,8 +38,15 @@ const FlowAsideLeft: React.FC = () => {
   const { useStore } = useBuilderContext();
   const { readOnly } = useBuilderAccess();
   const uiPageData = useStore((state) => state.uiPageData);
-  const flowNodes = useStore((state) => state.flowNodes);
   const flowActiveNodeId = useStore((state) => state.flowActiveNodeId);
+  const flowActiveStructureKey = useStore((state) => {
+    const id = state.flowActiveNodeId;
+    if (!id) {
+      return null as string | null;
+    }
+    const node = state.flowNodes.find((n) => n.id === id);
+    return node ? getFlowNodeStructureSourceKey(node) : null;
+  });
   const setFlowActiveNodeId = useStore((state) => state.setFlowActiveNodeId);
   const setFlowStructureTreeInstance = useStore((state) => state.setFlowStructureTreeInstance);
 
@@ -71,17 +78,10 @@ const FlowAsideLeft: React.FC = () => {
     }
   }, [uiPageData, virtualStructureRootKey]);
 
-  const flowTreeActivedKeys = useMemo(() => {
-    if (!flowActiveNodeId) {
-      return [] as string[];
-    }
-    const node = flowNodes.find((item) => item.id === flowActiveNodeId);
-    if (!node) {
-      return [];
-    }
-    const sk = getFlowNodeStructureSourceKey(node);
-    return sk ? [sk] : [];
-  }, [flowActiveNodeId, flowNodes]);
+  const flowTreeActivedKeys = useMemo(
+    () => (flowActiveStructureKey ? [flowActiveStructureKey] : ([] as string[])),
+    [flowActiveStructureKey],
+  );
 
   const closeContextMenu = () => {
     contextMenuAnchorRef.current = null;
@@ -193,7 +193,7 @@ const FlowAsideLeft: React.FC = () => {
       return;
     }
 
-    const flowNodeId = findFirstFlowNodeIdBySourceKey(flowNodes, key);
+    const flowNodeId = findFirstFlowNodeIdBySourceKey(useStore.getState().flowNodes, key);
     if (!flowNodeId) {
       void MessagePlugin.info('当前结构节点未在流程图中放置为组件/属性暴露节点');
       return;
@@ -280,7 +280,9 @@ const FlowAsideLeft: React.FC = () => {
         return;
       }
 
-      const node = flowActiveNodeId ? flowNodes.find((n) => n.id === flowActiveNodeId) : null;
+      const node = flowActiveNodeId
+        ? useStore.getState().flowNodes.find((n) => n.id === flowActiveNodeId)
+        : null;
       const sk = node ? getFlowNodeStructureSourceKey(node) : null;
       if (sk && sk !== uiPageData.key) {
         event.preventDefault();
@@ -291,7 +293,7 @@ const FlowAsideLeft: React.FC = () => {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [flowActiveNodeId, flowNodes, readOnly, uiPageData.key, virtualStructureRootKey]);
+  }, [flowActiveNodeId, readOnly, uiPageData.key, useStore, virtualStructureRootKey]);
 
   return (
     <aside className="aside-left">

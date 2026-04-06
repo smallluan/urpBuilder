@@ -6,6 +6,7 @@ import {
 	getSmoothStepPath,
 	type EdgeProps,
 } from '@xyflow/react';
+import { useFlowEdgeActions } from '../context/FlowEdgeActionsContext';
 
 export interface AnnotatedEdgeData {
 	annotation?: string;
@@ -30,6 +31,7 @@ const AnnotatedEdge: React.FC<EdgeProps> = ({
 	data,
 }) => {
 	const edgeData = (data ?? {}) as AnnotatedEdgeData;
+	const edgeActions = useFlowEdgeActions();
 
 	const [edgePath, labelX, labelY] = getSmoothStepPath({
 		sourceX,
@@ -63,18 +65,39 @@ const AnnotatedEdge: React.FC<EdgeProps> = ({
 									className="flow-edge-editor__input"
 									value={edgeData.editingValue ?? ''}
 									placeholder="输入连线注释"
-									onChange={(event) => edgeData.onChangeEditingValue?.(event.target.value)}
-									onBlur={() => edgeData.onCommitEdit?.()}
+									onChange={(event) => {
+										const v = event.target.value;
+										if (edgeActions) {
+											edgeActions.changeEditingValue(v);
+										} else {
+											edgeData.onChangeEditingValue?.(v);
+										}
+									}}
+									onBlur={() => {
+										if (edgeActions) {
+											edgeActions.commitEdit();
+										} else {
+											edgeData.onCommitEdit?.();
+										}
+									}}
 									onKeyDown={(event) => {
 										if (event.key === 'Enter') {
 											event.preventDefault();
-											edgeData.onCommitEdit?.();
+											if (edgeActions) {
+												edgeActions.commitEdit();
+											} else {
+												edgeData.onCommitEdit?.();
+											}
 											return;
 										}
 
 										if (event.key === 'Escape') {
 											event.preventDefault();
-											edgeData.onCancelEdit?.();
+											if (edgeActions) {
+												edgeActions.cancelEdit();
+											} else {
+												edgeData.onCancelEdit?.();
+											}
 										}
 									}}
 								/>
@@ -87,7 +110,11 @@ const AnnotatedEdge: React.FC<EdgeProps> = ({
 								onMouseDown={(event) => event.stopPropagation()}
 								onDoubleClick={(event) => {
 									event.stopPropagation();
-									edgeData.onStartEdit?.(id);
+									if (edgeActions) {
+										edgeActions.startEdit(id);
+									} else {
+										edgeData.onStartEdit?.(id);
+									}
 								}}
 							>
 								{annotation}

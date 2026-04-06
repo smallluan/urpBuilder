@@ -1,5 +1,5 @@
 import React from 'react';
-import { Hand, MousePointer2 } from 'lucide-react';
+import { Grid3x3, Hand, MousePointer2 } from 'lucide-react';
 import UnifiedBuilderTopbar, { TopbarGroup, TopbarIconButton } from '../../components/UnifiedBuilderTopbar';
 
 export type FlowCanvasTool = 'pan' | 'select';
@@ -8,9 +8,17 @@ interface FlowTopbarProps {
   readOnly: boolean;
   canvasTool: FlowCanvasTool;
   onCanvasToolChange: (tool: FlowCanvasTool) => void;
+  snapToGrid: boolean;
+  onSnapToGridChange: (value: boolean) => void;
 }
 
-const FlowTopbar: React.FC<FlowTopbarProps> = ({ readOnly, canvasTool, onCanvasToolChange }) => (
+const FlowTopbar: React.FC<FlowTopbarProps> = ({
+  readOnly,
+  canvasTool,
+  onCanvasToolChange,
+  snapToGrid,
+  onSnapToGridChange,
+}) => (
   <UnifiedBuilderTopbar
     className="flow-topbar"
     left={(
@@ -30,6 +38,18 @@ const FlowTopbar: React.FC<FlowTopbarProps> = ({ readOnly, canvasTool, onCanvasT
           active={canvasTool === 'select'}
           disabled={readOnly}
           onClick={() => onCanvasToolChange('select')}
+        />
+        <TopbarIconButton
+          tip={
+            snapToGrid
+              ? '已开启网格吸附（16px 步进），点击关闭'
+              : '开启网格吸附：拖放/移动节点对齐背景网格'
+          }
+          label="网格"
+          icon={<Grid3x3 size={16} strokeWidth={2} />}
+          active={snapToGrid}
+          disabled={readOnly}
+          onClick={() => onSnapToGridChange(!snapToGrid)}
         />
       </TopbarGroup>
     )}

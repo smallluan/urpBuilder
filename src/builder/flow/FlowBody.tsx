@@ -25,9 +25,12 @@ import {
 import '@xyflow/react/dist/style.css';
 import { flowNodeTypes } from './nodes';
 import AnnotatedEdge, { type AnnotatedEdgeData } from './edges/AnnotatedEdge';
+import { FlowNodeActionsProvider, type FlowNodeActionsValue } from './context/FlowNodeActionsContext';
+import { FlowEdgeActionsProvider, type FlowEdgeActionsValue } from './context/FlowEdgeActionsContext';
 import { useBuilderAccess, useBuilderContext } from '../context/BuilderContext';
 import { useBuilderThemeStore } from '../theme/builderThemeStore';
 import FlowTopbar, { type FlowCanvasTool } from './components/FlowTopbar';
+import { useFlowEditorPrefsStore } from './flowEditorPrefsStore';
 import { isEditableTarget } from '../hooks/useBuilderModeHotkeys';
 import { cloneFlowSubgraphWithNewIds } from './utils/cloneFlowSubgraphPaste';
 import type {
@@ -101,10 +104,36 @@ const flowEdgeTypes: EdgeTypes = {
   annotatedEdge: AnnotatedEdge,
 };
 
+/** 节点数超过此值时隐藏 MiniMap，降低大图固定开销 */
+const FLOW_MINIMAP_HIDE_AFTER_NODES = 100;
+/** 节点数超过此值时关闭选中节点抬升，减轻 z-index 重绘 */
+const FLOW_ELEVATE_ON_SELECT_MAX_NODES = 80;
+/** 拖拽位移超过此阈值（px）才触发 onNodesChange，减少轻微抖动写回 */
+const FLOW_NODE_DRAG_THRESHOLD_PX = 2;
+/** 与 <Background gap={16} /> 一致，便于对齐视觉网格 */
+const FLOW_SNAP_GRID: [number, number] = [16, 16];
+
+function snapFlowPosition(
+  pos: { x: number; y: number },
+  enabled: boolean,
+  grid: [number, number],
+): { x: number; y: number } {
+  if (!enabled) {
+    return { x: pos.x, y: pos.y };
+  }
+  const [gx, gy] = grid;
+  return {
+    x: Math.round(pos.x / gx) * gx,
+    y: Math.round(pos.y / gy) * gy,
+  };
+}
+
 const FlowCanvas: React.FC = () => {
   const { useStore } = useBuilderContext();
   const { readOnly } = useBuilderAccess();
   const colorMode = useBuilderThemeStore((s) => s.colorMode);
+  const flowSnapToGrid = useFlowEditorPrefsStore((s) => s.flowSnapToGrid);
+  const setFlowSnapToGrid = useFlowEditorPrefsStore((s) => s.setFlowSnapToGrid);
   const defaultEdgeColor = colorMode === 'dark' ? '#7a8799' : '#9aa5b5';
   const nodes = useStore((state) => state.flowNodes);
   const edges = useStore((state) => state.flowEdges);
@@ -241,10 +270,15 @@ const FlowCanvas: React.FC = () => {
   const createAnnotationNode = useCallback(
     (x: number, y: number, text = '') => {
       const nodeId = createFlowNodeId('annotation-node');
+      const snapped = snapFlowPosition(
+        { x, y },
+        useFlowEditorPrefsStore.getState().flowSnapToGrid,
+        FLOW_SNAP_GRID,
+      );
       const nextNode: Node = {
         id: nodeId,
         type: 'annotationNode',
-        position: { x, y },
+        position: snapped,
         connectable: false,
         data: {
           text,
@@ -327,6 +361,7 @@ const FlowCanvas: React.FC = () => {
     return edgesForCanvas.map((edge) => {
       const edgeData = (edge.data ?? {}) as Record<string, unknown>;
       const annotation = typeof edgeData.annotation === 'string' ? edgeData.annotation : '';
+      const isEditing = editingEdgeId === edge.id;
 
       return {
         ...edge,
@@ -335,12 +370,8 @@ const FlowCanvas: React.FC = () => {
         data: {
           ...edgeData,
           annotation,
-          isEditing: editingEdgeId === edge.id,
-          editingValue: editingEdgeId === edge.id ? editingEdgeValue : annotation,
-          onStartEdit: handleStartEditEdge,
-          onChangeEditingValue: handleChangeEditingValue,
-          onCommitEdit: handleCommitEdgeAnnotation,
-          onCancelEdit: handleCancelEdgeEditing,
+          isEditing,
+          editingValue: isEditing ? editingEdgeValue : annotation,
         } as AnnotatedEdgeData,
         style: {
           ...edge.style,
@@ -353,16 +384,7 @@ const FlowCanvas: React.FC = () => {
         },
       } as Edge;
     });
-  }, [
-    editingEdgeId,
-    editingEdgeValue,
-    edgesForCanvas,
-    handleCancelEdgeEditing,
-    handleChangeEditingValue,
-    handleCommitEdgeAnnotation,
-    handleStartEditEdge,
-    defaultEdgeColor,
-  ]);
+  }, [editingEdgeId, editingEdgeValue, edgesForCanvas, defaultEdgeColor]);
 
   const handleAnnotationTextChange = useCallback(
     (nodeId: string, text: string) => {
@@ -508,22 +530,58 @@ const FlowCanvas: React.FC = () => {
     [applyFlowEdit, setFlowActiveNodeId],
   );
 
-  const renderedNodes = useMemo(() => {
-    return nodesForCanvas.map((node) => {
-      const nodeData = (node.data ?? {}) as AnnotationNodeData;
-      return {
-        ...node,
-        connectable: node.type === 'annotationNode' ? false : node.connectable,
-        data: {
-          ...nodeData,
-          onChange: node.type === 'annotationNode' ? handleAnnotationTextChange : nodeData.onChange,
-          onDeleteNode: handleDeleteFlowNode,
-          onFlipHorizontal: (nodeId: string) => handleFlipFlowNode(nodeId, 'x'),
-          onFlipVertical: (nodeId: string) => handleFlipFlowNode(nodeId, 'y'),
-        },
-      };
-    });
-  }, [nodesForCanvas, handleAnnotationTextChange, handleDeleteFlowNode, handleFlipFlowNode]);
+  const flowNodeActions = useMemo<FlowNodeActionsValue>(
+    () => ({
+      deleteNode: handleDeleteFlowNode,
+      flipHorizontal: (nodeId: string) => handleFlipFlowNode(nodeId, 'x'),
+      flipVertical: (nodeId: string) => handleFlipFlowNode(nodeId, 'y'),
+      setAnnotationText: handleAnnotationTextChange,
+    }),
+    [handleAnnotationTextChange, handleDeleteFlowNode, handleFlipFlowNode],
+  );
+
+  const flowEdgeActionsRef = useRef({
+    startEdit: handleStartEditEdge,
+    changeEditingValue: handleChangeEditingValue,
+    commitEdit: handleCommitEdgeAnnotation,
+    cancelEdit: handleCancelEdgeEditing,
+  });
+  flowEdgeActionsRef.current.startEdit = handleStartEditEdge;
+  flowEdgeActionsRef.current.changeEditingValue = handleChangeEditingValue;
+  flowEdgeActionsRef.current.commitEdit = handleCommitEdgeAnnotation;
+  flowEdgeActionsRef.current.cancelEdit = handleCancelEdgeEditing;
+
+  const flowEdgeActions = useMemo<FlowEdgeActionsValue>(
+    () => ({
+      startEdit: (edgeId: string) => {
+        flowEdgeActionsRef.current.startEdit(edgeId);
+      },
+      changeEditingValue: (value: string) => {
+        flowEdgeActionsRef.current.changeEditingValue(value);
+      },
+      commitEdit: () => {
+        flowEdgeActionsRef.current.commitEdit();
+      },
+      cancelEdit: () => {
+        flowEdgeActionsRef.current.cancelEdit();
+      },
+    }),
+    [],
+  );
+
+  const nodesForReactFlow = useMemo(
+    () =>
+      nodesForCanvas.map((node) =>
+        node.type === 'annotationNode' && node.connectable !== false
+          ? { ...node, connectable: false as const }
+          : node,
+      ),
+    [nodesForCanvas],
+  );
+
+  const flowNodeCount = nodesForCanvas.length;
+  const showFlowMiniMap = flowNodeCount <= FLOW_MINIMAP_HIDE_AFTER_NODES;
+  const elevateNodesOnSelect = flowNodeCount < FLOW_ELEVATE_ON_SELECT_MAX_NODES;
 
   const onNodesChange = useCallback(
     (changes: NodeChange<Node>[]) => {
@@ -817,10 +875,14 @@ const FlowCanvas: React.FC = () => {
         return;
       }
 
-      const position = screenToFlowPosition({
-        x: event.clientX,
-        y: event.clientY,
-      });
+      const position = snapFlowPosition(
+        screenToFlowPosition({
+          x: event.clientX,
+          y: event.clientY,
+        }),
+        useFlowEditorPrefsStore.getState().flowSnapToGrid,
+        FLOW_SNAP_GRID,
+      );
 
       if (payload.kind === 'component-node') {
         const nodeId = createFlowNodeId('component-node');
@@ -1169,10 +1231,17 @@ const FlowCanvas: React.FC = () => {
         return;
       }
       const anchor = anchorFlow ?? lastPointerFlowRef.current ?? undefined;
-      const { nodes: pastedNodes, edges: pastedEdges } = cloneFlowSubgraphWithNewIds(clip.nodes, clip.edges, {
+      const { nodes: pastedNodesRaw, edges: pastedEdges } = cloneFlowSubgraphWithNewIds(clip.nodes, clip.edges, {
         ...(anchor ? { anchorFlow: anchor } : { fallbackOffset: { x: 48, y: 48 } }),
         selectPasted: true,
       });
+      const snapPaste = useFlowEditorPrefsStore.getState().flowSnapToGrid;
+      const pastedNodes = snapPaste
+        ? pastedNodesRaw.map((n) => ({
+            ...n,
+            position: snapFlowPosition(n.position, true, FLOW_SNAP_GRID),
+          }))
+        : pastedNodesRaw;
       applyFlowEdit('粘贴流程子图', ({ nodes: previousNodes, edges: previousEdges }) => ({
         nodes: [...previousNodes.map((n) => ({ ...n, selected: false })), ...pastedNodes],
         edges: [...previousEdges, ...pastedEdges],
@@ -1229,7 +1298,13 @@ const FlowCanvas: React.FC = () => {
   return (
     <div className="flow-body-content">
       <div className="flow-body-topbar">
-        <FlowTopbar readOnly={readOnly} canvasTool={canvasTool} onCanvasToolChange={setCanvasTool} />
+        <FlowTopbar
+          readOnly={readOnly}
+          canvasTool={canvasTool}
+          onCanvasToolChange={setCanvasTool}
+          snapToGrid={flowSnapToGrid}
+          onSnapToGridChange={setFlowSnapToGrid}
+        />
       </div>
       <div
         ref={flowCanvasRef}
@@ -1240,9 +1315,11 @@ const FlowCanvas: React.FC = () => {
           lastPointerFlowRef.current = screenToFlowPosition({ x: e.clientX, y: e.clientY });
         }}
       >
+        <FlowNodeActionsProvider value={flowNodeActions}>
+        <FlowEdgeActionsProvider value={flowEdgeActions}>
         <ReactFlow
         className={colorMode === 'dark' ? 'dark' : undefined}
-        nodes={renderedNodes}
+        nodes={nodesForReactFlow}
         edges={renderedEdges}
         nodeTypes={flowNodeTypes}
         edgeTypes={flowEdgeTypes}
@@ -1250,6 +1327,11 @@ const FlowCanvas: React.FC = () => {
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
         isValidConnection={isValidConnection}
+        onlyRenderVisibleElements
+        elevateNodesOnSelect={elevateNodesOnSelect}
+        nodeDragThreshold={FLOW_NODE_DRAG_THRESHOLD_PX}
+        snapToGrid={!readOnly && flowSnapToGrid}
+        snapGrid={FLOW_SNAP_GRID}
         zoomOnDoubleClick={false}
         selectionOnDrag={!readOnly && canvasTool === 'select'}
         selectionMode={SelectionMode.Partial}
@@ -1301,14 +1383,18 @@ const FlowCanvas: React.FC = () => {
         }}
         fitView
         >
-          <MiniMap
-            zoomable
-            pannable
-            nodeColor={() => (colorMode === 'dark' ? '#4a5568' : '#c9d2e4')}
-          />
+          {showFlowMiniMap ? (
+            <MiniMap
+              zoomable
+              pannable
+              nodeColor={() => (colorMode === 'dark' ? '#4a5568' : '#c9d2e4')}
+            />
+          ) : null}
           <Controls />
           <Background gap={16} size={1} />
         </ReactFlow>
+        </FlowEdgeActionsProvider>
+        </FlowNodeActionsProvider>
 
         {annotationMenu.visible ? (
           <div className="tree-node-context-menu" style={{ left: annotationMenu.x, top: annotationMenu.y }}>

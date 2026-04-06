@@ -1,10 +1,14 @@
 import React, { useEffect, useRef, useState } from 'react';
 import type { NodeProps } from '@xyflow/react';
+import { useFlowNodeActions } from '../context/FlowNodeActionsContext';
+import { useFlowNodeChromeActions } from '../hooks/useFlowNodeChromeActions';
 import NodeActionButtons from './NodeActionButtons';
 import type { AnnotationNodeData } from '../../../types/flow';
 
 const AnnotationNode: React.FC<NodeProps> = ({ id, data, selected }) => {
 	const nodeData = (data ?? {}) as AnnotationNodeData;
+	const flowActions = useFlowNodeActions();
+	const chrome = useFlowNodeChromeActions(id, nodeData);
 	const [isExpanded, setIsExpanded] = useState(true);
 	const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
@@ -30,7 +34,14 @@ const AnnotationNode: React.FC<NodeProps> = ({ id, data, selected }) => {
 					onMouseDown={(event) => event.stopPropagation()}
 					onClick={(event) => event.stopPropagation()}
 					onBlur={() => setIsExpanded(false)}
-					onChange={(event) => nodeData.onChange?.(id, event.target.value)}
+					onChange={(event) => {
+						const v = event.target.value;
+						if (flowActions) {
+							flowActions.setAnnotationText(id, v);
+						} else {
+							nodeData.onChange?.(id, v);
+						}
+					}}
 				/>
 			) : (
 				<div
@@ -49,9 +60,9 @@ const AnnotationNode: React.FC<NodeProps> = ({ id, data, selected }) => {
 			<div className="flow-node-actions-row flow-node-actions-row--end">
 				<NodeActionButtons
 					suppress={Boolean(nodeData.__suppressFlowActions)}
-					onDelete={() => nodeData.onDeleteNode?.(id)}
-					onFlipHorizontal={() => nodeData.onFlipHorizontal?.(id)}
-					onFlipVertical={() => nodeData.onFlipVertical?.(id)}
+					onDelete={chrome.onDelete}
+					onFlipHorizontal={chrome.onFlipHorizontal}
+					onFlipVertical={chrome.onFlipVertical}
 				/>
 			</div>
 		</div>

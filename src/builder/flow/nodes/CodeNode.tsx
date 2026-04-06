@@ -1,10 +1,12 @@
 import React from 'react';
 import { Handle, Position, type NodeProps } from '@xyflow/react';
+import { useFlowNodeChromeActions } from '../hooks/useFlowNodeChromeActions';
 import NodeActionButtons from './NodeActionButtons';
 import type { CodeNodeData } from '../../../types/flow';
 
 const CodeNode: React.FC<NodeProps> = ({ id, data, selected }) => {
 	const nodeData = (data ?? {}) as CodeNodeData;
+	const chrome = useFlowNodeChromeActions(id, nodeData);
 	const language = nodeData.language || 'javascript';
 	const note = nodeData.note || '注释信息';
 	const targetPosition = nodeData.flipX ? Position.Right : Position.Left;
@@ -25,9 +27,9 @@ const CodeNode: React.FC<NodeProps> = ({ id, data, selected }) => {
 			<div className="flow-node-actions-row flow-node-actions-row--end">
 				<NodeActionButtons
 					suppress={Boolean(nodeData.__suppressFlowActions)}
-					onDelete={() => nodeData.onDeleteNode?.(id)}
-					onFlipHorizontal={() => nodeData.onFlipHorizontal?.(id)}
-					onFlipVertical={() => nodeData.onFlipVertical?.(id)}
+					onDelete={chrome.onDelete}
+					onFlipHorizontal={chrome.onFlipHorizontal}
+					onFlipVertical={chrome.onFlipVertical}
 				/>
 			</div>
 
