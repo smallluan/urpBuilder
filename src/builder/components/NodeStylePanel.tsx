@@ -1,5 +1,6 @@
 /**
- * @deprecated 样式侧栏请使用 NodeStyleTab；此处保留 NodeStyleCodePanel 别名供独立引用。
+ * @deprecated 请使用 NodeStyleTab；此处别名保持旧 import 可用。
  */
-export { NodeStyleCodePanel as NodeStylePanel, type NodeStyleCodePanelProps as NodeStylePanelProps } from './styleTab/NodeStyleCodePanel';
-export { default } from './styleTab/NodeStyleCodePanel';
+export { default } from './NodeStyleTab';
+export { default as NodeStylePanel } from './NodeStyleTab';
+export type { NodeStyleTabProps as NodeStylePanelProps } from './NodeStyleTab';
