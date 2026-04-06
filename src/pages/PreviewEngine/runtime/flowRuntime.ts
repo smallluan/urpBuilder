@@ -219,6 +219,8 @@ export class PreviewFlowRuntime {
 
   private readonly timerEnabledMap = new Map<string, boolean>();
 
+  private readonly codeFnCache = new Map<string, Function>();
+
   constructor(nodes: Node[], edges: Edge[], dataHub: PreviewDataHub) {
     this.dataHub = dataHub;
     this.nodeMap = new Map(nodes.map((node) => [node.id, node]));
@@ -258,6 +260,7 @@ export class PreviewFlowRuntime {
     });
     this.timerHandles.clear();
     this.timerEnabledMap.clear();
+    this.codeFnCache.clear();
   }
 
   emitLifecycle(componentKey: string, lifetime: string, payload?: unknown) {
@@ -519,7 +522,11 @@ export class PreviewFlowRuntime {
         ctx.request = input.request;
       }
 
-      const executor = new Function('dataHub', 'ctx', `'use strict';\nreturn (async () => {\n${code}\n})();`);
+      let executor = this.codeFnCache.get(node.id);
+      if (!executor) {
+        executor = new Function('dataHub', 'ctx', `'use strict';\nreturn (async () => {\n${code}\n})();`);
+        this.codeFnCache.set(node.id, executor);
+      }
       const result = await executor(this.dataHub.createCodeContext(), ctx);
 
       if (typeof result === 'boolean') {

@@ -105,6 +105,7 @@ export class InstrumentedFlowRuntime {
   private readonly componentNodeMap: Map<string, string[]>;
   private readonly timerHandles = new Map<string, number>();
   private readonly timerEnabledMap = new Map<string, boolean>();
+  private readonly codeFnCache = new Map<string, Function>();
   private readonly store: StoreApi<DebugState>;
   private destroyed = false;
   /** 串行化所有传播，避免 await 断点期间与其它 propagate 交错导致组件 patch 竞态 */
@@ -143,6 +144,7 @@ export class InstrumentedFlowRuntime {
     this.timerHandles.forEach((h) => window.clearInterval(h));
     this.timerHandles.clear();
     this.timerEnabledMap.clear();
+    this.codeFnCache.clear();
     const state = this.store.getState();
     if (state.paused && state._pauseResolver) {
       state._pauseResolver('resume');
@@ -403,7 +405,11 @@ export class InstrumentedFlowRuntime {
         setValueByPath(ctx, input.request.responsePath, input.request.fallbackData);
         ctx.request = input.request;
       }
-      const executor = new Function('dataHub', 'ctx', `'use strict';\nreturn (async () => {\n${code}\n})();`);
+      let executor = this.codeFnCache.get(node.id);
+      if (!executor) {
+        executor = new Function('dataHub', 'ctx', `'use strict';\nreturn (async () => {\n${code}\n})();`);
+        this.codeFnCache.set(node.id, executor);
+      }
       const result = await executor(this.dataHub.createCodeContext(), ctx);
 
       if (typeof result === 'boolean') {

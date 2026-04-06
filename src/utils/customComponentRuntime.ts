@@ -14,6 +14,10 @@ interface ComponentContract {
   exposedLifecycles?: Array<string | {
     lifetime?: string;
     key?: string;
+    sourceKey?: string;
+    sourceRef?: string;
+    sourceNodeId?: string;
+    sourceLabel?: string;
   }>;
 }
 
@@ -33,6 +37,8 @@ interface ExposedPropRefItem {
 interface ExposedLifecycleRefItem {
   lifetime: string;
   key?: string;
+  sourceKey?: string;
+  sourceRef?: string;
 }
 
 export interface ComponentSlotSchemaItem {
@@ -156,6 +162,36 @@ const resolveFlowNodeExposedLifecycles = (detail: ComponentDetail | null): Expos
     ? (detail?.template?.flowNodes as Array<Record<string, unknown>>)
     : [];
 
+  const flowEdges = Array.isArray(detail?.template?.flowEdges)
+    ? (detail?.template?.flowEdges as Array<Record<string, unknown>>)
+    : [];
+
+  const nodeById = new Map<string, Record<string, unknown>>();
+  flowNodes.forEach((n) => {
+    const id = String(n?.id ?? '').trim();
+    if (id) nodeById.set(id, n);
+  });
+
+  const traceSourceComponent = (startNodeId: string): { sourceKey?: string; sourceRef?: string } => {
+    const visited = new Set<string>();
+    let current = startNodeId;
+    while (current && !visited.has(current)) {
+      visited.add(current);
+      const n = nodeById.get(current);
+      if (!n) break;
+      if (String(n.type ?? '') === 'componentNode') {
+        const d = (n.data ?? {}) as Record<string, unknown>;
+        return {
+          sourceKey: typeof d.sourceKey === 'string' ? d.sourceKey.trim() : undefined,
+          sourceRef: typeof d.sourceRef === 'string' ? d.sourceRef.trim() : undefined,
+        };
+      }
+      const incomingEdge = flowEdges.find((e) => String(e?.target ?? '') === current);
+      current = incomingEdge ? String(incomingEdge.source ?? '') : '';
+    }
+    return {};
+  };
+
   const lifecycles: ExposedLifecycleRefItem[] = [];
   flowNodes.forEach((node) => {
     const nodeType = String(node?.type ?? '').trim();
@@ -164,6 +200,9 @@ const resolveFlowNodeExposedLifecycles = (detail: ComponentDetail | null): Expos
     }
 
     const data = (node?.data ?? {}) as Record<string, unknown>;
+    const nodeId = String(node?.id ?? '').trim();
+    const source = nodeId ? traceSourceComponent(nodeId) : {};
+
     const selectedMappings: ExposedLifecycleRefItem[] = Array.isArray(data.selectedMappings)
       ? data.selectedMappings.reduce<ExposedLifecycleRefItem[]>((acc, item) => {
           if (!item || typeof item !== 'object') {
@@ -180,6 +219,8 @@ const resolveFlowNodeExposedLifecycles = (detail: ComponentDetail | null): Expos
           acc.push({
             lifetime: sourceLifetime,
             key: alias || sourceLifetime,
+            sourceKey: source.sourceKey,
+            sourceRef: source.sourceRef,
           });
           return acc;
         }, [])
@@ -195,7 +236,12 @@ const resolveFlowNodeExposedLifecycles = (detail: ComponentDetail | null): Expos
       : [];
 
     selectedLifetimes.forEach((lifetime) => {
-      lifecycles.push({ lifetime, key: lifetime });
+      lifecycles.push({
+        lifetime,
+        key: lifetime,
+        sourceKey: source.sourceKey,
+        sourceRef: source.sourceRef,
+      });
     });
   });
 
@@ -368,6 +414,47 @@ export const resolveExposedPropSchemas = (detail: ComponentDetail | null): Expos
 export const resolveExposedLifecycleMappings = (detail: ComponentDetail | null): ExposedLifecycleRefItem[] => {
   const contract = resolveComponentContract(detail);
   const contractLifecycles = Array.isArray(contract?.exposedLifecycles) ? contract?.exposedLifecycles : [];
+  const flowNodes = Array.isArray(detail?.template?.flowNodes)
+    ? (detail?.template?.flowNodes as Array<Record<string, unknown>>)
+    : [];
+  const flowEdges = Array.isArray(detail?.template?.flowEdges)
+    ? (detail?.template?.flowEdges as Array<Record<string, unknown>>)
+    : [];
+
+  const nodeById = new Map<string, Record<string, unknown>>();
+  flowNodes.forEach((n) => {
+    const id = String(n?.id ?? '').trim();
+    if (id) {
+      nodeById.set(id, n);
+    }
+  });
+
+  const traceSourceByNodeId = (startNodeId: string): { sourceKey?: string; sourceRef?: string } => {
+    const visited = new Set<string>();
+    let current = String(startNodeId ?? '').trim();
+    while (current && !visited.has(current)) {
+      visited.add(current);
+      const n = nodeById.get(current);
+      if (!n) {
+        break;
+      }
+      if (String(n.type ?? '').trim() === 'componentNode') {
+        const d = (n.data ?? {}) as Record<string, unknown>;
+        const sourceKey = typeof d.sourceKey === 'string' ? d.sourceKey.trim() : '';
+        const sourceRef = typeof d.sourceRef === 'string' ? d.sourceRef.trim() : '';
+        return {
+          sourceKey: sourceKey || undefined,
+          sourceRef: sourceRef || undefined,
+        };
+      }
+
+      const incomingEdge = flowEdges.find((e) => String(e?.target ?? '').trim() === current);
+      current = incomingEdge ? String(incomingEdge.source ?? '').trim() : '';
+    }
+
+    return {};
+  };
+
   const lifecycles = contractLifecycles.length > 0
     ? contractLifecycles
     : resolveFlowNodeExposedLifecycles(detail);
@@ -392,10 +479,25 @@ export const resolveExposedLifecycleMappings = (detail: ComponentDetail | null):
       }
 
       const key = String(item?.key ?? lifetime).trim() || lifetime;
-      return {
-        lifetime,
-        key,
-      } as ExposedLifecycleRefItem;
+      const result: ExposedLifecycleRefItem = { lifetime, key };
+      if (item?.sourceKey) result.sourceKey = item.sourceKey;
+      if (item?.sourceRef) result.sourceRef = item.sourceRef;
+
+      if (!result.sourceKey && !result.sourceRef) {
+        const itemRecord = item as Record<string, unknown>;
+        const sourceNodeId = typeof itemRecord.sourceNodeId === 'string' ? itemRecord.sourceNodeId.trim() : '';
+        if (sourceNodeId) {
+          const traced = traceSourceByNodeId(sourceNodeId);
+          if (traced.sourceKey) {
+            result.sourceKey = traced.sourceKey;
+          }
+          if (traced.sourceRef) {
+            result.sourceRef = traced.sourceRef;
+          }
+        }
+      }
+
+      return result;
     })
     .filter((item): item is ExposedLifecycleRefItem => !!item);
 

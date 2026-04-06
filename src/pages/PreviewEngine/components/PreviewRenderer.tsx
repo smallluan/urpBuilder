@@ -1331,7 +1331,7 @@ function PreviewCustomComponentRenderer({
     flowNodes: Node[];
     flowEdges: Edge[];
     exposedLifecycles: string[];
-    lifecycleMappings: Array<{ lifetime: string; key?: string }>;
+    lifecycleMappings: Array<{ lifetime: string; key?: string; sourceKey?: string; sourceRef?: string }>;
     exposedPropRefs: Array<{
       sourceKey?: string;
       sourceRef?: string;
@@ -1577,14 +1577,24 @@ function PreviewCustomComponentRenderer({
       }
 
       const lifecycleMappings = runtimeSeed?.lifecycleMappings ?? [];
-      const mappedKeys = lifecycleMappings
-        .filter((item) => item.lifetime === emittedLifetime)
-        .map((item) => String(item.key || item.lifetime).trim())
-        .filter(Boolean);
+      const lifetimeMatched = lifecycleMappings.filter((item) => item.lifetime === emittedLifetime);
+      const sourceMatched = lifetimeMatched.filter((item) => {
+        if (!item.sourceKey && !item.sourceRef) return true;
+        if (item.sourceKey && item.sourceKey === componentKey) return true;
+        if (item.sourceRef && item.sourceRef === componentKey) return true;
+        return false;
+      });
 
-      const targetLifecycles = mappedKeys.length > 0
-        ? Array.from(new Set(mappedKeys))
-        : (exposedLifecycleSet.has(emittedLifetime) ? [emittedLifetime] : []);
+      let targetLifecycles: string[];
+      if (sourceMatched.length > 0) {
+        targetLifecycles = Array.from(new Set(
+          sourceMatched.map((item) => String(item.key || item.lifetime).trim()).filter(Boolean),
+        ));
+      } else if (lifetimeMatched.length > 0) {
+        targetLifecycles = [];
+      } else {
+        targetLifecycles = exposedLifecycleSet.has(emittedLifetime) ? [emittedLifetime] : [];
+      }
 
       targetLifecycles.forEach((targetLifetime) => {
         onLifecycle(node.key, targetLifetime, {
