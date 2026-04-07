@@ -1,6 +1,18 @@
   # 素材库 API 对接说明（个人与团队隔离）
 
+  > **注意**：本文档描述的**扁平素材 API**（`/v1/me/assets`、`/v1/teams/{teamId}/assets`）将逐步废弃，取而代之的是支持**文件夹层级**的新 API。
+  > 
+  > 新 API 文档：**[`backend-assets-nodes-api.md`](backend-assets-nodes-api.md)**（统一节点模型，`kind: folder | file`，支持懒加载、搜索、完整 CRUD）
+  > 
+  > 建议：新项目直接使用新 API；存量项目可并行使用旧 API（只读兼容期约 3 个月），尽快迁移至新 API。
+
   本文档与前端 `src/api/assets.ts`、`src/api/types.ts` 保持一致。**个人素材**与**团队素材**必须使用不同路径与存储边界，禁止混用或跨域访问。
+
+  ## 与后端新 API 的关系
+
+  - **旧 API**（本文档）：返回 `TeamAssetDTO[]`，无 `parentId`，所有素材平铺在一个列表中
+  - **新 API**（`backend-assets-nodes-api.md`）：返回 `MediaNodeDTO`，`kind` 区分文件夹/文件，支持 `parentId` 嵌套、懒加载、完整文件夹 CRUD
+  - **迁移**：现有素材在新 API 中对应 `kind: file`、`parentId: null` 的节点；旧 API 可内部调用新 API 并过滤 `parentId=null` 实现只读兼容
 
   ## 1. 通用约定
 

@@ -1,272 +1,477 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
+  Breadcrumb,
   Button,
   Dialog,
+  Dropdown,
   Empty,
   Input,
   Loading,
   MessagePlugin,
   Pagination,
-  Select,
-  Space,
+  Tree,
   Typography,
   Upload,
 } from 'tdesign-react';
-import { SearchIcon, UploadIcon } from 'tdesign-icons-react';
+import { FolderOpenIcon, SearchIcon, UploadIcon } from 'tdesign-icons-react';
+import { ChevronRight, FileImage, Folder, MoreHorizontal, Plus } from 'lucide-react';
 import {
-  deletePersonalAsset,
-  deleteTeamAsset,
-  patchPersonalAsset,
-  patchTeamAsset,
-  uploadPersonalAsset,
-  uploadTeamAsset,
-} from '../../api/assets';
-import type { MediaAssetScope, TeamAssetDTO, TeamAssetKind } from '../../api/types';
-import { useAssetsList } from '../../hooks/useAssetsList';
+  createFolder,
+  deleteNode,
+  patchNode,
+  uploadNodeFile,
+} from '../../api/assetNodes';
+import type { MediaAssetScope, MediaNodeDTO, MediaNodeSearchItem } from '../../api/types';
+import { useAssetNodeChildren } from '../../hooks/useAssetNodeChildren';
+import { useAssetSearch } from '../../hooks/useAssetSearch';
+import { useAssetTree, toTreeData } from '../../hooks/useAssetTree';
 import { useTeam } from '../../team/context';
-import TeamAssetGridCard from './TeamAssetGridCard';
+import { assetTypeLabel, formatBytes } from './format';
 import './style.less';
 
 const { Text } = Typography;
 
-function fileFromUploadSelectChange(
-  files: Array<File | { raw?: File }> | undefined,
-  extra?: { currentSelectedFiles?: Array<{ raw?: File }> },
-): File | undefined {
-  const first = files?.[0];
-  if (first instanceof File) {
-    return first;
-  }
-  const fromItem = (first as { raw?: File } | undefined)?.raw;
-  if (fromItem) {
-    return fromItem;
-  }
-  return extra?.currentSelectedFiles?.[0]?.raw;
+/**
+ * 获取节点的面包屑路径（递归构建）
+ */
+function getBreadcrumbPath(
+  nodeId: string | null,
+  nodeMap: Map<string, MediaNodeDTO>,
+): { id: string | null; name: string }[] {
+  const path: { id: string | null; name: string }[] = [{ id: null, name: '根目录' }];
+
+  if (!nodeId) return path;
+
+  const node = nodeMap.get(nodeId);
+  if (!node) return path;
+
+  // 递归查找父节点
+  const buildPath = (current: MediaNodeDTO | undefined): { id: string | null; name: string }[] => {
+    if (!current) return [];
+
+    if (current.parentId === null) {
+      return [{ id: current.id, name: current.name }];
+    }
+
+    const parent = nodeMap.get(current.parentId);
+    return [...buildPath(parent), { id: current.id, name: current.name }];
+  };
+
+  const parentPath = buildPath(node);
+  return [path[0], ...parentPath];
 }
 
-const TYPE_OPTIONS = [
-  { label: '全部类型', value: '' },
-  { label: '图片', value: 'image' },
-  { label: '图标', value: 'icon' },
-  { label: '其他', value: 'other' },
-];
-
 const DataAssets: React.FC = () => {
-  const { workspaceMode, currentTeamId, currentTeam } = useTeam();
-  /** 与侧栏空间一致：个人空间只管理个人素材，团队空间只管理当前团队素材，不在此页混切 */
+  const { workspaceMode, currentTeamId } = useTeam();
   const assetScope: MediaAssetScope = workspaceMode === 'team' ? 'team' : 'personal';
+  const teamId: string | undefined = assetScope === 'team' ? (currentTeamId || undefined) : undefined;
+
+  // 树状态
+  const tree = useAssetTree(assetScope, teamId);
+  const [nodeMap, setNodeMap] = useState<Map<string, MediaNodeDTO>>(new Map());
+
+  // 右侧当前选中的父节点（null = 根目录）
+  const [currentParentId, setCurrentParentId] = useState<string | null>(null);
+
+  // 右侧分页
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
-  const [keywordInput, setKeywordInput] = useState('');
-  const [keyword, setKeyword] = useState('');
-  const [typeFilter, setTypeFilter] = useState<TeamAssetKind | ''>('');
-  const [previewAsset, setPreviewAsset] = useState<TeamAssetDTO | null>(null);
-  const [renameAsset, setRenameAsset] = useState<TeamAssetDTO | null>(null);
-  const [renameDraft, setRenameDraft] = useState('');
-  const [deleteAsset, setDeleteAsset] = useState<TeamAssetDTO | null>(null);
-  const [uploadBusy, setUploadBusy] = useState(false);
 
-  const effectiveTeamId = assetScope === 'team' ? (currentTeamId ?? undefined) : undefined;
-
-  const { list, total, loading, refetch } = useAssetsList(
+  // 子节点数据
+  const { list, total, loading, refetch: refetchChildren } = useAssetNodeChildren(
     assetScope,
-    effectiveTeamId,
+    teamId,
+    currentParentId,
     page,
     pageSize,
-    keyword,
-    typeFilter,
   );
 
+  // 更新节点映射表（用于面包屑）
   useEffect(() => {
-    setPage(1);
-  }, [workspaceMode, currentTeamId]);
+    setNodeMap((prev) => {
+      const next = new Map(prev);
+      list.forEach((item) => next.set(item.id, item));
+      return next;
+    });
+  }, [list]);
 
-  const handleSearch = () => {
-    setKeyword(keywordInput.trim());
-    setPage(1);
-  };
+  // 搜索
+  const search = useAssetSearch(assetScope, teamId ?? undefined);
 
-  const handleUploadFiles = async (
-    files: Array<File | { raw?: File }>,
-    extra?: { currentSelectedFiles?: Array<{ raw?: File }> },
-  ) => {
-    const file = fileFromUploadSelectChange(files, extra);
-    if (!file) {
-      return;
-    }
-    if (assetScope === 'team' && !currentTeamId) {
-      MessagePlugin.warning('请先选择团队后再上传团队素材');
-      return;
-    }
-    const maxSize = 15 * 1024 * 1024;
-    if (file.size > maxSize) {
-      MessagePlugin.warning('单文件大小不能超过 15MB');
-      return;
-    }
-    setUploadBusy(true);
-    try {
-      if (assetScope === 'personal') {
-        await uploadPersonalAsset(file);
-      } else {
-        await uploadTeamAsset(currentTeamId as string, file);
+  // 对话框状态
+  const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
+  const [uploadTargetFolderId, setUploadTargetFolderId] = useState<string | null>(null);
+  const [uploadFiles, setUploadFiles] = useState<File[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const [uploadNames, setUploadNames] = useState<Record<string, string>>({});
+
+  const [createFolderOpen, setCreateFolderOpen] = useState(false);
+  const [createFolderParentId, setCreateFolderParentId] = useState<string | null>(null);
+  const [newFolderName, setNewFolderName] = useState('');
+  const [creatingFolder, setCreatingFolder] = useState(false);
+
+  const [renameNode, setRenameNode] = useState<MediaNodeDTO | null>(null);
+  const [renameDraft, setRenameDraft] = useState('');
+
+  const [deleteNodeState, setDeleteNodeState] = useState<MediaNodeDTO | null>(null);
+
+  const [moveNodeState, setMoveNodeState] = useState<MediaNodeDTO | null>(null);
+  // 移动功能占位（未来扩展）
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  void moveNodeState;
+
+  const [previewFile, setPreviewFile] = useState<MediaNodeDTO | null>(null);
+
+  // 刷新（回调引用稳定，不依赖 tree 对象）
+  const refreshAll = useCallback(() => {
+    tree.refreshRoot().then((rootList) => {
+      setNodeMap((prev) => {
+        const next = new Map(prev);
+        rootList.forEach((item) => next.set(item.id, item));
+        return next;
+      });
+    });
+    refetchChildren();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tree.refreshRoot, refetchChildren]);
+
+  // 初始化加载根节点（仅当 scope/teamId 变化时触发）
+  useEffect(() => {
+    if (assetScope === 'team' && !currentTeamId) return;
+    tree.refreshRoot().then((rootList) => {
+      setNodeMap((prev) => {
+        const next = new Map(prev);
+        rootList.forEach((item) => next.set(item.id, item));
+        return next;
+      });
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [assetScope, currentTeamId, tree.refreshRoot]);
+
+  // 面包屑路径
+  const breadcrumbPath = useMemo(() => {
+    return getBreadcrumbPath(currentParentId, nodeMap);
+  }, [currentParentId, nodeMap]);
+
+  // 树数据转换
+  const treeData = useMemo(() => {
+    return toTreeData(tree.rootChildren, tree.getChildren, tree.isExpanded, tree.isLoading);
+  }, [tree.rootChildren, tree.getChildren, tree.isExpanded, tree.isLoading]);
+
+  // 树节点展开
+  const handleTreeExpand = useCallback(
+    (node: any) => {
+      const data = node?.data as MediaNodeDTO | undefined;
+      if (data && data.kind === 'folder') {
+        tree.toggleExpand(data);
       }
-      MessagePlugin.success('上传成功');
-      await refetch();
-    } catch {
-      //
+    },
+    [tree.toggleExpand],
+  );
+
+  // 树节点点击（选中文件夹）
+  const handleTreeClick = useCallback(
+    (node: any) => {
+      const data = node?.data as MediaNodeDTO | undefined;
+      if (!data) return;
+
+      tree.selectNode(data.id);
+
+      if (data.kind === 'folder') {
+        setCurrentParentId(data.id);
+        setPage(1);
+        if (!tree.isExpanded(data.id)) {
+          tree.toggleExpand(data);
+        }
+      }
+    },
+    [tree.selectNode, tree.isExpanded, tree.toggleExpand],
+  );
+
+  // 面包屑跳转
+  const handleBreadcrumbClick = useCallback(
+    (id: string | null) => {
+      setCurrentParentId(id);
+      setPage(1);
+      tree.selectNode(id);
+    },
+    [tree.selectNode],
+  );
+
+  // 创建文件夹
+  const handleCreateFolder = async () => {
+    const name = newFolderName.trim();
+    if (!name) {
+      MessagePlugin.warning('请输入文件夹名称');
+      return;
+    }
+
+    setCreatingFolder(true);
+    try {
+      await createFolder(assetScope, teamId ?? undefined, { parentId: createFolderParentId, name });
+      MessagePlugin.success('文件夹创建成功');
+      setCreateFolderOpen(false);
+      setNewFolderName('');
+      refreshAll();
+    } catch (e: any) {
+      MessagePlugin.error(e?.message || '创建失败');
     } finally {
-      setUploadBusy(false);
+      setCreatingFolder(false);
     }
   };
 
-  const handleConfirmRename = async () => {
-    if (!renameAsset) {
-      return;
-    }
+  // 重命名
+  const handleRename = async () => {
+    if (!renameNode) return;
     const name = renameDraft.trim();
     if (!name) {
       MessagePlugin.warning('请输入名称');
       return;
     }
+
     try {
-      if (assetScope === 'personal') {
-        await patchPersonalAsset(renameAsset.id, { name });
-      } else if (currentTeamId) {
-        await patchTeamAsset(currentTeamId, renameAsset.id, { name });
-      } else {
-        return;
-      }
-      MessagePlugin.success('已更新');
-      setRenameAsset(null);
-      await refetch();
-    } catch {
-      //
+      await patchNode(assetScope, teamId ?? undefined, renameNode.id, { name });
+      MessagePlugin.success('重命名成功');
+      setRenameNode(null);
+      refreshAll();
+    } catch (e: any) {
+      MessagePlugin.error(e?.message || '重命名失败');
     }
   };
 
-  const handleConfirmDelete = async () => {
-    if (!deleteAsset) {
+  // 删除
+  const handleDelete = async () => {
+    if (!deleteNodeState) return;
+
+    try {
+      await deleteNode(assetScope, teamId || undefined, deleteNodeState.id);
+      MessagePlugin.success('删除成功');
+      setDeleteNodeState(null);
+
+      // 如果删除的是当前目录，回到父目录
+      if (deleteNodeState.id === currentParentId) {
+        const parent = nodeMap.get(deleteNodeState.id)?.parentId ?? null;
+        setCurrentParentId(parent);
+      }
+
+      refreshAll();
+    } catch (e: any) {
+      // 409 表示文件夹非空
+      if (e?.response?.status === 409) {
+        MessagePlugin.error('文件夹非空，请先删除内部文件');
+      } else {
+        MessagePlugin.error(e?.message || '删除失败');
+      }
+    }
+  };
+
+  // 上传文件
+  const handleUpload = async () => {
+    if (uploadFiles.length === 0) return;
+
+    if (assetScope === 'team' && !currentTeamId) {
+      MessagePlugin.warning('请先选择团队');
       return;
     }
+
+    setUploading(true);
     try {
-      if (assetScope === 'personal') {
-        await deletePersonalAsset(deleteAsset.id);
-      } else if (currentTeamId) {
-        await deleteTeamAsset(currentTeamId, deleteAsset.id);
-      } else {
-        return;
+      for (const file of uploadFiles) {
+        const maxSize = 15 * 1024 * 1024;
+        if (file.size > maxSize) {
+          MessagePlugin.warning(`「${file.name}」超过 15MB，跳过`);
+          continue;
+        }
+
+        const customName = uploadNames[file.name]?.trim();
+        await uploadNodeFile(assetScope, teamId || undefined, file, {
+          name: customName,
+          parentId: uploadTargetFolderId,
+        });
       }
-      MessagePlugin.success('已删除');
-      setDeleteAsset(null);
-      await refetch();
-    } catch {
-      //
+
+      MessagePlugin.success('上传成功');
+      setUploadDialogOpen(false);
+      setUploadFiles([]);
+      setUploadNames({});
+      refreshAll();
+    } catch (e: any) {
+      MessagePlugin.error(e?.message || '上传失败');
+    } finally {
+      setUploading(false);
     }
   };
 
-  const onPageChange = useCallback((next: number) => {
-    setPage(next);
-  }, []);
+  // 搜索定位
+  const handleSearchSelect = async (item: MediaNodeSearchItem) => {
+    // 展开路径
+    if (item.pathIds && item.pathIds.length > 0) {
+      await tree.expandPath(item.pathIds);
+    }
 
-  const headerDesc =
-    workspaceMode === 'personal'
-      ? '当前为个人空间：此处仅你的个人素材，与团队素材库完全隔离。'
-      : currentTeamId
-        ? `当前为团队空间：此处仅团队「${currentTeam?.name || currentTeamId}」的共享素材，与个人素材库隔离。`
-        : '当前为团队空间：请先在侧栏空间切换器中选择团队，再管理该团队素材。';
+    // 选中并跳转
+    if (item.kind === 'folder') {
+      setCurrentParentId(item.id);
+      tree.selectNode(item.id);
+    } else {
+      // 文件：跳转到父目录并预览
+      const parent = item.parentId;
+      setCurrentParentId(parent);
+      tree.selectNode(parent);
+      setPreviewFile(item as MediaNodeDTO);
+    }
 
-  const teamLocked = workspaceMode === 'team' && !currentTeamId;
+    search.clearSearch();
+  };
+
+  const teamLocked = assetScope === 'team' && !currentTeamId;
+
+  if (teamLocked) {
+    return (
+      <div className="data-assets-page">
+        <div className="data-assets-page__inner">
+          <Empty description="当前为团队素材视图，请先在侧栏空间切换器中选择团队。" style={{ marginTop: 48 }} />
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="data-assets-page">
-      <div className="data-assets-page__inner">
-        <header className="data-assets-page__header">
-          <h1 className="data-assets-page__title">素材管理</h1>
-          <p className="data-assets-page__desc">{headerDesc}</p>
-        </header>
+    <div className="data-assets-page data-assets-page--with-tree">
+      {/* 左侧树 */}
+      <aside className="data-assets-sidebar">
+        <div className="data-assets-sidebar__header">
+          <Input
+            placeholder="搜索素材..."
+            value={search.keyword}
+            onChange={search.setKeyword}
+            prefixIcon={<SearchIcon />}
+            clearable
+            onClear={search.clearSearch}
+          />
+        </div>
 
-        <div className="data-assets-toolbar">
-          <div className="data-assets-toolbar__grow">
-            <Space align="center" size={12} breakLine style={{ width: '100%' }}>
-              <Input
-                clearable
-                placeholder="搜索素材名称"
-                value={keywordInput}
-                onChange={setKeywordInput}
-                onEnter={handleSearch}
-                suffixIcon={<SearchIcon />}
-                style={{ maxWidth: 320 }}
-                disabled={teamLocked}
-              />
-              <Select
-                value={typeFilter}
-                onChange={(v) => {
-                  setTypeFilter((v ?? '') as TeamAssetKind | '');
-                  setPage(1);
-                }}
-                options={TYPE_OPTIONS}
-                style={{ width: 140 }}
-                placeholder="类型"
-                disabled={teamLocked}
-              />
-              <Button theme="primary" onClick={handleSearch} disabled={teamLocked}>
-                搜索
-              </Button>
-            </Space>
+        {/* 搜索结果 */}
+        {search.hasActiveSearch && (
+          <div className="data-assets-search-results">
+            <Loading loading={search.loading} size="small">
+              {search.list.length === 0 ? (
+                <Empty description="未找到结果" size="small" />
+              ) : (
+                <div className="data-assets-search-list">
+                  {search.list.map((item) => (
+                    <div
+                      key={item.id}
+                      className="data-assets-search-item"
+                      onClick={() => handleSearchSelect(item)}
+                    >
+                      <div className="data-assets-search-item__icon">
+                        {item.kind === 'folder' ? <Folder size={16} /> : <FileImage size={16} />}
+                      </div>
+                      <div className="data-assets-search-item__info">
+                        <div className="data-assets-search-item__name">{item.name}</div>
+                        <div className="data-assets-search-item__path">
+                          {item.pathNames?.join(' / ') || '根目录'}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </Loading>
           </div>
-          <div className="data-assets-upload">
-            <Upload
-              theme="custom"
-              accept="image/*,.svg,.ico"
-              multiple={false}
-              autoUpload={false}
-              disabled={uploadBusy || teamLocked}
-              showUploadProgress={false}
-              onSelectChange={handleUploadFiles}
-            >
-              <Button
-                loading={uploadBusy}
-                icon={<UploadIcon />}
-                theme="primary"
-                variant="outline"
-                disabled={teamLocked}
+        )}
+
+        {/* 树 */}
+        <div className="data-assets-tree-wrap">
+          <Tree
+            data={treeData}
+            activable
+            hover
+            expandOnClickNode={false}
+            line
+            icon
+            onExpand={handleTreeExpand}
+            onClick={handleTreeClick}
+            actived={tree.selectedNodeId ? [tree.selectedNodeId] : []}
+            empty="暂无文件夹"
+          />
+        </div>
+      </aside>
+
+      {/* 右侧内容区 */}
+      <main className="data-assets-main">
+        {/* 面包屑 + 工具栏 */}
+        <div className="data-assets-main__header">
+          <Breadcrumb separator={<ChevronRight size={14} />}>
+            {breadcrumbPath.map((item, index) => (
+              <Breadcrumb.BreadcrumbItem
+                key={item.id ?? 'root'}
+                onClick={() => index < breadcrumbPath.length - 1 && handleBreadcrumbClick(item.id)}
+                style={{ cursor: index < breadcrumbPath.length - 1 ? 'pointer' : 'default' }}
               >
-                上传素材
-              </Button>
-            </Upload>
-            <Text style={{ display: 'block', marginTop: 8, fontSize: 12, color: 'var(--td-text-color-secondary)' }}>
-              支持常见图片与 SVG，单文件建议不超过 15MB
-            </Text>
+                {index === 0 ? <FolderOpenIcon /> : item.name}
+              </Breadcrumb.BreadcrumbItem>
+            ))}
+          </Breadcrumb>
+
+          <div className="data-assets-main__toolbar">
+            <Button
+              variant="outline"
+              size="small"
+              onClick={() => {
+                setCreateFolderParentId(currentParentId);
+                setCreateFolderOpen(true);
+              }}
+            >
+              <Plus size={16} style={{ marginRight: 4 }} />
+              新建文件夹
+            </Button>
+
+            <Button
+              theme="primary"
+              size="small"
+              onClick={() => {
+                setUploadTargetFolderId(currentParentId);
+                setUploadDialogOpen(true);
+              }}
+            >
+              <UploadIcon style={{ marginRight: 4 }} />
+              上传素材
+            </Button>
           </div>
         </div>
 
-        {teamLocked ? (
-          <Empty description="当前为团队素材视图，请先在侧栏空间切换器中选择团队。" style={{ marginTop: 48 }} />
-        ) : (
-          <Loading loading={loading} showOverlay style={{ minHeight: 200 }}>
-            {list.length === 0 && !loading ? (
-              <Empty description="暂无素材，试试上传一张图片" />
-            ) : (
-              <div className="data-assets-grid">
-                {list.map((asset) => (
-                  <TeamAssetGridCard
-                    key={asset.id}
-                    asset={asset}
-                    mode="manage"
-                    onPreview={setPreviewAsset}
-                    onRename={(a) => {
-                      setRenameAsset(a);
-                      setRenameDraft(a.name);
-                    }}
-                    onDelete={setDeleteAsset}
-                  />
-                ))}
-              </div>
-            )}
-          </Loading>
-        )}
+        {/* 内容网格 */}
+        <Loading loading={loading} showOverlay style={{ minHeight: 200 }}>
+          {list.length === 0 && !loading ? (
+            <Empty description="暂无内容，新建文件夹或上传素材" />
+          ) : (
+            <div className="data-assets-grid data-assets-grid--mixed">
+              {list.map((node) => (
+                <NodeCard
+                  key={node.id}
+                  node={node}
+                  onOpenFolder={(id) => {
+                    setCurrentParentId(id);
+                    setPage(1);
+                    tree.selectNode(id);
+                  }}
+                  onPreview={setPreviewFile}
+                  onRename={(n) => {
+                    setRenameNode(n);
+                    setRenameDraft(n.name);
+                  }}
+                  onDelete={setDeleteNodeState}
+                  onMove={setMoveNodeState}
+                />
+              ))}
+            </div>
+          )}
+        </Loading>
 
-        {!teamLocked && total > 0 ? (
+        {/* 分页 */}
+        {total > 0 && (
           <div className="data-assets-pagination">
             <Pagination
               total={total}
@@ -275,51 +480,229 @@ const DataAssets: React.FC = () => {
               pageSizeOptions={[12, 20, 40]}
               showPageSize
               showJumper
-              onCurrentChange={onPageChange}
+              onCurrentChange={setPage}
               onPageSizeChange={(nextSize) => {
                 setPage(1);
                 setPageSize(nextSize);
               }}
             />
           </div>
-        ) : null}
-      </div>
+        )}
+      </main>
 
+      {/* 上传对话框 */}
       <Dialog
-        visible={Boolean(previewAsset)}
-        header="预览"
-        placement="center"
-        width={900}
-        className="data-assets-preview-dialog"
-        onClose={() => setPreviewAsset(null)}
-        footer={false}
-        destroyOnClose
+        header="上传素材"
+        visible={uploadDialogOpen}
+        onClose={() => {
+          setUploadDialogOpen(false);
+          setUploadFiles([]);
+          setUploadNames({});
+        }}
+        confirmBtn={{
+          content: '开始上传',
+          theme: 'primary',
+          loading: uploading,
+          disabled: uploadFiles.length === 0 || uploading,
+        }}
+        cancelBtn="取消"
+        onConfirm={handleUpload}
+        width={560}
       >
-        {previewAsset ? (
-          <img src={previewAsset.url} alt={previewAsset.name} />
-        ) : null}
+        <div className="data-assets-upload-dialog">
+          <div className="data-assets-upload-dialog__target">
+            <Text>目标位置：</Text>
+            <Text strong>
+              {uploadTargetFolderId === null ? '根目录' : nodeMap.get(uploadTargetFolderId)?.name || '未知文件夹'}
+            </Text>
+          </div>
+
+          <Upload
+            theme="file"
+            multiple
+            autoUpload={false}
+            accept="image/*,.svg,.ico"
+            onSelectChange={(files) => {
+              const realFiles: File[] = [];
+              files?.forEach((f: any) => {
+                if (f instanceof File) {
+                  realFiles.push(f);
+                } else if (f?.raw instanceof File) {
+                  realFiles.push(f.raw);
+                }
+              });
+              setUploadFiles(realFiles);
+            }}
+          />
+
+          {uploadFiles.length > 0 && (
+            <div className="data-assets-upload-dialog__files">
+              <Text style={{ marginBottom: 8, display: 'block' }}>自定义文件名（可选）：</Text>
+              {uploadFiles.map((file) => (
+                <div key={file.name} className="data-assets-upload-file-item">
+                  <Text className="data-assets-upload-file-item__name">{file.name}</Text>
+                  <Input
+                    size="small"
+                    placeholder={`使用原名: ${file.name}`}
+                    value={uploadNames[file.name] || ''}
+                    onChange={(v) => setUploadNames((prev) => ({ ...prev, [file.name]: String(v ?? '') }))}
+                    style={{ flex: 1, maxWidth: 240 }}
+                  />
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </Dialog>
 
+      {/* 创建文件夹对话框 */}
       <Dialog
-        visible={Boolean(renameAsset)}
+        header="新建文件夹"
+        visible={createFolderOpen}
+        onClose={() => setCreateFolderOpen(false)}
+        onConfirm={handleCreateFolder}
+        confirmBtn={{ loading: creatingFolder }}
+      >
+        <div style={{ padding: '8px 0' }}>
+          <Text style={{ marginBottom: 12, display: 'block', color: 'var(--td-text-color-secondary)' }}>
+            在「{createFolderParentId === null ? '根目录' : nodeMap.get(createFolderParentId)?.name || '当前位置'}」下创建
+          </Text>
+          <Input
+            placeholder="文件夹名称"
+            value={newFolderName}
+            onChange={setNewFolderName}
+            onEnter={handleCreateFolder}
+          />
+        </div>
+      </Dialog>
+
+      {/* 重命名对话框 */}
+      <Dialog
         header="重命名"
-        onClose={() => setRenameAsset(null)}
-        onConfirm={handleConfirmRename}
+        visible={Boolean(renameNode)}
+        onClose={() => setRenameNode(null)}
+        onConfirm={handleRename}
       >
-        <Input value={renameDraft} onChange={setRenameDraft} placeholder="素材名称" />
+        <Input
+          placeholder="新名称"
+          value={renameDraft}
+          onChange={setRenameDraft}
+          onEnter={handleRename}
+        />
       </Dialog>
 
+      {/* 删除确认对话框 */}
       <Dialog
-        visible={Boolean(deleteAsset)}
-        header="删除素材"
+        header={`删除${deleteNodeState?.kind === 'folder' ? '文件夹' : '文件'}`}
+        visible={Boolean(deleteNodeState)}
+        onClose={() => setDeleteNodeState(null)}
+        onConfirm={handleDelete}
         confirmBtn={{ content: '删除', theme: 'danger' }}
-        onClose={() => setDeleteAsset(null)}
-        onConfirm={handleConfirmDelete}
       >
         <Text>
-          删除后，已引用该地址的页面可能无法显示图片。确定删除「{deleteAsset?.name ?? ''}」吗？
+          确定删除「{deleteNodeState?.name}」吗？
+          {deleteNodeState?.kind === 'folder' && '文件夹必须为空才能删除。'}
         </Text>
       </Dialog>
+
+      {/* 预览对话框 */}
+      <Dialog
+        header={previewFile?.name || '预览'}
+        visible={Boolean(previewFile)}
+        onClose={() => setPreviewFile(null)}
+        footer={false}
+        width={900}
+        className="data-assets-preview-dialog"
+      >
+        {previewFile?.url && <img src={previewFile.url} alt={previewFile.name} />}
+      </Dialog>
+    </div>
+  );
+};
+
+/**
+ * 节点卡片组件（文件夹或文件）
+ */
+interface NodeCardProps {
+  node: MediaNodeDTO;
+  onOpenFolder: (id: string) => void;
+  onPreview: (node: MediaNodeDTO) => void;
+  onRename: (node: MediaNodeDTO) => void;
+  onDelete: (node: MediaNodeDTO) => void;
+  onMove: (node: MediaNodeDTO) => void;
+}
+
+const NodeCard: React.FC<NodeCardProps> = ({ node, onOpenFolder, onPreview, onRename, onDelete, onMove }) => {
+  const isFolder = node.kind === 'folder';
+
+  const options = [
+    { content: '重命名', value: 'rename' },
+    { content: '移动到...', value: 'move' },
+    { content: '删除', value: 'delete', theme: 'error' as const },
+  ];
+
+  const handleClick = () => {
+    if (isFolder) {
+      onOpenFolder(node.id);
+    } else {
+      onPreview(node);
+    }
+  };
+
+  const handleOptionClick = (dropdownItem: { value?: string | number | Record<string, any> }) => {
+    const value = dropdownItem.value;
+    if (value === 'rename') onRename(node);
+    if (value === 'delete') onDelete(node);
+    if (value === 'move') onMove(node);
+  };
+
+  return (
+    <div className="data-assets-node-card" onClick={handleClick}>
+      <div className={`data-assets-node-card__thumb ${isFolder ? 'is-folder' : ''}`}>
+        {isFolder ? (
+          <Folder size={48} className="data-assets-node-card__folder-icon" />
+        ) : node.thumbnailUrl || node.url ? (
+          <img src={node.thumbnailUrl || node.url} alt={node.name} loading="lazy" />
+        ) : (
+          <FileImage size={48} className="data-assets-node-card__file-icon" />
+        )}
+
+        {/* 操作按钮 */}
+        <div className="data-assets-node-card__actions">
+          <Dropdown
+            trigger="click"
+            options={options}
+            onClick={handleOptionClick}
+            popupProps={{ zIndex: 5000 }}
+          >
+            <Button
+              size="small"
+              variant="text"
+              theme="default"
+              className="data-assets-node-card__menu-btn"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <MoreHorizontal size={16} />
+            </Button>
+          </Dropdown>
+        </div>
+      </div>
+
+      <div className="data-assets-node-card__meta">
+        <Text className="data-assets-node-card__name" ellipsis>
+          {node.name}
+        </Text>
+        <div className="data-assets-node-card__info">
+          {isFolder ? (
+            <span className="data-assets-node-card__badge">文件夹</span>
+          ) : (
+            <>
+              <span className="data-assets-node-card__type">{assetTypeLabel(node.type || 'other')}</span>
+              <span className="data-assets-node-card__size">{formatBytes(node.sizeBytes || 0)}</span>
+            </>
+          )}
+        </div>
+      </div>
     </div>
   );
 };

@@ -279,3 +279,77 @@ export interface TeamAssetPatchPayload {
   name?: string;
   type?: TeamAssetKind;
 }
+
+// ===================== 素材节点 API（文件夹 + 文件统一模型） =====================
+
+/** 节点类型 */
+export type MediaNodeKind = 'folder' | 'file';
+
+/** 素材节点归属 */
+export type MediaNodeScope = 'personal' | 'team';
+
+/** 素材节点 DTO（统一节点模型） */
+export interface MediaNodeDTO {
+  id: string;
+  kind: MediaNodeKind;
+  parentId: string | null;
+  name: string;
+  /** 文件夹特有 */
+  childCount?: number;
+  hasChildren?: boolean;
+  /** 文件特有 */
+  type?: TeamAssetKind;
+  mimeType?: string;
+  sizeBytes?: number;
+  url?: string;
+  thumbnailUrl?: string | null;
+  width?: number | null;
+  height?: number | null;
+  createdBy?: TeamAssetCreatorSummary | null;
+  createdAt: string;
+  updatedAt: string;
+  teamId?: string | null;
+}
+
+/** 分页结果 */
+export interface MediaNodeListResult {
+  list: MediaNodeDTO[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+/** 获取子节点参数 */
+export interface MediaNodeChildrenParams {
+  parentId?: string | null;
+  page?: number;
+  pageSize?: number;
+  keyword?: string;
+}
+
+/** 创建文件夹请求 */
+export interface MediaNodeCreateFolderPayload {
+  parentId?: string | null;
+  name: string;
+}
+
+/** 更新节点请求 */
+export interface MediaNodePatchPayload {
+  name?: string;
+  parentId?: string | null;
+  type?: TeamAssetKind;
+}
+
+/** 搜索结果项（含面包屑路径） */
+export interface MediaNodeSearchItem extends MediaNodeDTO {
+  pathIds: (string | null)[];
+  pathNames: string[];
+}
+
+/** 搜索结果分页 */
+export interface MediaNodeSearchResult {
+  list: MediaNodeSearchItem[];
+  total: number;
+  page: number;
+  pageSize: number;
+}

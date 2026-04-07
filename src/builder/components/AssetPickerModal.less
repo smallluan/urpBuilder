@@ -1,0 +1,189 @@
+.asset-picker-dialog {
+  .t-dialog__body {
+    padding: 0;
+    overflow: hidden;
+  }
+}
+
+.asset-picker-hint {
+  display: block;
+  padding: 12px 16px;
+  font-size: 12px;
+  color: var(--td-text-color-secondary);
+  background: var(--td-bg-color-secondarycontainer);
+  border-bottom: 1px solid var(--td-component-border);
+}
+
+// ===================== 左右布局 =====================
+.asset-picker-layout {
+  display: flex;
+  height: 600px;
+  overflow: hidden;
+}
+
+// ===================== 左侧树边栏 =====================
+.asset-picker-sidebar {
+  width: 240px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--td-component-border);
+  background: var(--td-bg-color-container);
+  overflow: hidden;
+}
+
+.asset-picker-sidebar__header {
+  padding: 12px;
+  border-bottom: 1px solid var(--td-component-border);
+  flex-shrink: 0;
+}
+
+.asset-picker-tree-wrap {
+  flex: 1;
+  overflow: auto;
+  padding: 8px 4px;
+
+  .t-tree__item {
+    white-space: nowrap;
+  }
+
+  .t-tree__label {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 13px;
+
+    &:hover {
+      background: var(--td-bg-color-secondarycontainer);
+    }
+  }
+
+  .t-tree__item--active > .t-tree__label {
+    background: var(--td-brand-color-light);
+    color: var(--td-brand-color);
+  }
+}
+
+// ===================== 搜索结果 =====================
+.asset-picker-search-results {
+  max-height: 200px;
+  overflow: auto;
+  border-bottom: 1px solid var(--td-component-border);
+  padding: 8px 0;
+  flex-shrink: 0;
+}
+
+.asset-picker-search-list {
+  padding: 0 8px;
+}
+
+.asset-picker-search-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+
+  &:hover {
+    background: var(--td-bg-color-secondarycontainer);
+  }
+}
+
+.asset-picker-search-item__icon {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--td-brand-color);
+  opacity: 0.8;
+}
+
+.asset-picker-search-item__info {
+  flex: 1;
+  min-width: 0;
+}
+
+.asset-picker-search-item__name {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--td-text-color-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.asset-picker-search-item__path {
+  font-size: 11px;
+  color: var(--td-text-color-secondary);
+  margin-top: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+// ===================== 右侧内容区 =====================
+.asset-picker-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 16px;
+  overflow: hidden;
+}
+
+.asset-picker-main__header {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+  flex-shrink: 0;
+
+  .t-breadcrumb {
+    font-size: 13px;
+  }
+}
+
+.asset-picker-quick-folders {
+  padding: 8px 12px;
+  background: var(--td-bg-color-secondarycontainer);
+  border-radius: 6px;
+  overflow: auto;
+}
+
+.asset-picker-grid {
+  flex: 1;
+  overflow: auto;
+  padding: 4px;
+}
+
+.asset-picker-pagination {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--td-component-border);
+}
+
+// ===================== 暗色模式 =====================
+:root[theme-mode='dark'] {
+  .asset-picker-sidebar {
+    background: var(--td-bg-color-container);
+  }
+
+  .asset-picker-tree-wrap .t-tree__label:hover {
+    background: var(--td-bg-color-secondarycontainer);
+  }
+
+  .asset-picker-search-item:hover {
+    background: var(--td-bg-color-secondarycontainer);
+  }
+
+  .asset-picker-quick-folders {
+    background: var(--td-bg-color-secondarycontainer);
+  }
+}

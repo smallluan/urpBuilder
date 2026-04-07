@@ -1,9 +1,347 @@
 .data-assets-page {
-  min-height: 100%;
-  background: var(--td-bg-color-page, #f5f5f5);
-  padding: 0 0 32px;
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  overflow: hidden;
 }
 
+// 带树的布局（左树右栏）
+.data-assets-page--with-tree {
+  display: flex;
+  gap: 0;
+}
+
+// ===================== 左侧树边栏 =====================
+.data-assets-sidebar {
+  width: 260px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--td-component-border);
+  background: var(--td-bg-color-container);
+  overflow: hidden;
+}
+
+.data-assets-sidebar__header {
+  padding: 12px;
+  border-bottom: 1px solid var(--td-component-border);
+  flex-shrink: 0;
+}
+
+.data-assets-tree-wrap {
+  flex: 1;
+  overflow: auto;
+  padding: 8px 4px;
+
+  // TDesign Tree 样式微调
+  .t-tree__item {
+    white-space: nowrap;
+  }
+
+  .t-tree__label {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+
+    &:hover {
+      background: var(--td-bg-color-secondarycontainer);
+    }
+  }
+
+  .t-tree__item--active > .t-tree__label {
+    background: var(--td-brand-color-light);
+    color: var(--td-brand-color);
+  }
+}
+
+// 搜索结果
+.data-assets-search-results {
+  max-height: 300px;
+  overflow: auto;
+  border-bottom: 1px solid var(--td-component-border);
+  padding: 8px 0;
+}
+
+.data-assets-search-list {
+  padding: 0 8px;
+}
+
+.data-assets-search-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+
+  &:hover {
+    background: var(--td-bg-color-secondarycontainer);
+  }
+}
+
+.data-assets-search-item__icon {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--td-text-color-secondary);
+}
+
+.data-assets-search-item__info {
+  flex: 1;
+  min-width: 0;
+}
+
+.data-assets-search-item__name {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--td-text-color-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.data-assets-search-item__path {
+  font-size: 11px;
+  color: var(--td-text-color-secondary);
+  margin-top: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+// ===================== 右侧内容区 =====================
+.data-assets-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 16px 20px;
+  overflow: hidden;
+}
+
+.data-assets-main__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+  flex-shrink: 0;
+
+  .t-breadcrumb {
+    flex: 1;
+    min-width: 0;
+    font-size: 13px;
+  }
+}
+
+.data-assets-main__toolbar {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+// ===================== 节点网格 =====================
+.data-assets-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 16px;
+  overflow: auto;
+  padding: 4px;
+}
+
+.data-assets-grid--mixed {
+  // 混合文件夹和文件
+}
+
+// 节点卡片（文件夹 + 文件）
+.data-assets-node-card {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--td-component-border);
+  border-radius: var(--td-radius-medium, 6px);
+  background: var(--td-bg-color-container);
+  overflow: hidden;
+  cursor: pointer;
+  transition:
+    box-shadow 0.15s ease,
+    border-color 0.15s ease;
+
+  &:hover {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    border-color: var(--td-brand-color);
+
+    .data-assets-node-card__actions {
+      opacity: 1;
+    }
+  }
+}
+
+.data-assets-node-card__thumb {
+  position: relative;
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--td-bg-color-secondarycontainer);
+  overflow: hidden;
+
+  &.is-folder {
+    background: color-mix(in srgb, var(--td-brand-color-light) 30%, var(--td-bg-color-secondarycontainer));
+  }
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+}
+
+.data-assets-node-card__folder-icon {
+  color: var(--td-brand-color);
+  opacity: 0.8;
+}
+
+.data-assets-node-card__file-icon {
+  color: var(--td-text-color-secondary);
+  opacity: 0.6;
+}
+
+.data-assets-node-card__actions {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.data-assets-node-card__menu-btn {
+  background: rgba(255, 255, 255, 0.9) !important;
+  backdrop-filter: blur(4px);
+  border-radius: 4px;
+  padding: 4px;
+  min-width: auto;
+  height: auto;
+
+  &:hover {
+    background: var(--td-bg-color-container) !important;
+  }
+}
+
+.data-assets-node-card__meta {
+  padding: 10px 12px;
+  flex-shrink: 0;
+}
+
+.data-assets-node-card__name {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-bottom: 4px;
+}
+
+.data-assets-node-card__info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  color: var(--td-text-color-secondary);
+}
+
+.data-assets-node-card__badge {
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: var(--td-brand-color-light);
+  color: var(--td-brand-color);
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.data-assets-node-card__type {
+  // 类型标签
+}
+
+.data-assets-node-card__size {
+  font-size: 11px;
+}
+
+// ===================== 上传对话框 =====================
+.data-assets-upload-dialog {
+  padding: 8px 0;
+}
+
+.data-assets-upload-dialog__target {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px;
+  background: var(--td-bg-color-secondarycontainer);
+  border-radius: 6px;
+  margin-bottom: 16px;
+  font-size: 13px;
+}
+
+.data-assets-upload-dialog__files {
+  margin-top: 16px;
+}
+
+.data-assets-upload-file-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--td-component-border);
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.data-assets-upload-file-item__name {
+  flex-shrink: 0;
+  font-size: 13px;
+  color: var(--td-text-color-secondary);
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+// ===================== 分页 =====================
+.data-assets-pagination {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--td-component-border);
+  flex-shrink: 0;
+}
+
+// ===================== 预览对话框 =====================
+.data-assets-preview-dialog {
+  .t-dialog__body {
+    padding: 0;
+    text-align: center;
+    background: #0a0a0a;
+  }
+
+  img {
+    max-width: 100%;
+    max-height: 70vh;
+    vertical-align: middle;
+  }
+}
+
+// ===================== 旧版兼容（可能需要逐步清理）=====================
 .data-assets-page__inner {
   max-width: 1200px;
   margin: 0 auto;
@@ -21,13 +359,6 @@
   font-weight: 600;
   color: var(--td-text-color-primary);
   letter-spacing: -0.02em;
-}
-
-.data-assets-page__desc {
-  margin: 0;
-  font-size: 13px;
-  color: var(--td-text-color-secondary);
-  line-height: 1.5;
 }
 
 .data-assets-toolbar {
@@ -54,28 +385,9 @@
   background: var(--td-bg-color-container);
 }
 
-.data-assets-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 16px;
-}
-
-@media (max-width: 1199px) {
-  .data-assets-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-}
-
-@media (max-width: 899px) {
-  .data-assets-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-@media (max-width: 479px) {
-  .data-assets-grid {
-    grid-template-columns: 1fr;
-  }
+// ===================== 旧卡片兼容 =====================
+.data-assets-card-wrap {
+  position: relative;
 }
 
 .data-assets-card-wrap--draggable {
@@ -88,11 +400,6 @@
 
 .data-assets-card-wrap--pick {
   cursor: pointer;
-  border-radius: var(--td-radius-medium);
-}
-
-.data-assets-card-wrap--pick.data-assets-card-wrap--draggable {
-  cursor: grab;
 }
 
 .data-assets-card-wrap--pick:focus-visible {
@@ -100,13 +407,17 @@
   outline-offset: 2px;
 }
 
-.data-assets-card {
-  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+.data-assets-card-wrap--pick .data-assets-card__thumb-mask {
+  pointer-events: none;
 }
 
-.data-assets-card__size {
-  font-size: 11px;
-  color: var(--td-text-color-secondary);
+.data-assets-card-wrap--pick .data-assets-card__thumb-mask .t-button,
+.data-assets-card-wrap--pick .data-assets-card__thumb-mask button {
+  pointer-events: auto;
+}
+
+.data-assets-card {
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
 }
 
 .data-assets-card--selected {
@@ -143,16 +454,6 @@
   opacity: 1;
 }
 
-/* 选择模式：遮罩默认挡住点击，导致点不到外层选中；遮罩穿透，仅预览按钮可点 */
-.data-assets-card-wrap--pick .data-assets-card__thumb-mask {
-  pointer-events: none;
-}
-
-.data-assets-card-wrap--pick .data-assets-card__thumb-mask .t-button,
-.data-assets-card-wrap--pick .data-assets-card__thumb-mask button {
-  pointer-events: auto;
-}
-
 .data-assets-card__meta {
   padding: 10px 4px 4px;
 }
@@ -163,27 +464,12 @@
   font-weight: 500;
 }
 
-.data-assets-pagination {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: 24px;
-  padding-top: 16px;
-  border-top: 1px solid var(--td-component-border);
+.data-assets-card__size {
+  font-size: 11px;
+  color: var(--td-text-color-secondary);
 }
 
-.data-assets-preview-dialog .t-dialog__body {
-  padding: 0;
-  text-align: center;
-  background: #0a0a0a;
-}
-
-.data-assets-preview-dialog img {
-  max-width: 100%;
-  max-height: 70vh;
-  vertical-align: middle;
-}
-
-/* 素材选择弹窗：拖放快捷应用 */
+// ===================== 素材选择弹窗（旧）=====================
 .asset-picker-drop-zone {
   margin-top: 16px;
   padding: 16px;
@@ -205,4 +491,27 @@
   border-color: var(--td-brand-color);
   background: var(--td-brand-color-light, rgba(0, 82, 217, 0.08));
   color: var(--td-text-color-primary);
+}
+
+// ===================== 暗色模式适配 =====================
+:root[theme-mode='dark'] {
+  .data-assets-node-card__thumb {
+    background: color-mix(in srgb, var(--td-bg-color-secondarycontainer) 80%, #000);
+
+    &.is-folder {
+      background: color-mix(in srgb, var(--td-brand-color) 15%, var(--td-bg-color-secondarycontainer));
+    }
+  }
+
+  .data-assets-node-card__menu-btn {
+    background: rgba(30, 30, 30, 0.9) !important;
+  }
+
+  .data-assets-search-item:hover {
+    background: var(--td-bg-color-secondarycontainer);
+  }
+
+  .data-assets-tree-wrap .t-tree__label:hover {
+    background: var(--td-bg-color-secondarycontainer);
+  }
 }
