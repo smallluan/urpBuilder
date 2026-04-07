@@ -20,7 +20,6 @@ const ComponentVersionCatalog = lazy(() => import('../pages/ComponentVersionCata
 const PreviewEngine = lazy(() => import('../pages/PreviewEngine'));
 const CodeWorkbench = lazy(() => import('../pages/CodeWorkbench'));
 const Login = lazy(() => import('../pages/Login'));
-const Register = lazy(() => import('../pages/Register'));
 
 const routeSuspenseFallback = (
   <Loading fullscreen loading preventScrollThrough showOverlay />
@@ -77,12 +76,15 @@ export const router = createBrowserRouter([
   },
   // standalone pages (no layout)
   {
-    path: '/login',
     element: <PublicOnlyRoute>{load(<Login />)}</PublicOnlyRoute>,
-  },
-  {
-    path: '/register',
-    element: <PublicOnlyRoute>{load(<Register />)}</PublicOnlyRoute>,
+    children: [
+      {
+        path: '/login',
+      },
+      {
+        path: '/register',
+      },
+    ],
   },
   {
     path: '/create-component',
