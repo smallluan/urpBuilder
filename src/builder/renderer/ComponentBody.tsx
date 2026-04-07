@@ -1084,7 +1084,7 @@ const ComponentBody: React.FC = () => {
       >
         <DropArea
           className="drop-area-root"
-          style={resolveSimulatorStyle({ minHeight: '100%', height: 'auto', flex: '0 0 auto' })}
+          style={resolveSimulatorStyle({ minHeight: '100%', height: 'auto', flex: '1 0 auto' })}
           data={uiPageData}
           onDropData={handleDropData}
           selectable={false}

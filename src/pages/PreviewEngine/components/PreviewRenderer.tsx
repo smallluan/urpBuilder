@@ -1875,7 +1875,7 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) 
   if (!type) {
     return (
       <div style={mergeStyle()} className="preview-page-root" data-preview-page-root>
-        {renderChildren(node, onLifecycle)}
+        <div className="preview-page-root__body">{renderChildren(node, onLifecycle)}</div>
       </div>
     );
   }
@@ -1980,21 +1980,19 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) 
       const prefixIcon = renderNamedIcon(getStringProp(node, 'prefixIconName'));
       const suffixIcon = renderNamedIcon(getStringProp(node, 'suffixIconName'));
       return (
-        <div style={mergeStyle(isBlockButton ? { width: '100%' } : undefined)}>
-          <Button
-            theme={getStringProp(node, 'theme') as any}
-            shape={getStringProp(node, 'shape') as any}
-            size={getStringProp(node, 'size') as any}
-            variant={getStringProp(node, 'variant') as any}
-            icon={prefixIcon as any}
-            suffix={suffixIcon as any}
-            block={isBlockButton}
-            style={mergeStyle(isBlockButton ? { width: '100%', display: 'flex' } : undefined)}
-            onClick={() => emitInteractionLifecycle('onClick')}
-          >
-            {getTextProp(node, 'content')}
-          </Button>
-        </div>
+        <Button
+          theme={getStringProp(node, 'theme') as any}
+          shape={getStringProp(node, 'shape') as any}
+          size={getStringProp(node, 'size') as any}
+          variant={getStringProp(node, 'variant') as any}
+          icon={prefixIcon as any}
+          suffix={suffixIcon as any}
+          block={isBlockButton}
+          style={mergeStyle(isBlockButton ? { width: '100%', display: 'flex' } : undefined)}
+          onClick={() => emitInteractionLifecycle('onClick')}
+        >
+          {getTextProp(node, 'content')}
+        </Button>
       );
     }
     case 'Link':
@@ -2003,27 +2001,26 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) 
       const suffixIcon = renderNamedIcon(getStringProp(node, 'suffixIconName'));
       const linkHref = getStringProp(node, 'href') || undefined;
       return (
-        <div style={mergeStyle()}>
-          <Link
-            content={getTextProp(node, 'content')}
-            href={linkHref}
-            target={getStringProp(node, 'target') || undefined}
-            theme={getStringProp(node, 'theme') as any}
-            size={getStringProp(node, 'size') as any}
-            hover={getStringProp(node, 'hover') as any}
-            prefixIcon={prefixIcon as any}
-            suffixIcon={suffixIcon as any}
-            underline={getBooleanProp(node, 'underline')}
-            disabled={getBooleanProp(node, 'disabled')}
-            onClick={(event) => {
-              event.preventDefault();
-              emitInteractionLifecycle('onClick');
-              if (linkHref) {
-                navigatePreviewByHref(linkHref);
-              }
-            }}
-          />
-        </div>
+        <Link
+          content={getTextProp(node, 'content')}
+          href={linkHref}
+          target={getStringProp(node, 'target') || undefined}
+          theme={getStringProp(node, 'theme') as any}
+          size={getStringProp(node, 'size') as any}
+          hover={getStringProp(node, 'hover') as any}
+          prefixIcon={prefixIcon as any}
+          suffixIcon={suffixIcon as any}
+          underline={getBooleanProp(node, 'underline')}
+          disabled={getBooleanProp(node, 'disabled')}
+          style={mergeStyle()}
+          onClick={(event) => {
+            event.preventDefault();
+            emitInteractionLifecycle('onClick');
+            if (linkHref) {
+              navigatePreviewByHref(linkHref);
+            }
+          }}
+        />
       );
       }
     case 'BackTop':
@@ -2222,12 +2219,17 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) 
         size: getNumberProp(node, 'size') ?? 16,
         strokeWidth: getNumberProp(node, 'strokeWidth') ?? 2,
       });
+      const mergedIconStyle = mergeStyle();
 
-      return (
-        <div style={mergeStyle()}>
-          {iconNode}
-        </div>
-      );
+      if (!React.isValidElement(iconNode)) {
+        return iconNode;
+      }
+
+      const iconProps = (iconNode.props ?? {}) as { style?: React.CSSProperties };
+      return React.cloneElement(iconNode, {
+        ...iconProps,
+        style: { ...(iconProps.style ?? {}), ...(mergedIconStyle ?? {}) },
+      });
       }
     case 'Tabs': {
       const tabsList = getTabsListProp(node);
@@ -3308,7 +3310,7 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) 
     case 'root':
       return (
         <div style={mergeStyle()} className="preview-page-root" data-preview-page-root>
-          {renderChildren(node, onLifecycle)}
+          <div className="preview-page-root__body">{renderChildren(node, onLifecycle)}</div>
         </div>
       );
     default:

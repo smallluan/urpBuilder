@@ -892,6 +892,8 @@
         flex: 1 1 auto;
         min-height: 0;
         position: relative;
+        display: flex;
+        flex-direction: column;
         overflow: auto;
         overscroll-behavior: contain;
         contain: layout paint style;
@@ -899,6 +901,7 @@
 
       .simulator-scroll > .drop-area-root {
         position: relative;
+        flex: 1 0 auto;
         min-height: 100%;
         width: 100%;
       }
