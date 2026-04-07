@@ -1,0 +1,120 @@
+/* 挂载在 body，须顶层选择器；与 Drawer className 组合 */
+
+.dependency-manager-drawer-panel.t-drawer {
+  .t-drawer__content-wrapper {
+    display: flex;
+    flex-direction: column;
+    max-height: 100vh;
+    min-height: 0;
+  }
+
+  .t-drawer__body {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    padding: 8px 16px 16px;
+    box-sizing: border-box;
+  }
+}
+
+.dependency-manager-drawer-panel__header-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.dependency-manager-drawer-panel__header-title {
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--td-text-color-primary, rgba(0, 0, 0, 0.9));
+}
+
+.dependency-manager-drawer-panel__help-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--td-text-color-secondary, rgba(0, 0, 0, 0.55));
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.dependency-manager-drawer-panel__help-trigger:hover {
+  color: var(--td-brand-color, #0052d9);
+  background: var(--td-bg-color-container-hover, rgba(0, 0, 0, 0.04));
+}
+
+/* Popup 内容（可能挂到 body，单独顶层类） */
+.dependency-manager-drawer__help-popup-inner.t-popup__content {
+  padding: 12px 14px;
+  max-width: min(320px, 92vw);
+  box-sizing: border-box;
+}
+
+.dependency-manager-drawer__help {
+  margin: 0;
+}
+
+.dependency-manager-drawer__help-lead {
+  margin: 0 0 10px;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--td-text-color-primary, rgba(0, 0, 0, 0.9));
+}
+
+.dependency-manager-drawer__help-muted {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--td-text-color-placeholder, rgba(0, 0, 0, 0.4));
+}
+
+.dependency-manager-drawer {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  gap: 10px;
+}
+
+.dependency-manager-drawer__toolbar {
+  flex-shrink: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+/* 占满抽屉 body 内剩余高度，表格整体在区内滚动 */
+.dependency-manager-drawer__table-host {
+  flex: 1 1 0%;
+  min-height: 0;
+  min-width: 0;
+  overflow: auto;
+  .t-table {
+    height: 100% !important;
+    .t-table__content {
+      height: 100% !important;
+    }
+  }
+}
+
+.dependency-manager-drawer__table .t-table__header th {
+  font-weight: 600;
+  font-size: 12px;
+}
+
+.dependency-manager-drawer__actions {
+  max-width: 260px;
+}

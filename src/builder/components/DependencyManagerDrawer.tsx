@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Badge, Button, Drawer, MessagePlugin, Space, Table, Tag, Typography } from 'tdesign-react';
+import { Badge, Button, Drawer, MessagePlugin, Popup, Space, Table, Tag, Typography } from 'tdesign-react';
 import { RefreshIcon } from 'tdesign-icons-react';
-import { Layers } from 'lucide-react';
+import { HelpCircle, Layers } from 'lucide-react';
 import { TopbarIconButton } from './UnifiedBuilderTopbar';
 import { batchGetComponentMeta } from '../../api/componentTemplate';
 import type { ComponentMetaBatchResultItem } from '../../api/types';
@@ -9,6 +9,7 @@ import type { DirectCustomDependencyRow } from '../../utils/directCustomDependen
 import ComponentVersionHistoryDialog from './ComponentVersionHistoryDialog';
 import type { UiTreeNode } from '../store/types';
 import type { DependencyUpgradeItem } from './DependencyUpgradeIndicator';
+import './DependencyManagerDrawer.less';
 
 const { Text } = Typography;
 
@@ -46,6 +47,34 @@ const DependencyManagerDrawer: React.FC<DependencyManagerDrawerProps> = ({
   const [rowUpgradeBusy, setRowUpgradeBusy] = useState<string | null>(null);
 
   const pendingIds = new Set(pendingUpgrades.map((p) => p.componentId));
+
+  const helpPopup = (
+    <div className="dependency-manager-drawer__help">
+      <p className="dependency-manager-drawer__help-lead">
+        仅统计当前<strong>搭建模式</strong>下模板里的自定义组件引用；不包含流程图，也不包含子组件内部的间接依赖。
+      </p>
+      <p className="dependency-manager-drawer__help-muted">与顶栏依赖升级角标范围一致：仅 UI 树。</p>
+    </div>
+  );
+
+  const drawerHeader = (
+    <div className="dependency-manager-drawer-panel__header-row">
+      <span className="dependency-manager-drawer-panel__header-title">搭建依赖</span>
+      <Popup
+        trigger="click"
+        placement="bottom-left"
+        showArrow={false}
+        destroyOnClose={false}
+        content={helpPopup}
+        overlayInnerClassName="dependency-manager-drawer__help-popup-inner"
+        overlayStyle={{ zIndex: 5700 }}
+      >
+        <button type="button" className="dependency-manager-drawer-panel__help-trigger" aria-label="统计说明">
+          <HelpCircle size={16} strokeWidth={2} />
+        </button>
+      </Popup>
+    </div>
+  );
 
   const refreshMeta = useCallback(async () => {
     const rows = collectDependencyRows();
@@ -130,21 +159,18 @@ const DependencyManagerDrawer: React.FC<DependencyManagerDrawerProps> = ({
       )}
 
       <Drawer
+        className="dependency-manager-drawer-panel"
         visible={open}
-        header="搭建依赖（仅 UI 树）"
+        header={drawerHeader}
         placement="right"
         size="large"
         closeOnOverlayClick
         onClose={() => setOpen(false)}
         footer={false}
+        lazy={false}
+        zIndex={5600}
       >
         <div className="dependency-manager-drawer">
-          <div className="dependency-manager-drawer__intro">
-            <Text>
-              仅统计当前<strong>搭建模式</strong>下模板里的自定义组件引用，不包含流程图、也不包含子组件内部的间接依赖。
-            </Text>
-          </div>
-
           <div className="dependency-manager-drawer__toolbar">
             <Button size="small" variant="outline" loading={metaLoading} onClick={() => void refreshMeta()}>
               刷新元信息
@@ -173,105 +199,109 @@ const DependencyManagerDrawer: React.FC<DependencyManagerDrawerProps> = ({
             </Button>
           </div>
 
-          <Table
-            rowKey="componentId"
-            data={rows}
-            loading={metaLoading && rows.length === 0}
-            className="dependency-manager-drawer__table"
-            columns={[
-              {
-                colKey: 'displayName',
-                title: '名称',
-                width: 140,
-                ellipsis: true,
-              },
-              {
-                colKey: 'componentId',
-                title: '组件 ID',
-                width: 160,
-                ellipsis: true,
-              },
-              {
-                colKey: 'used',
-                title: '使用版本',
-                width: 108,
-                cell: ({ row }) => (
-                  <Space size={4}>
-                    <Text>
-                      {row.minUsedVersion > 0 ? `v${row.minUsedVersion}` : '未固定'}
-                      {row.versionMismatch ? '…' : ''}
-                    </Text>
-                    {row.versionMismatch ? (
-                      <Tag size="small" theme="warning">
-                        不一致
-                      </Tag>
-                    ) : null}
-                  </Space>
-                ),
-              },
-              {
-                colKey: 'latest',
-                title: '最新',
-                width: 88,
-                cell: ({ row }) => {
-                  const m = metaById.get(row.componentId);
-                  if (!m) {
-                    return '—';
-                  }
-                  if (m.deleted) {
-                    return <Tag theme="danger">已删除</Tag>;
-                  }
-                  if (!m.accessible) {
-                    return <Tag theme="warning">无权限</Tag>;
-                  }
-                  const lv = m.latestVersion;
-                  return typeof lv === 'number' && Number.isFinite(lv) ? `v${lv}` : '—';
+          <div className="dependency-manager-drawer__table-host">
+            <Table
+              rowKey="componentId"
+              data={rows}
+              loading={metaLoading && rows.length === 0}
+              className="dependency-manager-drawer__table"
+              size="small"
+              empty="暂无自定义组件依赖"
+              columns={[
+                {
+                  colKey: 'displayName',
+                  title: '名称',
+                  width: 140,
+                  ellipsis: true,
                 },
-              },
-              {
-                colKey: 'actions',
-                title: '操作',
-                width: 280,
-                cell: ({ row }) => (
-                  <Space size={6} breakLine className="dependency-manager-drawer__actions">
-                    {pendingIds.has(row.componentId) ? (
+                {
+                  colKey: 'componentId',
+                  title: '组件 ID',
+                  width: 160,
+                  ellipsis: true,
+                },
+                {
+                  colKey: 'used',
+                  title: '使用版本',
+                  width: 108,
+                  cell: ({ row }) => (
+                    <Space size={4}>
+                      <Text>
+                        {row.minUsedVersion > 0 ? `v${row.minUsedVersion}` : '未固定'}
+                        {row.versionMismatch ? '…' : ''}
+                      </Text>
+                      {row.versionMismatch ? (
+                        <Tag size="small" theme="warning">
+                          不一致
+                        </Tag>
+                      ) : null}
+                    </Space>
+                  ),
+                },
+                {
+                  colKey: 'latest',
+                  title: '最新',
+                  width: 88,
+                  cell: ({ row }) => {
+                    const m = metaById.get(row.componentId);
+                    if (!m) {
+                      return '—';
+                    }
+                    if (m.deleted) {
+                      return <Tag theme="danger">已删除</Tag>;
+                    }
+                    if (!m.accessible) {
+                      return <Tag theme="warning">无权限</Tag>;
+                    }
+                    const lv = m.latestVersion;
+                    return typeof lv === 'number' && Number.isFinite(lv) ? `v${lv}` : '—';
+                  },
+                },
+                {
+                  colKey: 'actions',
+                  title: '操作',
+                  width: 280,
+                  cell: ({ row }) => (
+                    <Space size={6} breakLine className="dependency-manager-drawer__actions">
+                      {pendingIds.has(row.componentId) ? (
+                        <Button
+                          size="small"
+                          theme="primary"
+                          variant="outline"
+                          loading={rowUpgradeBusy === row.componentId}
+                          disabled={readOnly || (rowUpgradeBusy !== null && rowUpgradeBusy !== row.componentId)}
+                          onClick={() => void handleUpgradeOne(row.componentId)}
+                        >
+                          升到最新
+                        </Button>
+                      ) : null}
                       <Button
                         size="small"
-                        theme="primary"
                         variant="outline"
-                        loading={rowUpgradeBusy === row.componentId}
-                        disabled={readOnly || (rowUpgradeBusy !== null && rowUpgradeBusy !== row.componentId)}
-                        onClick={() => void handleUpgradeOne(row.componentId)}
+                        theme="primary"
+                        disabled={readOnly}
+                        onClick={() => setHistoryFor(row)}
                       >
-                        升到最新
+                        版本时间线
                       </Button>
-                    ) : null}
-                    <Button
-                      size="small"
-                      variant="outline"
-                      theme="primary"
-                      disabled={readOnly}
-                      onClick={() => setHistoryFor(row)}
-                    >
-                      版本时间线
-                    </Button>
-                    <Button
-                      size="small"
-                      variant="text"
-                      disabled={readOnly}
-                      onClick={() => {
-                        onIgnoreDependency(row.componentId);
-                        MessagePlugin.info('已忽略该依赖的升级提示（仅本次编辑会话）');
-                        void refreshMeta();
-                      }}
-                    >
-                      忽略提示
-                    </Button>
-                  </Space>
-                ),
-              },
-            ]}
-          />
+                      <Button
+                        size="small"
+                        variant="text"
+                        disabled={readOnly}
+                        onClick={() => {
+                          onIgnoreDependency(row.componentId);
+                          MessagePlugin.info('已忽略该依赖的升级提示（仅本次编辑会话）');
+                          void refreshMeta();
+                        }}
+                      >
+                        忽略提示
+                      </Button>
+                    </Space>
+                  ),
+                },
+              ]}
+            />
+          </div>
         </div>
       </Drawer>
 
