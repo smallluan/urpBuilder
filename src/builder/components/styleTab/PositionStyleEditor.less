@@ -1,0 +1,79 @@
+.position-style-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 8px;
+  border: 1px solid var(--builder-border-muted, #e5e7eb);
+  background: color-mix(in srgb, var(--builder-surface, #fff) 96%, var(--td-bg-color-container-hover, #f3f3f3));
+}
+
+.position-style-editor__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.position-style-editor__title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--builder-text-title, #1f2937);
+}
+
+.position-style-editor__field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.position-style-editor__label {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--td-text-color-secondary, rgba(0,0,0,0.55));
+}
+
+/* Cross layout for TRBL */
+.position-style-editor__cross {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 8px;
+  border-radius: 8px;
+  border: 1px dashed var(--builder-border-muted, #e5e7eb);
+  background: color-mix(in srgb, var(--builder-surface, #fff) 80%, transparent);
+}
+
+.position-style-editor__cross-top,
+.position-style-editor__cross-bottom {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+}
+
+.position-style-editor__cross-top .t-input__wrap,
+.position-style-editor__cross-bottom .t-input__wrap {
+  max-width: 100px;
+}
+
+.position-style-editor__cross-mid {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.position-style-editor__cross-mid .t-input__wrap {
+  max-width: 100px;
+  flex: 1;
+}
+
+.position-style-editor__cross-center {
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  border: 2px solid var(--builder-border-muted, #e5e7eb);
+  background: var(--builder-surface, #fff);
+  flex-shrink: 0;
+}

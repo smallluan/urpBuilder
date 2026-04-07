@@ -1632,6 +1632,7 @@ const ComponentConfigPanel: React.FC = () => {
         </Tabs.TabPanel>
         <Tabs.TabPanel value="style" label="样式" destroyOnHide={false}>
           <NodeStyleTab
+            nodeType={activeNode.type}
             targetKey={activeNode.key}
             readOnly={readOnly}
             value={styleValue}

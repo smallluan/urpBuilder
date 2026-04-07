@@ -1,0 +1,113 @@
+.typography-style-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.typography-style-editor__card {
+  padding: 12px;
+  border-radius: 8px;
+  border: 1px solid var(--builder-border-muted, #e5e7eb);
+  background: color-mix(
+    in srgb,
+    var(--builder-surface, #fff) 96%,
+    var(--td-bg-color-container-hover, #f3f3f3)
+  );
+}
+
+.typography-style-editor__title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--builder-text-title, #1f2937);
+  margin-bottom: 10px;
+}
+
+.typography-style-editor__grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px 12px;
+}
+
+.typography-style-editor__field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.typography-style-editor__field--full {
+  grid-column: 1 / -1;
+}
+
+.typography-style-editor__label-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.typography-style-editor__label {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--td-text-color-secondary, rgba(0, 0, 0, 0.55));
+}
+
+.typography-style-editor__pill {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--td-brand-color-1, #f2f3ff);
+  color: var(--td-brand-color, #0052d9);
+}
+
+.typography-style-editor__color-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.typography-style-editor__color-input {
+  flex: 1;
+  min-width: 0;
+}
+
+.typography-style-editor__align-row {
+  display: flex;
+  flex-direction: row;
+  gap: 8px;
+  align-items: center;
+}
+
+.typography-style-editor__align-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border-radius: 6px;
+  border: 1px solid var(--builder-border-muted, #e5e7eb);
+  background: var(--builder-surface, #fff);
+  color: var(--td-text-color-secondary, rgba(0, 0, 0, 0.55));
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.typography-style-editor__align-btn:hover:not(:disabled) {
+  border-color: var(--td-brand-color-3, #b5c7ff);
+  color: var(--td-brand-color, #0052d9);
+}
+
+.typography-style-editor__align-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.typography-style-editor__align-btn--active {
+  background: var(--td-brand-color-1, #f2f3ff);
+  border-color: var(--td-brand-color, #0052d9);
+  color: var(--td-brand-color, #0052d9);
+}

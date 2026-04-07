@@ -1,0 +1,63 @@
+.background-style-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-height: 0;
+}
+
+.background-style-editor__intro { display: flex; flex-direction: column; gap: 4px; }
+
+.background-style-editor__title-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.background-style-editor__title { font-size: 13px; font-weight: 600; color: var(--builder-text-title, #1f2937); }
+
+.background-style-editor__pill {
+  flex-shrink: 0; font-size: 11px; padding: 2px 8px; border-radius: 999px;
+  background: var(--td-brand-color-1, #f2f3ff); color: var(--td-brand-color, #0052d9);
+}
+
+.background-style-editor__sub { margin: 0; font-size: 12px; line-height: 1.45; color: var(--builder-text-desc, #64748b); }
+.background-style-editor__sub--muted { color: var(--builder-text-muted, #94a3b8); }
+.background-style-editor__code { font-family: ui-monospace, monospace; font-size: 11px; }
+
+.background-style-editor__body {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.background-style-editor__preview-area {
+  flex-shrink: 0;
+}
+
+.background-style-editor__swatch-large {
+  width: 72px;
+  height: 72px;
+  border-radius: 10px;
+  border: 1px solid var(--builder-border-muted, #e5e7eb);
+  box-sizing: border-box;
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,0.04);
+  background-image: linear-gradient(45deg, #dcdcdf 25%, transparent 25%), linear-gradient(-45deg, #dcdcdf 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #dcdcdf 75%), linear-gradient(-45deg, transparent 75%, #dcdcdf 75%);
+  background-size: 8px 8px;
+  background-position: 0 0, 0 4px, 4px -4px, -4px 0;
+  position: relative;
+}
+
+.background-style-editor__swatch-large::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background-color: inherit;
+}
+
+.background-style-editor__fields {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.background-style-editor__field { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.background-style-editor__field--wide { /* no special styles needed */ }
+.background-style-editor__label { font-size: 12px; color: var(--builder-prop-label-color, #64748b); }
