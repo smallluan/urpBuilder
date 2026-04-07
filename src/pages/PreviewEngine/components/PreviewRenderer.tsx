@@ -1,5 +1,5 @@
 import React from 'react';
-import { Avatar, Button, Card, Col, Divider, Image, Row, Space, Switch, Swiper, Typography, Layout, Calendar, ColorPicker, TimePicker, TimeRangePicker, InputNumber, Slider, Steps, List, Link, Tabs, BackTop, Menu, Drawer, Progress, Upload, Input, Textarea, Table, Statistic, Collapse } from 'tdesign-react';
+import { Avatar, Button, Card, Col, Divider, Image, Row, Space, Switch, Swiper, Typography, Layout, Calendar, ColorPicker, TimePicker, TimeRangePicker, InputNumber, Slider, Steps, List, Link, Tabs, BackTop, Menu, Drawer, Popup, Progress, Upload, Input, Textarea, Table, Statistic, Collapse } from 'tdesign-react';
 import ReactECharts from 'echarts-for-react';
 import type { Edge, Node } from '@xyflow/react';
 import type { UiTreeNode } from '../../../builder/store/types';
@@ -1278,7 +1278,7 @@ const applyListBindingToNode = (node: UiTreeNode, item: ListRecord): UiTreeNode 
   return nextNode;
 };
 
-const getSlotChildren = (node: UiTreeNode, slotKey: 'header' | 'body') => {
+const getSlotChildren = (node: UiTreeNode, slotKey: string) => {
   const sourceChildren = node.children ?? [];
   const slotNode = sourceChildren.find((child) => getNodeSlotKey(child) === slotKey && isSlotNode(child));
   if (slotNode) {
@@ -2167,6 +2167,33 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) 
           >
             {renderChildList(node.children ?? [], onLifecycle)}
           </Drawer>
+        </div>
+      );
+    }
+    case 'Popup': {
+      const triggerChildren = getSlotChildren(node, 'trigger');
+      const contentChildren = getSlotChildren(node, 'content');
+      const popupContent = renderChildList(contentChildren, onLifecycle);
+      return (
+        <div style={mergeStyle()}>
+          <Popup
+            attach="body"
+            trigger={getStringProp(node, 'trigger') as any}
+            placement={getStringProp(node, 'placement') as any}
+            showArrow={getBooleanProp(node, 'showArrow') !== false}
+            destroyOnClose={getBooleanProp(node, 'destroyOnClose') === true}
+            disabled={getBooleanProp(node, 'disabled') === true}
+            delay={getNumberProp(node, 'delay') ?? undefined}
+            zIndex={getNumberProp(node, 'zIndex')}
+            hideEmptyPopup={getBooleanProp(node, 'hideEmptyPopup') !== false}
+            showInAttachedElement={getBooleanProp(node, 'showInAttachedElement') === true}
+            overlayClassName={getStringProp(node, 'overlayClassName') || undefined}
+            overlayInnerClassName={getStringProp(node, 'overlayInnerClassName') || undefined}
+            content={popupContent}
+            onVisibleChange={(nextVisible, context) => emitInteractionLifecycle('onVisibleChange', { visible: Boolean(nextVisible), context })}
+          >
+            {triggerChildren.length > 0 ? renderChildList(triggerChildren, onLifecycle) : <span />}
+          </Popup>
         </div>
       );
     }

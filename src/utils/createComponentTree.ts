@@ -250,6 +250,23 @@ const buildInitialChildren = (type: string, props?: Record<string, unknown>): Ui
     ];
   }
 
+  if (type === 'Popup') {
+    const contentSlotNode = createSlotNode('content', '浮层内容插槽');
+    const currentProps = (contentSlotNode.props ?? {}) as Record<string, unknown>;
+    contentSlotNode.props = {
+      ...currentProps,
+      visible: {
+        name: '激活时显示',
+        value: false,
+        editType: 'switch',
+      },
+    };
+    return [
+      createSlotNode('trigger', '触发器插槽'),
+      contentSlotNode,
+    ];
+  }
+
   if (type === 'List') {
     return [createListItemTemplateNode()];
   }

@@ -1,7 +1,8 @@
-import { Upload, Drawer } from 'tdesign-react';
+import { Upload, Drawer, Popup } from 'tdesign-react';
 import type { ComponentRegistry } from '../componentContext';
 import { ActivateWrapper } from '../componentHelpers';
 import DropArea from '../../../components/DropArea';
+import { getNodeSlotKey, isSlotNode } from '../../utils/slot';
 
 export function registerFeedbackComponents(registry: ComponentRegistry): void {
   registry.set('Upload', (ctx) => {
@@ -103,6 +104,60 @@ export function registerFeedbackComponents(registry: ComponentRegistry): void {
             />
           </Drawer>
         </div>
+      </ActivateWrapper>
+    );
+  });
+
+  registry.set('Popup', (ctx) => {
+    const {
+      data, onDropData, getStringProp, getBooleanProp, getNumberProp, mergeStyle,
+      handleActivateSelf, isNodeActive, getBuilderDrawerAttach,
+    } = ctx;
+    const slotNodes = (data?.children ?? []).filter((child) => isSlotNode(child));
+    const triggerSlotNode = slotNodes.find((child) => getNodeSlotKey(child) === 'trigger');
+    const contentSlotNode = slotNodes.find((child) => getNodeSlotKey(child) === 'content');
+    const popupVisible = ((contentSlotNode?.props?.visible as { value?: unknown } | undefined)?.value) === true;
+    const contentNode = contentSlotNode ? (
+      <DropArea
+        data={contentSlotNode}
+        onDropData={onDropData}
+        dropSlotKey="content"
+        emptyText="拖拽组件到浮层内容"
+        compactWhenFilled
+      />
+    ) : null;
+
+    return (
+      <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf} nodeKey={data?.key} active={isNodeActive}>
+        <Popup
+          attach={getBuilderDrawerAttach() as any}
+          trigger={getStringProp('trigger') as any}
+          placement={getStringProp('placement') as any}
+          showArrow={getBooleanProp('showArrow') !== false}
+          destroyOnClose={getBooleanProp('destroyOnClose') === true}
+          disabled={getBooleanProp('disabled') === true}
+          visible={popupVisible}
+          zIndex={getNumberProp('zIndex')}
+          hideEmptyPopup={getBooleanProp('hideEmptyPopup') !== false}
+          showInAttachedElement={getBooleanProp('showInAttachedElement') !== false}
+          overlayClassName={getStringProp('overlayClassName') || undefined}
+          overlayInnerClassName={getStringProp('overlayInnerClassName') || undefined}
+          delay={getNumberProp('delay') ?? undefined}
+          content={contentNode}
+          onVisibleChange={() => { /* 搭建态由 content 节点激活状态控制 */ }}
+        >
+          {triggerSlotNode ? (
+            <DropArea
+              data={triggerSlotNode}
+              onDropData={onDropData}
+              dropSlotKey="trigger"
+              emptyText="拖拽组件到触发器"
+              compactWhenFilled
+            />
+          ) : (
+            <span />
+          )}
+        </Popup>
       </ActivateWrapper>
     );
   });

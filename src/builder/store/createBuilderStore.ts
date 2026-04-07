@@ -28,9 +28,11 @@ import {
   toUiTreeNode,
   updateNodeByKey,
 } from '../../utils/createComponentTree';
+import componentCatalog from '../../config/componentCatalog';
 import { DEFAULT_SIMULATOR_CHROME_STYLE } from '../constants/simulatorChromeStyle';
 import { normalizeTabsList, syncTabsSlotNodes } from '../utils/tabs';
 import { normalizeCollapseList, syncCollapseSlotNodes } from '../utils/collapse';
+import { getNodeSlotKey, isSlotNode } from '../utils/slot';
 import {
   buildEntityPatch,
   cleanupNodePool,   // re-used via pushHistoryAction
@@ -76,6 +78,7 @@ const DEFAULT_PAGE_ROUTE_CONFIG: PageRouteConfig = {
 };
 
 const createEmptyHistory = () => ({ pointer: -1, actions: [] as UiHistoryAction[] });
+const POPUP_COMPONENT_SCHEMA = componentCatalog.find((item) => item.type === 'Popup');
 
 const createPageRouteRecord = (
   rootNode: UiTreeNode,
@@ -1306,7 +1309,7 @@ export const createBuilderStore = (options: CreateBuilderStoreOptions = {}) => {
 
         const siblingCount = targetParentNode.children?.length ?? 0;
         const requestedIndex = Number.isFinite(targetIndex) ? Math.trunc(targetIndex) : siblingCount;
-        let safeIndex = Math.max(0, Math.min(requestedIndex, siblingCount));
+        const safeIndex = Math.max(0, Math.min(requestedIndex, siblingCount));
         // 这块校验是不是多余了
         // if (removed.parentKey === parentKey && removed.index < safeIndex) {
         //   safeIndex -= 1;
@@ -1353,6 +1356,70 @@ export const createBuilderStore = (options: CreateBuilderStoreOptions = {}) => {
         return {
           uiPageData: nextTree,
           activeNode: resolveActiveNode(nextTree, state.activeNodeKey),
+          history: nextHistory,
+        };
+      }),
+
+    wrapNodeWithPopup: (nodeKey) =>
+      set((state) => {
+        const targetKey = String(nodeKey ?? '').trim();
+        if (!targetKey || targetKey === state.uiPageData.key) {
+          return state;
+        }
+
+        const currentNode = findNodeByKey(state.uiPageData, targetKey);
+        if (!currentNode || isSlotNode(currentNode) || currentNode.type === 'Popup') {
+          return state;
+        }
+
+        const removed = removeNodeByKey(state.uiPageData, targetKey);
+        if (!removed.removedNode || !removed.parentKey || removed.index < 0) {
+          return state;
+        }
+
+        const wrappedNode = cloneDeep(removed.removedNode);
+        const wrappedNodeProps = (wrappedNode.props ?? {}) as Record<string, unknown>;
+        if (Object.prototype.hasOwnProperty.call(wrappedNodeProps, '__slot')) {
+          const nextWrappedNodeProps = { ...wrappedNodeProps };
+          delete nextWrappedNodeProps.__slot;
+          wrappedNode.props = nextWrappedNodeProps;
+        }
+
+        const popupNode = POPUP_COMPONENT_SCHEMA
+          ? toUiTreeNode(cloneDeep(POPUP_COMPONENT_SCHEMA) as unknown as Record<string, unknown>)
+          : toUiTreeNode({
+            type: 'Popup',
+            name: '气泡浮层',
+          });
+        const popupSlotNodes = (popupNode.children ?? []).filter((child) => isSlotNode(child));
+        const triggerSlotNode = popupSlotNodes.find((child) => getNodeSlotKey(child) === 'trigger');
+        if (!triggerSlotNode) {
+          return state;
+        }
+        triggerSlotNode.children = [wrappedNode];
+
+        const nextTree = insertNodeAtParentIndex(removed.tree, removed.parentKey, removed.index, popupNode);
+        const beforeNodeRef = saveNodeToPool(removed.removedNode);
+        const popupNodeRef = saveNodeToPool(popupNode);
+        const action: UiHistoryAction = {
+          type: 'wrap-popup',
+          parentKey: removed.parentKey,
+          index: removed.index,
+          nodeKey: removed.removedNode.key,
+          popupNodeKey: popupNode.key,
+          nodeLabel: removed.removedNode.label,
+          popupNodeLabel: popupNode.label,
+          nodeType: removed.removedNode.type,
+          beforeNodeRef,
+          popupNodeRef,
+          timestamp: Date.now(),
+        };
+        const nextHistory = pushHistoryAction(state.history.actions, state.history.pointer, action);
+
+        return {
+          uiPageData: nextTree,
+          activeNodeKey: popupNode.key,
+          activeNode: resolveActiveNode(nextTree, popupNode.key),
           history: nextHistory,
         };
       }),

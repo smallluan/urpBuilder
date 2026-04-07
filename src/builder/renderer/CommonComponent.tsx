@@ -296,8 +296,9 @@ export default function CommonComponent(properties: CommonComponentProps) {
 
   const visible = getBooleanProp('visible');
   const isDrawerNode = normalizedType === 'Drawer';
+  const isPopupNode = normalizedType === 'Popup';
   // Drawer 需要允许在“不可见”时依旧保留节点渲染入口（由组件自身处理打开/关闭与挂载策略）。
-  if (visible === false && !isDrawerNode) return null;
+  if (visible === false && !isDrawerNode && !isPopupNode) return null;
 
   // ctx 是 renderer 的统一输入协议：把 node 数据、事件、编辑器能力、以及部分组件的预解析 props 打包给 registry renderer。
   const ctx: ComponentRenderContext = {

@@ -254,6 +254,12 @@ const getTabsPreferredSlotNode = (node: any) => {
   return matched ?? slotChildren[0];
 };
 
+const getPopupContentSlotNode = (node: any) => {
+  const slotChildren = (node.children ?? []).filter((child: any) => isSlotNode(child));
+  const contentSlot = slotChildren.find((child: any) => getNodeSlotKey(child) === 'content');
+  return contentSlot ?? slotChildren[0];
+};
+
 const getTreeNodeDropTarget = (node: any, root: any): TreeNodeDropTarget | null => {
   if (isSlotNode(node)) {
     return {
@@ -288,6 +294,18 @@ const getTreeNodeDropTarget = (node: any, root: any): TreeNodeDropTarget | null 
 
   if (node.type === 'Tabs') {
     const preferredSlotNode = getTabsPreferredSlotNode(node);
+    if (!preferredSlotNode) {
+      return null;
+    }
+
+    return {
+      parentKey: preferredSlotNode.key,
+      slotKey: getNodeSlotKey(preferredSlotNode),
+    };
+  }
+
+  if (node.type === 'Popup') {
+    const preferredSlotNode = getPopupContentSlotNode(node);
     if (!preferredSlotNode) {
       return null;
     }
@@ -333,6 +351,7 @@ const ComponentBody: React.FC = () => {
   const removeFromUiPageData = useStore((state) => state.removeFromUiPageData);
   const insertToUiPageData = useStore((state) => state.insertToUiPageData);
   const moveUiNode = useStore((state) => state.moveUiNode);
+  const wrapNodeWithPopup = useStore((state) => state.wrapNodeWithPopup);
   const flowNodes = useStore((state) => state.flowNodes);
   const flowEdges = useStore((state) => state.flowEdges);
   const recordFlowEditHistory = useStore((state) => state.recordFlowEditHistory);
@@ -466,8 +485,13 @@ const ComponentBody: React.FC = () => {
     }
 
     const applyViewportVariables = () => {
-      const nextWidth = host.clientWidth;
-      const nextHeight = host.clientHeight;
+      const computedStyle = window.getComputedStyle(host);
+      const paddingLeft = Number.parseFloat(computedStyle.paddingLeft) || 0;
+      const paddingRight = Number.parseFloat(computedStyle.paddingRight) || 0;
+      const paddingTop = Number.parseFloat(computedStyle.paddingTop) || 0;
+      const paddingBottom = Number.parseFloat(computedStyle.paddingBottom) || 0;
+      const nextWidth = Math.max(0, host.clientWidth - paddingLeft - paddingRight);
+      const nextHeight = Math.max(0, host.clientHeight - paddingTop - paddingBottom);
       if (nextWidth > 0) {
         host.style.setProperty('--builder-vw', `${nextWidth / 100}px`);
       }
@@ -842,6 +866,13 @@ const ComponentBody: React.FC = () => {
   const canDeleteContextMenuNode = canOperateNode(contextMenuNode);
   const canPasteToContextMenuNode = Boolean(contextMenuNode && treeClipboard && resolvePasteTarget(contextMenuNode));
   const canClearContextMenuNodeChildren = Boolean((contextMenuNode?.children ?? []).length > 0);
+  const canWrapWithPopup = Boolean(
+    contextMenuNode
+    && canOperateNode(contextMenuNode)
+    && !isSlotNode(contextMenuNode)
+    && contextMenuNode.type !== 'Popup',
+  );
+  const canShowMoveMenu = Boolean(contextMenuNode && contextMenuNodeSiblingInfo && canOperateNode(contextMenuNode));
   const canMoveToTop = Boolean(
     contextMenuNode && contextMenuNodeSiblingInfo && canOperateNode(contextMenuNode) && contextMenuNodeSiblingInfo.index > 0,
   );
@@ -1186,78 +1217,106 @@ const ComponentBody: React.FC = () => {
                 </Space>
               </Row>
             </div>
+            <div
+              style={getMenuItemStyle(canWrapWithPopup)}
+              onClick={() => {
+                if (!contextMenuNode || !canWrapWithPopup) {
+                  return;
+                }
+                wrapNodeWithPopup(contextMenuNode.key);
+                closeContextMenu();
+              }}
+            >
+              <Row className="tree-node-context-menu-item" justify='space-between' align='center'>
+                <Space style={{ alignItems: 'center' }} size={12} align='center'>
+                  <Icon size={16} name="layers"/>
+                  <Text>添加 Popup</Text>
+                </Space>
+              </Row>
+            </div>
             <Divider size={4}/>
-            <div
-              style={getMenuItemStyle(canMoveToTop)}
-              onClick={() => {
-                if (!contextMenuNode || !contextMenuNodeSiblingInfo || !canMoveToTop) {
-                  return;
-                }
-                moveUiNode(contextMenuNode.key, contextMenuNodeSiblingInfo.parentKey, 0);
-                setActiveNode(contextMenuNode.key);
-                closeContextMenu();
-              }}
-            >
-              <Row className="tree-node-context-menu-item" justify='space-between' align='center'>
+            <div className="tree-node-context-menu-submenu-wrap" style={getMenuItemStyle(canShowMoveMenu)}>
+              <Row className="tree-node-context-menu-item tree-node-context-menu-submenu-trigger" justify='space-between' align='center'>
                 <Space style={{ alignItems: 'center' }} size={12} align='center'>
-                  <Icon size={16} name="chevron-up-double"/>
-                  <Text>移到顶部</Text>
+                  <Icon size={16} name="move"/>
+                  <Text>移动元素</Text>
                 </Space>
+                <Icon size={14} name="chevron-right" />
               </Row>
-            </div>
-            <div
-              style={getMenuItemStyle(canMoveToBottom)}
-              onClick={() => {
-                if (!contextMenuNode || !contextMenuNodeSiblingInfo || !canMoveToBottom) {
-                  return;
-                }
-                moveUiNode(contextMenuNode.key, contextMenuNodeSiblingInfo.parentKey, contextMenuNodeSiblingInfo.siblingCount - 1);
-                setActiveNode(contextMenuNode.key);
-                closeContextMenu();
-              }}
-            >
-              <Row className="tree-node-context-menu-item" justify='space-between' align='center'>
-                <Space style={{ alignItems: 'center' }} size={12} align='center'>
-                  <Icon size={16} name="chevron-down-double"/>
-                  <Text>移到底部</Text>
-                </Space>
-              </Row>
-            </div>
-            <div
-              style={getMenuItemStyle(canMoveUp)}
-              onClick={() => {
-                if (!contextMenuNode || !contextMenuNodeSiblingInfo || !canMoveUp) {
-                  return;
-                }
-                moveUiNode(contextMenuNode.key, contextMenuNodeSiblingInfo.parentKey, contextMenuNodeSiblingInfo.index - 1);
-                setActiveNode(contextMenuNode.key);
-                closeContextMenu();
-              }}
-            >
-              <Row className="tree-node-context-menu-item" justify='space-between' align='center'>
-                <Space style={{ alignItems: 'center' }} size={12} align='center'>
-                  <Icon size={16} name="chevron-up"/>
-                  <Text>向上移动</Text>
-                </Space>
-              </Row>
-            </div>
-            <div
-              style={getMenuItemStyle(canMoveDown)}
-              onClick={() => {
-                if (!contextMenuNode || !contextMenuNodeSiblingInfo || !canMoveDown) {
-                  return;
-                }
-                moveUiNode(contextMenuNode.key, contextMenuNodeSiblingInfo.parentKey, contextMenuNodeSiblingInfo.index + 1);
-                setActiveNode(contextMenuNode.key);
-                closeContextMenu();
-              }}
-            >
-              <Row className="tree-node-context-menu-item" justify='space-between' align='center'>
-                <Space style={{ alignItems: 'center' }} size={12} align='center'>
-                  <Icon size={16} name="chevron-down"/>
-                  <Text>向下移动</Text>
-                </Space>
-              </Row>
+              <div className="tree-node-context-menu-submenu">
+                <div
+                  style={getMenuItemStyle(canMoveToTop)}
+                  onClick={() => {
+                    if (!contextMenuNode || !contextMenuNodeSiblingInfo || !canMoveToTop) {
+                      return;
+                    }
+                    moveUiNode(contextMenuNode.key, contextMenuNodeSiblingInfo.parentKey, 0);
+                    setActiveNode(contextMenuNode.key);
+                    closeContextMenu();
+                  }}
+                >
+                  <Row className="tree-node-context-menu-item" justify='space-between' align='center'>
+                    <Space style={{ alignItems: 'center' }} size={12} align='center'>
+                      <Icon size={16} name="chevron-up-double"/>
+                      <Text>移到顶部</Text>
+                    </Space>
+                  </Row>
+                </div>
+                <div
+                  style={getMenuItemStyle(canMoveToBottom)}
+                  onClick={() => {
+                    if (!contextMenuNode || !contextMenuNodeSiblingInfo || !canMoveToBottom) {
+                      return;
+                    }
+                    moveUiNode(contextMenuNode.key, contextMenuNodeSiblingInfo.parentKey, contextMenuNodeSiblingInfo.siblingCount - 1);
+                    setActiveNode(contextMenuNode.key);
+                    closeContextMenu();
+                  }}
+                >
+                  <Row className="tree-node-context-menu-item" justify='space-between' align='center'>
+                    <Space style={{ alignItems: 'center' }} size={12} align='center'>
+                      <Icon size={16} name="chevron-down-double"/>
+                      <Text>移到底部</Text>
+                    </Space>
+                  </Row>
+                </div>
+                <div
+                  style={getMenuItemStyle(canMoveUp)}
+                  onClick={() => {
+                    if (!contextMenuNode || !contextMenuNodeSiblingInfo || !canMoveUp) {
+                      return;
+                    }
+                    moveUiNode(contextMenuNode.key, contextMenuNodeSiblingInfo.parentKey, contextMenuNodeSiblingInfo.index - 1);
+                    setActiveNode(contextMenuNode.key);
+                    closeContextMenu();
+                  }}
+                >
+                  <Row className="tree-node-context-menu-item" justify='space-between' align='center'>
+                    <Space style={{ alignItems: 'center' }} size={12} align='center'>
+                      <Icon size={16} name="chevron-up"/>
+                      <Text>向上移动</Text>
+                    </Space>
+                  </Row>
+                </div>
+                <div
+                  style={getMenuItemStyle(canMoveDown)}
+                  onClick={() => {
+                    if (!contextMenuNode || !contextMenuNodeSiblingInfo || !canMoveDown) {
+                      return;
+                    }
+                    moveUiNode(contextMenuNode.key, contextMenuNodeSiblingInfo.parentKey, contextMenuNodeSiblingInfo.index + 1);
+                    setActiveNode(contextMenuNode.key);
+                    closeContextMenu();
+                  }}
+                >
+                  <Row className="tree-node-context-menu-item" justify='space-between' align='center'>
+                    <Space style={{ alignItems: 'center' }} size={12} align='center'>
+                      <Icon size={16} name="chevron-down"/>
+                      <Text>向下移动</Text>
+                    </Space>
+                  </Row>
+                </div>
+              </div>
             </div>
 
             {contextMenuNode.type === 'Grid.Row' ? (

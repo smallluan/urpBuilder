@@ -20,6 +20,7 @@ import {
   updateNodeByKey,
 } from '../../utils/createComponentTree';
 import { findNodePathByKey } from '../utils/tree';
+import { getNodeSlotKey, isSlotNode } from '../utils/slot';
 
 export const HISTORY_MAX_ACTIONS = 200;
 export const COMPONENT_KEY_PATTERN = /^[A-Za-z0-9_-]+$/;
@@ -43,6 +44,9 @@ const collectActionNodeRefs = (actions: UiHistoryAction[]): Set<string> => {
   actions.forEach((action) => {
     if (action.type === 'add' || action.type === 'remove') {
       refs.add(action.nodeRef);
+    } else if (action.type === 'wrap-popup') {
+      refs.add(action.beforeNodeRef);
+      refs.add(action.popupNodeRef);
     }
   });
   return refs;
@@ -295,6 +299,29 @@ export const applyHistoryAction = (
     };
   }
 
+  if (action.type === 'wrap-popup') {
+    const removeKey = direction === 'undo' ? action.popupNodeKey : action.nodeKey;
+    const insertRef = direction === 'undo' ? action.beforeNodeRef : action.popupNodeRef;
+    const restoreNode = getNodeFromPool(insertRef);
+    if (!restoreNode) {
+      return tree;
+    }
+
+    const removed = removeNodeByKey(tree, removeKey);
+    if (!removed.removedNode) {
+      return tree;
+    }
+
+    const targetParentNode = findNodeByKey(removed.tree, action.parentKey);
+    if (!targetParentNode) {
+      return tree;
+    }
+
+    const siblingCount = targetParentNode.children?.length ?? 0;
+    const safeIndex = Math.max(0, Math.min(action.index, siblingCount));
+    return insertNodeAtParentIndex(removed.tree, action.parentKey, safeIndex, restoreNode);
+  }
+
   // update-prop
   return updateNodeByKey(tree, action.nodeKey, (target) => {
     const currentProps = (target.props ?? {}) as Record<string, unknown>;
@@ -316,7 +343,54 @@ export const applyHistoryAction = (
 // 辅助解析
 // ===========================
 
-const DEBUG_VISIBLE_NODE_TYPES = new Set(['Drawer']);
+const DEBUG_VISIBLE_NODE_TYPES = new Set(['Drawer', 'Popup']);
+
+const isActiveKeyInsidePopupContent = (
+  tree: UiTreeNode,
+  popupNode: UiTreeNode,
+  activeKey: string | null,
+): boolean => {
+  if (!activeKey) return false;
+  const latestPopupNode = findNodeByKey(tree, popupNode.key);
+  if (!latestPopupNode) return false;
+  const contentSlotNode = (latestPopupNode.children ?? []).find((child) => isSlotNode(child) && getNodeSlotKey(child) === 'content');
+  if (!contentSlotNode) return false;
+  return containsNodeKey(contentSlotNode, activeKey);
+};
+
+const setPopupContentVisible = (
+  tree: UiTreeNode,
+  popupNodeKey: string,
+  expectedVisible: boolean,
+): UiTreeNode => {
+  const popupNode = findNodeByKey(tree, popupNodeKey);
+  if (!popupNode) {
+    return tree;
+  }
+  const contentSlotNode = (popupNode.children ?? []).find((child) => isSlotNode(child) && getNodeSlotKey(child) === 'content');
+  if (!contentSlotNode) {
+    return tree;
+  }
+  const currentVisible = (contentSlotNode.props?.visible as { value?: unknown } | undefined)?.value;
+  if (currentVisible === expectedVisible) {
+    return tree;
+  }
+
+  return updateNodeByKey(tree, contentSlotNode.key, (target) => {
+    const currentProps = (target.props ?? {}) as Record<string, unknown>;
+    const currentVisibleProp = (currentProps.visible ?? {}) as Record<string, unknown>;
+    return {
+      ...target,
+      props: {
+        ...currentProps,
+        visible: {
+          ...currentVisibleProp,
+          value: expectedVisible,
+        },
+      },
+    };
+  });
+};
 
 export const resolveActiveNode = (
   uiPageData: UiTreeNode,
@@ -351,7 +425,17 @@ export const syncDebugVisibleByActiveNode = (
     const path = findNodePathByKey(nextTree, targetKey) ?? [];
     return new Set(
       path
-        .filter((item) => !!item.type && DEBUG_VISIBLE_NODE_TYPES.has(item.type))
+        .filter((item) => {
+          if (!item.type || !DEBUG_VISIBLE_NODE_TYPES.has(item.type)) {
+            return false;
+          }
+
+          if (item.type === 'Popup') {
+            return isActiveKeyInsidePopupContent(nextTree, item, targetKey);
+          }
+
+          return true;
+        })
         .map((item) => item.key),
     );
   };
@@ -360,6 +444,10 @@ export const syncDebugVisibleByActiveNode = (
     if (!targetKey) return;
     const targetNode = findNodeByKey(nextTree, targetKey);
     if (!targetNode || !targetNode.type || !DEBUG_VISIBLE_NODE_TYPES.has(targetNode.type)) return;
+    if (targetNode.type === 'Popup') {
+      nextTree = setPopupContentVisible(nextTree, targetNode.key, expectedVisible);
+      return;
+    }
 
     const currentVisible = (targetNode.props?.visible as { value?: unknown } | undefined)?.value;
     if (currentVisible === expectedVisible) return;

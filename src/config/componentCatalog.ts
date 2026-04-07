@@ -546,6 +546,87 @@ const componentCatalog = [
     ],
   },
   {
+    type: 'Popup',
+    name: '气泡浮层',
+    props: {
+      trigger: {
+        name: '触发方式',
+        value: 'click',
+        editType: 'select',
+        payload: {
+          options: ['click', 'hover', 'focus', 'context-menu'],
+        },
+      },
+      placement: {
+        name: '浮层位置',
+        value: 'bottom',
+        editType: 'select',
+        payload: {
+          options: [
+            'top',
+            'top-left',
+            'top-right',
+            'left',
+            'left-top',
+            'left-bottom',
+            'right',
+            'right-top',
+            'right-bottom',
+            'bottom',
+            'bottom-left',
+            'bottom-right',
+          ],
+        },
+      },
+      showArrow: {
+        name: '显示箭头',
+        value: true,
+        editType: 'switch',
+      },
+      destroyOnClose: {
+        name: '关闭销毁',
+        value: false,
+        editType: 'switch',
+      },
+      disabled: {
+        name: '禁用',
+        value: false,
+        editType: 'switch',
+      },
+      showInAttachedElement: {
+        name: '仅挂载元素内显示',
+        value: true,
+        editType: 'switch',
+      },
+      zIndex: {
+        name: '层级',
+        value: 2500,
+        editType: 'inputNumber',
+      },
+      overlayInnerClassName: {
+        name: '浮层类名',
+        value: '',
+        editType: 'input',
+      },
+      overlayClassName: {
+        name: '浮层外层类名',
+        value: '',
+        editType: 'input',
+      },
+      hideEmptyPopup: {
+        name: '空内容隐藏',
+        value: true,
+        editType: 'switch',
+      },
+      delay: {
+        name: '延迟(ms)',
+        value: 0,
+        editType: 'inputNumber',
+      },
+    },
+    lifetimes: ['onVisibleChange'],
+  },
+  {
     type: 'Progress',
     name: '进度条',
     props: {

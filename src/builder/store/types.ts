@@ -169,6 +169,20 @@ export interface ReplaceLayoutHistoryAction {
   timestamp: number;
 }
 
+export interface WrapPopupHistoryAction {
+  type: 'wrap-popup';
+  parentKey: string;
+  index: number;
+  nodeKey: string;
+  popupNodeKey: string;
+  nodeLabel: string;
+  popupNodeLabel: string;
+  nodeType?: string;
+  beforeNodeRef: string;
+  popupNodeRef: string;
+  timestamp: number;
+}
+
 export type UiHistoryAction =
   | AddHistoryAction
   | RemoveHistoryAction
@@ -176,7 +190,8 @@ export type UiHistoryAction =
   | UpdateLabelHistoryAction
   | UpdatePropHistoryAction
   | FlowEditHistoryAction
-  | ReplaceLayoutHistoryAction;
+  | ReplaceLayoutHistoryAction
+  | WrapPopupHistoryAction;
 
 export interface UiHistoryState {
   pointer: number;
@@ -275,6 +290,7 @@ export interface BuilderStore {
   insertToUiPageData: (parentKey: string, componentData: Record<string, unknown>, slotKey?: string) => void;
   removeFromUiPageData: (nodeKey: string) => void;
   moveUiNode: (nodeKey: string, targetParentKey: string, targetIndex: number, slotKey?: string) => void;
+  wrapNodeWithPopup: (nodeKey: string) => void;
 
   // Actions — 流程历史
   recordFlowEditHistory: (

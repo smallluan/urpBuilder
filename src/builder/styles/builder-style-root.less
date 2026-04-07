@@ -402,6 +402,27 @@
   }
 }
 
+.tree-node-context-menu-submenu-wrap {
+  position: relative;
+}
+
+.tree-node-context-menu-submenu {
+  display: none;
+  position: absolute;
+  left: calc(100% + 6px);
+  top: 0;
+  min-width: 164px;
+  padding: 6px;
+  border-radius: 4px;
+  border: 1px solid var(--builder-context-border);
+  background: var(--builder-surface);
+  box-shadow: 0 8px 8px rgba(15, 23, 42, 0.16);
+}
+
+.tree-node-context-menu-submenu-wrap:hover .tree-node-context-menu-submenu {
+  display: block;
+}
+
 button.tree-node-context-menu-item {
   display: block;
   width: 100%;
