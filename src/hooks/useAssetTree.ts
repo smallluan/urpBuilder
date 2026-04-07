@@ -76,6 +76,9 @@ export function useAssetTree(scope: MediaNodeScope, teamId: string | undefined) 
             page: 1,
             pageSize: 100,
           });
+          if (res.code !== 0) {
+            throw new Error(res.message || '加载节点失败');
+          }
 
           const children = res.data?.list || [];
 
@@ -97,7 +100,7 @@ export function useAssetTree(scope: MediaNodeScope, teamId: string | undefined) 
             next.set(node.id, {
               ...(existing || { expanded: true }),
               loading: false,
-              loaded: true,
+              loaded: false,
               children: [],
             });
             return next;
@@ -139,6 +142,9 @@ export function useAssetTree(scope: MediaNodeScope, teamId: string | undefined) 
           page: 1,
           pageSize: 100,
         });
+        if (res.code !== 0) {
+          throw new Error(res.message || '刷新节点失败');
+        }
 
         const children = res.data?.list || [];
 
@@ -171,6 +177,9 @@ export function useAssetTree(scope: MediaNodeScope, teamId: string | undefined) 
         page: 1,
         pageSize: 100,
       });
+      if (res.code !== 0) {
+        return [];
+      }
 
       const rootChildren = res.data?.list || [];
       updateNodeMap((prev) => {
@@ -190,6 +199,14 @@ export function useAssetTree(scope: MediaNodeScope, teamId: string | undefined) 
     }
   }, [scope, teamId, updateNodeMap]);
 
+  const refreshExpandedNodes = useCallback(async () => {
+    const expandedNodeIds = Array.from(nodeMapRef.current.entries())
+      .filter(([key, state]) => key !== '__root__' && state.expanded)
+      .map(([key]) => key);
+
+    await Promise.all(expandedNodeIds.map((nodeId) => refreshNode(nodeId)));
+  }, [refreshNode]);
+
   const rootChildren = useMemo(() => {
     return nodeMap.get('__root__')?.children || [];
   }, [nodeMap]);
@@ -208,6 +225,7 @@ export function useAssetTree(scope: MediaNodeScope, teamId: string | undefined) 
     toggleExpand,
     expandPath,
     refreshNode,
+    refreshExpandedNodes,
     refreshRoot,
     selectNode,
   };

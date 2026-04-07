@@ -1053,35 +1053,36 @@ const DataCloudFunction: React.FC = () => {
   }
 
   return (
-    <div className="data-cloud-function-page">
+    <div className="data-cloud-function-page app-shell-page">
       <Tabs className="data-cloud-function-page__tabs" value={activeTab} onChange={(value) => setActiveTab(String(value) as ConsoleTab)}>
         <Tabs.TabPanel value="table" label="数据表管理" destroyOnHide={false}>
           <div className="data-cloud-function-page__workspace">
             <aside className="console-sider">
-              <div className="console-sider__toolbar">
-                <Row justify='space-between' align='end'>
-                  <Space size={8}>
-                    <Button size='small' theme="primary" icon={<AddIcon />} onClick={openCreateTableDrawer}/>
-                    <Button size='small' variant="outline" icon={<RefreshIcon />} onClick={() => void loadTables()}/>
-                  </Space>
-                </Row>
-                <Row justify="space-between">
-                  <Input
-                    style={{ flex: 1, }}
-                    size="small"
-                    clearable
-                    value={tableKeyword}
-                    placeholder="搜索数据表"
-                    onChange={(value) => setTableKeyword(String(value ?? ''))}
-                    onEnter={() => {
-                      setTablePage(1);
-                      void loadTables(1, tablePageSize);
-                    }}
-                  />
-                  <div style={{ width: 16 }}></div>
-                  <Button size="small" variant="outline" icon={<SearchIcon />} onClick={() => void loadTables()}>搜索</Button>
-                </Row>
-                
+              <div className="console-sider__toolbar app-shell-page__query">
+                <div className="app-shell-page__query-inner app-shell-page__query-inner--stack">
+                  <Row justify='space-between' align='end'>
+                    <Space size={8}>
+                      <Button size='small' theme="primary" icon={<AddIcon />} onClick={openCreateTableDrawer}/>
+                      <Button size='small' variant="outline" icon={<RefreshIcon />} onClick={() => void loadTables()}/>
+                    </Space>
+                  </Row>
+                  <Row justify="space-between">
+                    <Input
+                      style={{ flex: 1, }}
+                      size="small"
+                      clearable
+                      value={tableKeyword}
+                      placeholder="搜索数据表"
+                      onChange={(value) => setTableKeyword(String(value ?? ''))}
+                      onEnter={() => {
+                        setTablePage(1);
+                        void loadTables(1, tablePageSize);
+                      }}
+                    />
+                    <div style={{ width: 16 }}></div>
+                    <Button size="small" variant="outline" icon={<SearchIcon />} onClick={() => void loadTables()}>搜索</Button>
+                  </Row>
+                </div>
               </div>
 
               <div className="console-sider__list">
@@ -1193,36 +1194,41 @@ const DataCloudFunction: React.FC = () => {
         <Tabs.TabPanel value="function" label="云函数管理" destroyOnHide={false}>
           <div className="data-cloud-function-page__workspace">
             <aside className="console-sider">
-              <div className="console-sider__toolbar">
-                <Input
-                  clearable
-                  value={functionKeyword}
-                  placeholder="搜索云函数"
-                  onChange={(value) => setFunctionKeyword(String(value ?? ''))}
-                  onEnter={() => {
-                    setFunctionPage(1);
-                    void loadFunctions(1, functionPageSize);
-                  }}
-                />
-                <Space>
-                  <Select
-                    style={{ width: 140 }}
-                    value={functionStatus || undefined}
-                    options={FUNCTION_STATUS_OPTIONS}
-                    onChange={(value) => setFunctionStatus((value ? String(value) : '') as CloudFunctionStatus | '')}
-                  />
-                  <Button variant="outline" icon={<RefreshIcon />} onClick={() => void loadFunctions()}>刷新</Button>
-                  <Button
-                    theme="primary"
-                    icon={<AddIcon />}
-                    onClick={() => {
-                      setFunctionCreateDraft(createInitialFunctionCreateDraft());
-                      setFunctionCreateDrawerVisible(true);
+              <div className="console-sider__toolbar app-shell-page__query">
+                <div className="app-shell-page__query-inner app-shell-page__query-inner--stack">
+                  <Input
+                    size="small"
+                    clearable
+                    value={functionKeyword}
+                    placeholder="搜索云函数"
+                    onChange={(value) => setFunctionKeyword(String(value ?? ''))}
+                    onEnter={() => {
+                      setFunctionPage(1);
+                      void loadFunctions(1, functionPageSize);
                     }}
-                  >
-                    新建函数
-                  </Button>
-                </Space>
+                  />
+                  <Space>
+                    <Select
+                      size="small"
+                      style={{ width: 140 }}
+                      value={functionStatus || undefined}
+                      options={FUNCTION_STATUS_OPTIONS}
+                      onChange={(value) => setFunctionStatus((value ? String(value) : '') as CloudFunctionStatus | '')}
+                    />
+                    <Button size="small" variant="outline" icon={<RefreshIcon />} onClick={() => void loadFunctions()}>刷新</Button>
+                    <Button
+                      size="small"
+                      theme="primary"
+                      icon={<AddIcon />}
+                      onClick={() => {
+                        setFunctionCreateDraft(createInitialFunctionCreateDraft());
+                        setFunctionCreateDrawerVisible(true);
+                      }}
+                    >
+                      新建函数
+                    </Button>
+                  </Space>
+                </div>
               </div>
 
               <div className="console-sider__list">

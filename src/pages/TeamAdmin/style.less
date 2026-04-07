@@ -1,20 +1,32 @@
 .team-admin-page {
+  flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   gap: 12px;
 
   &__toolbar {
-    display: grid;
-    grid-template-columns: minmax(320px, 1fr) 140px auto auto;
-    gap: 8px;
-    align-items: center;
+    .app-shell-page__query-inner {
+      width: 100%;
+      display: grid;
+      grid-template-columns: minmax(320px, 1fr) 140px auto auto;
+      gap: 8px;
+      align-items: center;
+    }
   }
 
   &__table-wrap {
-    border: 1px solid #edf1f5;
+    flex: 1;
+    min-height: 0;
+    border: 1px solid var(--app-border-subtle);
     border-radius: 10px;
-    overflow: auto;
+    overflow: hidden;
     background: #fff;
+  }
+
+  &__table-wrap .t-table__content {
+    min-height: 0;
+    height: 100% !important;
   }
 
   &__team-cell {

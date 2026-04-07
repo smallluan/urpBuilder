@@ -1,6 +1,6 @@
 .data-cloud-function-page {
-  height: calc(100vh - 108px);
-  min-height: 640px;
+  flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
 
@@ -44,9 +44,11 @@
       display: flex;
       flex-direction: column;
       gap: 8px;
-      padding: 10px;
-      // border-bottom: 1px solid #edf1f6;
-      // background: #f8fafe;
+      padding: 0;
+
+      &.app-shell-page__query {
+        gap: 0;
+      }
 
       .t-space {
         flex-wrap: wrap;

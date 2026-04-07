@@ -298,9 +298,11 @@ const TeamAdminPage: React.FC = () => {
   }
 
   return (
-    <div className="team-admin-page">
-      <div className="team-admin-page__toolbar">
+    <div className="team-admin-page app-shell-page">
+      <div className="team-admin-page__toolbar app-shell-page__query">
+        <div className="app-shell-page__query-inner">
         <Input
+          size="small"
           value={query}
           placeholder="按团队名称或 Key 搜索"
           suffix={<SearchIcon />}
@@ -309,6 +311,7 @@ const TeamAdminPage: React.FC = () => {
           onEnter={handleSearch}
         />
         <Select
+          size="small"
           value={statusFilter}
           style={{ width: 140 }}
           options={[
@@ -323,16 +326,19 @@ const TeamAdminPage: React.FC = () => {
             setStatusFilter(nextStatus);
           }}
         />
-        <Button theme="default" variant="outline" icon={<SearchIcon />} onClick={handleSearch}>查询</Button>
-        <Button theme="default" variant="outline" icon={<RefreshIcon />} onClick={() => fetchTeams({ page, pageSize, keyword: query.trim() || undefined })}>刷新</Button>
+        <Button size="small" theme="default" variant="outline" icon={<SearchIcon />} onClick={handleSearch}>查询</Button>
+        <Button size="small" theme="default" variant="outline" icon={<RefreshIcon />} onClick={() => fetchTeams({ page, pageSize, keyword: query.trim() || undefined })}>刷新</Button>
+        </div>
       </div>
 
-      <div className="team-admin-page__table-wrap">
+      <div className="team-admin-page__table-wrap app-shell-page__body">
         <Table
           rowKey="id"
           columns={columns}
           data={tableData}
           loading={loading}
+          size="small"
+          bordered={false}
           pagination={pagination}
           style={{ minWidth: '1100px' }}
         />

@@ -1,0 +1,62 @@
+/* 主壳内列表/资源页：统一纵向节奏、查询条、内容区（随 Layout import 一次即可） */
+
+.app-shell-page {
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.app-shell-page__title {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--app-text-primary);
+}
+
+.app-shell-page__lead {
+  margin: -8px 0 0;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--app-text-secondary);
+  max-width: 720px;
+}
+
+.app-shell-page__query-inner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 12px;
+}
+
+.app-shell-page__query-inner--stack {
+  width: 100%;
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.app-shell-page__body {
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.app-shell-page--centered {
+  width: 100%;
+  max-width: 960px;
+  margin: 0 auto;
+}
+
+:root[theme-mode='dark'] {
+  .app-shell-page__query {
+    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.04);
+
+    &:focus-within {
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--td-brand-color) 18%, transparent);
+    }
+  }
+}

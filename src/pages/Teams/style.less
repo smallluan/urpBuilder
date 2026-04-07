@@ -1,19 +1,15 @@
-.teams-page {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  padding: 20px;
+.teams-page.app-shell-page {
+  padding: 0;
   color: var(--td-font-gray-1);
-  background: var(--td-gray-color-1);
-  min-height: calc(100vh - 100px);
+  background: transparent;
 
-  &__header {
+  .teams-page__header {
     display: flex;
     align-items: center;
     justify-content: space-between;
   }
 
-  &__empty-panel {
+  .teams-page__empty-panel {
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -23,7 +19,7 @@
     border-radius: 8px;
   }
 
-  &__empty-actions {
+  .teams-page__empty-actions {
     margin-top: 16px;
     display: flex;
     justify-content: center;
@@ -212,19 +208,19 @@
     gap: 16px;
   }
 
-  &__team-avatar-row {
+  .teams-page__team-avatar-row {
     display: flex;
     align-items: center;
     gap: 12px;
   }
 
-  &__create-team-avatar {
+  .teams-page__create-team-avatar {
     width: 48px;
     height: 48px;
     border-radius: 8px;
   }
 
-  &__candidate-list {
+  .teams-page__candidate-list {
     max-height: 180px;
     overflow: auto;
     border: 1px solid var(--td-gray-color-4);
@@ -233,7 +229,7 @@
     padding: 6px;
   }
 
-  &__candidate-item {
+  .teams-page__candidate-item {
     border: 0;
     background: transparent;
     text-align: left;
@@ -246,12 +242,12 @@
     }
   }
 
-  &__candidate-name {
+  .teams-page__candidate-name {
     font-size: 13px;
     font-weight: 500;
   }
 
-  &__candidate-sub {
+  .teams-page__candidate-sub {
     font-size: 11px;
     color: var(--td-font-gray-4);
   }

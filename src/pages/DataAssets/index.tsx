@@ -5,6 +5,7 @@ import {
   Dialog,
   Dropdown,
   Empty,
+  ImageViewer,
   Input,
   Loading,
   MessagePlugin,
@@ -13,8 +14,8 @@ import {
   Typography,
   Upload,
 } from 'tdesign-react';
-import { FolderOpenIcon, SearchIcon, UploadIcon } from 'tdesign-icons-react';
-import { ChevronRight, FileImage, Folder, MoreHorizontal, Plus } from 'lucide-react';
+import { FileIcon, FolderIcon, FolderOpenIcon, ImageIcon, SearchIcon, UploadIcon } from 'tdesign-icons-react';
+import { ChevronRight, MoreHorizontal, Plus } from 'lucide-react';
 import {
   createFolder,
   deleteNode,
@@ -24,7 +25,7 @@ import {
 import type { MediaAssetScope, MediaNodeDTO, MediaNodeSearchItem } from '../../api/types';
 import { useAssetNodeChildren } from '../../hooks/useAssetNodeChildren';
 import { useAssetSearch } from '../../hooks/useAssetSearch';
-import { useAssetTree, toTreeData } from '../../hooks/useAssetTree';
+import { useAssetTree } from '../../hooks/useAssetTree';
 import { useTeam } from '../../team/context';
 import { assetTypeLabel, formatBytes } from './format';
 import './style.less';
@@ -131,9 +132,10 @@ const DataAssets: React.FC = () => {
         return next;
       });
     });
+    void tree.refreshExpandedNodes();
     refetchChildren();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tree.refreshRoot, refetchChildren]);
+  }, [tree.refreshRoot, tree.refreshExpandedNodes, refetchChildren]);
 
   // 初始化加载根节点（仅当 scope/teamId 变化时触发）
   useEffect(() => {
@@ -155,8 +157,27 @@ const DataAssets: React.FC = () => {
 
   // 树数据转换
   const treeData = useMemo(() => {
-    return toTreeData(tree.rootChildren, tree.getChildren, tree.isExpanded, tree.isLoading);
-  }, [tree.rootChildren, tree.getChildren, tree.isExpanded, tree.isLoading]);
+    const buildTreeData = (nodes: MediaNodeDTO[]): any[] => {
+      return nodes.map((node) => ({
+        label: (
+          <span className="data-assets-tree-label">
+            <span className={`data-assets-tree-label__icon ${node.kind === 'folder' ? 'is-folder' : 'is-file'}`}>
+              {node.kind === 'folder' ? <FolderIcon size="14px" /> : <ImageIcon size="14px" />}
+            </span>
+            <span className="data-assets-tree-label__text">{node.name}</span>
+          </span>
+        ),
+        value: node.id,
+        data: node,
+        children: node.kind === 'folder'
+          ? (tree.isExpanded(node.id) ? buildTreeData(tree.getChildren(node.id)) : true)
+          : undefined,
+        loading: tree.isLoading(node.id),
+        disabled: node.kind === 'file',
+      }));
+    };
+    return buildTreeData(tree.rootChildren);
+  }, [tree.rootChildren, tree.nodeMap, tree.getChildren, tree.isExpanded, tree.isLoading]);
 
   // 树节点展开
   const handleTreeExpand = useCallback(
@@ -366,7 +387,7 @@ const DataAssets: React.FC = () => {
                       onClick={() => handleSearchSelect(item)}
                     >
                       <div className="data-assets-search-item__icon">
-                        {item.kind === 'folder' ? <Folder size={16} /> : <FileImage size={16} />}
+                        {item.kind === 'folder' ? <FolderIcon size="16px" /> : <ImageIcon size="16px" />}
                       </div>
                       <div className="data-assets-search-item__info">
                         <div className="data-assets-search-item__name">{item.name}</div>
@@ -443,32 +464,34 @@ const DataAssets: React.FC = () => {
         </div>
 
         {/* 内容网格 */}
-        <Loading loading={loading} showOverlay style={{ minHeight: 200 }}>
-          {list.length === 0 && !loading ? (
-            <Empty description="暂无内容，新建文件夹或上传素材" />
-          ) : (
-            <div className="data-assets-grid data-assets-grid--mixed">
-              {list.map((node) => (
-                <NodeCard
-                  key={node.id}
-                  node={node}
-                  onOpenFolder={(id) => {
-                    setCurrentParentId(id);
-                    setPage(1);
-                    tree.selectNode(id);
-                  }}
-                  onPreview={setPreviewFile}
-                  onRename={(n) => {
-                    setRenameNode(n);
-                    setRenameDraft(n.name);
-                  }}
-                  onDelete={setDeleteNodeState}
-                  onMove={setMoveNodeState}
-                />
-              ))}
-            </div>
-          )}
-        </Loading>
+        <div className="data-assets-main__body">
+          <Loading loading={loading} showOverlay style={{ minHeight: 200, height: '100%' }}>
+            {list.length === 0 && !loading ? (
+              <Empty description="暂无内容，新建文件夹或上传素材" />
+            ) : (
+              <div className="data-assets-grid data-assets-grid--mixed">
+                {list.map((node) => (
+                  <NodeCard
+                    key={node.id}
+                    node={node}
+                    onOpenFolder={(id) => {
+                      setCurrentParentId(id);
+                      setPage(1);
+                      tree.selectNode(id);
+                    }}
+                    onPreview={setPreviewFile}
+                    onRename={(n) => {
+                      setRenameNode(n);
+                      setRenameDraft(n.name);
+                    }}
+                    onDelete={setDeleteNodeState}
+                    onMove={setMoveNodeState}
+                  />
+                ))}
+              </div>
+            )}
+          </Loading>
+        </div>
 
         {/* 分页 */}
         {total > 0 && (
@@ -605,17 +628,14 @@ const DataAssets: React.FC = () => {
         </Text>
       </Dialog>
 
-      {/* 预览对话框 */}
-      <Dialog
-        header={previewFile?.name || '预览'}
-        visible={Boolean(previewFile)}
-        onClose={() => setPreviewFile(null)}
-        footer={false}
-        width={900}
-        className="data-assets-preview-dialog"
-      >
-        {previewFile?.url && <img src={previewFile.url} alt={previewFile.name} />}
-      </Dialog>
+      {previewFile?.url && (
+        <ImageViewer
+          visible
+          images={[previewFile.url]}
+          onClose={() => setPreviewFile(null)}
+          trigger={() => null}
+        />
+      )}
     </div>
   );
 };
@@ -660,15 +680,15 @@ const NodeCard: React.FC<NodeCardProps> = ({ node, onOpenFolder, onPreview, onRe
     <div className="data-assets-node-card" onClick={handleClick}>
       <div className={`data-assets-node-card__thumb ${isFolder ? 'is-folder' : ''}`}>
         {isFolder ? (
-          <Folder size={48} className="data-assets-node-card__folder-icon" />
+          <FolderIcon size="40px" className="data-assets-node-card__folder-icon" />
         ) : node.thumbnailUrl || node.url ? (
           <img src={node.thumbnailUrl || node.url} alt={node.name} loading="lazy" />
         ) : (
-          <FileImage size={48} className="data-assets-node-card__file-icon" />
+          <FileIcon size="36px" className="data-assets-node-card__file-icon" />
         )}
 
         {/* 操作按钮 */}
-        <div className="data-assets-node-card__actions">
+        <div className="data-assets-node-card__actions" onClick={(e) => e.stopPropagation()} onMouseDown={(e) => e.stopPropagation()}>
           <Dropdown
             trigger="click"
             options={options}
@@ -680,7 +700,6 @@ const NodeCard: React.FC<NodeCardProps> = ({ node, onOpenFolder, onPreview, onRe
               variant="text"
               theme="default"
               className="data-assets-node-card__menu-btn"
-              onClick={(e) => e.stopPropagation()}
             >
               <MoreHorizontal size={16} />
             </Button>

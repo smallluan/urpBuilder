@@ -1,6 +1,7 @@
 .data-assets-page {
-  height: 100%;
+  flex: 1;
   min-height: 0;
+  width: 100%;
   display: flex;
   overflow: hidden;
 }
@@ -55,6 +56,35 @@
     background: var(--td-brand-color-light);
     color: var(--td-brand-color);
   }
+}
+
+.data-assets-tree-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.data-assets-tree-label__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+
+  &.is-folder {
+    color: #e8b931;
+  }
+
+  &.is-file {
+    color: var(--td-text-color-secondary);
+  }
+}
+
+.data-assets-tree-label__text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 // 搜索结果
@@ -119,10 +149,17 @@
 // ===================== 右侧内容区 =====================
 .data-assets-main {
   flex: 1;
+  min-height: 0;
   min-width: 0;
   display: flex;
   flex-direction: column;
   padding: 16px 20px;
+  overflow: hidden;
+}
+
+.data-assets-main__body {
+  flex: 1;
+  min-height: 0;
   overflow: hidden;
 }
 
@@ -149,11 +186,13 @@
 
 // ===================== 节点网格 =====================
 .data-assets-grid {
+  flex: 1;
+  min-height: 0;
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-  gap: 16px;
+  gap: 12px;
   overflow: auto;
-  padding: 4px;
+  padding: 4px 2px;
 }
 
 .data-assets-grid--mixed {
@@ -185,7 +224,7 @@
 
 .data-assets-node-card__thumb {
   position: relative;
-  aspect-ratio: 1;
+  height: 92px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -204,8 +243,8 @@
 }
 
 .data-assets-node-card__folder-icon {
-  color: var(--td-brand-color);
-  opacity: 0.8;
+  color: #e8b931;
+  opacity: 0.95;
 }
 
 .data-assets-node-card__file-icon {

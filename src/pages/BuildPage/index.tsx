@@ -13,7 +13,7 @@ import {
   Tag,
 } from 'tdesign-react';
 import type { PrimaryTableCol } from 'tdesign-react/es/table/type';
-import { AddIcon, SearchIcon, UserIcon } from 'tdesign-icons-react';
+import { AddIcon, SearchIcon } from 'tdesign-icons-react';
 import ListItemMeta from 'tdesign-react/es/list/ListItemMeta';
 import {
   deletePageTemplate,
@@ -405,42 +405,22 @@ const BuildPage: React.FC = () => {
         </Button>
       ),
     },
-    { colKey: 'pageId', title: '页面 ID', width: 140, ellipsis: true },
     {
       colKey: 'status',
       title: '状态',
-      width: 200,
+      width: 152,
+      ellipsis: true,
       cell: ({ row }) => (
-        <Space size={6}>
+        <div className="build-resource-table__status-cell">
           <Tag size="small" theme={row.status === 'published' ? 'success' : 'warning'} variant="light">
             {row.status === 'published' ? '已发布' : '草稿'}
           </Tag>
-          <Tag size="small" theme={row.visibility === '公开' ? 'primary' : 'default'} variant="light">
-            {row.visibility}
-          </Tag>
-          <Tag size="small" variant="light-outline">v{row.currentVersion}</Tag>
-        </Space>
-      ),
-    },
-    {
-      colKey: 'owner',
-      title: '负责人 / 归属',
-      width: 200,
-      ellipsis: true,
-      cell: ({ row }) => (
-        <Space size={6} align="center" breakLine className="build-resource-table__owner-cell">
-          <span className="meta-item">
-            <UserIcon size="14" /> {row.ownerName || '-'}
+          <span className="build-resource-table__status-meta" title={`${row.visibility} · v${row.currentVersion}`}>
+            {row.visibility} · v{row.currentVersion}
           </span>
-          <Popup trigger="hover" placement="top" showArrow content={renderTeamPopup(row)}>
-            <Tag size="small" variant="light-outline" className="team-tag-popup-trigger">
-              {row.ownerType === '团队' ? (row.ownerTeamName !== '-' ? row.ownerTeamName : '团队资源') : '个人资源'}
-            </Tag>
-          </Popup>
-        </Space>
+        </div>
       ),
     },
-    { colKey: 'routePath', title: '路由路径', width: 120, ellipsis: true },
     {
       colKey: 'description',
       title: '描述',
@@ -456,25 +436,29 @@ const BuildPage: React.FC = () => {
         return `${date}${time ? ` ${time}` : ''}`;
       },
     },
-    {
-      colKey: 'contributors',
-      title: '参与者',
-      width: 108,
-      align: 'center',
-      cell: ({ row }) => (
-        <Popup trigger="hover" placement="top-right" showArrow content={renderContributorsPopup(row.contributors)}>
-          <div className="participant-avatars-trigger">
-            <Avatar.Group max={4} cascading="right-up" size="24px">
-              {row.contributors.map((item) => (
-                <Avatar key={item.userId || item.username} image={item.avatar}>
-                  {String(resolveContributorName(item) || '-').slice(0, 1)}
-                </Avatar>
-              ))}
-            </Avatar.Group>
-          </div>
-        </Popup>
-      ),
-    },
+    ...(workspaceMode === 'team'
+      ? ([
+          {
+            colKey: 'contributors',
+            title: '参与者',
+            width: 108,
+            align: 'center' as const,
+            cell: ({ row }: { row: PageTemplateRow }) => (
+              <Popup trigger="hover" placement="top-right" showArrow content={renderContributorsPopup(row.contributors)}>
+                <div className="participant-avatars-trigger">
+                  <Avatar.Group max={4} cascading="right-up" size="24px">
+                    {row.contributors.map((item) => (
+                      <Avatar key={item.userId || item.username} image={item.avatar}>
+                        {String(resolveContributorName(item) || '-').slice(0, 1)}
+                      </Avatar>
+                    ))}
+                  </Avatar.Group>
+                </div>
+              </Popup>
+            ),
+          },
+        ] as PrimaryTableCol<PageTemplateRow>[])
+      : []),
     {
       colKey: 'ops',
       title: '操作',
@@ -516,11 +500,13 @@ const BuildPage: React.FC = () => {
   );
 
   return (
-    <div className="build-page">
-      <div className="toolbar">
+    <div className="build-page app-shell-page">
+      <div className="toolbar app-shell-page__query">
+        <div className="app-shell-page__query-inner app-shell-page__query-inner--stack">
         <div className="toolbar-row toolbar-row--primary">
           <div className="search-area">
             <Input
+              size="small"
               placeholder="搜索页面名称"
               value={query}
               onChange={(val) => setBuildPageFilters({ query: String(val ?? '') })}
@@ -530,10 +516,7 @@ const BuildPage: React.FC = () => {
             />
           </div>
           <div className="primary-actions">
-            <Button theme="default" variant="outline" onClick={handleSearch} icon={<SearchIcon />}>
-              查询
-            </Button>
-            <Button theme="primary" onClick={handleCreate} icon={<AddIcon />}>
+            <Button size="small" theme="primary" onClick={handleCreate} icon={<AddIcon />}>
               创建新页面
             </Button>
           </div>
@@ -542,6 +525,7 @@ const BuildPage: React.FC = () => {
         <div className="toolbar-row toolbar-row--filters">
           <div className="filter-area">
           <Select
+            size="small"
             value={statusFilter}
             options={[
               { label: '全部状态', value: 'all' },
@@ -556,6 +540,7 @@ const BuildPage: React.FC = () => {
             }}
           />
           <Select
+            size="small"
             value={visibilityFilter}
             options={[
               { label: '全部可见性', value: 'all' },
@@ -571,9 +556,10 @@ const BuildPage: React.FC = () => {
           />
           </div>
         </div>
+        </div>
       </div>
 
-      <div className="table-wrapper">
+      <div className="table-wrapper app-shell-page__body">
         <div className="list-scroll-area">
           <Table
             className="resource-table"
@@ -581,8 +567,6 @@ const BuildPage: React.FC = () => {
             data={tableData}
             columns={pageTableColumns}
             loading={loading}
-            bordered
-            stripe
             size="small"
             empty="暂无页面数据"
           />
@@ -630,19 +614,21 @@ const BuildPage: React.FC = () => {
             <span>描述</span>
             <strong className="detail-scroll-content">{detailTarget?.description || '暂无描述'}</strong>
           </div>
-          <div className="detail-row">
-            <span>参与者</span>
-            <strong>
-              <Popup
-                trigger="click"
-                placement="top-right"
-                showArrow
-                content={renderContributorsPopup(detailTarget?.contributors || [])}
-              >
-                <span className="participants-detail-trigger">查看列表（{detailTarget?.contributors?.length || 0}）</span>
-              </Popup>
-            </strong>
-          </div>
+          {workspaceMode === 'team' && (
+            <div className="detail-row">
+              <span>参与者</span>
+              <strong>
+                <Popup
+                  trigger="click"
+                  placement="top-right"
+                  showArrow
+                  content={renderContributorsPopup(detailTarget?.contributors || [])}
+                >
+                  <span className="participants-detail-trigger">查看列表（{detailTarget?.contributors?.length || 0}）</span>
+                </Popup>
+              </strong>
+            </div>
+          )}
           <div className="detail-row"><span>路由路径</span><strong>{detailTarget?.routePath || '-'}</strong></div>
           <div className="detail-row"><span>页面标题</span><strong>{detailTarget?.pageTitle || '-'}</strong></div>
           <div className="detail-row"><span>菜单标题</span><strong>{detailTarget?.menuTitle || '-'}</strong></div>

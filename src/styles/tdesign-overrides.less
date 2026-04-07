@@ -1,0 +1,26 @@
+/**
+ * 全局覆盖 TDesign 默认样式（在 tdesign.min.css 与 app-theme-tokens 之后加载）。
+ * 按组件分节，避免与页面局部样式重复时优先以这里为准。
+ */
+
+/* Table：弱化网格线，减少「深边框」带来的杂乱感（单元格、边框模式、固定列阴影等均用 --td-component-border） */
+:root[theme-mode='light'] .t-table,
+:root:not([theme-mode]) .t-table {
+  --td-component-border: var(--app-border-subtle);
+}
+
+:root[theme-mode='dark'] .t-table {
+  --td-component-border: rgba(255, 255, 255, 0.08);
+}
+
+/* 固定列右侧：滚动时左侧分隔线改为柔和阴影（替代 TDesign 2px/4px 实线） */
+.t-table__content--scrollable-to-right .t-table__cell--fixed-right-first::after,
+.t-table--bordered.t-table__content--scrollable-to-right .t-table__cell--fixed-right-first::after {
+  border-left: none !important;
+  box-shadow: -10px 0 14px -8px rgba(15, 23, 42, 0.07);
+}
+
+:root[theme-mode='dark'] .t-table__content--scrollable-to-right .t-table__cell--fixed-right-first::after,
+:root[theme-mode='dark'] .t-table--bordered.t-table__content--scrollable-to-right .t-table__cell--fixed-right-first::after {
+  box-shadow: -10px 0 18px -8px rgba(0, 0, 0, 0.42);
+}

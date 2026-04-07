@@ -205,7 +205,7 @@ const TeamsPage: React.FC = () => {
   };
 
   return (
-    <div className="teams-page">
+    <div className="teams-page app-shell-page">
       <div className="teams-page__header">
         <Button size="small" variant="outline" icon={<RefreshIcon />} loading={loading} onClick={() => refreshTeams()}>
           刷新

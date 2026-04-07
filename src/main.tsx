@@ -4,6 +4,7 @@ import './styles/reset.less'
 import './styles/theme.less'
 import 'tdesign-react/dist/tdesign.min.css'
 import './styles/app-theme-tokens.less'
+import './styles/tdesign-overrides.less'
 import App from './App.tsx'
 import { applyColorModeToDocument, getResolvedColorMode } from './builder/theme/builderThemeStore'
 

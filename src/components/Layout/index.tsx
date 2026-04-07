@@ -19,6 +19,7 @@ import { resolveTeamAvatar, resolveUserAvatar } from '../../utils/avatar';
 import GlobalNoticeCenter from '../GlobalNoticeCenter';
 import AccountInfoPopup from './components/AccountInfoPopup';
 import { ThemeModeAnimatedToggle } from '../ThemeModeAnimatedToggle';
+import '../../styles/app-shell-page.less';
 import './style.less';
 
 const { Header, Aside, Content } = Layout;
@@ -278,7 +279,9 @@ const AppLayout: React.FC = () => {
         </Header>
 
         <Content className="layout-content">
-          <Outlet />
+          <div className="layout-outlet">
+            <Outlet />
+          </div>
         </Content>
       </Layout>
     </Layout>

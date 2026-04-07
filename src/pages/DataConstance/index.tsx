@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Button, Card, Drawer, Form, Input, InputNumber, MessagePlugin, Radio, Select, Space, Table, Tag, Textarea } from 'tdesign-react';
+import { Button, Card, Drawer, Form, Input, InputNumber, MessagePlugin, Pagination, Radio, Select, Space, Table, Tag, Textarea } from 'tdesign-react';
 import CodeMirrorEditor from '../../builder/components/codeEditor/CodeMirrorEditor';
 import { buildCodeMirrorExtensions } from '../../builder/components/codeEditor/buildCodeMirrorExtensions';
 import { useTeam } from '../../team/context';
@@ -263,76 +263,90 @@ const DataConstance: React.FC = () => {
   }
 
   return (
-    <div className="data-constance-page">
-      <Card title="常量管理" bordered={false}>
-        <div className="data-constance-page__toolbar">
-          <Space size={8}>
-            <Tag theme={currentScope === 'team' ? 'success' : 'primary'} variant="light-outline">
-              {scopeLabel}
-            </Tag>
-          </Space>
+    <div className="data-constance-page app-shell-page">
+      <Card className="data-constance-page__card" title="常量管理" bordered={false}>
+        <div className="data-constance-page__toolbar app-shell-page__query">
+          <div className="app-shell-page__query-inner data-constance-page__toolbar-inner">
+            <Space size={8}>
+              <Tag theme={currentScope === 'team' ? 'success' : 'primary'} variant="light-outline">
+                {scopeLabel}
+              </Tag>
+            </Space>
 
-          <Space size={8}>
-            <Input
-              style={{ width: 240 }}
-              clearable
-              value={keyword}
-              placeholder="按名称或描述搜索"
-              onChange={(value) => setKeyword(String(value ?? ''))}
-            />
-            <Select
-              style={{ width: 160 }}
-              clearable
-              placeholder="类型筛选"
-              value={valueTypeFilter || undefined}
-              options={VALUE_TYPE_OPTIONS}
-              onChange={(value) => setValueTypeFilter((value ? String(value) : '') as DataConstantValueType | '')}
-            />
-            <Button
-              variant="outline"
-              onClick={() => {
-                setPage(1);
-                void loadData(1, pageSize);
-              }}
-            >
-              查询
-            </Button>
-            <Button
-              theme="primary"
-              onClick={() => {
-                setDraft(createInitialDraft());
-                setDrawerVisible(true);
-              }}
-            >
-              新增常量
-            </Button>
-          </Space>
+            <Space size={8}>
+              <Input
+                size="small"
+                style={{ width: 240 }}
+                clearable
+                value={keyword}
+                placeholder="按名称或描述搜索"
+                onChange={(value) => setKeyword(String(value ?? ''))}
+              />
+              <Select
+                size="small"
+                style={{ width: 160 }}
+                clearable
+                placeholder="类型筛选"
+                value={valueTypeFilter || undefined}
+                options={VALUE_TYPE_OPTIONS}
+                onChange={(value) => setValueTypeFilter((value ? String(value) : '') as DataConstantValueType | '')}
+              />
+              <Button
+                size="small"
+                variant="outline"
+                onClick={() => {
+                  setPage(1);
+                  void loadData(1, pageSize);
+                }}
+              >
+                查询
+              </Button>
+              <Button
+                size="small"
+                theme="primary"
+                onClick={() => {
+                  setDraft(createInitialDraft());
+                  setDrawerVisible(true);
+                }}
+              >
+                新增常量
+              </Button>
+            </Space>
+          </div>
         </div>
 
-        <Table
-          rowKey="id"
-          loading={loading}
-          data={records}
-          columns={columns}
-          pagination={{
-            current: page,
-            pageSize,
-            total,
-            showJumper: true,
-            showPageSize: true,
-            pageSizeOptions: [10, 20, 50],
-            onCurrentChange: (nextPage: number) => {
-              setPage(nextPage);
-              void loadData(nextPage, pageSize);
-            },
-            onPageSizeChange: (nextPageSize: number) => {
-              setPage(1);
-              setPageSize(nextPageSize);
-              void loadData(1, nextPageSize);
-            },
-          }}
-          empty="暂无常量，点击右上角“新增常量”开始创建。"
-        />
+        <div className="data-constance-page__table-panel">
+          <div className="data-constance-page__table-scroll">
+            <Table
+              rowKey="id"
+              loading={loading}
+              data={records}
+              columns={columns}
+              size="small"
+              bordered={false}
+              empty="暂无常量，点击右上角“新增常量”开始创建。"
+            />
+          </div>
+          <div className="data-constance-page__pagination-wrap">
+            <Pagination
+              current={page}
+              pageSize={pageSize}
+              total={total}
+              showJumper
+              showPageSize
+              pageSizeOptions={[10, 20, 50]}
+              onCurrentChange={(nextPage: number) => {
+                setPage(nextPage);
+                void loadData(nextPage, pageSize);
+              }}
+              onPageSizeChange={(nextPageSize: number) => {
+                setPage(1);
+                setPageSize(nextPageSize);
+                void loadData(1, nextPageSize);
+              }}
+            />
+          </div>
+        </div>
       </Card>
 
       <Drawer

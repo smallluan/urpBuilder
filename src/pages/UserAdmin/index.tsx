@@ -371,9 +371,11 @@ const UserAdminPage: React.FC = () => {
   }
 
   return (
-    <div className="user-admin-page">
-      <div className="user-admin-page__toolbar">
+    <div className="user-admin-page app-shell-page">
+      <div className="user-admin-page__toolbar app-shell-page__query">
+        <div className="app-shell-page__query-inner">
         <Input
+          size="small"
           placeholder="按用户名、昵称、邮箱搜索"
           value={query}
           onChange={(value) => setQuery(String(value ?? ''))}
@@ -382,6 +384,7 @@ const UserAdminPage: React.FC = () => {
           onEnter={handleSearch}
         />
         <Select
+          size="small"
           value={statusFilter}
           options={[
             { label: '全部状态', value: 'all' },
@@ -396,21 +399,24 @@ const UserAdminPage: React.FC = () => {
             setStatusFilter(nextStatus);
           }}
         />
-        <Button theme="default" variant="outline" icon={<SearchIcon />} onClick={handleSearch}>
+        <Button size="small" theme="default" variant="outline" icon={<SearchIcon />} onClick={handleSearch}>
           查询
         </Button>
-        <Button theme="default" variant="outline" icon={<RefreshIcon />} onClick={() => fetchUsers({ page, pageSize, keyword: query.trim() || undefined })}>
+        <Button size="small" theme="default" variant="outline" icon={<RefreshIcon />} onClick={() => fetchUsers({ page, pageSize, keyword: query.trim() || undefined })}>
           刷新
         </Button>
+        </div>
       </div>
 
-      <div className="user-admin-page__table-wrap">
+      <div className="user-admin-page__table-wrap app-shell-page__body">
         <Table
           rowKey="id"
           className="user-admin-page__table"
           columns={columns}
           data={tableData}
           loading={loading}
+          size="small"
+          bordered={false}
           pagination={pagination}
           style={{ minWidth: '1120px' }}
         />
