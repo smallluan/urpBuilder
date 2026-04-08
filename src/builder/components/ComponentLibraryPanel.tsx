@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Input, Popup } from 'tdesign-react';
 import { SearchIcon } from 'tdesign-icons-react';
 import {
@@ -294,6 +294,11 @@ const ComponentLibraryPanel: React.FC<ComponentLibraryPanelProps> = ({ selectedN
     e.dataTransfer?.setData('drag-component-data', JSON.stringify(data));
     e.dataTransfer.effectAllowed = 'copy';
   };
+
+  /** 拖拽结束再关分组 Popup，避免 dragstart 就关导致拖拽源卸载、拖拽被取消 */
+  const handleLibraryDragEnd = useCallback(() => {
+    setOpenedGroupKey(null);
+  }, []);
 
   const schemaMap = useMemo(() => {
     return new Map<string, ComponentSchema>(
@@ -617,7 +622,12 @@ const ComponentLibraryPanel: React.FC<ComponentLibraryPanelProps> = ({ selectedN
             const itemCategory = getCategoryByType(String(schema.type ?? ''));
 
             return (
-              <DragableWrapper onDragStart={handleOnDrapStart} key={child.type} data={schema}>
+              <DragableWrapper
+                onDragStart={handleOnDrapStart}
+                onDragEnd={handleLibraryDragEnd}
+                key={child.type}
+                data={schema}
+              >
                 <div
                   className={`library-popup-item ${selectedName === schema.name ? 'is-active' : ''}`}
                   title={String(schema.name)}
@@ -687,7 +697,12 @@ const ComponentLibraryPanel: React.FC<ComponentLibraryPanelProps> = ({ selectedN
 
             <div className="library-section-grid">
               {filteredCustomComponentSchemas.map((schema) => (
-                <DragableWrapper onDragStart={handleOnDrapStart} key={`custom-${schema.name}-${(schema.props.__componentId as { value?: unknown } | undefined)?.value ?? ''}`} data={schema}>
+                <DragableWrapper
+                  onDragStart={handleOnDrapStart}
+                  onDragEnd={handleLibraryDragEnd}
+                  key={`custom-${schema.name}-${(schema.props.__componentId as { value?: unknown } | undefined)?.value ?? ''}`}
+                  data={schema}
+                >
                   <div
                     className={`library-item ${selectedName === schema.name ? 'is-active' : ''}`}
                     title={schema.name}
@@ -768,7 +783,12 @@ const ComponentLibraryPanel: React.FC<ComponentLibraryPanelProps> = ({ selectedN
                   }
 
                   return (
-                    <DragableWrapper onDragStart={handleOnDrapStart} key={entry.key} data={schema}>
+                    <DragableWrapper
+                      onDragStart={handleOnDrapStart}
+                      onDragEnd={handleLibraryDragEnd}
+                      key={entry.key}
+                      data={schema}
+                    >
                       {renderLibraryItemCard(schema, selectedName === schema.name)}
                     </DragableWrapper>
                   );
