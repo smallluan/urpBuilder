@@ -1,9 +1,12 @@
 .code-workbench-page {
   height: 100vh;
+  max-height: 100vh;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
   background: #1e1e1e;
   color: #d4d4d4;
+  box-sizing: border-box;
 }
 
 .code-workbench-page.is-light {
@@ -53,6 +56,8 @@
 
 .code-workbench-page__sidebar {
   width: 250px;
+  min-height: 0;
+  overflow: hidden;
   border-right: 1px solid #2d2d2d;
   background: #252526;
   display: flex;
@@ -78,8 +83,16 @@
 .code-workbench-page__file-list {
   flex: 1 1 auto;
   min-height: 0;
-  overflow: auto;
+  overflow-y: auto;
+  overflow-x: hidden;
   padding: 4px 0;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+
+  &::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+  }
 }
 
 .code-workbench-page__file-item {
@@ -130,11 +143,13 @@
   flex: 1 1 auto;
   min-width: 0;
   min-height: 0;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
 }
 
 .code-workbench-page__editor-meta {
+  flex: 0 0 auto;
   height: 34px;
   border-bottom: 1px solid #2d2d2d;
   display: flex;
@@ -153,14 +168,47 @@
 .code-workbench-page__editor-wrap {
   flex: 1 1 auto;
   min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .code-workbench-page__editor-shell {
-  height: 100%;
-}
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 
-.code-workbench-page__editor-shell .cm-editor {
-  height: 100%;
+  /* @uiw/react-codemirror 外层包裹，参与 flex 高度传递 */
+  > div {
+    flex: 1 1 auto;
+    min-height: 0 !important;
+    overflow: hidden !important;
+    display: flex !important;
+    flex-direction: column !important;
+  }
+
+  .cm-editor {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: hidden !important;
+    display: flex !important;
+  }
+
+  /* 仅代码区纵向滚动；横向长行仍可在 scroller 内滚动 */
+  .cm-scroller {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: auto !important;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+
+    &::-webkit-scrollbar {
+      width: 0;
+      height: 0;
+    }
+  }
 }
 
 .code-workbench-page__empty {

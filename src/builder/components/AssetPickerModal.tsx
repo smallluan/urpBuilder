@@ -270,6 +270,7 @@ const AssetPickerModal: React.FC<AssetPickerModalProps> = ({
         }}
         cancelBtn="取消"
         className="asset-picker-dialog"
+        zIndex={6000}
       >
         <Text className="asset-picker-hint">
           {workspaceMode === 'personal'
@@ -466,6 +467,7 @@ const AssetPickerModal: React.FC<AssetPickerModalProps> = ({
         onClose={() => setPreviewFile(null)}
         footer={false}
         destroyOnClose
+        zIndex={6100}
       >
         {previewFile?.url && <img src={previewFile.url} alt={previewFile.name} />}
       </Dialog>

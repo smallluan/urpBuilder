@@ -89,6 +89,11 @@ interface SwiperImageRow {
   objectPosition: string;
 }
 
+/** 素材库选择目标：组件属性或轮播图某一行的 src/fallback */
+type AssetPickerTarget =
+  | { kind: 'prop'; propKey: string }
+  | { kind: 'swiper'; rowId: string; field: 'src' | 'fallback' };
+
 interface TabsRow {
   id: string;
   value: string;
@@ -547,8 +552,7 @@ const ComponentConfigPanel: React.FC = () => {
   const [pendingWorkbenchSessionId, setPendingWorkbenchSessionId] = useState('');
   const [gridResponsiveDialogVisible, setGridResponsiveDialogVisible] = useState(false);
   const [gridResponsiveDraft, setGridResponsiveDraft] = useState<GridResponsiveConfig>({});
-  const [assetPickerVisible, setAssetPickerVisible] = useState(false);
-  const [assetPickerTargetPropKey, setAssetPickerTargetPropKey] = useState<string | null>(null);
+  const [assetPickerTarget, setAssetPickerTarget] = useState<AssetPickerTarget | null>(null);
   const [activeBreakpoint, setActiveBreakpoint] = useState<GridBreakpoint>('xs');
   const [iconQuickFilters, setIconQuickFilters] = useState<Record<string, IconQuickFilterKey>>({});
   const [iconInitialFilters, setIconInitialFilters] = useState<Record<string, IconInitialFilterKey>>({});
@@ -1162,8 +1166,7 @@ const ComponentConfigPanel: React.FC = () => {
                 if (readOnly) {
                   return;
                 }
-                setAssetPickerTargetPropKey(propKey);
-                setAssetPickerVisible(true);
+                setAssetPickerTarget({ kind: 'prop', propKey });
               }}
             >
               使用素材库
@@ -1644,6 +1647,8 @@ const ComponentConfigPanel: React.FC = () => {
         cancelBtn="取消"
         onConfirm={applySwiperImageDraft}
         onClose={() => setSwiperDialogVisible(false)}
+        style={{ maxHeight: '90vh' }}
+        destroyOnClose
       >
         <div style={{ marginBottom: 12 }}>
           <Button
@@ -1655,6 +1660,12 @@ const ComponentConfigPanel: React.FC = () => {
           </Button>
         </div>
 
+        <div
+          style={{
+            maxHeight: 'min(480px, calc(100vh - 240px))',
+            overflow: 'auto',
+          }}
+        >
         <Table
           rowKey="id"
           data={swiperImageDraft}
@@ -1662,31 +1673,57 @@ const ComponentConfigPanel: React.FC = () => {
             {
               colKey: 'src',
               title: 'src',
+              width: 320,
               cell: ({ row }: { row: SwiperImageRow }) => (
-                <Input
-                  clearable
-                  value={row.src}
-                  onChange={(value) =>
-                    setSwiperImageDraft((previous) =>
-                      previous.map((item) => (item.id === row.id ? { ...item, src: String(value ?? '') } : item)),
-                    )
-                  }
-                />
+                <Space align="center" size={8} style={{ width: '100%' }}>
+                  <Input
+                    clearable
+                    style={{ flex: 1, minWidth: 100 }}
+                    placeholder="自定义 URL 或素材库"
+                    value={row.src}
+                    onChange={(value) =>
+                      setSwiperImageDraft((previous) =>
+                        previous.map((item) => (item.id === row.id ? { ...item, src: String(value ?? '') } : item)),
+                      )
+                    }
+                  />
+                  <Button
+                    size="small"
+                    variant="outline"
+                    disabled={readOnly}
+                    onClick={() => setAssetPickerTarget({ kind: 'swiper', rowId: row.id, field: 'src' })}
+                  >
+                    素材库
+                  </Button>
+                </Space>
               ),
             },
             {
               colKey: 'fallback',
               title: 'fallback',
+              width: 320,
               cell: ({ row }: { row: SwiperImageRow }) => (
-                <Input
-                  clearable
-                  value={row.fallback}
-                  onChange={(value) =>
-                    setSwiperImageDraft((previous) =>
-                      previous.map((item) => (item.id === row.id ? { ...item, fallback: String(value ?? '') } : item)),
-                    )
-                  }
-                />
+                <Space align="center" size={8} style={{ width: '100%' }}>
+                  <Input
+                    clearable
+                    style={{ flex: 1, minWidth: 100 }}
+                    placeholder="自定义 URL 或素材库"
+                    value={row.fallback}
+                    onChange={(value) =>
+                      setSwiperImageDraft((previous) =>
+                        previous.map((item) => (item.id === row.id ? { ...item, fallback: String(value ?? '') } : item)),
+                      )
+                    }
+                  />
+                  <Button
+                    size="small"
+                    variant="outline"
+                    disabled={readOnly}
+                    onClick={() => setAssetPickerTarget({ kind: 'swiper', rowId: row.id, field: 'fallback' })}
+                  >
+                    素材库
+                  </Button>
+                </Space>
               ),
             },
             {
@@ -1760,6 +1797,7 @@ const ComponentConfigPanel: React.FC = () => {
             },
           ]}
         />
+        </div>
       </Dialog>
 
       <Dialog
@@ -2451,23 +2489,31 @@ const ComponentConfigPanel: React.FC = () => {
       </Dialog>
 
       <AssetPickerModal
-        visible={assetPickerVisible}
+        visible={assetPickerTarget !== null}
         workspaceMode={workspaceMode}
         teamId={currentTeamId ?? undefined}
         onClose={() => {
-          setAssetPickerVisible(false);
-          setAssetPickerTargetPropKey(null);
+          setAssetPickerTarget(null);
         }}
         onConfirm={(url) => {
-          if (assetPickerTargetPropKey) {
-            updateActiveNodeProp(assetPickerTargetPropKey, url);
+          const target = assetPickerTarget;
+          if (!target) {
+            return;
+          }
+          if (target.kind === 'prop') {
+            updateActiveNodeProp(target.propKey, url);
             setInputDrafts((previous) => ({
               ...previous,
-              [assetPickerTargetPropKey]: url,
+              [target.propKey]: url,
             }));
+          } else {
+            const { rowId, field } = target;
+            setSwiperImageDraft((previous) =>
+              previous.map((item) => (item.id === rowId ? { ...item, [field]: url } : item)),
+            );
+            MessagePlugin.success('已填入素材地址');
           }
-          setAssetPickerVisible(false);
-          setAssetPickerTargetPropKey(null);
+          setAssetPickerTarget(null);
         }}
       />
       </div>
