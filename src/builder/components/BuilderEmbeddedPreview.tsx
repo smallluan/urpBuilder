@@ -10,6 +10,7 @@ import { isHandheldSimulatorScreenSize } from '../utils/simulatorViewport';
 import { SIMULATOR_CHROME_FLOATING_PAD_PX } from '../constants/simulatorChromeStyle';
 import '../../pages/PreviewEngine/style.less';
 import './BuilderEmbeddedPreview.less';
+import { AntdRuntimeRoot } from '../antd/AntdRuntimeRoot';
 
 export interface BuilderEmbeddedPreviewProps {
   enablePageRouteConfig: boolean;
@@ -237,9 +238,11 @@ const BuilderEmbeddedPreview: React.FC<BuilderEmbeddedPreviewProps> = ({
           </div>
         </div>
       ) : (
-        <PreviewDataHubRefContext.Provider value={dataHubRef}>
-          <PreviewRenderer key={renderTree.key} node={renderTree} onLifecycle={handleLifecycle} />
-        </PreviewDataHubRefContext.Provider>
+        <AntdRuntimeRoot>
+          <PreviewDataHubRefContext.Provider value={dataHubRef}>
+            <PreviewRenderer key={renderTree.key} node={renderTree} onLifecycle={handleLifecycle} />
+          </PreviewDataHubRefContext.Provider>
+        </AntdRuntimeRoot>
       )}
     </>
   );

@@ -53,7 +53,9 @@ interface ComponentLibraryPanelProps {
 }
 
 type ComponentSchema = (typeof componentCatalog)[number];
-type ComponentSourceType = 'tdesign' | 'echarts';
+type ComponentSourceType = 'tdesign' | 'antd' | 'echarts';
+
+const isAntdComponentType = (type: string) => type.startsWith('antd.');
 
 interface CategoryMeta {
   label: string;
@@ -89,6 +91,46 @@ const HIDDEN_COMPONENT_TYPES = new Set(['List.Item']);
 const ECHART_COMPONENT_TYPES = new Set(ECHART_COMPONENT_TYPE_LIST);
 
 const getCategoryByType = (type: string): ComponentLibraryCategory => {
+  if (type.startsWith('antd.')) {
+    if (
+      type.startsWith('antd.Layout')
+      || type === 'antd.Row'
+      || type === 'antd.Col'
+      || type === 'antd.Space'
+      || type === 'antd.Form'
+    ) {
+      return 'layout';
+    }
+    if (
+      type.startsWith('antd.Menu')
+      || type === 'antd.Breadcrumb'
+      || type === 'antd.Pagination'
+    ) {
+      return 'navigation';
+    }
+    if (
+      type === 'antd.Button'
+      || type === 'antd.Dropdown'
+      || type === 'antd.Typography.Link'
+    ) {
+      return 'action';
+    }
+    if (
+      type.startsWith('antd.Input')
+      || type === 'antd.Textarea'
+      || type === 'antd.Select'
+      || type === 'antd.Checkbox'
+      || type === 'antd.Radio.Group'
+      || type === 'antd.Switch'
+      || type === 'antd.DatePicker'
+      || type === 'antd.InputNumber'
+      || type === 'antd.Form.Item'
+    ) {
+      return 'display';
+    }
+    return 'text';
+  }
+
   if (type.startsWith('Typography.')) {
     return 'text';
   }
@@ -344,32 +386,39 @@ const ComponentLibraryPanel: React.FC<ComponentLibraryPanelProps> = ({ selectedN
   }, [entityType, presetLibraryEntriesForEntity]);
 
   const sourceFilteredEntries = useMemo(() => {
-    return libraryEntries.filter((entry) => {
-      if (entry.kind === 'group') {
-        const children = entry.children.filter((child) => {
-          const isChart = ECHART_COMPONENT_TYPES.has(String(child.type ?? ''));
-          return sourceType === 'echarts' ? isChart : !isChart;
-        });
-        return children.length > 0;
+    const matchSource = (componentType: string) => {
+      const t = String(componentType ?? '');
+      const isChart = ECHART_COMPONENT_TYPES.has(t);
+      const isAntd = isAntdComponentType(t);
+      if (sourceType === 'echarts') {
+        return isChart;
       }
-
-      const isChart = ECHART_COMPONENT_TYPES.has(String(entry.type ?? ''));
-      return sourceType === 'echarts' ? isChart : !isChart;
-    }).map((entry) => {
-      if (entry.kind !== 'group') {
-        return entry;
+      if (sourceType === 'antd') {
+        return isAntd;
       }
+      return !isChart && !isAntd;
+    };
 
-      const children = entry.children.filter((child) => {
-        const isChart = ECHART_COMPONENT_TYPES.has(String(child.type ?? ''));
-        return sourceType === 'echarts' ? isChart : !isChart;
+    return libraryEntries
+      .filter((entry) => {
+        if (entry.kind === 'group') {
+          const children = entry.children.filter((child) => matchSource(String(child.type ?? '')));
+          return children.length > 0;
+        }
+        return matchSource(String(entry.type ?? ''));
+      })
+      .map((entry) => {
+        if (entry.kind !== 'group') {
+          return entry;
+        }
+
+        const children = entry.children.filter((child) => matchSource(String(child.type ?? '')));
+
+        return {
+          ...entry,
+          children,
+        };
       });
-
-      return {
-        ...entry,
-        children,
-      };
-    });
   }, [libraryEntries, sourceType]);
 
   const filteredEntries = useMemo(() => {
@@ -673,6 +722,13 @@ const ComponentLibraryPanel: React.FC<ComponentLibraryPanelProps> = ({ selectedN
           onClick={() => setSourceType('tdesign')}
         >
           TDesign
+        </button>
+        <button
+          type="button"
+          className={`library-source-tabs__item${sourceType === 'antd' ? ' is-active' : ''}`}
+          onClick={() => setSourceType('antd')}
+        >
+          Ant Design
         </button>
         <button
           type="button"

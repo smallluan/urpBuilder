@@ -295,7 +295,7 @@ export default function CommonComponent(properties: CommonComponentProps) {
   }
 
   const visible = getBooleanProp('visible');
-  const isDrawerNode = normalizedType === 'Drawer';
+  const isDrawerNode = normalizedType === 'Drawer' || normalizedType === 'antd.Drawer';
   const isPopupNode = normalizedType === 'Popup';
   // Drawer 需要允许在“不可见”时依旧保留节点渲染入口（由组件自身处理打开/关闭与挂载策略）。
   if (visible === false && !isDrawerNode && !isPopupNode) return null;

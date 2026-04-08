@@ -40,6 +40,10 @@ function categoryZhByType(type: string): string {
   if (t.startsWith('Typography.')) {
     return '文本';
   }
+  if (t.startsWith('antd.')) {
+    return 'Ant Design';
+  }
+
   if (t.startsWith('Grid.') || t.startsWith('Layout.') || t === 'Layout') {
     return '布局';
   }

@@ -1,5 +1,6 @@
 import type { EChartSeriesType } from '../constants/echart';
 import { ECHART_OPTION_PRESET_OPTIONS, ECHART_TYPE_OPTIONS } from '../constants/echart';
+import { antdComponentCatalogEntries } from './componentCatalogAntd';
 
 const createChartDefaultData = (chartType: EChartSeriesType) => {
   if (chartType === 'sankey' || chartType === 'graph') {
@@ -2962,7 +2963,8 @@ const componentCatalog = [
         editType: 'switch'
       }
     }
-  }
+  },
+  ...antdComponentCatalogEntries,
 ];
 
 const visibleInjectedComponentCatalog = componentCatalog.map((item) => {

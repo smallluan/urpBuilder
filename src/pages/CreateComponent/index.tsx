@@ -29,6 +29,7 @@ import { collectCustomComponentNodesForId } from '../../utils/customComponentVer
 import type { DependencyUpgradeItem } from '../../builder/components/DependencyUpgradeIndicator';
 import DependencyManagerDrawer from '../../builder/components/DependencyManagerDrawer';
 import BuilderQuickFind from '../../builder/components/BuilderQuickFind';
+import { AntdRuntimeRoot } from '../../builder/antd/AntdRuntimeRoot';
 import { computePersistedTemplateFingerprint } from '../../builder/save/templateFingerprint';
 
 const resolveValidTemplateIdFromUrl = () => {
@@ -290,6 +291,7 @@ const CreateComponent: React.FC = () => {
         }
       >
         {(mode === 'component' || mode === 'flow') ? <BuilderQuickFind mode={mode} /> : null}
+        <AntdRuntimeRoot>
         <div className="mode-keepalive-host">
           <div className={`mode-keepalive-pane${mode === 'component' ? ' is-active' : ''}`}>
             {componentLayoutMounted ? (
@@ -323,6 +325,7 @@ const CreateComponent: React.FC = () => {
             <BuilderEmbeddedPreview enablePageRouteConfig={false} entityType="component" />
           </div>
         </div>
+        </AntdRuntimeRoot>
       </BuilderShell>
     </BuilderProvider>
   );

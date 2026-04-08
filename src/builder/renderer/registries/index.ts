@@ -5,6 +5,7 @@ import { registerFormComponents } from './formComponents';
 import { registerFeedbackComponents } from './feedbackComponents';
 import { registerDisplayComponents } from './displayComponents';
 import { registerDataComponents } from './dataComponents';
+import { registerAntdComponents } from './antdComponents';
 
 function buildRegistry(): ComponentRegistry {
   const registry: ComponentRegistry = new Map();
@@ -14,6 +15,7 @@ function buildRegistry(): ComponentRegistry {
   registerFeedbackComponents(registry);
   registerDisplayComponents(registry);
   registerDataComponents(registry);
+  registerAntdComponents(registry);
   return registry;
 }
 

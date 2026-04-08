@@ -53,6 +53,16 @@ const CONTAINER_NODE_TYPES = new Set([
   'Layout.Aside',
   'Layout.Footer',
   'ComponentSlotOutlet',
+  'antd.Row',
+  'antd.Col',
+  'antd.Layout',
+  'antd.Layout.Header',
+  'antd.Layout.Content',
+  'antd.Layout.Footer',
+  'antd.Layout.Sider',
+  'antd.Space',
+  'antd.Form',
+  'antd.List',
 ]);
 
 interface TreeNodeDropTarget {

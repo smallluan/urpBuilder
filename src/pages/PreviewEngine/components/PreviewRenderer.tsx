@@ -38,6 +38,7 @@ import {
 } from '../../../utils/customComponentRuntime';
 import { resolveSimulatorStyle } from '../../../builder/utils/simulatorStyle';
 import type { PreviewDataHub } from '../runtime/dataHub';
+import { tryRenderAntdPreview } from './previewAntdNodes';
 
 const PreviewDataHubRefContext = React.createContext<React.RefObject<PreviewDataHub | null>>({ current: null });
 
@@ -1641,11 +1642,14 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) 
   const { Header, Content, Aside, Footer } = Layout;
   const { ListItem, ListItemMeta } = List;
   const scopedHubRef = React.useContext(PreviewDataHubRefContext);
-  if (isSlotNode(node)) {
-    return null;
-  }
 
-  const isDrawerNode = type === 'Drawer';
+  const isDrawerNode = type === 'Drawer' || type === 'antd.Drawer';
+  const isAntdModalNode = type === 'antd.Modal';
+  const controlledModalOpen = isAntdModalNode ? getBooleanProp(node, 'visible') === true : false;
+  const [modalInnerOpen, setModalInnerOpen] = React.useState<boolean>(controlledModalOpen);
+  const lastModalNodeKeyRef = React.useRef<string>(node.key);
+  const lastModalVisiblePropRef = React.useRef<boolean>(controlledModalOpen);
+
   const isSwitchNode = type === 'Switch';
   const isSwitchControlled = isSwitchNode ? getBooleanProp(node, 'controlled') !== false : false;
   const controlledSwitchValue = isSwitchNode ? Boolean(getBooleanProp(node, 'value')) : false;
@@ -1656,7 +1660,9 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) 
     [lifetimesContentKey],
   );
   const lifetimesRef = React.useRef(lifetimes);
-  lifetimesRef.current = lifetimes;
+  React.useLayoutEffect(() => {
+    lifetimesRef.current = lifetimes;
+  }, [lifetimes]);
   const nodeRevisionKey = getPreviewNodeRevisionKey(node);
   const previousRevisionKeyRef = React.useRef<string | undefined>(undefined);
   const [uncontrolledSwitchValue, setUncontrolledSwitchValue] = React.useState<boolean>(switchDefaultValue);
@@ -1850,6 +1856,28 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) 
     setDrawerInnerVisible(controlledDrawerVisible);
   }, [controlledDrawerVisible, isDrawerNode, node.key]);
 
+  React.useEffect(() => {
+    if (!isAntdModalNode) {
+      setModalInnerOpen(false);
+      lastModalNodeKeyRef.current = node.key;
+      return;
+    }
+
+    if (lastModalNodeKeyRef.current !== node.key) {
+      lastModalNodeKeyRef.current = node.key;
+      lastModalVisiblePropRef.current = controlledModalOpen;
+      setModalInnerOpen(controlledModalOpen);
+      return;
+    }
+
+    if (lastModalVisiblePropRef.current === controlledModalOpen) {
+      return;
+    }
+
+    lastModalVisiblePropRef.current = controlledModalOpen;
+    setModalInnerOpen(controlledModalOpen);
+  }, [controlledModalOpen, isAntdModalNode, node.key]);
+
   const syncDrawerVisible = React.useCallback((nextVisible: boolean) => {
     if (!isDrawerNode) {
       return;
@@ -1873,6 +1901,25 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) 
       window.dataHub?.applyComponentPatch(node.key, { value: nextValue });
     }
   }, [node.key, scopedHubRef]);
+
+  const syncModalVisible = React.useCallback((nextVisible: boolean) => {
+    if (!isAntdModalNode) {
+      return;
+    }
+
+    setModalInnerOpen(nextVisible);
+    lastModalVisiblePropRef.current = nextVisible;
+    const hub = scopedHubRef.current;
+    if (hub) {
+      hub.applyComponentPatch(node.key, { visible: nextVisible });
+    } else {
+      window.dataHub?.applyComponentPatch(node.key, { visible: nextVisible });
+    }
+  }, [isAntdModalNode, node.key, scopedHubRef]);
+
+  if (isSlotNode(node)) {
+    return null;
+  }
 
   if (visible === false && !isDrawerNode) {
     return null;
@@ -1981,6 +2028,26 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) 
       return null;
     });
   };
+
+  if (typeof type === 'string' && type.startsWith('antd.')) {
+    return (
+      // eslint-disable-next-line react-hooks/refs -- tryRenderAntdPreview 仅组装 JSX；hub 访问仅在 sync* 事件回调中
+      tryRenderAntdPreview({
+        type,
+        node,
+        mergeStyle,
+        renderChildren,
+        emitInteractionLifecycle,
+        syncNodeValue,
+        navigatePreviewByHref,
+        onLifecycle,
+        drawerInnerVisible,
+        syncDrawerVisible,
+        modalOpen: modalInnerOpen,
+        syncModalVisible,
+      }) ?? null
+    );
+  }
 
   switch (type) {
     case 'Button': {

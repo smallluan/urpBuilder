@@ -18,6 +18,7 @@ import type { UiTreeNode } from '../../builder/store/types';
 import { findNodeByKey, updateNodeByKey } from '../../utils/createComponentTree';
 import './style.less';
 import './debug/debug.less';
+import { AntdRuntimeRoot } from '../../builder/antd/AntdRuntimeRoot';
 
 const EMPTY_ROOT: UiTreeNode = { key: '__root__', type: 'root', label: '', props: {}, children: [] };
 const SITE_PREVIEW_PREFIX = '/site-preview';
@@ -481,9 +482,11 @@ const PreviewEngine: React.FC = () => {
               </div>
             </div>
           ) : (
-            <PreviewDataHubRefContext.Provider value={dataHubRef}>
-              <PreviewRenderer key={renderTree.key} node={renderTree} onLifecycle={handleLifecycle} />
-            </PreviewDataHubRefContext.Provider>
+            <AntdRuntimeRoot>
+              <PreviewDataHubRefContext.Provider value={dataHubRef}>
+                <PreviewRenderer key={renderTree.key} node={renderTree} onLifecycle={handleLifecycle} />
+              </PreviewDataHubRefContext.Provider>
+            </AntdRuntimeRoot>
           )}
         </div>
         {debugEnabled && debugPaused && <DebugPauseOverlay />}
