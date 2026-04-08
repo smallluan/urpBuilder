@@ -43,6 +43,7 @@ import type {
   TimerNodeData,
 } from '../../types/flow';
 import { CORE_LIFETIMES } from '../../constants/componentBuilder';
+import { buildFlowCodeNodeSourceTemplate } from '../components/codeEditor/flowCodeNodeSource';
 import { findNodeByKey } from '../../utils/createComponentTree';
 
 const FLOW_DRAG_DATA_KEY = 'drag-component-data';
@@ -929,16 +930,17 @@ const FlowCanvas: React.FC = () => {
 
       if (payload.kind === 'builtin-node' && payload.nodeType === 'codeNode') {
         const nodeId = createFlowNodeId('code-node');
+        const nodeLabel = payload.label || '代码节点';
         const nextNode: Node = {
           id: nodeId,
           type: 'codeNode',
           position,
           data: {
-            label: payload.label || '代码节点',
+            label: nodeLabel,
             language: 'javascript',
             editorTheme: 'vscode-dark',
             note: '注释信息',
-            code: '',
+            code: buildFlowCodeNodeSourceTemplate('注释信息'),
           },
         };
 

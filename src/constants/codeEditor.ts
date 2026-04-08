@@ -34,8 +34,9 @@ export const CODE_EDITOR_JS_GLOBAL_COMPLETIONS: Completion[] = [
   {
     label: 'dataHub',
     type: 'variable',
-    detail: '代码节点只读上下文',
-    info: '预览运行时注入：可读取组件状态，并支持 message/dialog/router/cloud 等能力。',
+    detail: '流程代码节点 · 函数参数',
+    info:
+      '写在 async function codeNode(dataHub, ctx) { ... } 内；预览注入只读上下文（组件状态、message、router、cloud 等）。仅函数体的旧数据仍会按原样执行。',
   },
   {
     label: 'dataHub.message',

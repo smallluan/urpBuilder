@@ -22,7 +22,6 @@ import { AddIcon, DeleteIcon, EditIcon, RefreshIcon, SearchIcon } from 'tdesign-
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useTeam } from '../../team/context';
 import WorkspaceModePanel from '../../components/WorkspaceModePanel';
-import CodeEditorDialog, { type CodeEditorValue } from '../../builder/components/CodeEditorDialog';
 import {
   clearCodeWorkbenchResult,
   createCodeWorkbenchSessionId,
@@ -267,30 +266,9 @@ const DataCloudFunction: React.FC = () => {
   const [creatingFunction, setCreatingFunction] = useState(false);
   const [functionCreateDraft, setFunctionCreateDraft] = useState(createInitialFunctionCreateDraft());
 
-  // 复用代码节点编辑器
-  const [codeEditorVisible, setCodeEditorVisible] = useState(false);
-  const [codeEditorTarget, setCodeEditorTarget] = useState<FunctionCodeTarget>('detail');
   const [detailEditorTheme, setDetailEditorTheme] = useState<'vscode-dark' | 'vscode-light'>('vscode-dark');
   const [createEditorTheme, setCreateEditorTheme] = useState<'vscode-dark' | 'vscode-light'>('vscode-dark');
-
-  const codeEditorValue = useMemo<CodeEditorValue>(() => {
-    if (codeEditorTarget === 'create') {
-      return {
-        label: functionCreateDraft.name || '新建云函数',
-        language: 'javascript',
-        editorTheme: createEditorTheme,
-        note: 'Node.js 22 云函数初始化代码',
-        code: functionCreateDraft.code,
-      };
-    }
-    return {
-      label: activeFunctionDetail?.name || '云函数',
-      language: 'javascript',
-      editorTheme: detailEditorTheme,
-      note: 'Node.js 22 云函数代码',
-      code: functionDraft?.code || DEFAULT_FUNCTION_CODE,
-    };
-  }, [activeFunctionDetail?.name, codeEditorTarget, createEditorTheme, detailEditorTheme, functionCreateDraft.code, functionCreateDraft.name, functionDraft?.code]);
+  const [pendingWorkbenchSessionId, setPendingWorkbenchSessionId] = useState('');
 
   const loadTables = useCallback(async (nextPage?: number, nextPageSize?: number) => {
     if (!canQuery) {
@@ -894,30 +872,46 @@ const DataCloudFunction: React.FC = () => {
     }
   };
 
-  const openCodeEditor = (target: FunctionCodeTarget) => {
-    setCodeEditorTarget(target);
-    setCodeEditorVisible(true);
+  const openFunctionCodeWorkbench = (target: FunctionCodeTarget) => {
+    const sessionId = createCodeWorkbenchSessionId();
+    const targetFileId = target === 'create' ? 'create' : 'detail';
+    const fallbackName = targetFileId === 'create'
+      ? (functionCreateDraft.name.trim() || 'new-cloud-function')
+      : (activeFunctionDetail?.name || 'cloud-function');
+    const fileName = `${fallbackName}.js`;
+    const code = target === 'create' ? functionCreateDraft.code : (functionDraft?.code ?? DEFAULT_FUNCTION_CODE);
+    const editorTheme = target === 'create' ? createEditorTheme : detailEditorTheme;
+
+    writeCodeWorkbenchPayload({
+      sessionId,
+      returnTo: `${location.pathname}${location.search}`,
+      title: targetFileId === 'create' ? '初始化函数代码工作台' : '云函数代码工作台',
+      context: 'cloud-function',
+      files: [{
+        id: targetFileId,
+        path: fileName,
+        code,
+        language: 'javascript',
+        editorTheme,
+      }],
+      activeFileId: targetFileId,
+    });
+    setPendingWorkbenchSessionId(sessionId);
+    const workbenchUrl = `${window.location.origin}/code-workbench?sid=${encodeURIComponent(sessionId)}`;
+    const opened = window.open(workbenchUrl, '_blank');
+    if (!opened) {
+      MessagePlugin.warning('无法打开新窗口，请在浏览器中允许本站弹窗后重试');
+    }
   };
 
-  useEffect(() => {
-    const navState = (location.state ?? {}) as {
-      codeWorkbenchSessionId?: string;
-      codeWorkbenchApplied?: boolean;
-    };
-    const sessionId = typeof navState.codeWorkbenchSessionId === 'string' ? navState.codeWorkbenchSessionId.trim() : '';
-    if (!sessionId) {
+  const applyWorkbenchResult = React.useCallback((sessionId: string) => {
+    const normalizedSessionId = String(sessionId ?? '').trim();
+    if (!normalizedSessionId) {
       return;
     }
-
-    if (navState.codeWorkbenchApplied !== true) {
-      navigate({ pathname: location.pathname, search: location.search }, { replace: true, state: null });
-      return;
-    }
-
-    const result = readCodeWorkbenchResult(sessionId);
+    const result = readCodeWorkbenchResult(normalizedSessionId);
     const file = result?.files?.[0];
-    if (!file) {
-      navigate({ pathname: location.pathname, search: location.search }, { replace: true, state: null });
+    if (!result?.applied || !file) {
       return;
     }
 
@@ -930,37 +924,43 @@ const DataCloudFunction: React.FC = () => {
       setDetailEditorTheme(nextTheme);
     }
 
-    clearCodeWorkbenchResult(sessionId);
-    navigate({ pathname: location.pathname, search: location.search }, { replace: true, state: null });
-  }, [location.pathname, location.search, location.state, navigate]);
+    MessagePlugin.success('应用成功');
 
-  const handleOpenFunctionWorkbench = (value: Pick<CodeEditorValue, 'label' | 'language'> & {
-    code: string;
-    editorTheme: CodeEditorValue['editorTheme'];
-  }) => {
-    const sessionId = createCodeWorkbenchSessionId();
-    const targetFileId = codeEditorTarget === 'create' ? 'create' : 'detail';
-    const fallbackName = targetFileId === 'create'
-      ? (functionCreateDraft.name.trim() || 'new-cloud-function')
-      : (activeFunctionDetail?.name || 'cloud-function');
-    const fileName = `${fallbackName}.js`;
+    clearCodeWorkbenchResult(normalizedSessionId);
+    if (pendingWorkbenchSessionId === normalizedSessionId) {
+      setPendingWorkbenchSessionId('');
+    }
+  }, [pendingWorkbenchSessionId]);
 
-    writeCodeWorkbenchPayload({
-      sessionId,
-      returnTo: `${location.pathname}${location.search}`,
-      title: targetFileId === 'create' ? '初始化函数代码工作台' : '云函数代码工作台',
-      context: 'cloud-function',
-      files: [{
-        id: targetFileId,
-        path: fileName,
-        code: value.code,
-        language: value.language || 'javascript',
-        editorTheme: value.editorTheme,
-      }],
-      activeFileId: targetFileId,
-    });
-    navigate(`/code-workbench?sid=${encodeURIComponent(sessionId)}`);
-  };
+  useEffect(() => {
+    const navState = (location.state ?? {}) as {
+      codeWorkbenchSessionId?: string;
+      codeWorkbenchApplied?: boolean;
+    };
+    const sessionId = typeof navState.codeWorkbenchSessionId === 'string' ? navState.codeWorkbenchSessionId.trim() : '';
+    if (sessionId && navState.codeWorkbenchApplied === true) {
+      applyWorkbenchResult(sessionId);
+    }
+    if (sessionId) {
+      navigate({ pathname: location.pathname, search: location.search }, { replace: true, state: null });
+    }
+  }, [applyWorkbenchResult, location.pathname, location.search, location.state, navigate]);
+
+  useEffect(() => {
+    if (!pendingWorkbenchSessionId) {
+      return;
+    }
+    const onStorage = (event: StorageEvent) => {
+      if (!event.key || !event.key.endsWith(pendingWorkbenchSessionId)) {
+        return;
+      }
+      applyWorkbenchResult(pendingWorkbenchSessionId);
+    };
+    window.addEventListener('storage', onStorage);
+    return () => {
+      window.removeEventListener('storage', onStorage);
+    };
+  }, [applyWorkbenchResult, pendingWorkbenchSessionId]);
 
   const saveFunctionDraft = async (showSuccessMessage = true) => {
     if (!activeFunctionDetail?.id || !functionDraft || savingFunction) return null;
@@ -1324,7 +1324,7 @@ const DataCloudFunction: React.FC = () => {
                   <div className="console-main__code-panel">
                     <div className="console-main__code-panel-head">
                       <span>函数代码</span>
-                      <Button onClick={() => openCodeEditor('detail')}>打开代码编辑器</Button>
+                      <Button onClick={() => openFunctionCodeWorkbench('detail')}>打开代码工作台</Button>
                     </div>
                     <div className="console-main__code-panel-meta">
                       <span>代码长度：{functionDraft.code.length} chars</span>
@@ -1516,29 +1516,12 @@ const DataCloudFunction: React.FC = () => {
           <Form.FormItem label="函数代码">
             <div className="console-create-form__code-brief">
               <span>当前代码长度：{functionCreateDraft.code.length} chars</span>
-              <Button size="small" variant="outline" onClick={() => openCodeEditor('create')}>编辑初始化代码</Button>
+              <Button size="small" variant="outline" onClick={() => openFunctionCodeWorkbench('create')}>编辑初始化代码</Button>
             </div>
           </Form.FormItem>
         </Form>
       </Drawer>
 
-      <CodeEditorDialog
-        visible={codeEditorVisible}
-        title={codeEditorTarget === 'create' ? '初始化函数代码' : '云函数代码编辑'}
-        value={codeEditorValue}
-        onOpenWorkbench={handleOpenFunctionWorkbench}
-        onClose={() => setCodeEditorVisible(false)}
-        onApply={({ code, editorTheme }) => {
-          if (codeEditorTarget === 'create') {
-            setFunctionCreateDraft((previous) => ({ ...previous, code }));
-            setCreateEditorTheme(editorTheme);
-          } else {
-            setFunctionDraft((previous) => (previous ? { ...previous, code } : previous));
-            setDetailEditorTheme(editorTheme);
-          }
-          setCodeEditorVisible(false);
-        }}
-      />
     </div>
   );
 };

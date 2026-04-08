@@ -1,10 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Button, Drawer, Input, InputNumber, Select, Switch, Textarea } from 'tdesign-react';
+import { Button, Drawer, Input, InputNumber, MessagePlugin, Select, Switch, Textarea } from 'tdesign-react';
 import { ApiIcon, CodeIcon, UploadIcon } from 'tdesign-icons-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import FlowBody from './FlowBody';
 import FlowAsideLeft from '../components/FlowAsideLeft';
-import CodeEditorDialog, { type CodeEditorValue } from '../components/CodeEditorDialog';
+import type { CodeEditorValue } from '../components/codeEditor/codeEditorTypes';
 import DragableWrapper from '../../components/DragableWrapper';
 import { applyBuilderDragPreview } from '../utils/dragPreview';
 import RightPanelHeader, { type RightPanelMode } from '../components/RightPanelHeader';
@@ -22,6 +22,16 @@ import {
   readCodeWorkbenchResult,
   writeCodeWorkbenchPayload,
 } from '../components/codeEditor/workbenchSession';
+import {
+  buildFlowCodeNodeSourceTemplate,
+  deriveCodeNodeDraftFields,
+  FLOW_CODE_NODE_SHELL_REPAIRED_MESSAGE,
+  isFlowCodeNodeWrappedSource,
+  normalizeFlowCodeNodeSource,
+  resolveCodeNodeNoteForPersist,
+  setLeadingBlockComment,
+} from '../components/codeEditor/flowCodeNodeSource';
+import { buildDynamicCompletionContextFromUiTree } from '../components/codeEditor/dynamicCompletions';
 import type {
   EventFilterFormState,
   LifecycleExposeNodeFormState,
@@ -74,6 +84,7 @@ const FlowLayout: React.FC = () => {
   });
   const updateFlowNodeData = useStore((state) => state.updateFlowNodeData);
   const flowNodes = useStore((state) => state.flowNodes);
+  const uiPageData = useStore((state) => state.uiPageData);
   const nodeTypeLabelMap: Record<string, string> = {
     componentNode: '组件节点',
     eventFilterNode: '事件过滤节点',
@@ -90,7 +101,6 @@ const FlowLayout: React.FC = () => {
   const [networkDraft, setNetworkDraft] = useState<NetworkRequestFormState | null>(null);
   const [networkEditorVisible, setNetworkEditorVisible] = useState(false);
   const [codeDraft, setCodeDraft] = useState<CodeNodeFormState | null>(null);
-  const [codeEditorVisible, setCodeEditorVisible] = useState(false);
   const [eventFilterDraft, setEventFilterDraft] = useState<EventFilterFormState | null>(null);
   const [timerDraft, setTimerDraft] = useState<TimerNodeFormState | null>(null);
   const [propExposeDraft, setPropExposeDraft] = useState<PropExposeNodeFormState | null>(null);
@@ -98,6 +108,11 @@ const FlowLayout: React.FC = () => {
   const [lifecycleExposeDraft, setLifecycleExposeDraft] = useState<LifecycleExposeNodeFormState | null>(null);
   const [lifecycleAliasDrawerVisible, setLifecycleAliasDrawerVisible] = useState(false);
   const [rightPanelMode, setRightPanelMode] = useState<RightPanelMode>('library');
+  const [pendingWorkbenchSessionId, setPendingWorkbenchSessionId] = useState('');
+
+  const dynamicCompletionContext = useMemo(() => {
+    return buildDynamicCompletionContextFromUiTree(uiPageData, 'root');
+  }, [uiPageData]);
 
   const builtinNodes = [
     {
@@ -180,13 +195,16 @@ const FlowLayout: React.FC = () => {
     }
 
     const nodeData = (activeFlowNode.data ?? {}) as Record<string, unknown>;
+    const rawCode = String(nodeData.code ?? '');
+    const noteFromData = String(nodeData.note ?? '');
+    const { note, code } = deriveCodeNodeDraftFields(rawCode, noteFromData);
     setCodeDraft({
       label: String(nodeData.label ?? '代码节点'),
       language: String(nodeData.language ?? 'javascript'),
       editorTheme:
         String(nodeData.editorTheme ?? codeMirrorDefaultTheme) === 'vscode-light' ? 'vscode-light' : 'vscode-dark',
-      note: String(nodeData.note ?? ''),
-      code: String(nodeData.code ?? ''),
+      note,
+      code,
     });
   }, [activeFlowNode, codeMirrorDefaultTheme]);
 
@@ -292,12 +310,6 @@ const FlowLayout: React.FC = () => {
   useEffect(() => {
     if (!activeFlowNode || activeFlowNode.type !== 'networkRequestNode') {
       setNetworkEditorVisible(false);
-    }
-  }, [activeFlowNode]);
-
-  useEffect(() => {
-    if (!activeFlowNode || activeFlowNode.type !== 'codeNode') {
-      setCodeEditorVisible(false);
     }
   }, [activeFlowNode]);
 
@@ -475,6 +487,18 @@ const FlowLayout: React.FC = () => {
       return;
     }
 
+    const normalized = normalizeFlowCodeNodeSource(resolvedDraft.code, resolvedDraft.note);
+    if (normalized.fatal) {
+      MessagePlugin.error(normalized.fatalReason ?? '代码校验失败');
+      return;
+    }
+    if (normalized.repaired) {
+      MessagePlugin.error(FLOW_CODE_NODE_SHELL_REPAIRED_MESSAGE);
+    }
+
+    const finalCode = normalized.code;
+    const notePersisted = resolveCodeNodeNoteForPersist(finalCode, resolvedDraft.note);
+
     updateFlowNodeData(
       activeFlowNode.id,
       (previous) => ({
@@ -482,13 +506,17 @@ const FlowLayout: React.FC = () => {
         label: resolvedDraft.label,
         language: resolvedDraft.language,
         editorTheme: resolvedDraft.editorTheme,
-        note: resolvedDraft.note,
-        code: resolvedDraft.code,
+        note: notePersisted,
+        code: finalCode,
       }),
       '更新代码节点配置',
     );
 
-    setCodeDraft(resolvedDraft);
+    setCodeDraft({
+      ...resolvedDraft,
+      note: notePersisted,
+      code: finalCode,
+    });
   };
 
   const handleApplyEventFilterDraft = () => {
@@ -556,71 +584,119 @@ const FlowLayout: React.FC = () => {
     );
   };
 
-  useEffect(() => {
-    const navState = (location.state ?? {}) as {
-      codeWorkbenchSessionId?: string;
-      codeWorkbenchApplied?: boolean;
-    };
-    const sessionId = typeof navState.codeWorkbenchSessionId === 'string' ? navState.codeWorkbenchSessionId.trim() : '';
-    if (!sessionId || navState.codeWorkbenchApplied !== true) {
+  const applyWorkbenchResult = React.useCallback((sessionId: string) => {
+    const normalizedSessionId = String(sessionId ?? '').trim();
+    if (!normalizedSessionId) {
       return;
     }
-
-    const result = readCodeWorkbenchResult(sessionId);
-    if (!result || !Array.isArray(result.files)) {
-      navigate({ pathname: location.pathname, search: location.search }, { replace: true, state: null });
+    const result = readCodeWorkbenchResult(normalizedSessionId);
+    if (!result || !result.applied || !Array.isArray(result.files)) {
       return;
     }
 
     const codeById = new Map(result.files.map((item) => [item.id, item]));
     let activeUpdatedDraft: CodeNodeFormState | null = null;
+    let anyRepaired = false;
+    let touchedNodes = 0;
 
-    flowNodes.forEach((node) => {
+    for (const node of flowNodes) {
       if (node.type !== 'codeNode') {
-        return;
+        continue;
       }
       const nextFile = codeById.get(node.id);
       if (!nextFile) {
+        continue;
+      }
+      touchedNodes += 1;
+      const prevNote = String((node.data as Record<string, unknown> | undefined)?.note ?? '');
+      const normalized = normalizeFlowCodeNodeSource(nextFile.code, prevNote);
+      if (normalized.fatal) {
+        MessagePlugin.error(normalized.fatalReason ?? '代码校验失败');
+        clearCodeWorkbenchResult(normalizedSessionId);
+        if (pendingWorkbenchSessionId === normalizedSessionId) {
+          setPendingWorkbenchSessionId('');
+        }
         return;
       }
+      if (normalized.repaired) {
+        anyRepaired = true;
+      }
+      const finalCode = normalized.code;
       updateFlowNodeData(
         node.id,
-        (previous) => ({
-          ...previous,
-          code: nextFile.code,
-          editorTheme: nextFile.editorTheme || previous.editorTheme,
-        }),
+        (previous) => {
+          const prev = previous as Record<string, unknown>;
+          const noteFromCode = resolveCodeNodeNoteForPersist(finalCode, String(prev.note ?? ''));
+          return {
+            ...previous,
+            code: finalCode,
+            note: noteFromCode,
+            editorTheme: nextFile.editorTheme || prev.editorTheme,
+          };
+        },
         '应用工作台代码改动',
       );
 
       if (activeFlowNode?.id === node.id && codeDraft) {
+        const mergedNote = resolveCodeNodeNoteForPersist(finalCode, codeDraft.note);
         activeUpdatedDraft = {
           ...codeDraft,
-          code: nextFile.code,
+          code: finalCode,
+          note: mergedNote,
           editorTheme:
             (nextFile.editorTheme === 'vscode-light' || nextFile.editorTheme === 'vscode-dark')
               ? nextFile.editorTheme
               : codeDraft.editorTheme,
         };
       }
-    });
+    }
+
+    if (anyRepaired) {
+      MessagePlugin.error(FLOW_CODE_NODE_SHELL_REPAIRED_MESSAGE);
+    }
+    if (touchedNodes > 0) {
+      MessagePlugin.success('应用成功');
+    }
 
     if (activeUpdatedDraft) {
       setCodeDraft(activeUpdatedDraft);
     }
 
-    clearCodeWorkbenchResult(sessionId);
-    navigate({ pathname: location.pathname, search: location.search }, { replace: true, state: null });
-  }, [
-    activeFlowNode?.id,
-    codeDraft,
-    flowNodes,
-    location.pathname,
-    location.search,
-    location.state,
-    navigate,
-    updateFlowNodeData,
-  ]);
+    clearCodeWorkbenchResult(normalizedSessionId);
+    if (pendingWorkbenchSessionId === normalizedSessionId) {
+      setPendingWorkbenchSessionId('');
+    }
+  }, [activeFlowNode?.id, codeDraft, flowNodes, pendingWorkbenchSessionId, updateFlowNodeData]);
+
+  useEffect(() => {
+    const navState = (location.state ?? {}) as {
+      codeWorkbenchSessionId?: string;
+      codeWorkbenchApplied?: boolean;
+    };
+    const sessionId = typeof navState.codeWorkbenchSessionId === 'string' ? navState.codeWorkbenchSessionId.trim() : '';
+    if (sessionId && navState.codeWorkbenchApplied === true) {
+      applyWorkbenchResult(sessionId);
+    }
+    if (sessionId) {
+      navigate({ pathname: location.pathname, search: location.search }, { replace: true, state: null });
+    }
+  }, [applyWorkbenchResult, location.pathname, location.search, location.state, navigate]);
+
+  useEffect(() => {
+    if (!pendingWorkbenchSessionId) {
+      return;
+    }
+    const onStorage = (event: StorageEvent) => {
+      if (!event.key || !event.key.endsWith(pendingWorkbenchSessionId)) {
+        return;
+      }
+      applyWorkbenchResult(pendingWorkbenchSessionId);
+    };
+    window.addEventListener('storage', onStorage);
+    return () => {
+      window.removeEventListener('storage', onStorage);
+    };
+  }, [applyWorkbenchResult, pendingWorkbenchSessionId]);
 
   const handleOpenFlowWorkbench = (draftValue: Pick<CodeEditorValue, 'label' | 'language'> & {
     code: string;
@@ -644,10 +720,18 @@ const FlowLayout: React.FC = () => {
           String(data.editorTheme ?? codeMirrorDefaultTheme) === 'vscode-light'
             ? 'vscode-light'
             : 'vscode-dark';
+        const baseCode =
+          node.id === activeFlowNode.id ? draftValue.code : String(data.code ?? '');
+        const nodeNote =
+          node.id === activeFlowNode.id ? String(codeDraft?.note ?? '') : String(data.note ?? '');
+        const code =
+          baseCode.trim() === ''
+            ? buildFlowCodeNodeSourceTemplate(nodeNote)
+            : baseCode;
         return {
           id: node.id,
           path: nodeLabel || `code-${node.id}.${suffix}`,
-          code: node.id === activeFlowNode.id ? draftValue.code : String(data.code ?? ''),
+          code,
           language: normalizedLanguage,
           editorTheme,
         };
@@ -658,10 +742,16 @@ const FlowLayout: React.FC = () => {
       returnTo,
       title: '流程图代码工作台',
       context: 'flow',
+      completionContext: dynamicCompletionContext,
       files,
       activeFileId: activeFlowNode.id,
     });
-    navigate(`/code-workbench?sid=${encodeURIComponent(sessionId)}`);
+    setPendingWorkbenchSessionId(sessionId);
+    const workbenchUrl = `${window.location.origin}/code-workbench?sid=${encodeURIComponent(sessionId)}`;
+    const opened = window.open(workbenchUrl, '_blank');
+    if (!opened) {
+      MessagePlugin.warning('无法打开新窗口，请在浏览器中允许本站弹窗后重试');
+    }
   };
 
   return (
@@ -866,9 +956,22 @@ const FlowLayout: React.FC = () => {
                     <Input
                       size="small"
                       value={codeDraft.note}
-                      onChange={(value) =>
-                        setCodeDraft((previous) => (previous ? { ...previous, note: String(value ?? '') } : previous))
-                      }
+                      onChange={(value) => {
+                        const nextNote = String(value ?? '');
+                        setCodeDraft((previous) => {
+                          if (!previous) {
+                            return previous;
+                          }
+                          if (isFlowCodeNodeWrappedSource(previous.code)) {
+                            return {
+                              ...previous,
+                              note: nextNote,
+                              code: setLeadingBlockComment(previous.code, nextNote),
+                            };
+                          }
+                          return { ...previous, note: nextNote };
+                        });
+                      }}
                     />
                   </div>
 
@@ -887,8 +990,24 @@ const FlowLayout: React.FC = () => {
                     >
                       应用配置
                     </Button>
-                    <Button size="small" theme="primary" variant="outline" disabled={readOnly} onClick={() => setCodeEditorVisible(true)}>
-                      编辑代码
+                    <Button
+                      size="small"
+                      theme="primary"
+                      variant="outline"
+                      disabled={readOnly || !codeDraft}
+                      onClick={() => {
+                        if (!codeDraft) {
+                          return;
+                        }
+                        handleOpenFlowWorkbench({
+                          label: codeDraft.label,
+                          language: codeDraft.language,
+                          code: codeDraft.code,
+                          editorTheme: codeDraft.editorTheme,
+                        });
+                      }}
+                    >
+                      在工作台编辑代码
                     </Button>
                   </div>
                 </div>
@@ -1398,35 +1517,6 @@ const FlowLayout: React.FC = () => {
           ) : null}
         </Drawer>
 
-        <CodeEditorDialog
-          visible={codeEditorVisible && !!activeFlowNode && activeFlowNode.type === 'codeNode' && !!codeDraft}
-          title={codeDraft?.label ? `代码节点编辑 · ${codeDraft.label}` : '代码节点编辑'}
-          value={
-            codeDraft ?? {
-              label: '代码节点',
-              language: 'javascript',
-              editorTheme: codeMirrorDefaultTheme,
-              note: '',
-              code: '',
-            }
-          }
-          onClose={() => setCodeEditorVisible(false)}
-          onOpenWorkbench={handleOpenFlowWorkbench}
-          onApply={(nextCode) => {
-            if (!codeDraft) {
-              return;
-            }
-
-            const nextDraft = {
-              ...codeDraft,
-              code: nextCode.code,
-              editorTheme: nextCode.editorTheme,
-            };
-
-            handleApplyCodeDraft(nextDraft);
-            setCodeEditorVisible(false);
-          }}
-        />
       </aside>
     </div>
   );

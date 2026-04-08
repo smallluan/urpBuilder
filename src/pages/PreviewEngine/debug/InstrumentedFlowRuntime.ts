@@ -8,6 +8,7 @@ import type {
   TimerNodeData,
 } from '../../../types/flow';
 import type { RuntimeEvent, RuntimeRequestError, RuntimeRequestSuccess } from '../../../types/flowRuntime';
+import { extractExecutableBodyFromFlowCodeNodeSource } from '../../../builder/components/codeEditor/flowCodeNodeSource';
 import type { DebugState } from './debugStore';
 import type { StoreApi } from 'zustand';
 
@@ -392,8 +393,9 @@ export class InstrumentedFlowRuntime {
 
   private async handleCodeNode(node: Node, input: RuntimeEvent, upstreamNodeId: string): Promise<RuntimeEvent | null> {
     const data = (node.data ?? {}) as CodeNodeData;
-    const code = typeof data.code === 'string' ? data.code.trim() : '';
-    if (!code) return null;
+    const raw = typeof data.code === 'string' ? data.code : '';
+    const executableBody = extractExecutableBodyFromFlowCodeNodeSource(raw).trim();
+    if (!executableBody) return null;
 
     try {
       const ctx: Record<string, unknown> = { event: input, upstreamNodeId, currentNodeId: node.id };
@@ -405,10 +407,15 @@ export class InstrumentedFlowRuntime {
         setValueByPath(ctx, input.request.responsePath, input.request.fallbackData);
         ctx.request = input.request;
       }
-      let executor = this.codeFnCache.get(node.id);
+      const cacheKey = `${node.id}\0${raw}`;
+      let executor = this.codeFnCache.get(cacheKey);
       if (!executor) {
-        executor = new Function('dataHub', 'ctx', `'use strict';\nreturn (async () => {\n${code}\n})();`);
-        this.codeFnCache.set(node.id, executor);
+        executor = new Function(
+          'dataHub',
+          'ctx',
+          `'use strict';\nreturn (async () => {\n${executableBody}\n})();`,
+        );
+        this.codeFnCache.set(cacheKey, executor);
       }
       const result = await executor(this.dataHub.createCodeContext(), ctx);
 

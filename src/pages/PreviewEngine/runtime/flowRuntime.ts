@@ -8,6 +8,7 @@ import type {
   TimerNodeData,
 } from '../../../types/flow';
 import type { RuntimeEvent, RuntimeRequestError, RuntimeRequestSuccess } from '../../../types/flowRuntime';
+import { extractExecutableBodyFromFlowCodeNodeSource } from '../../../builder/components/codeEditor/flowCodeNodeSource';
 
 const isPlainObject = (value: unknown): value is Record<string, unknown> => {
   return !!value && typeof value === 'object' && !Array.isArray(value);
@@ -497,8 +498,9 @@ export class PreviewFlowRuntime {
 
   private async handleCodeNode(node: Node, input: RuntimeEvent, upstreamNodeId: string): Promise<RuntimeEvent | null> {
     const data = (node.data ?? {}) as CodeNodeData;
-    const code = typeof data.code === 'string' ? data.code.trim() : '';
-    if (!code) {
+    const raw = typeof data.code === 'string' ? data.code : '';
+    const executableBody = extractExecutableBodyFromFlowCodeNodeSource(raw).trim();
+    if (!executableBody) {
       return null;
     }
 
@@ -506,6 +508,7 @@ export class PreviewFlowRuntime {
       // 代码节点以字符串整体执行：
       // - dataHub：只读上下文（由 createCodeContext 提供）
       // - ctx：本次事件上下文
+      // 编辑器可为完整 async function(dataHub,ctx){...}，此处取函数体再包 async IIFE（兼容历史仅函数体）
       const ctx: Record<string, unknown> = {
         event: input,
         upstreamNodeId,
@@ -522,10 +525,15 @@ export class PreviewFlowRuntime {
         ctx.request = input.request;
       }
 
-      let executor = this.codeFnCache.get(node.id);
+      const cacheKey = `${node.id}\0${raw}`;
+      let executor = this.codeFnCache.get(cacheKey);
       if (!executor) {
-        executor = new Function('dataHub', 'ctx', `'use strict';\nreturn (async () => {\n${code}\n})();`);
-        this.codeFnCache.set(node.id, executor);
+        executor = new Function(
+          'dataHub',
+          'ctx',
+          `'use strict';\nreturn (async () => {\n${executableBody}\n})();`,
+        );
+        this.codeFnCache.set(cacheKey, executor);
       }
       const result = await executor(this.dataHub.createCodeContext(), ctx);
 

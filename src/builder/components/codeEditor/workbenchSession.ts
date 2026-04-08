@@ -1,3 +1,5 @@
+import type { CodeEditorDynamicCompletionContext } from './dynamicCompletions';
+
 export type CodeWorkbenchContext = 'flow' | 'single' | 'json' | 'cloud-function';
 
 export interface CodeWorkbenchFile {
@@ -13,6 +15,7 @@ export interface CodeWorkbenchPayload {
   returnTo: string;
   title?: string;
   context: CodeWorkbenchContext;
+  completionContext?: CodeEditorDynamicCompletionContext;
   files: CodeWorkbenchFile[];
   activeFileId: string;
 }
@@ -44,27 +47,27 @@ export const createCodeWorkbenchSessionId = () => {
 
 export const writeCodeWorkbenchPayload = (payload: CodeWorkbenchPayload) => {
   const key = `${SESSION_PREFIX}${payload.sessionId}`;
-  sessionStorage.setItem(key, JSON.stringify(payload));
+  localStorage.setItem(key, JSON.stringify(payload));
 };
 
 export const readCodeWorkbenchPayload = (sessionId: string): CodeWorkbenchPayload | null => {
-  return safeParseJson<CodeWorkbenchPayload>(sessionStorage.getItem(`${SESSION_PREFIX}${sessionId}`));
+  return safeParseJson<CodeWorkbenchPayload>(localStorage.getItem(`${SESSION_PREFIX}${sessionId}`));
 };
 
 export const clearCodeWorkbenchPayload = (sessionId: string) => {
-  sessionStorage.removeItem(`${SESSION_PREFIX}${sessionId}`);
+  localStorage.removeItem(`${SESSION_PREFIX}${sessionId}`);
 };
 
 export const writeCodeWorkbenchResult = (result: CodeWorkbenchResult) => {
   const key = `${RESULT_PREFIX}${result.sessionId}`;
-  sessionStorage.setItem(key, JSON.stringify(result));
+  localStorage.setItem(key, JSON.stringify(result));
 };
 
 export const readCodeWorkbenchResult = (sessionId: string): CodeWorkbenchResult | null => {
-  return safeParseJson<CodeWorkbenchResult>(sessionStorage.getItem(`${RESULT_PREFIX}${sessionId}`));
+  return safeParseJson<CodeWorkbenchResult>(localStorage.getItem(`${RESULT_PREFIX}${sessionId}`));
 };
 
 export const clearCodeWorkbenchResult = (sessionId: string) => {
-  sessionStorage.removeItem(`${RESULT_PREFIX}${sessionId}`);
+  localStorage.removeItem(`${RESULT_PREFIX}${sessionId}`);
 };
 

@@ -14,6 +14,10 @@ import {
   type CodeWorkbenchPayload,
 } from '../../builder/components/codeEditor/workbenchSession';
 import { CODE_EDITOR_THEME_OPTIONS } from '../../constants/codeEditor';
+import {
+  FLOW_CODE_NODE_SHELL_REPAIRED_MESSAGE,
+  normalizeFlowCodeNodeSource,
+} from '../../builder/components/codeEditor/flowCodeNodeSource';
 import './style.less';
 
 const FALLBACK_THEME: CodeEditorThemeMode = 'vscode-dark';
@@ -69,20 +73,43 @@ const CodeWorkbench: React.FC = () => {
   }, [codeMap, payload]);
 
   const activeExtensions = useMemo(
-    () => buildCodeMirrorExtensions({ language: activeFile?.language || 'javascript' }),
-    [activeFile?.language],
+    () =>
+      buildCodeMirrorExtensions({
+        language: activeFile?.language || 'javascript',
+        dynamicCompletionContext: payload?.completionContext,
+      }),
+    [activeFile?.language, payload?.completionContext],
   );
 
+  /**
+   * 应用成功后只关闭本标签页，不在本页做路由跳转（父页通过 localStorage + storage 事件或同页 state 消费结果）。
+   * 取消时：优先关闭脚本打开的窗口；否则回到打开工作台前的路由。
+   */
   const handleBack = (applied: boolean) => {
     if (!payload) {
       navigate(-1);
+      return;
+    }
+    if (applied) {
+      window.close();
+      // 非脚本打开的新标签时 close 可能无效，退回历史记录而非跳转到 returnTo
+      window.setTimeout(() => {
+        if (document.visibilityState === 'visible') {
+          navigate(-1);
+        }
+      }, 200);
+      return;
+    }
+    const hasOpener = typeof window !== 'undefined' && window.opener && !window.opener.closed;
+    if (hasOpener) {
+      window.close();
       return;
     }
     navigate(payload.returnTo, {
       replace: true,
       state: {
         codeWorkbenchSessionId: payload.sessionId,
-        codeWorkbenchApplied: applied,
+        codeWorkbenchApplied: false,
         codeWorkbenchAt: Date.now(),
       },
     });
@@ -93,11 +120,31 @@ const CodeWorkbench: React.FC = () => {
       return;
     }
 
-    const files = payload.files.map((item) => ({
+    let files = payload.files.map((item) => ({
       ...item,
       code: codeMap[item.id] ?? '',
       editorTheme,
     }));
+
+    if (payload.context === 'flow') {
+      let anyRepaired = false;
+      const next: typeof files = [];
+      for (const item of files) {
+        const normalized = normalizeFlowCodeNodeSource(item.code, '');
+        if (normalized.fatal) {
+          MessagePlugin.error(normalized.fatalReason ?? '代码校验失败');
+          return;
+        }
+        if (normalized.repaired) {
+          anyRepaired = true;
+        }
+        next.push({ ...item, code: normalized.code });
+      }
+      files = next;
+      if (anyRepaired) {
+        MessagePlugin.error(FLOW_CODE_NODE_SHELL_REPAIRED_MESSAGE);
+      }
+    }
 
     writeCodeWorkbenchResult({
       sessionId: payload.sessionId,
@@ -155,7 +202,7 @@ const CodeWorkbench: React.FC = () => {
             onChange={(nextValue) => setEditorTheme(String(nextValue ?? FALLBACK_THEME) === 'vscode-light' ? 'vscode-light' : 'vscode-dark')}
           />
           <Button size="small" variant="outline" onClick={handleCancel}>取消</Button>
-          <Button size="small" theme="primary" onClick={handleApply}>应用并返回</Button>
+          <Button size="small" theme="primary" onClick={handleApply}>应用</Button>
         </Space>
       </header>
 

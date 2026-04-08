@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Button, Collapse, ColorPicker, Dialog, Empty, Input, InputNumber, MessagePlugin, Popup, Select, Slider, Space, Switch, Table, Tag, Tabs, Typography, Row, Textarea } from 'tdesign-react';
 import { HelpCircleIcon, LayoutIcon } from 'tdesign-icons-react';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -7,7 +7,6 @@ import { useBuilderThemeStore } from '../theme/builderThemeStore';
 import type { UiTreeNode } from '../store/types';
 import NodeStyleTab from './NodeStyleTab';
 import { isSlotNode } from '../utils/slot';
-import CodeEditorDialog, { type CodeEditorValue } from './CodeEditorDialog';
 import AssetPickerModal from './AssetPickerModal';
 import { findNodePathByKey } from '../utils/tree';
 import {
@@ -44,6 +43,29 @@ import {
   readCodeWorkbenchResult,
   writeCodeWorkbenchPayload,
 } from './codeEditor/workbenchSession';
+
+const toJsonCodeString = (value: unknown): string => {
+  if (typeof value === 'string') {
+    if (!value.trim()) {
+      return '[]';
+    }
+    try {
+      return JSON.stringify(JSON.parse(value), null, 2);
+    } catch {
+      return value;
+    }
+  }
+
+  if (Array.isArray(value) || (value && typeof value === 'object')) {
+    try {
+      return JSON.stringify(value, null, 2);
+    } catch {
+      return '[]';
+    }
+  }
+
+  return '[]';
+};
 
 type EditType =
   | 'switch'
@@ -522,8 +544,7 @@ const ComponentConfigPanel: React.FC = () => {
   const [cloudFunctionOptions, setCloudFunctionOptions] = useState<CloudFunctionRecord[]>([]);
   const [inputDrafts, setInputDrafts] = useState<Record<string, string>>({});
   const [numberDrafts, setNumberDrafts] = useState<Record<string, number | undefined>>({});
-  const [jsonCodeDialogVisible, setJsonCodeDialogVisible] = useState(false);
-  const [jsonCodeTargetPropKey, setJsonCodeTargetPropKey] = useState<string | null>(null);
+  const [pendingWorkbenchSessionId, setPendingWorkbenchSessionId] = useState('');
   const [gridResponsiveDialogVisible, setGridResponsiveDialogVisible] = useState(false);
   const [gridResponsiveDraft, setGridResponsiveDraft] = useState<GridResponsiveConfig>({});
   const [assetPickerVisible, setAssetPickerVisible] = useState(false);
@@ -532,17 +553,33 @@ const ComponentConfigPanel: React.FC = () => {
   const [iconQuickFilters, setIconQuickFilters] = useState<Record<string, IconQuickFilterKey>>({});
   const [iconInitialFilters, setIconInitialFilters] = useState<Record<string, IconInitialFilterKey>>({});
   const [customComponentFallbackProps, setCustomComponentFallbackProps] = useState<Array<[string, ComponentPropSchema]>>([]);
-  const [jsonCodeValue, setJsonCodeValue] = useState<CodeEditorValue>(() => {
-    const dark = useBuilderThemeStore.getState().colorMode === 'dark';
-    return {
-      label: 'JSON示例数据',
-      language: 'json',
-      editorTheme: dark ? 'vscode-dark' : 'vscode-light',
-      note: '',
-      code: '[]',
-    };
-  });
   const [configMainTab, setConfigMainTab] = useState<'props' | 'style'>('props');
+
+  const openJsonCodeWorkbench = useCallback((propKey: string, title: string, code: string) => {
+    const sessionId = createCodeWorkbenchSessionId();
+    const dark = useBuilderThemeStore.getState().colorMode === 'dark';
+    const editorTheme = dark ? 'vscode-dark' : 'vscode-light';
+    writeCodeWorkbenchPayload({
+      sessionId,
+      returnTo: `${location.pathname}${location.search}`,
+      title: `JSON 编辑工作台 · ${title}`,
+      context: 'json',
+      files: [{
+        id: propKey,
+        path: `${title}.json`,
+        code,
+        language: 'json',
+        editorTheme,
+      }],
+      activeFileId: propKey,
+    });
+    setPendingWorkbenchSessionId(sessionId);
+    const workbenchUrl = `${window.location.origin}/code-workbench?sid=${encodeURIComponent(sessionId)}`;
+    const opened = window.open(workbenchUrl, '_blank');
+    if (!opened) {
+      MessagePlugin.warning('无法打开新窗口，请在浏览器中允许本站弹窗后重试');
+    }
+  }, [location.pathname, location.search]);
 
   const propsMap = React.useMemo(() => {
     const activeProps = (activeNode?.props ?? {}) as Record<string, ComponentPropSchema>;
@@ -786,35 +823,53 @@ const ComponentConfigPanel: React.FC = () => {
     };
   }, [activeNode]);
 
+  const applyWorkbenchResult = React.useCallback((sessionId: string) => {
+    const normalizedSessionId = String(sessionId ?? '').trim();
+    if (!normalizedSessionId) {
+      return;
+    }
+    const result = readCodeWorkbenchResult(normalizedSessionId);
+    const file = result?.files?.[0];
+    if (result?.applied && file) {
+      updateActiveNodeProp(file.id, file.code);
+      MessagePlugin.success('应用成功');
+    }
+
+    clearCodeWorkbenchResult(normalizedSessionId);
+    if (pendingWorkbenchSessionId === normalizedSessionId) {
+      setPendingWorkbenchSessionId('');
+    }
+  }, [pendingWorkbenchSessionId, updateActiveNodeProp]);
+
   useEffect(() => {
     const navState = (location.state ?? {}) as {
       codeWorkbenchSessionId?: string;
       codeWorkbenchApplied?: boolean;
     };
     const sessionId = typeof navState.codeWorkbenchSessionId === 'string' ? navState.codeWorkbenchSessionId.trim() : '';
-    if (!sessionId) {
-      return;
+    if (sessionId && navState.codeWorkbenchApplied === true) {
+      applyWorkbenchResult(sessionId);
     }
-
-    if (navState.codeWorkbenchApplied !== true) {
+    if (sessionId) {
       navigate({ pathname: location.pathname, search: location.search }, { replace: true, state: null });
+    }
+  }, [applyWorkbenchResult, location.pathname, location.search, location.state, navigate]);
+
+  useEffect(() => {
+    if (!pendingWorkbenchSessionId) {
       return;
     }
-
-    const result = readCodeWorkbenchResult(sessionId);
-    const file = result?.files?.[0];
-    if (file) {
-      setJsonCodeValue((previous) => ({
-        ...previous,
-        code: file.code,
-        editorTheme: file.editorTheme === 'vscode-light' ? 'vscode-light' : 'vscode-dark',
-      }));
-      updateActiveNodeProp(file.id, file.code);
-    }
-
-    clearCodeWorkbenchResult(sessionId);
-    navigate({ pathname: location.pathname, search: location.search }, { replace: true, state: null });
-  }, [location.pathname, location.search, location.state, navigate, updateActiveNodeProp]);
+    const onStorage = (event: StorageEvent) => {
+      if (!event.key || !event.key.endsWith(pendingWorkbenchSessionId)) {
+        return;
+      }
+      applyWorkbenchResult(pendingWorkbenchSessionId);
+    };
+    window.addEventListener('storage', onStorage);
+    return () => {
+      window.removeEventListener('storage', onStorage);
+    };
+  }, [applyWorkbenchResult, pendingWorkbenchSessionId]);
 
   if (!activeNode) {
     return (
@@ -1119,42 +1174,17 @@ const ComponentConfigPanel: React.FC = () => {
     }
 
     if (editType === 'jsonCode') {
-      const toJsonCode = (value: unknown) => {
-        if (typeof value === 'string') {
-          if (!value.trim()) {
-            return '[]';
-          }
-
-          try {
-            return JSON.stringify(JSON.parse(value), null, 2);
-          } catch {
-            return value;
-          }
-        }
-
-        if (Array.isArray(value) || (value && typeof value === 'object')) {
-          try {
-            return JSON.stringify(value, null, 2);
-          } catch {
-            return '[]';
-          }
-        }
-
-        return '[]';
-      };
-
       return (
         <Button
           size="small"
           variant="outline"
+          disabled={readOnly}
           onClick={() => {
-            setJsonCodeTargetPropKey(propKey);
-            setJsonCodeValue((previous) => ({
-              ...previous,
-              label: schema.name ?? propKey,
-              code: toJsonCode(currentValue),
-            }));
-            setJsonCodeDialogVisible(true);
+            if (readOnly) {
+              return;
+            }
+            const code = toJsonCodeString(currentValue);
+            openJsonCodeWorkbench(propKey, String(schema.name ?? propKey), code);
           }}
         >
           编辑示例数据
@@ -1210,47 +1240,6 @@ const ComponentConfigPanel: React.FC = () => {
       })),
     );
     setSwiperDialogVisible(false);
-  };
-
-  const applyJsonCodeDraft = (nextValue: Pick<CodeEditorValue, 'code' | 'editorTheme'>) => {
-    setJsonCodeValue((previous) => ({
-      ...previous,
-      code: nextValue.code,
-      editorTheme: nextValue.editorTheme,
-    }));
-
-    if (jsonCodeTargetPropKey) {
-      updateActiveNodeProp(jsonCodeTargetPropKey, nextValue.code);
-    }
-
-    setJsonCodeDialogVisible(false);
-    setJsonCodeTargetPropKey(null);
-  };
-
-  const handleOpenJsonWorkbench = (value: Pick<CodeEditorValue, 'label' | 'language'> & {
-    code: string;
-    editorTheme: CodeEditorValue['editorTheme'];
-  }) => {
-    if (!jsonCodeTargetPropKey) {
-      return;
-    }
-
-    const sessionId = createCodeWorkbenchSessionId();
-    writeCodeWorkbenchPayload({
-      sessionId,
-      returnTo: `${location.pathname}${location.search}`,
-      title: `JSON 编辑工作台 · ${value.label || jsonCodeTargetPropKey}`,
-      context: 'json',
-      files: [{
-        id: jsonCodeTargetPropKey,
-        path: `${value.label || jsonCodeTargetPropKey}.json`,
-        code: value.code,
-        language: 'json',
-        editorTheme: value.editorTheme,
-      }],
-      activeFileId: jsonCodeTargetPropKey,
-    });
-    navigate(`/code-workbench?sid=${encodeURIComponent(sessionId)}`);
   };
 
   const applyTabsDraft = () => {
@@ -2333,18 +2322,6 @@ const ComponentConfigPanel: React.FC = () => {
           ) : null}
         </Space>
       </Dialog>
-
-      <CodeEditorDialog
-        visible={jsonCodeDialogVisible}
-        title={jsonCodeValue.label || '代码编辑'}
-        value={jsonCodeValue}
-        onOpenWorkbench={handleOpenJsonWorkbench}
-        onClose={() => {
-          setJsonCodeDialogVisible(false);
-          setJsonCodeTargetPropKey(null);
-        }}
-        onApply={applyJsonCodeDraft}
-      />
 
       <Dialog
         visible={gridResponsiveDialogVisible}
