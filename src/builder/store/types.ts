@@ -6,6 +6,9 @@ import type { SimulatorChromeStyle } from '../constants/simulatorChromeStyle';
 // ===========================
 
 export type ScreenSize = string | number;
+
+/** 侧栏状态按搭建 UI（component）与流程（flow）两套独立保存 */
+export type BuilderWorkbenchAsideMode = 'component' | 'flow';
 export type StateAction<T> = T | ((previous: T) => T);
 export type BuilderResourceVisibility = 'private' | 'public';
 
@@ -251,10 +254,22 @@ export interface BuilderStore {
   /** 与保存 payload 对齐的模板指纹；详情加载或保存成功后更新，用于「无实质变更」判断 */
   lastPersistedTemplateFingerprint: string;
 
+  /** 搭建 UI / 流程 各自独立的左、右侧栏宽度与收起（不入保存 payload） */
+  builderComponentLeftAsideWidthPx: number;
+  builderComponentRightAsideWidthPx: number;
+  builderFlowLeftAsideWidthPx: number;
+  builderFlowRightAsideWidthPx: number;
+  builderComponentLeftAsideCollapsed: boolean;
+  builderComponentRightAsideCollapsed: boolean;
+  builderFlowLeftAsideCollapsed: boolean;
+  builderFlowRightAsideCollapsed: boolean;
+
   // Actions — 视图环境
   setScreenSize: (screenSize: ScreenSize) => void;
   setAutoWidth: (width: number) => void;
   setSimulatorChromeStyle: (style: SimulatorChromeStyle) => void;
+  setBuilderAsideWidthPx: (mode: BuilderWorkbenchAsideMode, side: 'left' | 'right', width: number) => void;
+  toggleBuilderAsideCollapsed: (mode: BuilderWorkbenchAsideMode, side: 'left' | 'right') => void;
   setCurrentPageMeta: (payload: {
     pageId?: string;
     pageName?: string;

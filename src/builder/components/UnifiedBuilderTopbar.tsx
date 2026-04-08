@@ -16,6 +16,7 @@ interface TopbarIconButtonProps {
   label?: string;
   disabled?: boolean;
   active?: boolean;
+  className?: string;
   onClick?: () => void;
 }
 
@@ -25,6 +26,7 @@ export const TopbarIconButton: React.FC<TopbarIconButtonProps> = ({
   label,
   disabled,
   active,
+  className,
   onClick,
 }) => {
   const labeled = Boolean(label);
@@ -35,7 +37,7 @@ export const TopbarIconButton: React.FC<TopbarIconButtonProps> = ({
         variant="text"
         disabled={disabled}
         onClick={onClick}
-        className={`builder-topbar__icon-btn${active ? ' is-active' : ''}${labeled ? ' builder-topbar__icon-btn--labeled' : ''}`}
+        className={`builder-topbar__icon-btn${active ? ' is-active' : ''}${labeled ? ' builder-topbar__icon-btn--labeled' : ''}${className ? ` ${className}` : ''}`}
       >
         {labeled ? (
           <span className="builder-topbar__icon-btn-stack">

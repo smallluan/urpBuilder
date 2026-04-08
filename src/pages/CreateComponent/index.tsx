@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 // layout components handle their own asides
 import './style.less';
 import HeaderControls from '../../builder/components/HeaderControls';
-import ComponentLayout from './ComponentLayout';
+import BuilderUiWorkbenchLayout from '../../builder/components/BuilderUiWorkbenchLayout';
 import FlowLayout from '../../builder/flow/FlowLayout';
 import { getComponentTemplateDetail } from '../../api/componentTemplate';
 import { emitApiAlert } from '../../api/alertBus';
@@ -288,7 +288,7 @@ const CreateComponent: React.FC = () => {
         <div className="mode-keepalive-host">
           <div className={`mode-keepalive-pane${mode === 'component' ? ' is-active' : ''}`}>
             {componentLayoutMounted ? (
-              <ComponentLayout
+              <BuilderUiWorkbenchLayout
                 composeToolbarExtra={(
                   <DependencyManagerDrawer
                     readOnly={readOnly}

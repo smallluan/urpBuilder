@@ -5,9 +5,7 @@ import { getPageTemplateDetail } from '../../api/pageTemplate';
 import { emitApiAlert } from '../../api/alertBus';
 import HeaderControls from '../../builder/components/HeaderControls';
 import { BuilderShell } from '../../builder/components/BuilderShell';
-import ComponentAsideLeft from '../../builder/components/ComponentAsideLeft';
-import ComponentMainBody from '../../builder/components/ComponentMainBody';
-import ComponentAsideRight from '../../builder/components/ComponentAsideRight';
+import BuilderUiWorkbenchLayout from '../../builder/components/BuilderUiWorkbenchLayout';
 import FlowLayout from '../../builder/flow/FlowLayout';
 import { BuilderProvider } from '../../builder/context/BuilderContext';
 import type { BuiltInLayoutTemplateId, PageRouteConfig, PageRouteRecord, UiTreeNode } from '../../builder/store/types';
@@ -519,34 +517,30 @@ const CreatePage: React.FC = () => {
         <div className="mode-keepalive-host">
           <div className={`mode-keepalive-pane${mode === 'component' ? ' is-active' : ''}`}>
             {componentLayoutMounted ? (
-              <div className="create-body">
-                <ComponentAsideLeft />
-                <ComponentMainBody
-                  toolbarExtra={(
-                    <div className="builder-compose-toolbar-extras">
-                      <PageRouteToolbar />
-                      <DependencyManagerDrawer
-                        readOnly={readOnly}
-                        collectDependencyRows={collectDependencyRows}
-                        collectInstanceNodesForComponent={collectInstanceNodesForComponent}
-                        onIgnoreDependency={(componentId) => {
-                          ignoredDependencyIdsRef.current.add(componentId);
-                          void refreshDependencyUpdates();
-                        }}
-                        applyVersionToEditor={applyVersionToEditor}
-                        pendingUpgrades={dependencyUpdates}
-                        onUpgradeDependencyToLatest={handleUpgradeDependencyToLatest}
-                        onUpgradeAllPending={handleUpgradeAllPending}
-                        onIgnoreAllPendingUpgrades={() => {
-                          dependencyUpdates.forEach((item) => ignoredDependencyIdsRef.current.add(item.componentId));
-                          void refreshDependencyUpdates();
-                        }}
-                      />
-                    </div>
-                  )}
-                />
-                <ComponentAsideRight />
-              </div>
+              <BuilderUiWorkbenchLayout
+                composeToolbarExtra={(
+                  <div className="builder-compose-toolbar-extras">
+                    <PageRouteToolbar />
+                    <DependencyManagerDrawer
+                      readOnly={readOnly}
+                      collectDependencyRows={collectDependencyRows}
+                      collectInstanceNodesForComponent={collectInstanceNodesForComponent}
+                      onIgnoreDependency={(componentId) => {
+                        ignoredDependencyIdsRef.current.add(componentId);
+                        void refreshDependencyUpdates();
+                      }}
+                      applyVersionToEditor={applyVersionToEditor}
+                      pendingUpgrades={dependencyUpdates}
+                      onUpgradeDependencyToLatest={handleUpgradeDependencyToLatest}
+                      onUpgradeAllPending={handleUpgradeAllPending}
+                      onIgnoreAllPendingUpgrades={() => {
+                        dependencyUpdates.forEach((item) => ignoredDependencyIdsRef.current.add(item.componentId));
+                        void refreshDependencyUpdates();
+                      }}
+                    />
+                  </div>
+                )}
+              />
             ) : null}
           </div>
           <div className={`mode-keepalive-pane${mode === 'flow' ? ' is-active' : ''}`}>

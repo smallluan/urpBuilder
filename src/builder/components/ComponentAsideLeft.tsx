@@ -433,6 +433,8 @@ const ComponentAsideLeft: React.FC = () => {
   const { useStore } = useBuilderContext();
   const { readOnly } = useBuilderAccess();
   const uiPageData = useStore((state) => state.uiPageData);
+  const builderLeftAsideWidthPx = useStore((state) => state.builderComponentLeftAsideWidthPx);
+  const builderLeftAsideCollapsed = useStore((state) => state.builderComponentLeftAsideCollapsed);
   const setTreeInstance = useStore((state) => state.setTreeInstance);
   const uiStructureTreeScrollRequest = useStore((state) => state.uiStructureTreeScrollRequest);
   const clearUiStructureTreeScrollRequest = useStore((state) => state.clearUiStructureTreeScrollRequest);
@@ -1185,8 +1187,18 @@ const ComponentAsideLeft: React.FC = () => {
     };
   }, [activeNodeKey, readOnly, treeClipboard, uiPageData, virtualStructureRootKey]);
 
+  const asideStyle = useMemo((): React.CSSProperties => {
+    if (builderLeftAsideCollapsed) {
+      return { width: 0, minWidth: 0, flexShrink: 0 };
+    }
+    return { width: builderLeftAsideWidthPx, minWidth: 0, maxWidth: 300, flexShrink: 0 };
+  }, [builderLeftAsideCollapsed, builderLeftAsideWidthPx]);
+
   return (
-    <aside className="aside-left">
+    <aside
+      className={`aside-left${builderLeftAsideCollapsed ? ' aside-left--collapsed' : ''}`}
+      style={asideStyle}
+    >
       <div className="structure-top">
         <div className="structure-panel">
           <div className="search-row">

@@ -1,6 +1,7 @@
 import React from 'react';
 import { Grid3x3, Hand, MousePointer2 } from 'lucide-react';
 import UnifiedBuilderTopbar, { TopbarGroup, TopbarIconButton } from '../../components/UnifiedBuilderTopbar';
+import { BuilderSidebarToggles } from '../../components/BuilderWorkbenchChrome';
 
 export type FlowCanvasTool = 'pan' | 'select';
 
@@ -22,7 +23,9 @@ const FlowTopbar: React.FC<FlowTopbarProps> = ({
   <UnifiedBuilderTopbar
     className="flow-topbar"
     left={(
-      <TopbarGroup>
+      <>
+        <BuilderSidebarToggles mode="flow" />
+        <TopbarGroup className="flow-topbar__group">
         <TopbarIconButton
           tip="平移画布（左键拖背景）"
           label="平移"
@@ -52,6 +55,7 @@ const FlowTopbar: React.FC<FlowTopbarProps> = ({
           onClick={() => onSnapToGridChange(!snapToGrid)}
         />
       </TopbarGroup>
+      </>
     )}
   />
 );

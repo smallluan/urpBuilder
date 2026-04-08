@@ -38,6 +38,8 @@ const FlowAsideLeft: React.FC = () => {
   const { useStore } = useBuilderContext();
   const { readOnly } = useBuilderAccess();
   const uiPageData = useStore((state) => state.uiPageData);
+  const builderLeftAsideWidthPx = useStore((state) => state.builderFlowLeftAsideWidthPx);
+  const builderLeftAsideCollapsed = useStore((state) => state.builderFlowLeftAsideCollapsed);
   const flowActiveNodeId = useStore((state) => state.flowActiveNodeId);
   const flowActiveStructureKey = useStore((state) => {
     const id = state.flowActiveNodeId;
@@ -295,8 +297,18 @@ const FlowAsideLeft: React.FC = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [flowActiveNodeId, readOnly, uiPageData.key, useStore, virtualStructureRootKey]);
 
+  const asideStyle = useMemo((): React.CSSProperties => {
+    if (builderLeftAsideCollapsed) {
+      return { width: 0, minWidth: 0, flexShrink: 0 };
+    }
+    return { width: builderLeftAsideWidthPx, minWidth: 0, maxWidth: 300, flexShrink: 0 };
+  }, [builderLeftAsideCollapsed, builderLeftAsideWidthPx]);
+
   return (
-    <aside className="aside-left">
+    <aside
+      className={`aside-left${builderLeftAsideCollapsed ? ' aside-left--collapsed' : ''}`}
+      style={asideStyle}
+    >
       <div className="structure-top">
         <div className="structure-panel">
           <div className="structure-title">

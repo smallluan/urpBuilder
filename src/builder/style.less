@@ -125,9 +125,66 @@
   .create-body {
     flex: 1; /* 鍗犳弧 header 涔嬪鐨勫叏閮ㄩ珮搴?*/
     display: flex;
+    align-items: stretch;
     min-height: 0; /* 鍏佽瀛愬厓绱犳纭孩鍑烘粴鍔?*/
-    gap: 16px; /* main 涓庝袱渚?aside 涔嬮棿鐨勯棿璺?*/
+    gap: 0;
     background: var(--builder-page-gap); /* 闂撮殭鑳屾櫙鑹?*/
+  }
+
+  .builder-aside-resize-handle {
+    flex: 0 0 5px;
+    width: 5px;
+    min-width: 5px;
+    cursor: col-resize;
+    align-self: stretch;
+    position: relative;
+    z-index: 2;
+    margin: 0 -2px;
+    background: transparent;
+    touch-action: none;
+
+    &::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      left: 50%;
+      width: 1px;
+      transform: translateX(-50%);
+      background: var(--builder-border-muted);
+      opacity: 0.65;
+      transition: opacity 0.12s ease, background 0.12s ease;
+    }
+
+    &:hover::after,
+    &:active::after {
+      opacity: 1;
+      background: var(--td-brand-color);
+    }
+  }
+
+  .builder-sidebar-toolbar-group {
+    display: inline-flex;
+    align-items: flex-end;
+    align-self: flex-end;
+    gap: 8px;
+    padding-right: 12px;
+    margin-right: 8px;
+    border-right: 1px solid var(--builder-divider);
+  }
+
+  .flow-topbar .builder-sidebar-toolbar-group {
+    align-items: flex-end;
+  }
+
+  .component-main-toolbar .builder-sidebar-toolbar-group {
+    align-items: flex-end;
+  }
+
+  /* 带文案时与「画布」一致：选中态底部说明可读 */
+  .component-main-toolbar .builder-sidebar-toolbar-group .builder-topbar__icon-btn--labeled.is-active .builder-topbar__icon-btn-caption,
+  .flow-topbar .builder-sidebar-toolbar-group .builder-topbar__icon-btn--labeled.is-active .builder-topbar__icon-btn-caption {
+    color: var(--builder-icon-hover-color);
   }
 
   .mode-keepalive-host {
@@ -174,19 +231,27 @@
   }
 
   .aside-left {
-    width: 300px;
+    flex: 0 0 auto;
+    box-sizing: border-box;
     background: var(--builder-surface);
     border-right: 1px solid var(--builder-border-muted);
     padding: 12px;
     overflow: hidden;
-    box-sizing: border-box;
-  }
-
-  .aside-left {
     display: flex;
     flex-direction: column;
     min-height: 0;
     background-color: var(--builder-surface);
+    transition:
+      width 0.22s ease,
+      padding 0.22s ease,
+      border-width 0.22s ease;
+
+    &.aside-left--collapsed {
+      padding: 0;
+      border-right-width: 0;
+      overflow: hidden;
+      pointer-events: none;
+    }
 
     .structure-top {
       flex: 1 1 0;
@@ -571,8 +636,8 @@
 
 
   .main-body {
-    flex: 1;
-    width: calc(100vw - 632px);
+    flex: 1 1 auto;
+    width: 0;
     min-width: 0;
     min-height: 0;
     padding: 8px;
@@ -615,6 +680,7 @@
     .component-main-toolbar .builder-topbar__right {
       display: inline-flex;
       align-items: flex-end;
+      gap: 8px;
     }
 
     .component-main-toolbar__group {
@@ -636,6 +702,11 @@
     .component-main-toolbar .builder-topbar__icon-btn:hover {
       color: var(--builder-icon-hover-color);
       background: var(--builder-icon-hover-bg);
+    }
+
+    .component-main-toolbar .builder-topbar__icon-btn.is-active {
+      color: var(--builder-icon-hover-color);
+      background: var(--builder-icon-active-bg);
     }
 
     .component-main-toolbar__extra {
@@ -868,6 +939,14 @@
         overflow: auto;
         overscroll-behavior: contain;
         contain: layout paint style;
+        /* 隐藏滚动条，仍可滚轮/触控滚动 */
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+
+        &::-webkit-scrollbar {
+          width: 0;
+          height: 0;
+        }
       }
 
       .simulator-scroll > .drop-area-root {
@@ -1253,18 +1332,27 @@
   }
 
   .aside-right {
-    width: 300px;
-    flex: 0 0 300px;
-    min-width: 300px;
-    max-width: 300px;
+    flex: 0 0 auto;
+    box-sizing: border-box;
     background: var(--builder-surface);
     border-left: 1px solid var(--builder-border-muted);
     padding: 10px 10px 12px;
     overflow: hidden;
-    box-sizing: border-box;
     display: flex;
     flex-direction: column;
     gap: 0;
+    transition:
+      width 0.22s ease,
+      padding 0.22s ease,
+      border-width 0.22s ease,
+      flex-basis 0.22s ease;
+
+    &.aside-right--collapsed {
+      padding: 0;
+      border-left-width: 0;
+      overflow: hidden;
+      pointer-events: none;
+    }
 
     .config-panel .config-label,
     .config-props-group .config-label,

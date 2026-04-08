@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import ComponentLibraryPanel from './ComponentLibraryPanel';
 import ComponentConfigPanel from './ComponentConfigPanel';
 import SavedComponentPanel from './SavedComponentPanel';
@@ -7,6 +7,8 @@ import { useBuilderContext } from '../context/BuilderContext';
 
 const ComponentAsideRight: React.FC = () => {
 	const { useStore } = useBuilderContext();
+	const builderRightAsideWidthPx = useStore((state) => state.builderComponentRightAsideWidthPx);
+	const builderRightAsideCollapsed = useStore((state) => state.builderComponentRightAsideCollapsed);
 	const [selectedName, setSelectedName] = useState<string | null>(null);
 	const [mode, setMode] = useState<RightPanelMode>('library');
 	const activeNodeKey = useStore((state) => state.activeNodeKey);
@@ -17,8 +19,24 @@ const ComponentAsideRight: React.FC = () => {
 		}
 	}, [activeNodeKey]);
 
+	const asideStyle = useMemo((): React.CSSProperties => {
+		if (builderRightAsideCollapsed) {
+			return { width: 0, minWidth: 0, flexShrink: 0, flexBasis: 0 };
+		}
+		return {
+			width: builderRightAsideWidthPx,
+			minWidth: 0,
+			maxWidth: 300,
+			flexBasis: builderRightAsideWidthPx,
+			flexShrink: 0,
+		};
+	}, [builderRightAsideCollapsed, builderRightAsideWidthPx]);
+
 	return (
-		<aside className="aside-right">
+		<aside
+			className={`aside-right${builderRightAsideCollapsed ? ' aside-right--collapsed' : ''}`}
+			style={asideStyle}
+		>
 			<RightPanelHeader
 				mode={mode}
 				onChange={setMode}

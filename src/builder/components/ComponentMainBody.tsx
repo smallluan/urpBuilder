@@ -7,6 +7,7 @@ import { getBreakpointByWidth, resolveBuilderViewportWidth } from '../utils/grid
 import { Monitor, Settings2 } from 'lucide-react';
 import { SimulatorAppearancePopupContent } from './SimulatorAppearancePopup';
 import UnifiedBuilderTopbar, { TopbarGroup, TopbarIconButton } from './UnifiedBuilderTopbar';
+import { BuilderSidebarToggles } from './BuilderWorkbenchChrome';
 
 const { Text } = Typography;
 
@@ -160,7 +161,9 @@ const ComponentMainBody: React.FC<{ toolbarExtra?: React.ReactNode }> = ({ toolb
         <UnifiedBuilderTopbar
           className="component-main-toolbar__row"
           left={(
-            <TopbarGroup>
+            <>
+              <BuilderSidebarToggles mode="component" />
+              <TopbarGroup>
               <Popup
                 visible={viewportPopupVisible}
                 onVisibleChange={handleViewportPopupVisibleChange}
@@ -185,6 +188,7 @@ const ComponentMainBody: React.FC<{ toolbarExtra?: React.ReactNode }> = ({ toolb
                 onClick={() => setShortcutDialogVisible(true)}
               />
             </TopbarGroup>
+            </>
           )}
         />
       </div>

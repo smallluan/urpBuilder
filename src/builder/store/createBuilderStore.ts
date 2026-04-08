@@ -14,6 +14,7 @@ import cloneDeep from 'lodash/cloneDeep';
 import type { Edge, Node } from '@xyflow/react';
 import type {
   BuilderStore,
+  BuilderWorkbenchAsideMode,
   PageRouteConfig,
   PageRouteRecord,
   RouteScopeConfig,
@@ -30,6 +31,7 @@ import {
 } from '../../utils/createComponentTree';
 import componentCatalog from '../../config/componentCatalog';
 import { DEFAULT_SIMULATOR_CHROME_STYLE } from '../constants/simulatorChromeStyle';
+import { BUILDER_ASIDE_DEFAULT_PX, clampBuilderAsideWidth } from '../constants/builderWorkbenchChrome';
 import { normalizeTabsList, syncTabsSlotNodes } from '../utils/tabs';
 import { normalizeCollapseList, syncCollapseSlotNodes } from '../utils/collapse';
 import { getNodeSlotKey, isSlotNode } from '../utils/slot';
@@ -505,9 +507,17 @@ export const createBuilderStore = (options: CreateBuilderStoreOptions = {}) => {
 
   return create<BuilderStore>((set) => ({
     // ===== 视图环境 =====
-    screenSize: 'auto',
-    autoWidth: 1800,
+    screenSize: 375,
+    autoWidth: 375,
     simulatorChromeStyle: DEFAULT_SIMULATOR_CHROME_STYLE,
+    builderComponentLeftAsideWidthPx: BUILDER_ASIDE_DEFAULT_PX,
+    builderComponentRightAsideWidthPx: BUILDER_ASIDE_DEFAULT_PX,
+    builderFlowLeftAsideWidthPx: BUILDER_ASIDE_DEFAULT_PX,
+    builderFlowRightAsideWidthPx: BUILDER_ASIDE_DEFAULT_PX,
+    builderComponentLeftAsideCollapsed: false,
+    builderComponentRightAsideCollapsed: false,
+    builderFlowLeftAsideCollapsed: false,
+    builderFlowRightAsideCollapsed: false,
     currentPageId: '',
     currentPageName: '',
     currentPageDescription: '',
@@ -546,6 +556,35 @@ export const createBuilderStore = (options: CreateBuilderStoreOptions = {}) => {
     setAutoWidth: (width) => set({ autoWidth: width }),
 
     setSimulatorChromeStyle: (simulatorChromeStyle) => set({ simulatorChromeStyle }),
+
+    setBuilderAsideWidthPx: (mode: BuilderWorkbenchAsideMode, side: 'left' | 'right', width) =>
+      set(() => {
+        const w = clampBuilderAsideWidth(width);
+        if (mode === 'component' && side === 'left') {
+          return { builderComponentLeftAsideWidthPx: w };
+        }
+        if (mode === 'component' && side === 'right') {
+          return { builderComponentRightAsideWidthPx: w };
+        }
+        if (mode === 'flow' && side === 'left') {
+          return { builderFlowLeftAsideWidthPx: w };
+        }
+        return { builderFlowRightAsideWidthPx: w };
+      }),
+
+    toggleBuilderAsideCollapsed: (mode: BuilderWorkbenchAsideMode, side: 'left' | 'right') =>
+      set((state) => {
+        if (mode === 'component' && side === 'left') {
+          return { builderComponentLeftAsideCollapsed: !state.builderComponentLeftAsideCollapsed };
+        }
+        if (mode === 'component' && side === 'right') {
+          return { builderComponentRightAsideCollapsed: !state.builderComponentRightAsideCollapsed };
+        }
+        if (mode === 'flow' && side === 'left') {
+          return { builderFlowLeftAsideCollapsed: !state.builderFlowLeftAsideCollapsed };
+        }
+        return { builderFlowRightAsideCollapsed: !state.builderFlowRightAsideCollapsed };
+      }),
 
     setCurrentPageMeta: ({ pageId, pageName, description, visibility }) =>
       set((state) => ({

@@ -4,6 +4,7 @@ import { ApiIcon, CodeIcon, UploadIcon } from 'tdesign-icons-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import FlowBody from './FlowBody';
 import FlowAsideLeft from '../components/FlowAsideLeft';
+import { BuilderAsideResizeHandle } from '../components/BuilderWorkbenchChrome';
 import type { CodeEditorValue } from '../components/codeEditor/codeEditorTypes';
 import DragableWrapper from '../../components/DragableWrapper';
 import { applyBuilderDragPreview } from '../utils/dragPreview';
@@ -85,6 +86,8 @@ const FlowLayout: React.FC = () => {
   const updateFlowNodeData = useStore((state) => state.updateFlowNodeData);
   const flowNodes = useStore((state) => state.flowNodes);
   const uiPageData = useStore((state) => state.uiPageData);
+  const builderRightAsideWidthPx = useStore((state) => state.builderFlowRightAsideWidthPx);
+  const builderRightAsideCollapsed = useStore((state) => state.builderFlowRightAsideCollapsed);
   const nodeTypeLabelMap: Record<string, string> = {
     componentNode: '组件节点',
     eventFilterNode: '事件过滤节点',
@@ -754,9 +757,24 @@ const FlowLayout: React.FC = () => {
     }
   };
 
+  const flowRightAsideStyle = useMemo((): React.CSSProperties => {
+    if (builderRightAsideCollapsed) {
+      return { width: 0, minWidth: 0, flexShrink: 0, flexBasis: 0 };
+    }
+    return {
+      width: builderRightAsideWidthPx,
+      minWidth: 0,
+      maxWidth: 300,
+      flexBasis: builderRightAsideWidthPx,
+      flexShrink: 0,
+    };
+  }, [builderRightAsideCollapsed, builderRightAsideWidthPx]);
+
   return (
     <div className="create-body">
       <FlowAsideLeft />
+
+      <BuilderAsideResizeHandle edge="after-left" mode="flow" />
 
       <main className="main-body">
         <div className="main-inner">
@@ -764,7 +782,12 @@ const FlowLayout: React.FC = () => {
         </div>
       </main>
 
-      <aside className="aside-right">
+      <BuilderAsideResizeHandle edge="before-right" mode="flow" />
+
+      <aside
+        className={`aside-right${builderRightAsideCollapsed ? ' aside-right--collapsed' : ''}`}
+        style={flowRightAsideStyle}
+      >
         <RightPanelHeader
           mode={rightPanelMode}
           onChange={setRightPanelMode}
