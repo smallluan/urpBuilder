@@ -151,8 +151,8 @@ const AssetPickerModal: React.FC<AssetPickerModalProps> = ({
 
   // 树节点展开
   const handleTreeExpand = useCallback(
-    (node: any) => {
-      const data = node?.data as MediaNodeDTO | undefined;
+    (_expandedKeys: any, context: any) => {
+      const data = context?.node?.data?.data as MediaNodeDTO | undefined;
       if (data && data.kind === 'folder') {
         tree.toggleExpand(data);
       }
@@ -162,8 +162,8 @@ const AssetPickerModal: React.FC<AssetPickerModalProps> = ({
 
   // 树节点点击（选中文件夹）
   const handleTreeClick = useCallback(
-    (node: any) => {
-      const data = node?.data as MediaNodeDTO | undefined;
+    (context: any) => {
+      const data = context?.node?.data?.data as MediaNodeDTO | undefined;
       if (!data) return;
 
       tree.selectNode(data.id);
