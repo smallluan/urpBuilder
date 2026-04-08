@@ -38,6 +38,7 @@ interface RenderUiTreeNode extends Omit<UiTreeNode, 'label' | 'children'> {
 const DROP_DATA_KEY = 'drag-component-data';
 const TREE_NODE_DRAG_KEY = 'drag-tree-node-key';
 const CONTAINER_NODE_TYPES = new Set([
+  'root',
   'Space',
   'Flex',
   'Flex.Item',

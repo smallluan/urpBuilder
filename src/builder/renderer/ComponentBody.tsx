@@ -32,6 +32,7 @@ const { Text } = Typography;
 const GRID_COL_COMPONENT_SCHEMA = componentCatalog.find((item) => item.type === 'Grid.Col');
 
 const CONTAINER_NODE_TYPES = new Set([
+  'root',
   'Space',
   'Flex',
   'Flex.Item',

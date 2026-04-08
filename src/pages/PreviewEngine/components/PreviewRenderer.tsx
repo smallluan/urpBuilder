@@ -1041,7 +1041,7 @@ const PreviewTableNode: React.FC<PreviewTableNodeProps> = ({ node, style, emitIn
   const paginationEnabled = getBooleanProp(node, 'paginationEnabled') !== false;
 
   return (
-    <div style={style}>
+    <>
       {resolveError ? (
         <div style={{ marginBottom: 8, color: '#d54941', fontSize: 12 }}>
           数据源加载失败：{resolveError}
@@ -1072,7 +1072,7 @@ const PreviewTableNode: React.FC<PreviewTableNodeProps> = ({ node, style, emitIn
         onFilterChange={(filterValue, context) => emitInteractionLifecycle('onFilterChange', { filterValue, context })}
         style={style}
       />
-    </div>
+    </>
   );
 };
 
@@ -1322,9 +1322,11 @@ const renderChildren = (
 function PreviewCustomComponentRenderer({
   node,
   onLifecycle,
+  style,
 }: {
   node: UiTreeNode;
   onLifecycle?: ComponentLifecycleHandler;
+  style?: React.CSSProperties;
 }) {
   const [runtimeSeed, setRuntimeSeed] = React.useState<{
     tree: UiTreeNode;
@@ -1620,11 +1622,17 @@ function PreviewCustomComponentRenderer({
     return null;
   }
 
-  return (
+  const content = (
     <PreviewDataHubRefContext.Provider value={innerHubRef}>
       <PreviewRenderer key={renderTree.key} node={renderTree} onLifecycle={handleInnerLifecycle} />
     </PreviewDataHubRefContext.Provider>
   );
+
+  if (style && Object.keys(style).length > 0) {
+    return <div style={style}>{content}</div>;
+  }
+
+  return content;
 }
 
 const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) => {
@@ -2025,149 +2033,141 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) 
       }
     case 'BackTop':
       return (
-        <div style={mergeStyle()}>
-          <BackTop
-            className="preview-back-top"
-            content={getBackTopContentNode(node)}
-            duration={getFiniteNumberProp(node, 'duration')}
-            offset={getBackTopOffsetProp(node, 'offset') as any}
-            shape={getStringProp(node, 'shape') as any}
-            size={getStringProp(node, 'size') as any}
-            target={getBackTopTargetProp(node, 'target') as any}
-            container={getBackTopContainerProp() as any}
-            theme={getStringProp(node, 'theme') as any}
-            visibleHeight={getBackTopVisibleHeightProp(node, 'visibleHeight') as any}
-            style={mergeStyle()}
-            onClick={(context) => emitInteractionLifecycle('onClick', context)}
-          />
-        </div>
+        <BackTop
+          className="preview-back-top"
+          content={getBackTopContentNode(node)}
+          duration={getFiniteNumberProp(node, 'duration')}
+          offset={getBackTopOffsetProp(node, 'offset') as any}
+          shape={getStringProp(node, 'shape') as any}
+          size={getStringProp(node, 'size') as any}
+          target={getBackTopTargetProp(node, 'target') as any}
+          container={getBackTopContainerProp() as any}
+          theme={getStringProp(node, 'theme') as any}
+          visibleHeight={getBackTopVisibleHeightProp(node, 'visibleHeight') as any}
+          style={mergeStyle()}
+          onClick={(context) => emitInteractionLifecycle('onClick', context)}
+        />
       );
     case 'Progress':
       return (
-        <div style={mergeStyle()}>
-          <Progress
-            className={getStringProp(node, 'className') || undefined}
-            color={getProgressColorProp(node, 'color') as any}
-            label={getProgressLabelProp(node) as any}
-            percentage={getFiniteNumberProp(node, 'percentage') ?? 0}
-            size={getProgressSizeProp(node, 'size') as any}
-            status={getProgressStatusProp(node) as any}
-            strokeWidth={getProgressSizeProp(node, 'strokeWidth') as any}
-            theme={getStringProp(node, 'theme') as any}
-            trackColor={getStringProp(node, 'trackColor') || undefined}
-            style={mergeStyle()}
-          />
-        </div>
+        <Progress
+          className={getStringProp(node, 'className') || undefined}
+          color={getProgressColorProp(node, 'color') as any}
+          label={getProgressLabelProp(node) as any}
+          percentage={getFiniteNumberProp(node, 'percentage') ?? 0}
+          size={getProgressSizeProp(node, 'size') as any}
+          status={getProgressStatusProp(node) as any}
+          strokeWidth={getProgressSizeProp(node, 'strokeWidth') as any}
+          theme={getStringProp(node, 'theme') as any}
+          trackColor={getStringProp(node, 'trackColor') || undefined}
+          style={mergeStyle()}
+        />
       );
     case 'Upload':
       return (
-        <div style={mergeStyle()}>
-          <Upload
-            className={getStringProp(node, 'className') || undefined}
-            abridgeName={getUploadAbridgeNameProp(node, 'abridgeName') as any}
-            accept={getStringProp(node, 'accept') || undefined}
-            action={getStringProp(node, 'action') || undefined}
-            allowUploadDuplicateFile={getBooleanProp(node, 'allowUploadDuplicateFile')}
-            autoUpload={getBooleanProp(node, 'autoUpload') !== false}
-            data={getUploadObjectProp(node, 'data') as any}
-            disabled={getBooleanProp(node, 'disabled')}
-            draggable={getBooleanProp(node, 'draggable')}
-            files={getUploadFileListProp(node, 'files') as any}
-            defaultFiles={getUploadFileListProp(node, 'defaultFiles') as any}
-            headers={getUploadObjectProp(node, 'headers') as any}
-            max={getFiniteNumberProp(node, 'max')}
-            method={getStringProp(node, 'method') as any}
-            mockProgressDuration={getFiniteNumberProp(node, 'mockProgressDuration')}
-            multiple={getBooleanProp(node, 'multiple')}
-            name={getStringProp(node, 'name') || undefined}
-            placeholder={getStringProp(node, 'placeholder') || undefined}
-            showImageFileName={getBooleanProp(node, 'showImageFileName')}
-            showThumbnail={getBooleanProp(node, 'showThumbnail')}
-            showUploadProgress={getBooleanProp(node, 'showUploadProgress')}
-            sizeLimit={getUploadSizeLimitProp(node, 'sizeLimit') as any}
-            status={getUploadStatusProp(node, 'status') as any}
-            theme={getStringProp(node, 'theme') as any}
-            tips={getStringProp(node, 'tips') || undefined}
-            uploadAllFilesInOneRequest={getBooleanProp(node, 'uploadAllFilesInOneRequest')}
-            uploadPastedFiles={getBooleanProp(node, 'uploadPastedFiles')}
-            useMockProgress={getBooleanProp(node, 'useMockProgress')}
-            withCredentials={getBooleanProp(node, 'withCredentials')}
-            style={mergeStyle()}
-            onCancelUpload={() => emitInteractionLifecycle('onCancelUpload')}
-            onChange={(value, context) => emitInteractionLifecycle('onChange', { value, ...context })}
-            onDragenter={(context) => emitInteractionLifecycle('onDragenter', context)}
-            onDragleave={(context) => emitInteractionLifecycle('onDragleave', context)}
-            onDrop={(context) => emitInteractionLifecycle('onDrop', context)}
-            onFail={(context) => emitInteractionLifecycle('onFail', context)}
-            onOneFileFail={(context) => emitInteractionLifecycle('onOneFileFail', context)}
-            onOneFileSuccess={(context) => emitInteractionLifecycle('onOneFileSuccess', context)}
-            onPreview={(context) => emitInteractionLifecycle('onPreview', context)}
-            onProgress={(context) => emitInteractionLifecycle('onProgress', context)}
-            onRemove={(context) => emitInteractionLifecycle('onRemove', context)}
-            onSelectChange={(files, context) => emitInteractionLifecycle('onSelectChange', { files, ...context })}
-            onSuccess={(context) => emitInteractionLifecycle('onSuccess', context)}
-            onValidate={(context) => emitInteractionLifecycle('onValidate', context)}
-            onWaitingUploadFilesChange={(context) => emitInteractionLifecycle('onWaitingUploadFilesChange', context)}
-          >
-            {renderChildList(node.children ?? [], onLifecycle)}
-          </Upload>
-        </div>
+        <Upload
+          className={getStringProp(node, 'className') || undefined}
+          abridgeName={getUploadAbridgeNameProp(node, 'abridgeName') as any}
+          accept={getStringProp(node, 'accept') || undefined}
+          action={getStringProp(node, 'action') || undefined}
+          allowUploadDuplicateFile={getBooleanProp(node, 'allowUploadDuplicateFile')}
+          autoUpload={getBooleanProp(node, 'autoUpload') !== false}
+          data={getUploadObjectProp(node, 'data') as any}
+          disabled={getBooleanProp(node, 'disabled')}
+          draggable={getBooleanProp(node, 'draggable')}
+          files={getUploadFileListProp(node, 'files') as any}
+          defaultFiles={getUploadFileListProp(node, 'defaultFiles') as any}
+          headers={getUploadObjectProp(node, 'headers') as any}
+          max={getFiniteNumberProp(node, 'max')}
+          method={getStringProp(node, 'method') as any}
+          mockProgressDuration={getFiniteNumberProp(node, 'mockProgressDuration')}
+          multiple={getBooleanProp(node, 'multiple')}
+          name={getStringProp(node, 'name') || undefined}
+          placeholder={getStringProp(node, 'placeholder') || undefined}
+          showImageFileName={getBooleanProp(node, 'showImageFileName')}
+          showThumbnail={getBooleanProp(node, 'showThumbnail')}
+          showUploadProgress={getBooleanProp(node, 'showUploadProgress')}
+          sizeLimit={getUploadSizeLimitProp(node, 'sizeLimit') as any}
+          status={getUploadStatusProp(node, 'status') as any}
+          theme={getStringProp(node, 'theme') as any}
+          tips={getStringProp(node, 'tips') || undefined}
+          uploadAllFilesInOneRequest={getBooleanProp(node, 'uploadAllFilesInOneRequest')}
+          uploadPastedFiles={getBooleanProp(node, 'uploadPastedFiles')}
+          useMockProgress={getBooleanProp(node, 'useMockProgress')}
+          withCredentials={getBooleanProp(node, 'withCredentials')}
+          style={mergeStyle()}
+          onCancelUpload={() => emitInteractionLifecycle('onCancelUpload')}
+          onChange={(value, context) => emitInteractionLifecycle('onChange', { value, ...context })}
+          onDragenter={(context) => emitInteractionLifecycle('onDragenter', context)}
+          onDragleave={(context) => emitInteractionLifecycle('onDragleave', context)}
+          onDrop={(context) => emitInteractionLifecycle('onDrop', context)}
+          onFail={(context) => emitInteractionLifecycle('onFail', context)}
+          onOneFileFail={(context) => emitInteractionLifecycle('onOneFileFail', context)}
+          onOneFileSuccess={(context) => emitInteractionLifecycle('onOneFileSuccess', context)}
+          onPreview={(context) => emitInteractionLifecycle('onPreview', context)}
+          onProgress={(context) => emitInteractionLifecycle('onProgress', context)}
+          onRemove={(context) => emitInteractionLifecycle('onRemove', context)}
+          onSelectChange={(files, context) => emitInteractionLifecycle('onSelectChange', { files, ...context })}
+          onSuccess={(context) => emitInteractionLifecycle('onSuccess', context)}
+          onValidate={(context) => emitInteractionLifecycle('onValidate', context)}
+          onWaitingUploadFilesChange={(context) => emitInteractionLifecycle('onWaitingUploadFilesChange', context)}
+        >
+          {renderChildList(node.children ?? [], onLifecycle)}
+        </Upload>
       );
     case 'Drawer': {
       const hasDrawerChildren = (node.children?.length ?? 0) > 0;
       const drawerBodyText = getStringProp(node, 'body')?.trim();
       return (
-        <div style={mergeStyle()}>
-          <Drawer
-            className={getStringProp(node, 'className') || undefined}
-            attach="body"
-            body={!hasDrawerChildren ? (drawerBodyText || undefined) : undefined}
-            cancelBtn={getStringProp(node, 'cancelBtn') || undefined}
-            closeBtn={getBooleanProp(node, 'closeBtn') !== false}
-            closeOnEscKeydown={getBooleanProp(node, 'closeOnEscKeydown') !== false}
-            closeOnOverlayClick={getBooleanProp(node, 'closeOnOverlayClick') !== false}
-            confirmBtn={getStringProp(node, 'confirmBtn') || undefined}
-            destroyOnClose={getBooleanProp(node, 'destroyOnClose') === true}
-            footer={getDrawerFooterProp(node)}
-            header={getDrawerHeaderProp(node) as any}
-            lazy={getBooleanProp(node, 'lazy') !== false}
-            placement={getStringProp(node, 'placement') as any}
-            preventScrollThrough={getBooleanProp(node, 'preventScrollThrough') !== false}
-            showInAttachedElement={getBooleanProp(node, 'showInAttachedElement') === true}
-            showOverlay={getBooleanProp(node, 'showOverlay') !== false}
-            size={getStringProp(node, 'size') || undefined}
-            sizeDraggable={getDrawerSizeDraggableProp(node) as any}
-            visible={drawerInnerVisible}
-            zIndex={getNumberProp(node, 'zIndex')}
-            style={mergeStyle()}
-            onBeforeOpen={() => emitInteractionLifecycle('onBeforeOpen')}
-            onBeforeClose={() => emitInteractionLifecycle('onBeforeClose')}
-            onCancel={(context) => {
-              syncDrawerVisible(false);
-              emitInteractionLifecycle('onCancel', context);
-            }}
-            onClose={(context) => {
-              syncDrawerVisible(false);
-              emitInteractionLifecycle('onClose', context);
-            }}
-            onCloseBtnClick={(context) => {
-              syncDrawerVisible(false);
-              emitInteractionLifecycle('onCloseBtnClick', context);
-            }}
-            onConfirm={(context) => emitInteractionLifecycle('onConfirm', context)}
-            onEscKeydown={(context) => {
-              syncDrawerVisible(false);
-              emitInteractionLifecycle('onEscKeydown', context);
-            }}
-            onOverlayClick={(context) => {
-              syncDrawerVisible(false);
-              emitInteractionLifecycle('onOverlayClick', context);
-            }}
-            onSizeDragEnd={(context) => emitInteractionLifecycle('onSizeDragEnd', context)}
-          >
-            {renderChildList(node.children ?? [], onLifecycle)}
-          </Drawer>
-        </div>
+        <Drawer
+          className={getStringProp(node, 'className') || undefined}
+          attach="body"
+          body={!hasDrawerChildren ? (drawerBodyText || undefined) : undefined}
+          cancelBtn={getStringProp(node, 'cancelBtn') || undefined}
+          closeBtn={getBooleanProp(node, 'closeBtn') !== false}
+          closeOnEscKeydown={getBooleanProp(node, 'closeOnEscKeydown') !== false}
+          closeOnOverlayClick={getBooleanProp(node, 'closeOnOverlayClick') !== false}
+          confirmBtn={getStringProp(node, 'confirmBtn') || undefined}
+          destroyOnClose={getBooleanProp(node, 'destroyOnClose') === true}
+          footer={getDrawerFooterProp(node)}
+          header={getDrawerHeaderProp(node) as any}
+          lazy={getBooleanProp(node, 'lazy') !== false}
+          placement={getStringProp(node, 'placement') as any}
+          preventScrollThrough={getBooleanProp(node, 'preventScrollThrough') !== false}
+          showInAttachedElement={getBooleanProp(node, 'showInAttachedElement') === true}
+          showOverlay={getBooleanProp(node, 'showOverlay') !== false}
+          size={getStringProp(node, 'size') || undefined}
+          sizeDraggable={getDrawerSizeDraggableProp(node) as any}
+          visible={drawerInnerVisible}
+          zIndex={getNumberProp(node, 'zIndex')}
+          style={mergeStyle()}
+          onBeforeOpen={() => emitInteractionLifecycle('onBeforeOpen')}
+          onBeforeClose={() => emitInteractionLifecycle('onBeforeClose')}
+          onCancel={(context) => {
+            syncDrawerVisible(false);
+            emitInteractionLifecycle('onCancel', context);
+          }}
+          onClose={(context) => {
+            syncDrawerVisible(false);
+            emitInteractionLifecycle('onClose', context);
+          }}
+          onCloseBtnClick={(context) => {
+            syncDrawerVisible(false);
+            emitInteractionLifecycle('onCloseBtnClick', context);
+          }}
+          onConfirm={(context) => emitInteractionLifecycle('onConfirm', context)}
+          onEscKeydown={(context) => {
+            syncDrawerVisible(false);
+            emitInteractionLifecycle('onEscKeydown', context);
+          }}
+          onOverlayClick={(context) => {
+            syncDrawerVisible(false);
+            emitInteractionLifecycle('onOverlayClick', context);
+          }}
+          onSizeDragEnd={(context) => emitInteractionLifecycle('onSizeDragEnd', context)}
+        >
+          {renderChildList(node.children ?? [], onLifecycle)}
+        </Drawer>
       );
     }
     case 'Popup': {
@@ -2175,66 +2175,61 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) 
       const contentChildren = getSlotChildren(node, 'content');
       const popupContent = renderChildList(contentChildren, onLifecycle);
       return (
-        <div style={mergeStyle()}>
-          <Popup
-            attach="body"
-            trigger={getStringProp(node, 'trigger') as any}
-            placement={getStringProp(node, 'placement') as any}
-            showArrow={getBooleanProp(node, 'showArrow') !== false}
-            destroyOnClose={getBooleanProp(node, 'destroyOnClose') === true}
-            disabled={getBooleanProp(node, 'disabled') === true}
-            delay={getNumberProp(node, 'delay') ?? undefined}
-            zIndex={getNumberProp(node, 'zIndex')}
-            hideEmptyPopup={getBooleanProp(node, 'hideEmptyPopup') !== false}
-            showInAttachedElement={getBooleanProp(node, 'showInAttachedElement') === true}
-            overlayClassName={getStringProp(node, 'overlayClassName') || undefined}
-            overlayInnerClassName={getStringProp(node, 'overlayInnerClassName') || undefined}
-            content={popupContent}
-            onVisibleChange={(nextVisible, context) => emitInteractionLifecycle('onVisibleChange', { visible: Boolean(nextVisible), context })}
-          >
-            {triggerChildren.length > 0 ? renderChildList(triggerChildren, onLifecycle) : <span />}
-          </Popup>
-        </div>
+        <Popup
+          attach="body"
+          trigger={getStringProp(node, 'trigger') as any}
+          placement={getStringProp(node, 'placement') as any}
+          showArrow={getBooleanProp(node, 'showArrow') !== false}
+          destroyOnClose={getBooleanProp(node, 'destroyOnClose') === true}
+          disabled={getBooleanProp(node, 'disabled') === true}
+          delay={getNumberProp(node, 'delay') ?? undefined}
+          zIndex={getNumberProp(node, 'zIndex')}
+          hideEmptyPopup={getBooleanProp(node, 'hideEmptyPopup') !== false}
+          showInAttachedElement={getBooleanProp(node, 'showInAttachedElement') === true}
+          overlayClassName={getStringProp(node, 'overlayClassName') || undefined}
+          overlayInnerClassName={getStringProp(node, 'overlayInnerClassName') || undefined}
+          content={popupContent}
+          style={mergeStyle()}
+          onVisibleChange={(nextVisible, context) => emitInteractionLifecycle('onVisibleChange', { visible: Boolean(nextVisible), context })}
+        >
+          {triggerChildren.length > 0 ? renderChildList(triggerChildren, onLifecycle) : <span />}
+        </Popup>
       );
     }
     case 'Menu':
       return (
-        <div style={mergeStyle()}>
-          <Menu
-            collapsed={getBooleanProp(node, 'collapsed')}
-            expandMutex={getBooleanProp(node, 'expandMutex')}
-            expandType={getStringProp(node, 'expandType') as any}
-            expanded={getMenuValueArrayProp(node, 'expanded') as any}
-            defaultExpanded={getMenuValueArrayProp(node, 'defaultExpanded') as any}
-            theme={getStringProp(node, 'theme') as any}
-            value={getMenuValueProp(node, 'value') as any}
-            defaultValue={getMenuValueProp(node, 'defaultValue') as any}
-            width={getMenuWidthProp(node, 'width') as any}
-            style={mergeStyle()}
-            onChange={(value) => emitInteractionLifecycle('onChange', { value })}
-            onExpand={(value) => emitInteractionLifecycle('onExpand', { value })}
-          >
-            {renderPreviewMenuNodes(node.children)}
-          </Menu>
-        </div>
+        <Menu
+          collapsed={getBooleanProp(node, 'collapsed')}
+          expandMutex={getBooleanProp(node, 'expandMutex')}
+          expandType={getStringProp(node, 'expandType') as any}
+          expanded={getMenuValueArrayProp(node, 'expanded') as any}
+          defaultExpanded={getMenuValueArrayProp(node, 'defaultExpanded') as any}
+          theme={getStringProp(node, 'theme') as any}
+          value={getMenuValueProp(node, 'value') as any}
+          defaultValue={getMenuValueProp(node, 'defaultValue') as any}
+          width={getMenuWidthProp(node, 'width') as any}
+          style={mergeStyle()}
+          onChange={(value) => emitInteractionLifecycle('onChange', { value })}
+          onExpand={(value) => emitInteractionLifecycle('onExpand', { value })}
+        >
+          {renderPreviewMenuNodes(node.children)}
+        </Menu>
       );
     case 'HeadMenu':
       return (
-        <div style={mergeStyle()}>
-          <Menu.HeadMenu
-            expandType={getStringProp(node, 'expandType') as any}
-            expanded={getMenuValueArrayProp(node, 'expanded') as any}
-            defaultExpanded={getMenuValueArrayProp(node, 'defaultExpanded') as any}
-            theme={getStringProp(node, 'theme') as any}
-            value={getMenuValueProp(node, 'value') as any}
-            defaultValue={getMenuValueProp(node, 'defaultValue') as any}
-            style={mergeStyle()}
-            onChange={(value) => emitInteractionLifecycle('onChange', { value })}
-            onExpand={(value) => emitInteractionLifecycle('onExpand', { value })}
-          >
-            {renderPreviewMenuNodes(node.children)}
-          </Menu.HeadMenu>
-        </div>
+        <Menu.HeadMenu
+          expandType={getStringProp(node, 'expandType') as any}
+          expanded={getMenuValueArrayProp(node, 'expanded') as any}
+          defaultExpanded={getMenuValueArrayProp(node, 'defaultExpanded') as any}
+          theme={getStringProp(node, 'theme') as any}
+          value={getMenuValueProp(node, 'value') as any}
+          defaultValue={getMenuValueProp(node, 'defaultValue') as any}
+          style={mergeStyle()}
+          onChange={(value) => emitInteractionLifecycle('onChange', { value })}
+          onExpand={(value) => emitInteractionLifecycle('onExpand', { value })}
+        >
+          {renderPreviewMenuNodes(node.children)}
+        </Menu.HeadMenu>
       );
     case 'Menu.Submenu':
     case 'Menu.Item':
@@ -2285,27 +2280,26 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) 
       });
 
       return (
-        <div style={mergeStyle()}>
-          <Tabs
-            action={getStringProp(node, 'action') || undefined}
-            addable={getBooleanProp(node, 'addable')}
-            disabled={getBooleanProp(node, 'disabled')}
-            dragSort={getBooleanProp(node, 'dragSort')}
-            list={tabsPanels as any}
-            placement={getStringProp(node, 'placement') as any}
-            scrollPosition={getStringProp(node, 'scrollPosition') as any}
-            size={getStringProp(node, 'size') as any}
-            theme={getStringProp(node, 'theme') as any}
-            value={activeTabValue as any}
-            onAdd={(context) => emitInteractionLifecycle('onAdd', context)}
-            onDragSort={(context) => emitInteractionLifecycle('onDragSort', context)}
-            onRemove={(context) => emitInteractionLifecycle('onRemove', context)}
-            onChange={(value) => {
-              setTabsInnerValue(value as string | number);
-              emitInteractionLifecycle('onChange', { value });
-            }}
-          />
-        </div>
+        <Tabs
+          action={getStringProp(node, 'action') || undefined}
+          addable={getBooleanProp(node, 'addable')}
+          disabled={getBooleanProp(node, 'disabled')}
+          dragSort={getBooleanProp(node, 'dragSort')}
+          list={tabsPanels as any}
+          placement={getStringProp(node, 'placement') as any}
+          scrollPosition={getStringProp(node, 'scrollPosition') as any}
+          size={getStringProp(node, 'size') as any}
+          theme={getStringProp(node, 'theme') as any}
+          value={activeTabValue as any}
+          style={mergeStyle()}
+          onAdd={(context) => emitInteractionLifecycle('onAdd', context)}
+          onDragSort={(context) => emitInteractionLifecycle('onDragSort', context)}
+          onRemove={(context) => emitInteractionLifecycle('onRemove', context)}
+          onChange={(value) => {
+            setTabsInnerValue(value as string | number);
+            emitInteractionLifecycle('onChange', { value });
+          }}
+        />
       );
     }
     case 'Collapse': {
@@ -2324,40 +2318,38 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) 
         ?? (typeof firstValue !== 'undefined' ? [firstValue] : undefined);
 
       return (
-        <div style={mergeStyle()}>
-          <Collapse
-            value={activeValue as any}
-            disabled={getBooleanProp(node, 'disabled')}
-            borderless={getBooleanProp(node, 'bordered') === false}
-            expandMutex={getBooleanProp(node, 'expandMutex')}
-            defaultExpandAll={getBooleanProp(node, 'defaultExpandAll')}
-            expandIconPlacement={getStringProp(node, 'expandIconPlacement') as any}
-            onChange={(value) => {
-              setCollapseInnerValue(value as Array<string | number>);
-              emitInteractionLifecycle('onChange', { value });
-            }}
-            style={mergeStyle()}
-          >
-            {collapseList.map((item) => {
-              const headerSlotNode = getCollapseHeaderSlotNodeByValue(node, item.value);
-              const panelSlotNode = getCollapsePanelSlotNodeByValue(node, item.value);
-              const headerChildren = headerSlotNode ? renderChildList(headerSlotNode.children ?? [], onLifecycle) : null;
-              const panelChildren = panelSlotNode ? renderChildList(panelSlotNode.children ?? [], onLifecycle) : null;
+        <Collapse
+          value={activeValue as any}
+          disabled={getBooleanProp(node, 'disabled')}
+          borderless={getBooleanProp(node, 'bordered') === false}
+          expandMutex={getBooleanProp(node, 'expandMutex')}
+          defaultExpandAll={getBooleanProp(node, 'defaultExpandAll')}
+          expandIconPlacement={getStringProp(node, 'expandIconPlacement') as any}
+          onChange={(value) => {
+            setCollapseInnerValue(value as Array<string | number>);
+            emitInteractionLifecycle('onChange', { value });
+          }}
+          style={mergeStyle()}
+        >
+          {collapseList.map((item) => {
+            const headerSlotNode = getCollapseHeaderSlotNodeByValue(node, item.value);
+            const panelSlotNode = getCollapsePanelSlotNodeByValue(node, item.value);
+            const headerChildren = headerSlotNode ? renderChildList(headerSlotNode.children ?? [], onLifecycle) : null;
+            const panelChildren = panelSlotNode ? renderChildList(panelSlotNode.children ?? [], onLifecycle) : null;
 
-              return (
-                <Collapse.Panel
-                  key={`${node.key}-collapse-panel-${String(item.value)}`}
-                  value={item.value as any}
-                  disabled={item.disabled}
-                  destroyOnCollapse={item.destroyOnCollapse}
-                  header={headerChildren || item.label}
-                >
-                  {panelChildren}
-                </Collapse.Panel>
-              );
-            })}
-          </Collapse>
-        </div>
+            return (
+              <Collapse.Panel
+                key={`${node.key}-collapse-panel-${String(item.value)}`}
+                value={item.value as any}
+                disabled={item.disabled}
+                destroyOnCollapse={item.destroyOnCollapse}
+                header={headerChildren || item.label}
+              >
+                {panelChildren}
+              </Collapse.Panel>
+            );
+          })}
+        </Collapse>
       );
     }
     case 'Space': {
@@ -2372,16 +2364,15 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) 
 
       if (!isSpaceSplitEnabled || childrenArray.length <= 1) {
         return (
-          <div style={mergeStyle()}>
-            <Space
-              align={getStringProp(node, 'align') as any}
-              direction={direction as any}
-              size={getNumberProp(node, 'size')}
-              breakLine={getBooleanProp(node, 'breakLine')}
-            >
-              {childrenList}
-            </Space>
-          </div>
+          <Space
+            align={getStringProp(node, 'align') as any}
+            direction={direction as any}
+            size={getNumberProp(node, 'size')}
+            breakLine={getBooleanProp(node, 'breakLine')}
+            style={mergeStyle()}
+          >
+            {childrenList}
+          </Space>
         );
       }
 
@@ -2403,16 +2394,15 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) 
       });
 
       return (
-        <div style={mergeStyle()}>
-          <Space
-            align={getStringProp(node, 'align') as any}
-            direction={direction as any}
-            size={getNumberProp(node, 'size')}
-            breakLine={getBooleanProp(node, 'breakLine')}
-          >
-            {mergedChildren}
-          </Space>
-        </div>
+        <Space
+          align={getStringProp(node, 'align') as any}
+          direction={direction as any}
+          size={getNumberProp(node, 'size')}
+          breakLine={getBooleanProp(node, 'breakLine')}
+          style={mergeStyle()}
+        >
+          {mergedChildren}
+        </Space>
       );
     }
     case 'Flex':
@@ -2553,38 +2543,6 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) 
 
       if (customTemplateEnabled) {
         return (
-          <div style={mergeStyle()}>
-            <List
-              layout={getStringProp(node, 'layout') as any}
-              size={getStringProp(node, 'size') as any}
-              split={getBooleanProp(node, 'split')}
-              stripe={getBooleanProp(node, 'stripe')}
-              header={getStringProp(node, 'header') || undefined}
-              footer={getStringProp(node, 'footer') || undefined}
-              asyncLoading={getStringProp(node, 'asyncLoading') || undefined}
-              onLoadMore={(options) => emitInteractionLifecycle('onLoadMore', options)}
-              onScroll={(options) => emitInteractionLifecycle('onScroll', options)}
-              style={mergeStyle()}
-            >
-              {listDataSource.map((item, index) => {
-                const itemRecord = (item && typeof item === 'object') ? (item as ListRecord) : {};
-                const boundChildren = (listItemTemplateNode?.children ?? []).map((child) => applyListBindingToNode(child, itemRecord));
-
-                return (
-                  <ListItem key={`${node.key}-template-${index}`}>
-                    <div onClick={() => emitInteractionLifecycle('onItemClick', { item, index })}>
-                      {renderChildList(boundChildren, onLifecycle)}
-                    </div>
-                  </ListItem>
-                );
-              })}
-            </List>
-          </div>
-        );
-      }
-
-      return (
-        <div style={mergeStyle()}>
           <List
             layout={getStringProp(node, 'layout') as any}
             size={getStringProp(node, 'size') as any}
@@ -2599,81 +2557,99 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) 
           >
             {listDataSource.map((item, index) => {
               const itemRecord = (item && typeof item === 'object') ? (item as ListRecord) : {};
-              const metaTitle = getListFieldValue(itemRecord, titleField);
-              const metaDescription = getListFieldValue(itemRecord, descriptionField);
-              const metaImage = getListFieldValue(itemRecord, imageField);
-              const actionText = getListFieldValue(itemRecord, actionField);
-              const resolvedTitle = metaTitle || `列表项 ${index + 1}`;
-              const resolvedDescription = showDescription ? metaDescription : undefined;
-              const resolvedImage = showImage ? metaImage : undefined;
+              const boundChildren = (listItemTemplateNode?.children ?? []).map((child) => applyListBindingToNode(child, itemRecord));
 
               return (
-                <ListItem
-                  key={`${node.key}-item-${index}`}
-                  action={showAction && actionText ? (
-                    <Button
-                      size={actionSize as any}
-                      variant={actionVariant as any}
-                      theme={actionTheme as any}
-                      onClick={() => emitInteractionLifecycle('onActionClick', { item, index })}
-                    >
-                      {actionText}
-                    </Button>
-                  ) : undefined}
-                >
+                <ListItem key={`${node.key}-template-${index}`}>
                   <div onClick={() => emitInteractionLifecycle('onItemClick', { item, index })}>
-                    <ListItemMeta
-                      title={resolvedTitle}
-                      description={resolvedDescription}
-                      image={resolvedImage ? <Image src={resolvedImage} style={{ width: 56, height: 56, borderRadius: 6 }} /> : undefined}
-                    />
+                    {renderChildList(boundChildren, onLifecycle)}
                   </div>
                 </ListItem>
               );
             })}
           </List>
-        </div>
+        );
+      }
+
+      return (
+        <List
+          layout={getStringProp(node, 'layout') as any}
+          size={getStringProp(node, 'size') as any}
+          split={getBooleanProp(node, 'split')}
+          stripe={getBooleanProp(node, 'stripe')}
+          header={getStringProp(node, 'header') || undefined}
+          footer={getStringProp(node, 'footer') || undefined}
+          asyncLoading={getStringProp(node, 'asyncLoading') || undefined}
+          onLoadMore={(options) => emitInteractionLifecycle('onLoadMore', options)}
+          onScroll={(options) => emitInteractionLifecycle('onScroll', options)}
+          style={mergeStyle()}
+        >
+          {listDataSource.map((item, index) => {
+            const itemRecord = (item && typeof item === 'object') ? (item as ListRecord) : {};
+            const metaTitle = getListFieldValue(itemRecord, titleField);
+            const metaDescription = getListFieldValue(itemRecord, descriptionField);
+            const metaImage = getListFieldValue(itemRecord, imageField);
+            const actionText = getListFieldValue(itemRecord, actionField);
+            const resolvedTitle = metaTitle || `列表项 ${index + 1}`;
+            const resolvedDescription = showDescription ? metaDescription : undefined;
+            const resolvedImage = showImage ? metaImage : undefined;
+
+            return (
+              <ListItem
+                key={`${node.key}-item-${index}`}
+                action={showAction && actionText ? (
+                  <Button
+                    size={actionSize as any}
+                    variant={actionVariant as any}
+                    theme={actionTheme as any}
+                    onClick={() => emitInteractionLifecycle('onActionClick', { item, index })}
+                  >
+                    {actionText}
+                  </Button>
+                ) : undefined}
+              >
+                <div onClick={() => emitInteractionLifecycle('onItemClick', { item, index })}>
+                  <ListItemMeta
+                    title={resolvedTitle}
+                    description={resolvedDescription}
+                    image={resolvedImage ? <Image src={resolvedImage} style={{ width: 56, height: 56, borderRadius: 6 }} /> : undefined}
+                  />
+                </div>
+              </ListItem>
+            );
+          })}
+        </List>
       );
       }
     case 'Layout':
       return (
-        <div style={mergeStyle()}>
-          <Layout>
-            {renderChildren(node, onLifecycle)}
-          </Layout>
-        </div>
+        <Layout style={mergeStyle()}>
+          {renderChildren(node, onLifecycle)}
+        </Layout>
       );
     case 'Layout.Header':
       return (
-        <div style={mergeStyle()}>
-          <Header>
-            {renderChildren(node, onLifecycle)}
-          </Header>
-        </div>
+        <Header style={mergeStyle()}>
+          {renderChildren(node, onLifecycle)}
+        </Header>
       );
     case 'Layout.Content':
       return (
-        <div style={mergeStyle()}>
-          <Content>
-            {renderChildren(node, onLifecycle)}
-          </Content>
-        </div>
+        <Content style={mergeStyle()}>
+          {renderChildren(node, onLifecycle)}
+        </Content>
       );
     case 'Layout.Aside':
       return (
-        <div style={mergeStyle()}>
-          <Aside>
-            {renderChildren(node, onLifecycle)}
-          </Aside>
-        </div>
+        <Aside style={mergeStyle()}>
+          {renderChildren(node, onLifecycle)}
+        </Aside>
       );
     case 'Layout.Footer':
       return (
-        <div style={mergeStyle()}>
-          <Footer>
-            {renderChildren(node, onLifecycle)}
-          </Footer>
-        </div>
+        <Footer style={mergeStyle()}>
+          {renderChildren(node, onLifecycle)}
+        </Footer>
       );
     case 'RouteOutlet':
       {
@@ -2695,147 +2671,132 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) 
       const headerChildren = getSlotChildren(node, 'header');
       const bodyChildren = getSlotChildren(node, 'body');
       return (
-        <div style={mergeStyle()}>
-          <Card
-            header={headerChildren.length > 0 ? renderChildList(headerChildren, onLifecycle) : undefined}
-            title={headerChildren.length > 0 ? undefined : getStringProp(node, 'title')}
-            subtitle={headerChildren.length > 0 ? undefined : getStringProp(node, 'subtitle')}
-            size={getStringProp(node, 'size') as any}
-            bordered={getBooleanProp(node, 'bordered')}
-            headerBordered={getBooleanProp(node, 'headerBordered')}
-            shadow={getBooleanProp(node, 'shadow')}
-            hoverShadow={getBooleanProp(node, 'hoverShadow')}
-            style={mergeStyle()}
-          >
-            {renderChildList(bodyChildren, onLifecycle)}
-          </Card>
-        </div>
+        <Card
+          header={headerChildren.length > 0 ? renderChildList(headerChildren, onLifecycle) : undefined}
+          title={headerChildren.length > 0 ? undefined : getStringProp(node, 'title')}
+          subtitle={headerChildren.length > 0 ? undefined : getStringProp(node, 'subtitle')}
+          size={getStringProp(node, 'size') as any}
+          bordered={getBooleanProp(node, 'bordered')}
+          headerBordered={getBooleanProp(node, 'headerBordered')}
+          shadow={getBooleanProp(node, 'shadow')}
+          hoverShadow={getBooleanProp(node, 'hoverShadow')}
+          style={mergeStyle()}
+        >
+          {renderChildList(bodyChildren, onLifecycle)}
+        </Card>
       );
       }
     case 'Statistic':
       {
       const trend = getStringProp(node, 'trend');
       return (
-        <div style={mergeStyle()}>
-          <Statistic
-            title={getStringProp(node, 'title')}
-            value={getFiniteNumberProp(node, 'value') ?? 0}
-            unit={getStringProp(node, 'unit') || undefined}
-            decimalPlaces={getFiniteNumberProp(node, 'decimalPlaces')}
-            separator={getStringProp(node, 'separator') || ','}
-            color={getStringProp(node, 'color') as any}
-            trend={trend === 'increase' || trend === 'decrease' ? trend : undefined}
-            trendPlacement={getStringProp(node, 'trendPlacement') as any}
-            loading={getBooleanProp(node, 'loading')}
-            animationStart={getBooleanProp(node, 'animationStart')}
-            style={mergeStyle()}
-          />
-        </div>
+        <Statistic
+          title={getStringProp(node, 'title')}
+          value={getFiniteNumberProp(node, 'value') ?? 0}
+          unit={getStringProp(node, 'unit') || undefined}
+          decimalPlaces={getFiniteNumberProp(node, 'decimalPlaces')}
+          separator={getStringProp(node, 'separator') || ','}
+          color={getStringProp(node, 'color') as any}
+          trend={trend === 'increase' || trend === 'decrease' ? trend : undefined}
+          trendPlacement={getStringProp(node, 'trendPlacement') as any}
+          loading={getBooleanProp(node, 'loading')}
+          animationStart={getBooleanProp(node, 'animationStart')}
+          style={mergeStyle()}
+        />
       );
       }
     case 'Image':
       return (
-        <div style={mergeStyle()}>
-          <Image
-            src={getStringProp(node, 'src')}
-            alt={getStringProp(node, 'alt')}
-            fit={getStringProp(node, 'fit') as any}
-            shape={getStringProp(node, 'shape') as any}
-            gallery={getBooleanProp(node, 'gallery') === true}
-            style={mergeStyle()}
-          />
-        </div>
+        <Image
+          src={getStringProp(node, 'src')}
+          alt={getStringProp(node, 'alt')}
+          fit={getStringProp(node, 'fit') as any}
+          shape={getStringProp(node, 'shape') as any}
+          gallery={getBooleanProp(node, 'gallery') === true}
+          style={mergeStyle()}
+        />
       );
     case 'Avatar':
       return (
-        <div style={mergeStyle()}>
-          <Avatar
-            image={getStringProp(node, 'image')}
-            alt={getStringProp(node, 'alt')}
-            content={getStringProp(node, 'content')}
-            shape={getStringProp(node, 'shape') as any}
-            size={getStringProp(node, 'size')}
-            hideOnLoadFailed={getBooleanProp(node, 'hideOnLoadFailed')}
-            style={mergeStyle()}
-          />
-        </div>
+        <Avatar
+          image={getStringProp(node, 'image')}
+          alt={getStringProp(node, 'alt')}
+          content={getStringProp(node, 'content')}
+          shape={getStringProp(node, 'shape') as any}
+          size={getStringProp(node, 'size')}
+          hideOnLoadFailed={getBooleanProp(node, 'hideOnLoadFailed')}
+          style={mergeStyle()}
+        />
       );
     case 'Switch':
       {
       const renderedSwitchValue = isSwitchControlled ? controlledSwitchValue : uncontrolledSwitchValue;
       return (
-        <div style={mergeStyle()}>
-          <Space align="center" size={8}>
-            <Switch
-              size={getStringProp(node, 'size') as any}
-              value={isSwitchControlled ? renderedSwitchValue : undefined}
-              defaultValue={isSwitchControlled ? undefined : switchDefaultValue}
-              onChange={(nextValue) => {
-                const normalizedValue = Boolean(nextValue);
-                if (isSwitchControlled) {
-                  didInitControlledSwitchValueRef.current = true;
-                  lastControlledSwitchValueRef.current = normalizedValue;
-                  suppressNextControlledPropEventRef.current = true;
-                  expectedControlledSwitchValueRef.current = normalizedValue;
-                } else {
-                  setUncontrolledSwitchValue(normalizedValue);
-                }
-                syncNodeValue(normalizedValue);
+        <Switch
+          size={getStringProp(node, 'size') as any}
+          value={isSwitchControlled ? renderedSwitchValue : undefined}
+          defaultValue={isSwitchControlled ? undefined : switchDefaultValue}
+          style={mergeStyle()}
+          onChange={(nextValue) => {
+            const normalizedValue = Boolean(nextValue);
+            if (isSwitchControlled) {
+              didInitControlledSwitchValueRef.current = true;
+              lastControlledSwitchValueRef.current = normalizedValue;
+              suppressNextControlledPropEventRef.current = true;
+              expectedControlledSwitchValueRef.current = normalizedValue;
+            } else {
+              setUncontrolledSwitchValue(normalizedValue);
+            }
+            syncNodeValue(normalizedValue);
 
-                emitInteractionLifecycle('onChange', {
-                  value: normalizedValue,
-                  source: 'userInput',
-                  controlMode: isSwitchControlled ? 'controlled' : 'uncontrolled',
-                });
-              }}
-            />
-          </Space>
-        </div>
+            emitInteractionLifecycle('onChange', {
+              value: normalizedValue,
+              source: 'userInput',
+              controlMode: isSwitchControlled ? 'controlled' : 'uncontrolled',
+            });
+          }}
+        />
       );
       }
     case 'Calendar':
       return (
-        <div style={mergeStyle()}>
-          <Calendar
-            theme={getStringProp(node, 'theme') as any}
-            mode={getStringProp(node, 'mode') as any}
-            firstDayOfWeek={getNumberProp(node, 'firstDayOfWeek')}
-            format={getStringProp(node, 'format')}
-            fillWithZero={getBooleanProp(node, 'fillWithZero')}
-            isShowWeekendDefault={getBooleanProp(node, 'isShowWeekendDefault')}
-            controllerConfig={getBooleanProp(node, 'controllerConfig')}
-            preventCellContextmenu={getBooleanProp(node, 'preventCellContextmenu')}
-            value={getCalendarValueProp(node, 'value') as any}
-            onCellClick={(options) => emitInteractionLifecycle('onCellClick', options)}
-            onCellDoubleClick={(options) => emitInteractionLifecycle('onCellDoubleClick', options)}
-            onCellRightClick={(options) => emitInteractionLifecycle('onCellRightClick', options)}
-            onControllerChange={(options) => emitInteractionLifecycle('onControllerChange', options)}
-            onMonthChange={(options) => emitInteractionLifecycle('onMonthChange', options)}
-            style={mergeStyle()}
-          />
-        </div>
+        <Calendar
+          theme={getStringProp(node, 'theme') as any}
+          mode={getStringProp(node, 'mode') as any}
+          firstDayOfWeek={getNumberProp(node, 'firstDayOfWeek')}
+          format={getStringProp(node, 'format')}
+          fillWithZero={getBooleanProp(node, 'fillWithZero')}
+          isShowWeekendDefault={getBooleanProp(node, 'isShowWeekendDefault')}
+          controllerConfig={getBooleanProp(node, 'controllerConfig')}
+          preventCellContextmenu={getBooleanProp(node, 'preventCellContextmenu')}
+          value={getCalendarValueProp(node, 'value') as any}
+          onCellClick={(options) => emitInteractionLifecycle('onCellClick', options)}
+          onCellDoubleClick={(options) => emitInteractionLifecycle('onCellDoubleClick', options)}
+          onCellRightClick={(options) => emitInteractionLifecycle('onCellRightClick', options)}
+          onControllerChange={(options) => emitInteractionLifecycle('onControllerChange', options)}
+          onMonthChange={(options) => emitInteractionLifecycle('onMonthChange', options)}
+          style={mergeStyle()}
+        />
       );
     case 'ColorPicker':
       {
       const isControlled = getBooleanProp(node, 'controlled') !== false;
       return (
-        <div style={mergeStyle()}>
-          <ColorPicker
-            format={getStringProp(node, 'format') as any}
-            value={isControlled ? (getStringProp(node, 'value') || undefined) : undefined}
-            defaultValue={isControlled ? undefined : (getStringProp(node, 'defaultValue') || undefined)}
-            clearable={getBooleanProp(node, 'clearable')}
-            borderless={getBooleanProp(node, 'borderless')}
-            disabled={getBooleanProp(node, 'disabled')}
-            enableAlpha={getBooleanProp(node, 'enableAlpha')}
-            showPrimaryColorPreview={getBooleanProp(node, 'showPrimaryColorPreview')}
-            onChange={(value, context) => emitInteractionLifecycle('onChange', { value, context })}
-            onClear={(context) => emitInteractionLifecycle('onClear', context)}
-            onPaletteBarChange={(context) => emitInteractionLifecycle('onPaletteBarChange', context)}
-            onRecentColorsChange={(value) => emitInteractionLifecycle('onRecentColorsChange', { value })}
-            style={mergeStyle()}
-          />
-        </div>
+        <ColorPicker
+          format={getStringProp(node, 'format') as any}
+          value={isControlled ? (getStringProp(node, 'value') || undefined) : undefined}
+          defaultValue={isControlled ? undefined : (getStringProp(node, 'defaultValue') || undefined)}
+          clearable={getBooleanProp(node, 'clearable')}
+          borderless={getBooleanProp(node, 'borderless')}
+          disabled={getBooleanProp(node, 'disabled')}
+          enableAlpha={getBooleanProp(node, 'enableAlpha')}
+          showPrimaryColorPreview={getBooleanProp(node, 'showPrimaryColorPreview')}
+          onChange={(value, context) => emitInteractionLifecycle('onChange', { value, context })}
+          onClear={(context) => emitInteractionLifecycle('onClear', context)}
+          onPaletteBarChange={(context) => emitInteractionLifecycle('onPaletteBarChange', context)}
+          onRecentColorsChange={(value) => emitInteractionLifecycle('onRecentColorsChange', { value })}
+          style={mergeStyle()}
+        />
       );
       }
     case 'TimePicker':
@@ -2843,31 +2804,29 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) 
       const isControlled = getBooleanProp(node, 'controlled') !== false;
 
       return (
-        <div style={mergeStyle()}>
-          <TimePicker
-            format={getStringProp(node, 'format') || 'HH:mm:ss'}
-            value={isControlled ? (getStringProp(node, 'value') || undefined) : undefined}
-            defaultValue={isControlled ? undefined : (getStringProp(node, 'defaultValue') || undefined)}
-            placeholder={getStringProp(node, 'placeholder') || undefined}
-            size={getStringProp(node, 'size') as any}
-            status={getStringProp(node, 'status') as any}
-            steps={getTimeStepsProp(node) as any}
-            allowInput={getBooleanProp(node, 'allowInput')}
-            borderless={getBooleanProp(node, 'borderless')}
-            clearable={getBooleanProp(node, 'clearable')}
-            disabled={getBooleanProp(node, 'disabled')}
-            hideDisabledTime={getBooleanProp(node, 'hideDisabledTime')}
-            onBlur={(context) => emitInteractionLifecycle('onBlur', context)}
-            onChange={(value) => emitInteractionLifecycle('onChange', { value })}
-            onClear={(context) => emitInteractionLifecycle('onClear', context)}
-            onClose={(context) => emitInteractionLifecycle('onClose', context)}
-            onFocus={(context) => emitInteractionLifecycle('onFocus', context)}
-            onInput={(context) => emitInteractionLifecycle('onInput', context)}
-            onOpen={(context) => emitInteractionLifecycle('onOpen', context)}
-            onPick={(value, context) => emitInteractionLifecycle('onPick', { value, context })}
-            style={mergeStyle()}
-          />
-        </div>
+        <TimePicker
+          format={getStringProp(node, 'format') || 'HH:mm:ss'}
+          value={isControlled ? (getStringProp(node, 'value') || undefined) : undefined}
+          defaultValue={isControlled ? undefined : (getStringProp(node, 'defaultValue') || undefined)}
+          placeholder={getStringProp(node, 'placeholder') || undefined}
+          size={getStringProp(node, 'size') as any}
+          status={getStringProp(node, 'status') as any}
+          steps={getTimeStepsProp(node) as any}
+          allowInput={getBooleanProp(node, 'allowInput')}
+          borderless={getBooleanProp(node, 'borderless')}
+          clearable={getBooleanProp(node, 'clearable')}
+          disabled={getBooleanProp(node, 'disabled')}
+          hideDisabledTime={getBooleanProp(node, 'hideDisabledTime')}
+          onBlur={(context) => emitInteractionLifecycle('onBlur', context)}
+          onChange={(value) => emitInteractionLifecycle('onChange', { value })}
+          onClear={(context) => emitInteractionLifecycle('onClear', context)}
+          onClose={(context) => emitInteractionLifecycle('onClose', context)}
+          onFocus={(context) => emitInteractionLifecycle('onFocus', context)}
+          onInput={(context) => emitInteractionLifecycle('onInput', context)}
+          onOpen={(context) => emitInteractionLifecycle('onOpen', context)}
+          onPick={(value, context) => emitInteractionLifecycle('onPick', { value, context })}
+          style={mergeStyle()}
+        />
       );
       }
     case 'TimeRangePicker':
@@ -2882,29 +2841,27 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) 
         : undefined;
 
       return (
-        <div style={mergeStyle()}>
-          <TimeRangePicker
-            format={getStringProp(node, 'format') || 'HH:mm:ss'}
-            value={isControlled ? (value as any) : undefined}
-            defaultValue={isControlled ? undefined : (defaultValue as any)}
-            placeholder={placeholder as any}
-            size={getStringProp(node, 'size') as any}
-            status={getStringProp(node, 'status') as any}
-            steps={getTimeStepsProp(node) as any}
-            allowInput={getBooleanProp(node, 'allowInput')}
-            autoSwap={getBooleanProp(node, 'autoSwap')}
-            borderless={getBooleanProp(node, 'borderless')}
-            clearable={getBooleanProp(node, 'clearable')}
-            disabled={getBooleanProp(node, 'disabled')}
-            hideDisabledTime={getBooleanProp(node, 'hideDisabledTime')}
-            onBlur={(context) => emitInteractionLifecycle('onBlur', context)}
-            onChange={(nextValue) => emitInteractionLifecycle('onChange', { value: nextValue })}
-            onFocus={(context) => emitInteractionLifecycle('onFocus', context)}
-            onInput={(context) => emitInteractionLifecycle('onInput', context)}
-            onPick={(nextValue, context) => emitInteractionLifecycle('onPick', { value: nextValue, context })}
-            style={mergeStyle()}
-          />
-        </div>
+        <TimeRangePicker
+          format={getStringProp(node, 'format') || 'HH:mm:ss'}
+          value={isControlled ? (value as any) : undefined}
+          defaultValue={isControlled ? undefined : (defaultValue as any)}
+          placeholder={placeholder as any}
+          size={getStringProp(node, 'size') as any}
+          status={getStringProp(node, 'status') as any}
+          steps={getTimeStepsProp(node) as any}
+          allowInput={getBooleanProp(node, 'allowInput')}
+          autoSwap={getBooleanProp(node, 'autoSwap')}
+          borderless={getBooleanProp(node, 'borderless')}
+          clearable={getBooleanProp(node, 'clearable')}
+          disabled={getBooleanProp(node, 'disabled')}
+          hideDisabledTime={getBooleanProp(node, 'hideDisabledTime')}
+          onBlur={(context) => emitInteractionLifecycle('onBlur', context)}
+          onChange={(nextValue) => emitInteractionLifecycle('onChange', { value: nextValue })}
+          onFocus={(context) => emitInteractionLifecycle('onFocus', context)}
+          onInput={(context) => emitInteractionLifecycle('onInput', context)}
+          onPick={(nextValue, context) => emitInteractionLifecycle('onPick', { value: nextValue, context })}
+          style={mergeStyle()}
+        />
       );
       }
     case 'Input':
@@ -2915,53 +2872,51 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) 
         : { defaultValue: getStringProp(node, 'defaultValue') || undefined };
 
       return (
-        <div style={mergeStyle()}>
-          <Input
-            {...inputValueProps}
-            className={getStringProp(node, 'className') || undefined}
-            align={getStringProp(node, 'align') as any}
-            allowInputOverMax={getBooleanProp(node, 'allowInputOverMax')}
-            autoWidth={getBooleanProp(node, 'autoWidth')}
-            autocomplete={getStringProp(node, 'autocomplete') || undefined}
-            autofocus={getBooleanProp(node, 'autofocus')}
-            borderless={getBooleanProp(node, 'borderless')}
-            placeholder={getStringProp(node, 'placeholder') || undefined}
-            size={getStringProp(node, 'size') as any}
-            status={getStringProp(node, 'status') as any}
-            clearable={getBooleanProp(node, 'clearable')}
-            disabled={getBooleanProp(node, 'disabled')}
-            readonly={getBooleanProp(node, 'readOnly') ?? getBooleanProp(node, 'readonly')}
-            maxcharacter={getFiniteNumberProp(node, 'maxcharacter') as any}
-            maxlength={getFiniteNumberProp(node, 'maxlength') as any}
-            name={getStringProp(node, 'name') || undefined}
-            showClearIconOnEmpty={getBooleanProp(node, 'showClearIconOnEmpty')}
-            showLimitNumber={getBooleanProp(node, 'showLimitNumber')}
-            spellCheck={getBooleanProp(node, 'spellCheck')}
-            tips={getStringProp(node, 'tips') || undefined}
-            type={getStringProp(node, 'type') as any}
-            onBlur={(value, context) => emitInteractionLifecycle('onBlur', { value, context })}
-            onChange={(value, context) => {
-              const nextValue = String(value ?? '');
-              syncNodeValue(nextValue);
-              emitInteractionLifecycle('onChange', { value: nextValue, context });
-            }}
-            onClear={(context) => emitInteractionLifecycle('onClear', context)}
-            onClick={(context) => emitInteractionLifecycle('onClick', context)}
-            onCompositionend={(value, context) => emitInteractionLifecycle('onCompositionend', { value, context })}
-            onCompositionstart={(value, context) => emitInteractionLifecycle('onCompositionstart', { value, context })}
-            onEnter={(value, context) => emitInteractionLifecycle('onEnter', { value, context })}
-            onFocus={(value, context) => emitInteractionLifecycle('onFocus', { value, context })}
-            onKeydown={(value, context) => emitInteractionLifecycle('onKeydown', { value, context })}
-            onKeypress={(value, context) => emitInteractionLifecycle('onKeypress', { value, context })}
-            onKeyup={(value, context) => emitInteractionLifecycle('onKeyup', { value, context })}
-            onMouseenter={(context) => emitInteractionLifecycle('onMouseenter', context)}
-            onMouseleave={(context) => emitInteractionLifecycle('onMouseleave', context)}
-            onPaste={(context) => emitInteractionLifecycle('onPaste', context)}
-            onValidate={(context) => emitInteractionLifecycle('onValidate', context)}
-            onWheel={(context) => emitInteractionLifecycle('onWheel', context)}
-            style={mergeStyle()}
-          />
-        </div>
+        <Input
+          {...inputValueProps}
+          className={getStringProp(node, 'className') || undefined}
+          align={getStringProp(node, 'align') as any}
+          allowInputOverMax={getBooleanProp(node, 'allowInputOverMax')}
+          autoWidth={getBooleanProp(node, 'autoWidth')}
+          autocomplete={getStringProp(node, 'autocomplete') || undefined}
+          autofocus={getBooleanProp(node, 'autofocus')}
+          borderless={getBooleanProp(node, 'borderless')}
+          placeholder={getStringProp(node, 'placeholder') || undefined}
+          size={getStringProp(node, 'size') as any}
+          status={getStringProp(node, 'status') as any}
+          clearable={getBooleanProp(node, 'clearable')}
+          disabled={getBooleanProp(node, 'disabled')}
+          readonly={getBooleanProp(node, 'readOnly') ?? getBooleanProp(node, 'readonly')}
+          maxcharacter={getFiniteNumberProp(node, 'maxcharacter') as any}
+          maxlength={getFiniteNumberProp(node, 'maxlength') as any}
+          name={getStringProp(node, 'name') || undefined}
+          showClearIconOnEmpty={getBooleanProp(node, 'showClearIconOnEmpty')}
+          showLimitNumber={getBooleanProp(node, 'showLimitNumber')}
+          spellCheck={getBooleanProp(node, 'spellCheck')}
+          tips={getStringProp(node, 'tips') || undefined}
+          type={getStringProp(node, 'type') as any}
+          onBlur={(value, context) => emitInteractionLifecycle('onBlur', { value, context })}
+          onChange={(value, context) => {
+            const nextValue = String(value ?? '');
+            syncNodeValue(nextValue);
+            emitInteractionLifecycle('onChange', { value: nextValue, context });
+          }}
+          onClear={(context) => emitInteractionLifecycle('onClear', context)}
+          onClick={(context) => emitInteractionLifecycle('onClick', context)}
+          onCompositionend={(value, context) => emitInteractionLifecycle('onCompositionend', { value, context })}
+          onCompositionstart={(value, context) => emitInteractionLifecycle('onCompositionstart', { value, context })}
+          onEnter={(value, context) => emitInteractionLifecycle('onEnter', { value, context })}
+          onFocus={(value, context) => emitInteractionLifecycle('onFocus', { value, context })}
+          onKeydown={(value, context) => emitInteractionLifecycle('onKeydown', { value, context })}
+          onKeypress={(value, context) => emitInteractionLifecycle('onKeypress', { value, context })}
+          onKeyup={(value, context) => emitInteractionLifecycle('onKeyup', { value, context })}
+          onMouseenter={(context) => emitInteractionLifecycle('onMouseenter', context)}
+          onMouseleave={(context) => emitInteractionLifecycle('onMouseleave', context)}
+          onPaste={(context) => emitInteractionLifecycle('onPaste', context)}
+          onValidate={(context) => emitInteractionLifecycle('onValidate', context)}
+          onWheel={(context) => emitInteractionLifecycle('onWheel', context)}
+          style={mergeStyle()}
+        />
       );
       }
     case 'Textarea':
@@ -3063,35 +3018,33 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) 
       const mergedTextareaStyle = textareaStyle ? { ...mergeStyle(), ...textareaStyle } : mergeStyle();
 
       return (
-        <div style={mergeStyle()}>
-          <Textarea
-            {...textareaValueProps}
-            className={getStringProp(node, 'className') || undefined}
-            allowInputOverMax={getBooleanProp(node, 'allowInputOverMax')}
-            autofocus={getBooleanProp(node, 'autofocus')}
-            count={getBooleanProp(node, 'count')}
-            placeholder={getStringProp(node, 'placeholder') || undefined}
-            status={getStringProp(node, 'status') as any}
-            disabled={getBooleanProp(node, 'disabled')}
-            readonly={getBooleanProp(node, 'readOnly') ?? getBooleanProp(node, 'readonly')}
-            maxcharacter={getFiniteNumberProp(node, 'maxcharacter') as any}
-            maxlength={getFiniteNumberProp(node, 'maxlength') as any}
-            name={getStringProp(node, 'name') || undefined}
-            tips={getStringProp(node, 'tips') || undefined}
-            autosize={getTextareaAutosizeProp()}
-            onBlur={(value, context) => emitInteractionLifecycle('onBlur', { value, context })}
-            onChange={(value, context) => {
-              const nextValue = String(value ?? '');
-              syncNodeValue(nextValue);
-              emitInteractionLifecycle('onChange', { value: nextValue, context });
-            }}
-            onFocus={(value, context) => emitInteractionLifecycle('onFocus', { value, context })}
-            onKeydown={(value, context) => emitInteractionLifecycle('onKeydown', { value, context })}
-            onKeypress={(value, context) => emitInteractionLifecycle('onKeypress', { value, context })}
-            onKeyup={(value, context) => emitInteractionLifecycle('onKeyup', { value, context })}
-            style={mergedTextareaStyle}
-          />
-        </div>
+        <Textarea
+          {...textareaValueProps}
+          className={getStringProp(node, 'className') || undefined}
+          allowInputOverMax={getBooleanProp(node, 'allowInputOverMax')}
+          autofocus={getBooleanProp(node, 'autofocus')}
+          count={getBooleanProp(node, 'count')}
+          placeholder={getStringProp(node, 'placeholder') || undefined}
+          status={getStringProp(node, 'status') as any}
+          disabled={getBooleanProp(node, 'disabled')}
+          readonly={getBooleanProp(node, 'readOnly') ?? getBooleanProp(node, 'readonly')}
+          maxcharacter={getFiniteNumberProp(node, 'maxcharacter') as any}
+          maxlength={getFiniteNumberProp(node, 'maxlength') as any}
+          name={getStringProp(node, 'name') || undefined}
+          tips={getStringProp(node, 'tips') || undefined}
+          autosize={getTextareaAutosizeProp()}
+          onBlur={(value, context) => emitInteractionLifecycle('onBlur', { value, context })}
+          onChange={(value, context) => {
+            const nextValue = String(value ?? '');
+            syncNodeValue(nextValue);
+            emitInteractionLifecycle('onChange', { value: nextValue, context });
+          }}
+          onFocus={(value, context) => emitInteractionLifecycle('onFocus', { value, context })}
+          onKeydown={(value, context) => emitInteractionLifecycle('onKeydown', { value, context })}
+          onKeypress={(value, context) => emitInteractionLifecycle('onKeypress', { value, context })}
+          onKeyup={(value, context) => emitInteractionLifecycle('onKeyup', { value, context })}
+          style={mergedTextareaStyle}
+        />
       );
       }
     case 'InputNumber':
@@ -3099,38 +3052,36 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) 
       const isControlled = getBooleanProp(node, 'controlled') !== false;
 
       return (
-        <div style={mergeStyle()}>
-          <InputNumber
-            value={isControlled ? getInputNumberValueProp(node, 'value') as any : undefined}
-            defaultValue={isControlled ? undefined : getInputNumberValueProp(node, 'defaultValue') as any}
-            min={getInputNumberValueProp(node, 'min') as any}
-            max={getInputNumberValueProp(node, 'max') as any}
-            step={getInputNumberValueProp(node, 'step') as any}
-            decimalPlaces={getFiniteNumberProp(node, 'decimalPlaces') as any}
-            placeholder={getStringProp(node, 'placeholder') || undefined}
-            size={getStringProp(node, 'size') as any}
-            status={getStringProp(node, 'status') as any}
-            align={getStringProp(node, 'align') as any}
-            theme={getStringProp(node, 'theme') as any}
-            allowInputOverLimit={getBooleanProp(node, 'allowInputOverLimit')}
-            autoWidth={getBooleanProp(node, 'autoWidth')}
-            disabled={getBooleanProp(node, 'disabled')}
-            readOnly={getBooleanProp(node, 'readOnly')}
-            largeNumber={getBooleanProp(node, 'largeNumber')}
-            onBlur={(value, context) => emitInteractionLifecycle('onBlur', { value, context })}
-            onChange={(value, context) => {
-              syncNodeValue(value);
-              emitInteractionLifecycle('onChange', { value, context });
-            }}
-            onEnter={(value, context) => emitInteractionLifecycle('onEnter', { value, context })}
-            onFocus={(value, context) => emitInteractionLifecycle('onFocus', { value, context })}
-            onKeydown={(value, context) => emitInteractionLifecycle('onKeydown', { value, context })}
-            onKeypress={(value, context) => emitInteractionLifecycle('onKeypress', { value, context })}
-            onKeyup={(value, context) => emitInteractionLifecycle('onKeyup', { value, context })}
-            onValidate={(context) => emitInteractionLifecycle('onValidate', context)}
-            style={mergeStyle()}
-          />
-        </div>
+        <InputNumber
+          value={isControlled ? getInputNumberValueProp(node, 'value') as any : undefined}
+          defaultValue={isControlled ? undefined : getInputNumberValueProp(node, 'defaultValue') as any}
+          min={getInputNumberValueProp(node, 'min') as any}
+          max={getInputNumberValueProp(node, 'max') as any}
+          step={getInputNumberValueProp(node, 'step') as any}
+          decimalPlaces={getFiniteNumberProp(node, 'decimalPlaces') as any}
+          placeholder={getStringProp(node, 'placeholder') || undefined}
+          size={getStringProp(node, 'size') as any}
+          status={getStringProp(node, 'status') as any}
+          align={getStringProp(node, 'align') as any}
+          theme={getStringProp(node, 'theme') as any}
+          allowInputOverLimit={getBooleanProp(node, 'allowInputOverLimit')}
+          autoWidth={getBooleanProp(node, 'autoWidth')}
+          disabled={getBooleanProp(node, 'disabled')}
+          readOnly={getBooleanProp(node, 'readOnly')}
+          largeNumber={getBooleanProp(node, 'largeNumber')}
+          onBlur={(value, context) => emitInteractionLifecycle('onBlur', { value, context })}
+          onChange={(value, context) => {
+            syncNodeValue(value);
+            emitInteractionLifecycle('onChange', { value, context });
+          }}
+          onEnter={(value, context) => emitInteractionLifecycle('onEnter', { value, context })}
+          onFocus={(value, context) => emitInteractionLifecycle('onFocus', { value, context })}
+          onKeydown={(value, context) => emitInteractionLifecycle('onKeydown', { value, context })}
+          onKeypress={(value, context) => emitInteractionLifecycle('onKeypress', { value, context })}
+          onKeyup={(value, context) => emitInteractionLifecycle('onKeyup', { value, context })}
+          onValidate={(context) => emitInteractionLifecycle('onValidate', context)}
+          style={mergeStyle()}
+        />
       );
       }
     case 'Slider':
@@ -3155,22 +3106,20 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) 
         : { defaultValue: defaultValue as any };
 
       return (
-        <div style={mergeStyle()}>
-          <Slider
-            {...sliderValueProps}
-            layout={getStringProp(node, 'layout') as any}
-            min={min}
-            max={max}
-            step={getFiniteNumberProp(node, 'step')}
-            range={isRange}
-            disabled={getBooleanProp(node, 'disabled')}
-            onChange={(nextValue) => {
-              syncNodeValue(nextValue);
-              emitInteractionLifecycle('onChange', { value: nextValue });
-            }}
-            style={mergeStyle()}
-          />
-        </div>
+        <Slider
+          {...sliderValueProps}
+          layout={getStringProp(node, 'layout') as any}
+          min={min}
+          max={max}
+          step={getFiniteNumberProp(node, 'step')}
+          range={isRange}
+          disabled={getBooleanProp(node, 'disabled')}
+          onChange={(nextValue) => {
+            syncNodeValue(nextValue);
+            emitInteractionLifecycle('onChange', { value: nextValue });
+          }}
+          style={mergeStyle()}
+        />
       );
       }
     case 'Steps':
@@ -3222,34 +3171,32 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) 
       const fallbackMinHeight = stepsLayout === 'vertical' ? 160 : 88;
 
       return (
-        <div style={mergeStyle()}>
-          <Steps
-            {...stepsValueProps}
-            layout={stepsLayout as any}
-            readOnly={getBooleanProp(node, 'readOnly')}
-            separator={getStringProp(node, 'separator') as any}
-            sequence={getStringProp(node, 'sequence') as any}
-            theme={getStringProp(node, 'theme') as any}
-            onChange={(currentValue, previousValue, context) =>
-              emitInteractionLifecycle('onChange', {
-                current: currentValue,
-                previous: previousValue,
-                context,
-              })
-            }
-            style={mergeStyle({ minHeight: fallbackMinHeight })}
-          >
-            {stepItems.map((item) => (
-              <Steps.StepItem
-                key={item.key}
-                title={item.title}
-                content={item.content}
-                status={item.status as any}
-                value={item.value as any}
-              />
-            ))}
-          </Steps>
-        </div>
+        <Steps
+          {...stepsValueProps}
+          layout={stepsLayout as any}
+          readOnly={getBooleanProp(node, 'readOnly')}
+          separator={getStringProp(node, 'separator') as any}
+          sequence={getStringProp(node, 'sequence') as any}
+          theme={getStringProp(node, 'theme') as any}
+          onChange={(currentValue, previousValue, context) =>
+            emitInteractionLifecycle('onChange', {
+              current: currentValue,
+              previous: previousValue,
+              context,
+            })
+          }
+          style={mergeStyle({ minHeight: fallbackMinHeight })}
+        >
+          {stepItems.map((item) => (
+            <Steps.StepItem
+              key={item.key}
+              title={item.title}
+              content={item.content}
+              status={item.status as any}
+              value={item.value as any}
+            />
+          ))}
+        </Steps>
       );
       }
     case 'Steps.Item':
@@ -3263,74 +3210,62 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) 
       }
 
       return (
-        <div style={mergeStyle()}>
-          <Swiper autoplay height={height} style={{ width: '100%' }}>
-            {imageList.map((imageItem, index) => (
-              <Swiper.SwiperItem key={`${node.key}-swiper-${index}`}>
-                <div style={{ width: '100%', height: '100%' }}>
-                  <Image
-                    src={imageItem.src}
-                    fallback={imageItem.fallback || undefined}
-                    lazy={imageItem.lazy}
-                    fit={imageItem.objectFit as any}
-                    style={{ width: '100%', height: '100%', objectPosition: imageItem.objectPosition }}
-                  />
-                </div>
-              </Swiper.SwiperItem>
-            ))}
-          </Swiper>
-        </div>
+        <Swiper autoplay height={height} style={mergeStyle({ width: '100%' })}>
+          {imageList.map((imageItem, index) => (
+            <Swiper.SwiperItem key={`${node.key}-swiper-${index}`}>
+              <div style={{ width: '100%', height: '100%' }}>
+                <Image
+                  src={imageItem.src}
+                  fallback={imageItem.fallback || undefined}
+                  lazy={imageItem.lazy}
+                  fit={imageItem.objectFit as any}
+                  style={{ width: '100%', height: '100%', objectPosition: imageItem.objectPosition }}
+                />
+              </div>
+            </Swiper.SwiperItem>
+          ))}
+        </Swiper>
       );
     }
     case 'Divider':
       return (
-        <div style={mergeStyle()}>
-          <Divider
-            align={getStringProp(node, 'align') as any}
-            dashed={getBooleanProp(node, 'dashed')}
-            size={getNumberProp(node, 'size')}
-            content={getStringProp(node, 'content')}
-            style={mergeStyle()}
-          />
-        </div>
+        <Divider
+          align={getStringProp(node, 'align') as any}
+          dashed={getBooleanProp(node, 'dashed')}
+          size={getNumberProp(node, 'size')}
+          content={getStringProp(node, 'content')}
+          style={mergeStyle()}
+        />
       );
     case 'Typography.Title':
       return (
-        <div style={mergeStyle()}>
-          <Typography.Title level={getStringProp(node, 'level') as any} style={mergeStyle()}>
-            {getTextProp(node, 'content')}
-          </Typography.Title>
-        </div>
+        <Typography.Title level={getStringProp(node, 'level') as any} style={mergeStyle()}>
+          {getTextProp(node, 'content')}
+        </Typography.Title>
       );
     case 'Typography.Paragraph':
       return (
-        <div style={mergeStyle()}>
-          <Typography.Paragraph style={mergeStyle()}>
-            {getTextProp(node, 'content')}
-          </Typography.Paragraph>
-        </div>
+        <Typography.Paragraph style={mergeStyle()}>
+          {getTextProp(node, 'content')}
+        </Typography.Paragraph>
       );
     case 'Typography.Text':
       return (
-        <div style={mergeStyle()}>
-          <Typography.Text
-            theme={getStringProp(node, 'theme') as any}
-            strong={getBooleanProp(node, 'strong')}
-            underline={getBooleanProp(node, 'underline')}
-            delete={getBooleanProp(node, 'delete')}
-            code={getBooleanProp(node, 'code')}
-            mark={getBooleanProp(node, 'mark')}
-            style={mergeStyle()}
-          >
-            {getTextProp(node, 'content')}
-          </Typography.Text>
-        </div>
+        <Typography.Text
+          theme={getStringProp(node, 'theme') as any}
+          strong={getBooleanProp(node, 'strong')}
+          underline={getBooleanProp(node, 'underline')}
+          delete={getBooleanProp(node, 'delete')}
+          code={getBooleanProp(node, 'code')}
+          mark={getBooleanProp(node, 'mark')}
+          style={mergeStyle()}
+        >
+          {getTextProp(node, 'content')}
+        </Typography.Text>
       );
     case 'CustomComponent':
       return (
-        <div style={mergeStyle()}>
-          <PreviewCustomComponentRenderer node={node} onLifecycle={onLifecycle} />
-        </div>
+        <PreviewCustomComponentRenderer node={node} onLifecycle={onLifecycle} style={mergeStyle()} />
       );
     case 'ComponentSlotOutlet':
       return <>{renderChildren(node, onLifecycle)}</>;
