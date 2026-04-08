@@ -132,15 +132,29 @@ export default function DropArea({
     }
   };
 
-  /** 无布局宿主时（空插槽等）：壳层需要承载 __style；有单个子宿主时由 registry 的 mergeStyle 写在子节点上，避免重复合并到 drop-area。 */
+  /**
+   * 无布局宿主时（空插槽、页面根 drop-area-root 等）：壳层需要承载 __style。
+   * 若同时传入 layout `style`（如根节点的 minHeight/flex）与节点 `__style`，必须合并，
+   * 否则仅写 `style` 时会完全忽略用户在样式面板配置的 margin/padding 等。
+   * 有单个子宿主时由 registry 的 mergeStyle 写在子节点上，避免重复合并到 drop-area。
+   */
   const shellOnlyStyle = useMemo((): CSSProperties | undefined => {
-    if (style !== undefined) {
-      return resolveSimulatorStyle(style, { mapFixedToAbsolute: true });
-    }
     const raw = (data?.props?.__style as { value?: unknown } | undefined)?.value;
     const fromNode =
       raw && typeof raw === 'object' && !Array.isArray(raw) ? (raw as CSSProperties) : undefined;
-    return resolveSimulatorStyle(fromNode, { mapFixedToAbsolute: true });
+    const resolvedNode = fromNode
+      ? resolveSimulatorStyle(fromNode, { mapFixedToAbsolute: true })
+      : undefined;
+    const resolvedProp =
+      style !== undefined
+        ? resolveSimulatorStyle(style, { mapFixedToAbsolute: true })
+        : undefined;
+
+    if (!resolvedNode && !resolvedProp) {
+      return undefined;
+    }
+
+    return { ...(resolvedProp ?? {}), ...(resolvedNode ?? {}) };
   }, [data?.props?.__style, style]);
 
   const shouldInjectStyleIntoHost =

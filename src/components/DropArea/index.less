@@ -94,14 +94,18 @@
   flex-direction: column;
 }
 
+/* 列 flex 默认 align-items: stretch 会把子项在横轴拉满，按钮/开关等会像 block 一样全宽；改为贴左按内容宽度 */
 .builder-route-outlet > .drop-area--route-outlet > .drop-area__body {
   flex: 1;
   min-height: 0;
   display: flex;
   flex-direction: column;
+  align-items: flex-start;
 }
 
 .builder-route-outlet > .drop-area--route-outlet .drop-area__body .drop-area-empty {
   flex: 1;
   min-height: 100%;
+  align-self: stretch;
+  width: 100%;
 }

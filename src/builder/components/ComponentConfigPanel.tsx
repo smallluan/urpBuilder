@@ -72,6 +72,8 @@ type EditType =
   | 'input'
   | 'inputNumber'
   | 'select'
+  | 'menuSubmenuMultiSelect'
+  | 'menuMenuItemSingleSelect'
   | 'iconSelect'
   | 'swiperImages'
   | 'tabsConfig'
@@ -443,6 +445,147 @@ const LIST_ITEM_META_PROP_KEYS = new Set([
 
 const MENU_ICON_COMPAT_NODE_TYPES = new Set(['Menu.Item', 'Menu.Submenu']);
 
+/** 从节点 props 读取绑定值（与搭建器 schema 一致） */
+const readBoundPropValue = (node: UiTreeNode, propKey: string): unknown => {
+  const wrap = node.props?.[propKey] as { value?: unknown } | undefined;
+  return wrap?.value;
+};
+
+/**
+ * 收集 Menu / HeadMenu 下所有「子菜单」的标识，供展开项多选。
+ * 标识优先取 props.value，空则回退节点 key（与运行时 getMenuValueArrayProp 一致）。
+ */
+const collectMenuSubmenuValueOptions = (menuRoot: UiTreeNode): { label: string; value: string | number }[] => {
+  const out: { label: string; value: string | number }[] = [];
+  const visit = (nodes: UiTreeNode[] | undefined) => {
+    if (!nodes?.length) {
+      return;
+    }
+    for (const node of nodes) {
+      if (node.type === 'Menu.Submenu') {
+        const raw = readBoundPropValue(node, 'value');
+        let resolved: string | number;
+        if (typeof raw === 'number' && Number.isFinite(raw)) {
+          resolved = raw;
+        } else if (typeof raw === 'string' && raw.trim()) {
+          const n = Number(raw.trim());
+          resolved = Number.isFinite(n) ? n : raw.trim();
+        } else {
+          resolved = String(node.key ?? '').trim() || 'submenu';
+        }
+        const titleRaw = readBoundPropValue(node, 'title');
+        const title =
+          typeof titleRaw === 'string' && titleRaw.trim()
+            ? titleRaw.trim()
+            : String(node.label ?? '').trim() || String(resolved);
+        out.push({
+          label: `${title} · ${String(resolved)}`,
+          value: resolved,
+        });
+      }
+      if (node.children?.length) {
+        visit(node.children);
+      }
+    }
+  };
+  visit(menuRoot.children);
+  return out;
+};
+
+/**
+ * 收集 Menu / HeadMenu 下所有「菜单项」标识，供激活项单选。
+ * 标识优先取 props.value，空则回退节点 key（与运行时 getMenuValueProp 一致）。
+ */
+const collectMenuItemValueOptions = (menuRoot: UiTreeNode): { label: string; value: string | number }[] => {
+  const out: { label: string; value: string | number }[] = [];
+  const seen = new Set<string | number>();
+  const visit = (nodes: UiTreeNode[] | undefined) => {
+    if (!nodes?.length) {
+      return;
+    }
+    for (const node of nodes) {
+      if (node.type === 'Menu.Item') {
+        const raw = readBoundPropValue(node, 'value');
+        let resolved: string | number;
+        if (typeof raw === 'number' && Number.isFinite(raw)) {
+          resolved = raw;
+        } else if (typeof raw === 'string' && raw.trim()) {
+          const n = Number(raw.trim());
+          resolved = Number.isFinite(n) ? n : raw.trim();
+        } else {
+          resolved = String(node.key ?? '').trim() || 'item';
+        }
+        if (!seen.has(resolved)) {
+          seen.add(resolved);
+          const contentRaw = readBoundPropValue(node, 'content');
+          const content =
+            typeof contentRaw === 'string' && contentRaw.trim()
+              ? contentRaw.trim()
+              : String(node.label ?? '').trim() || String(resolved);
+          out.push({
+            label: `${content} · ${String(resolved)}`,
+            value: resolved,
+          });
+        }
+      }
+      if (node.children?.length) {
+        visit(node.children);
+      }
+    }
+  };
+  visit(menuRoot.children);
+  return out;
+};
+
+/** 与 propAccessors.getMenuValueArrayProp 对齐，将配置里存的 string / string[] 规范为数组 */
+const normalizeMenuExpandedStoredValue = (raw: unknown): (string | number)[] => {
+  if (Array.isArray(raw)) {
+    return raw
+      .map((item) => {
+        if (typeof item === 'number' && Number.isFinite(item)) {
+          return item;
+        }
+        if (typeof item === 'string') {
+          const text = item.trim();
+          if (!text) {
+            return undefined;
+          }
+          const parsed = Number(text);
+          return Number.isFinite(parsed) ? parsed : text;
+        }
+        return undefined;
+      })
+      .filter((item): item is string | number => typeof item !== 'undefined');
+  }
+  if (typeof raw === 'string') {
+    return raw
+      .split(/\r?\n|,|，/)
+      .map((item) => item.trim())
+      .filter(Boolean)
+      .map((item) => {
+        const parsed = Number(item);
+        return Number.isFinite(parsed) ? parsed : item;
+      });
+  }
+  return [];
+};
+
+/** 与 propAccessors.getMenuValueProp 对齐，将配置里存的值规范为 string | number | undefined */
+const normalizeMenuItemStoredValue = (raw: unknown): string | number | undefined => {
+  if (typeof raw === 'number' && Number.isFinite(raw)) {
+    return raw;
+  }
+  if (typeof raw === 'string') {
+    const text = raw.trim();
+    if (!text) {
+      return undefined;
+    }
+    const parsed = Number(text);
+    return Number.isFinite(parsed) ? parsed : text;
+  }
+  return undefined;
+};
+
 const COMMON_PROP_PRIORITY_MAP = new Map<string, number>([
   ['visible', 9],
   ['className', 10],
@@ -479,7 +622,7 @@ const getEditTypeSortRank = (editType: EditType) => {
     return 1;
   }
 
-  if (editType === 'select') {
+  if (editType === 'select' || editType === 'menuSubmenuMultiSelect' || editType === 'menuMenuItemSingleSelect') {
     return 2;
   }
 
@@ -501,6 +644,8 @@ const resolveEditType = (schema: ComponentPropSchema): EditType => {
     || type === 'input'
     || type === 'inputNumber'
     || type === 'select'
+    || type === 'menuSubmenuMultiSelect'
+    || type === 'menuMenuItemSingleSelect'
     || type === 'iconSelect'
     || type === 'swiperImages'
     || type === 'tabsConfig'
@@ -513,6 +658,23 @@ const resolveEditType = (schema: ComponentPropSchema): EditType => {
   }
 
   return typeof schema.value === 'number' ? 'inputNumber' : 'input';
+};
+
+/** 菜单容器：展开项多选、激活项单选（旧数据里可能仍是 input） */
+const resolveMenuPropEditType = (
+  propKey: string,
+  nodeType: string | undefined,
+  schema: ComponentPropSchema,
+): EditType => {
+  if (nodeType === 'Menu' || nodeType === 'HeadMenu') {
+    if (propKey === 'expanded' || propKey === 'defaultExpanded') {
+      return 'menuSubmenuMultiSelect';
+    }
+    if (propKey === 'value' || propKey === 'defaultValue') {
+      return 'menuMenuItemSingleSelect';
+    }
+  }
+  return resolveEditType(schema);
 };
 
 const ComponentConfigPanel: React.FC = () => {
@@ -629,6 +791,20 @@ const ComponentConfigPanel: React.FC = () => {
     (listAncestor?.props?.customTemplateEnabled as { value?: unknown } | undefined)?.value,
   );
 
+  const menuSubmenuSelectOptions = React.useMemo(() => {
+    if (!activeNode || (activeNode.type !== 'Menu' && activeNode.type !== 'HeadMenu')) {
+      return [] as { label: string; value: string | number }[];
+    }
+    return collectMenuSubmenuValueOptions(activeNode);
+  }, [activeNode]);
+
+  const menuMenuItemSelectOptions = React.useMemo(() => {
+    if (!activeNode || (activeNode.type !== 'Menu' && activeNode.type !== 'HeadMenu')) {
+      return [] as { label: string; value: string | number }[];
+    }
+    return collectMenuItemValueOptions(activeNode);
+  }, [activeNode]);
+
   const editableProps = Object.entries(propsMap).filter(([propKey]) => {
     if (propKey.startsWith('__')) {
       return false;
@@ -679,7 +855,7 @@ const ComponentConfigPanel: React.FC = () => {
         propKey,
         schema,
         originalIndex,
-        editType: resolveEditType(schema),
+        editType: resolveMenuPropEditType(propKey, activeNode?.type, schema),
       }))
       .sort((a, b) => {
         const aCommonPriority = getCommonPropPriority(a.propKey);
@@ -703,7 +879,7 @@ const ComponentConfigPanel: React.FC = () => {
         return a.originalIndex - b.originalIndex;
       })
       .map((item) => [item.propKey, item.schema] as const);
-  }, [editableProps]);
+  }, [editableProps, activeNode?.type]);
 
   const mergedEditableProps = React.useMemo(() => {
     if (customComponentFallbackProps.length === 0) {
@@ -762,7 +938,7 @@ const ComponentConfigPanel: React.FC = () => {
     const nextNumberDrafts: Record<string, number | undefined> = {};
 
     sortedEditableProps.forEach(([propKey, schema]) => {
-      const editType = resolveEditType(schema);
+      const editType = resolveMenuPropEditType(propKey, activeNode?.type, schema);
       if (editType === 'input') {
         nextInputDrafts[propKey] = typeof schema.value === 'string' ? schema.value : String(schema.value ?? '');
       }
@@ -898,7 +1074,7 @@ const ComponentConfigPanel: React.FC = () => {
   ) : null;
 
   const renderEditor = (propKey: string, schema: ComponentPropSchema) => {
-    const editType = resolveEditType(schema);
+    const editType = resolveMenuPropEditType(propKey, activeNode?.type, schema);
     const currentValue = schema.value;
 
     if (editType === 'switch') {
@@ -968,6 +1144,59 @@ const ComponentConfigPanel: React.FC = () => {
           options={options}
           value={currentValue as string | number | undefined}
           onChange={(value) => updateActiveNodeProp(propKey, value)}
+        />
+      );
+    }
+
+    if (editType === 'menuSubmenuMultiSelect') {
+      const options = menuSubmenuSelectOptions;
+      const normalized = normalizeMenuExpandedStoredValue(currentValue);
+      const allowed = new Set(options.map((item) => item.value));
+      const valueForSelect = normalized.filter((item) => allowed.has(item));
+      return (
+        <Select
+          multiple
+          minCollapsedNum={2}
+          size="small"
+          disabled={readOnly}
+          options={options}
+          value={valueForSelect}
+          placeholder={
+            options.length > 0
+              ? '选择要展开的子菜单（多选）'
+              : '请先在菜单下添加「子菜单」并设置标识'
+          }
+          onChange={(value) => {
+            updateActiveNodeProp(propKey, Array.isArray(value) ? value : []);
+          }}
+        />
+      );
+    }
+
+    if (editType === 'menuMenuItemSingleSelect') {
+      const options = menuMenuItemSelectOptions;
+      const normalized = normalizeMenuItemStoredValue(currentValue);
+      const allowed = new Set(options.map((item) => item.value));
+      const valueForSelect = normalized !== undefined && allowed.has(normalized) ? normalized : undefined;
+      return (
+        <Select
+          size="small"
+          clearable
+          disabled={readOnly}
+          options={options}
+          value={valueForSelect}
+          placeholder={
+            options.length > 0
+              ? '选择激活的菜单项'
+              : '请先在菜单下添加「菜单项」并设置标识'
+          }
+          onChange={(value) => {
+            if (value === undefined || value === null || value === '') {
+              updateActiveNodeProp(propKey, '');
+              return;
+            }
+            updateActiveNodeProp(propKey, value);
+          }}
         />
       );
     }

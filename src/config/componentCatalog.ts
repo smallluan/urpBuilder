@@ -1704,13 +1704,13 @@ const componentCatalog = [
       },
       expanded: {
         name: '展开项',
-        value: '',
-        editType: 'input',
+        value: [],
+        editType: 'menuSubmenuMultiSelect',
       },
       defaultExpanded: {
         name: '默认展开项',
-        value: '',
-        editType: 'input',
+        value: [],
+        editType: 'menuSubmenuMultiSelect',
       },
       theme: {
         name: '主题',
@@ -1723,12 +1723,12 @@ const componentCatalog = [
       value: {
         name: '激活项',
         value: '',
-        editType: 'input',
+        editType: 'menuMenuItemSingleSelect',
       },
       defaultValue: {
         name: '默认激活',
         value: '',
-        editType: 'input',
+        editType: 'menuMenuItemSingleSelect',
       },
     },
     lifetimes: ['onChange', 'onExpand'],
@@ -1757,13 +1757,13 @@ const componentCatalog = [
       },
       expanded: {
         name: '展开项',
-        value: '',
-        editType: 'input',
+        value: [],
+        editType: 'menuSubmenuMultiSelect',
       },
       defaultExpanded: {
         name: '默认展开项',
-        value: '',
-        editType: 'input',
+        value: [],
+        editType: 'menuSubmenuMultiSelect',
       },
       theme: {
         name: '主题',
@@ -1776,12 +1776,12 @@ const componentCatalog = [
       value: {
         name: '激活项',
         value: '',
-        editType: 'input',
+        editType: 'menuMenuItemSingleSelect',
       },
       defaultValue: {
         name: '默认激活',
         value: '',
-        editType: 'input',
+        editType: 'menuMenuItemSingleSelect',
       },
       width: {
         name: '宽度',

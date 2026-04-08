@@ -301,11 +301,28 @@ const ComponentLibraryPanel: React.FC<ComponentLibraryPanelProps> = ({ selectedN
     );
   }, []);
 
+  /** 页面搭建专用：路由出口；搭建组件时不展示 */
+  const presetLibraryEntriesForEntity = useMemo(() => {
+    if (entityType !== 'component') {
+      return componentLibraryEntries;
+    }
+    return componentLibraryEntries.map((entry) => {
+      if (entry.kind !== 'group') {
+        return entry;
+      }
+      const children = entry.children.filter((child) => child.type !== 'RouteOutlet');
+      return { ...entry, children };
+    });
+  }, [entityType]);
+
   const libraryEntries = useMemo(() => {
     const plainEntries: ComponentLibraryEntry[] = componentCatalog
       .filter((component) => {
         const type = String(component.type ?? '');
         if (type === 'ComponentSlotOutlet' && entityType !== 'component') {
+          return false;
+        }
+        if (type === 'RouteOutlet' && entityType === 'component') {
           return false;
         }
         return !HIDDEN_COMPONENT_TYPES.has(type) && !groupedComponentTypes.has(type);
@@ -318,8 +335,8 @@ const ComponentLibraryPanel: React.FC<ComponentLibraryPanelProps> = ({ selectedN
         category: getCategoryByType(String(component.type ?? '')),
       }));
 
-    return [...componentLibraryEntries, ...plainEntries];
-  }, [entityType]);
+    return [...presetLibraryEntriesForEntity, ...plainEntries];
+  }, [entityType, presetLibraryEntriesForEntity]);
 
   const sourceFilteredEntries = useMemo(() => {
     return libraryEntries.filter((entry) => {
