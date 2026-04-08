@@ -1,5 +1,4 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import cloneDeep from 'lodash/cloneDeep';
 import { Radio, Button, Drawer, Timeline, Tag, Dialog, DialogPlugin, Input, Textarea, MessagePlugin } from 'tdesign-react';
 import { ThemeModeAnimatedToggle } from '../../components/ThemeModeAnimatedToggle';
 import {
@@ -24,16 +23,16 @@ import {
 } from '../../api/componentTemplate';
 import type { ComponentTemplateListParams, PageTemplateListParams } from '../../api/types';
 import { emitApiAlert } from '../../api/alertBus';
-import { findNodeByKey, updateNodeByKey } from '../../utils/createComponentTree';
 import { useTeam } from '../../team/context';
 import UnifiedBuilderTopbar, { TopbarGroup, TopbarIconButton } from './UnifiedBuilderTopbar';
 import { dehydrateUiTree, PROPS_STORAGE_VERSION } from '../template/propsHydration';
 import { getBlockMessageWhenNoPersistableChanges } from '../save/assertPersistableChanges';
 import { computePersistedTemplateFingerprint } from '../save/templateFingerprint';
+import { buildPreviewSnapshot, getPreviewOpenSitePath } from '../utils/buildPreviewSnapshot';
 
 type Props = {
-  mode: 'component' | 'flow';
-  onChange: (v: 'component' | 'flow') => void;
+  mode: 'component' | 'flow' | 'livePreview';
+  onChange: (v: 'component' | 'flow' | 'livePreview') => void;
   designLabel?: string;
   saveEntityLabel?: string;
   entityType?: 'page' | 'component';
@@ -57,15 +56,6 @@ const toReadableValue = (value: unknown) => {
   }
 
   return JSON.stringify(value);
-};
-
-const normalizeRoutePath = (value: string) => {
-  const text = String(value ?? '').trim();
-  if (!text) {
-    return '/';
-  }
-
-  return text.startsWith('/') ? text : `/${text}`;
 };
 
 const isEditableTarget = (target: EventTarget | null) => {
@@ -253,61 +243,6 @@ const resolveTeamOwnedCustomComponents = async (componentIds: string[]) => {
   return result.filter((item): item is { pageId: string; pageName: string; ownerTeamName: string } => Boolean(item));
 };
 
-const composeRouteUiTree = (
-  privateTree: any,
-  sharedTree: any,
-  outletKey: string | null,
-) => {
-  if (!sharedTree || !outletKey) {
-    return cloneDeep(privateTree);
-  }
-
-  const sharedOutlet = findNodeByKey(sharedTree, outletKey);
-  if (!sharedOutlet) {
-    return cloneDeep(privateTree);
-  }
-
-  const privateOutlet = findNodeByKey(privateTree, outletKey);
-  const outletChildren = privateOutlet?.type === 'RouteOutlet'
-    ? cloneDeep(privateOutlet.children ?? [])
-    : [];
-
-  return updateNodeByKey(cloneDeep(sharedTree), outletKey, (target) => ({
-    ...target,
-    children: outletChildren,
-  }));
-};
-
-const composeRouteFlow = (
-  privateNodes: any[],
-  privateEdges: any[],
-  sharedNodes: any[],
-  sharedEdges: any[],
-) => {
-  const mergedNodes = new Map<string, any>();
-  sharedNodes.forEach((node) => mergedNodes.set(node.id, cloneDeep(node)));
-  privateNodes.forEach((node) => mergedNodes.set(node.id, cloneDeep(node)));
-  const flowNodes = Array.from(mergedNodes.values());
-  const flowNodeIds = new Set(flowNodes.map((node) => node.id));
-
-  const mergedEdges = new Map<string, any>();
-  sharedEdges.forEach((edge) => {
-    if (flowNodeIds.has(edge.source) && flowNodeIds.has(edge.target)) {
-      mergedEdges.set(edge.id, cloneDeep(edge));
-    }
-  });
-  privateEdges.forEach((edge) => {
-    if (flowNodeIds.has(edge.source) && flowNodeIds.has(edge.target)) {
-      mergedEdges.set(edge.id, cloneDeep(edge));
-    }
-  });
-
-  return {
-    flowNodes,
-    flowEdges: Array.from(mergedEdges.values()),
-  };
-};
-
 const toActionDescription = (action: UiHistoryAction) => {
   if (action.type === 'add') {
     return {
@@ -375,15 +310,40 @@ const toActionDescription = (action: UiHistoryAction) => {
     };
   }
 
+  if (action.type === 'wrap-popup') {
+    return {
+      title: `包一层弹层：${action.popupNodeLabel}`,
+      subtitle: `${action.nodeType || '未知类型'} · ${action.nodeKey}`,
+      theme: 'primary' as const,
+      kind: '弹层',
+      lines: [
+        `父节点：${action.parentKey}`,
+        `弹层节点：${action.popupNodeKey}`,
+      ],
+    };
+  }
+
+  if (action.type === 'flow-edit') {
+    return {
+      title: `流程操作：${action.actionLabel}`,
+      subtitle: '流程画布',
+      theme: 'primary' as const,
+      kind: '流程',
+      lines: [
+        `节点：+${action.nodePatch.added.length} -${action.nodePatch.removed.length} ~${action.nodePatch.updated.length}`,
+        `连线：+${action.edgePatch.added.length} -${action.edgePatch.removed.length} ~${action.edgePatch.updated.length}`,
+      ],
+    };
+  }
+
+  const _exhaustive: never = action;
+  void _exhaustive;
   return {
-    title: `流程操作：${action.actionLabel}`,
-    subtitle: '流程画布',
-    theme: 'primary' as const,
-    kind: '流程',
-    lines: [
-      `节点：+${action.nodePatch.added.length} -${action.nodePatch.removed.length} ~${action.nodePatch.updated.length}`,
-      `连线：+${action.edgePatch.added.length} -${action.edgePatch.removed.length} ~${action.edgePatch.updated.length}`,
-    ],
+    title: '未知操作',
+    subtitle: '历史记录',
+    theme: 'default' as const,
+    kind: '其他',
+    lines: [],
   };
 };
 
@@ -441,56 +401,33 @@ export default function HeaderControls({
     [history.actions, historyVisible],
   );
 
-  const handleChange = (value: any) => {
-    onChange(String(value) === '1' ? 'component' : 'flow');
+  const handleModeRadioChange = (value: unknown) => {
+    const v = String(value);
+    if (v === '1') {
+      onChange('component');
+      return;
+    }
+    if (v === '2') {
+      onChange('flow');
+      return;
+    }
+    if (v === '3') {
+      onChange('livePreview');
+    }
   };
 
   const openPreviewWindow = (debug: boolean) => {
-    const { uiPageData: uiTreeData, flowNodes, flowEdges } = useStore.getState();
-    const routeSnapshots = enablePageRouteConfig
-      ? pageRoutes.map((route) => {
-          const composedUiTree = composeRouteUiTree(route.uiTree, sharedUiTree, activeRouteOutletKey);
-          const composedFlow = composeRouteFlow(
-            route.flowNodes,
-            route.flowEdges,
-            sharedFlowNodes,
-            sharedFlowEdges,
-          );
-
-          return {
-            routeId: route.routeId,
-            routePath: normalizeRoutePath(route.routeConfig.routePath),
-            uiTreeData: composedUiTree,
-            flowNodes: composedFlow.flowNodes,
-            flowEdges: composedFlow.flowEdges,
-          };
-        })
-      : [];
-
-    const activeRoutePath = enablePageRouteConfig
-      ? normalizeRoutePath(pageRouteConfig?.routePath?.trim() ?? '/')
-      : '';
-    const activeRouteSnapshot = routeSnapshots.find((item) => item.routePath === activeRoutePath) ?? routeSnapshots[0];
-
-    const snapshot = serializePreviewSnapshot({
-      uiTreeData: activeRouteSnapshot?.uiTreeData ?? uiTreeData,
-      flowNodes: activeRouteSnapshot?.flowNodes ?? flowNodes,
-      flowEdges: activeRouteSnapshot?.flowEdges ?? flowEdges,
-      pageConfig: enablePageRouteConfig
-        ? {
-            routeConfig: pageRouteConfig,
-            pageId: currentPageId,
-            pageName: currentPageName,
-            defaultRoutePath: activeRouteSnapshot?.routePath ?? activeRoutePath,
-            routeSnapshots,
-          }
-        : undefined,
-    });
-
+    const state = useStore.getState();
+    const serialized = serializePreviewSnapshot(buildPreviewSnapshot(state, enablePageRouteConfig));
     const snapshotKey = `preview-snapshot-${Date.now()}-${Math.round(Math.random() * 10000)}`;
-    window.localStorage.setItem(snapshotKey, snapshot);
+    try {
+      window.localStorage.setItem(snapshotKey, serialized);
+    } catch {
+      MessagePlugin.warning('预览数据过大，无法写入浏览器本地缓存，请缩小页面内容后重试。');
+      return;
+    }
 
-    const routePath = enablePageRouteConfig ? (activeRouteSnapshot?.routePath ?? activeRoutePath) : '';
+    const routePath = getPreviewOpenSitePath(state, enablePageRouteConfig);
     const previewUrl = new URL(routePath ? `/site-preview${routePath}` : '/preview-engine', window.location.origin);
     previewUrl.searchParams.set('snapshotKey', snapshotKey);
     previewUrl.searchParams.set('entityType', entityType);
@@ -834,9 +771,14 @@ export default function HeaderControls({
   return (
     <div className="header-controls">
       <div className="header-left-control">
-        <Radio.Group variant="default-filled" value={mode === 'component' ? '1' : '2'} onChange={handleChange}>
+        <Radio.Group
+          variant="default-filled"
+          value={mode === 'component' ? '1' : mode === 'flow' ? '2' : '3'}
+          onChange={handleModeRadioChange}
+        >
           <Radio.Button value="1">搭建{designLabel}</Radio.Button>
           <Radio.Button value="2">搭建流程</Radio.Button>
+          <Radio.Button value="3">实时预览</Radio.Button>
         </Radio.Group>
       </div>
 
@@ -878,7 +820,9 @@ export default function HeaderControls({
                 >
                   保存并发布
                 </Button>
-                <Button theme="default" size="small" icon={<ViewImageIcon />} onClick={handlePreview}>预览</Button>
+                <Button theme="default" size="small" icon={<ViewImageIcon />} onClick={handlePreview}>
+                  预览
+                </Button>
               </TopbarGroup>
             </div>
           )}

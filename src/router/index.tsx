@@ -1,7 +1,8 @@
 import React, { lazy, Suspense } from 'react';
-import { createBrowserRouter } from 'react-router-dom';
+import { createBrowserRouter, Outlet } from 'react-router-dom';
 import { Loading } from 'tdesign-react';
 import { PublicOnlyRoute, RequireAuth } from './guards';
+import DocumentTitleSync from '../components/DocumentTitleSync';
 
 const AppLayout = lazy(() => import('../components/Layout'));
 const Home = lazy(() => import('../pages/Home'));
@@ -27,88 +28,99 @@ const routeSuspenseFallback = (
 
 const load = (el: React.ReactElement) => <Suspense fallback={routeSuspenseFallback}>{el}</Suspense>;
 
+const RootLayout = () => (
+  <>
+    <DocumentTitleSync />
+    <Outlet />
+  </>
+);
+
 export const router = createBrowserRouter([
   {
-    path: '/',
-    element: <RequireAuth>{load(<AppLayout />)}</RequireAuth>,
+    element: <RootLayout />,
     children: [
       {
-        index: true,
-        element: load(<Home />),
+        path: '/',
+        element: <RequireAuth>{load(<AppLayout />)}</RequireAuth>,
+        children: [
+          {
+            index: true,
+            element: load(<Home />),
+          },
+          {
+            path: 'build-component',
+            element: load(<BuildComponent />),
+          },
+          {
+            path: 'build-page',
+            element: load(<BuildPage />),
+          },
+          {
+            path: 'data-api',
+            element: load(<DataApi />),
+          },
+          {
+            path: 'data-constance',
+            element: load(<DataConstance />),
+          },
+          {
+            path: 'data-cloud-function',
+            element: load(<DataCloudFunction />),
+          },
+          {
+            path: 'data-assets',
+            element: load(<DataAssets />),
+          },
+          {
+            path: 'teams',
+            element: load(<Teams />),
+          },
+          {
+            path: 'user-admin',
+            element: load(<UserAdmin />),
+          },
+          {
+            path: 'team-admin',
+            element: load(<TeamAdmin />),
+          },
+        ],
       },
       {
-        path: 'build-component',
-        element: load(<BuildComponent />),
+        element: <PublicOnlyRoute>{load(<Login />)}</PublicOnlyRoute>,
+        children: [
+          {
+            path: '/login',
+          },
+          {
+            path: '/register',
+          },
+        ],
       },
       {
-        path: 'build-page',
-        element: load(<BuildPage />),
+        path: '/create-component',
+        element: <RequireAuth>{load(<CreateComponent />)}</RequireAuth>,
       },
       {
-        path: 'data-api',
-        element: load(<DataApi />),
+        path: '/create-page',
+        element: <RequireAuth>{load(<CreatePage />)}</RequireAuth>,
       },
       {
-        path: 'data-constance',
-        element: load(<DataConstance />),
+        path: '/component-version-catalog',
+        element: <RequireAuth>{load(<ComponentVersionCatalog />)}</RequireAuth>,
       },
       {
-        path: 'data-cloud-function',
-        element: load(<DataCloudFunction />),
+        path: '/preview-engine',
+        element: <RequireAuth>{load(<PreviewEngine />)}</RequireAuth>,
       },
       {
-        path: 'data-assets',
-        element: load(<DataAssets />),
+        path: '/code-workbench',
+        element: <RequireAuth>{load(<CodeWorkbench />)}</RequireAuth>,
       },
       {
-        path: 'teams',
-        element: load(<Teams />),
-      },
-      {
-        path: 'user-admin',
-        element: load(<UserAdmin />),
-      },
-      {
-        path: 'team-admin',
-        element: load(<TeamAdmin />),
+        path: '/site-preview/*',
+        element: load(<PreviewEngine />),
       },
     ],
-  },
-  // standalone pages (no layout)
-  {
-    element: <PublicOnlyRoute>{load(<Login />)}</PublicOnlyRoute>,
-    children: [
-      {
-        path: '/login',
-      },
-      {
-        path: '/register',
-      },
-    ],
-  },
-  {
-    path: '/create-component',
-    element: <RequireAuth>{load(<CreateComponent />)}</RequireAuth>,
-  },
-  {
-    path: '/create-page',
-    element: <RequireAuth>{load(<CreatePage />)}</RequireAuth>,
-  },
-  {
-    path: '/component-version-catalog',
-    element: <RequireAuth>{load(<ComponentVersionCatalog />)}</RequireAuth>,
-  },
-  {
-    path: '/preview-engine',
-    element: <RequireAuth>{load(<PreviewEngine />)}</RequireAuth>,
-  },
-  {
-    path: '/code-workbench',
-    element: <RequireAuth>{load(<CodeWorkbench />)}</RequireAuth>,
-  },
-  {
-    path: '/site-preview/*',
-    element: load(<PreviewEngine />),
   },
 ]);
 

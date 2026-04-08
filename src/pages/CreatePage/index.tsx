@@ -4,6 +4,7 @@ import type { Edge, Node } from '@xyflow/react';
 import { getPageTemplateDetail } from '../../api/pageTemplate';
 import { emitApiAlert } from '../../api/alertBus';
 import HeaderControls from '../../builder/components/HeaderControls';
+import BuilderEmbeddedPreview from '../../builder/components/BuilderEmbeddedPreview';
 import { BuilderShell } from '../../builder/components/BuilderShell';
 import BuilderUiWorkbenchLayout from '../../builder/components/BuilderUiWorkbenchLayout';
 import FlowLayout from '../../builder/flow/FlowLayout';
@@ -185,7 +186,11 @@ const composeRouteFlow = (
 
 const CreatePage: React.FC = () => {
   const { user } = useAuth();
-  const [mode, setMode] = useState<'component' | 'flow'>('component');
+  const [mode, setMode] = useState<'component' | 'flow' | 'livePreview'>('component');
+  const lastEditorModeRef = useRef<'component' | 'flow'>('component');
+  if (mode === 'component' || mode === 'flow') {
+    lastEditorModeRef.current = mode;
+  }
   const [componentLayoutMounted, setComponentLayoutMounted] = useState(true);
   const [flowLayoutMounted, setFlowLayoutMounted] = useState(false);
   const [readOnly, setReadOnly] = useState(false);
@@ -332,7 +337,7 @@ const CreatePage: React.FC = () => {
   useEffect(() => {
     if (mode === 'component') {
       setComponentLayoutMounted(true);
-    } else {
+    } else if (mode === 'flow') {
       setFlowLayoutMounted(true);
     }
     const rafId = window.requestAnimationFrame(() => {
@@ -496,7 +501,7 @@ const CreatePage: React.FC = () => {
       readOnly={readOnly}
       readOnlyReason={readOnlyReason}
       entityType="page"
-      builderViewMode={mode}
+      builderViewMode={mode === 'livePreview' ? lastEditorModeRef.current : mode}
     >
       <BuilderShell
         header={
@@ -513,7 +518,7 @@ const CreatePage: React.FC = () => {
           />
         }
       >
-        <BuilderQuickFind mode={mode} />
+        {(mode === 'component' || mode === 'flow') ? <BuilderQuickFind mode={mode} /> : null}
         <div className="mode-keepalive-host">
           <div className={`mode-keepalive-pane${mode === 'component' ? ' is-active' : ''}`}>
             {componentLayoutMounted ? (
@@ -545,6 +550,9 @@ const CreatePage: React.FC = () => {
           </div>
           <div className={`mode-keepalive-pane${mode === 'flow' ? ' is-active' : ''}`}>
             {flowLayoutMounted ? <FlowLayout /> : null}
+          </div>
+          <div className={`mode-keepalive-pane${mode === 'livePreview' ? ' is-active' : ''}`}>
+            <BuilderEmbeddedPreview enablePageRouteConfig entityType="page" />
           </div>
         </div>
       </BuilderShell>

@@ -349,6 +349,7 @@ const PreviewEngine: React.FC = () => {
   const routeEmpty = !routeNotFound && !routeHasRenderableContent;
   const finalPageId = pageId || resolvedPageId;
   const shouldShowResolveError = !parsedSnapshot && !finalPageId && Boolean(routeResolveError);
+  const isComponentEntity = entityType === 'component';
 
   const routeSubscribersRef = React.useRef(new Set<(state: DataHubRouterState) => void>());
   const routerState = React.useMemo<DataHubRouterState>(() => ({
@@ -468,8 +469,16 @@ const PreviewEngine: React.FC = () => {
             </div>
           ) : routeEmpty ? (
             <div className="preview-route-status preview-route-status--empty">
-              <div className="preview-route-status__title">当前路由内容为空</div>
-              <div className="preview-route-status__desc">页面中暂无可渲染组件，请先在搭建器中添加内容。</div>
+              <div className="preview-route-status__title">
+                {isComponentEntity ? '暂无可预览内容' : isSitePreview ? '当前路由暂无内容' : '当前页面暂无内容'}
+              </div>
+              <div className="preview-route-status__desc">
+                {isComponentEntity
+                  ? '搭建画布中还没有可渲染的组件，请从组件库拖拽到画布后再预览。'
+                  : isSitePreview
+                    ? '该路由下暂无可渲染内容，请在搭建器中对应路由下添加组件。'
+                    : '请先在搭建器中添加需要展示的组件。'}
+              </div>
             </div>
           ) : (
             <PreviewDataHubRefContext.Provider value={dataHubRef}>

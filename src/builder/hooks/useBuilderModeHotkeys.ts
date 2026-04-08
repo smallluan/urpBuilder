@@ -14,8 +14,8 @@ export const isEditableTarget = (target: EventTarget | null) => {
  * 需在 QuickFind 中将「查找」限定为无 Shift 的 Ctrl/Cmd+F，避免与 Shift+F 冲突。
  */
 export function useBuilderModeHotkeys(
-  mode: 'component' | 'flow',
-  setMode: (next: 'component' | 'flow') => void,
+  mode: 'component' | 'flow' | 'livePreview',
+  setMode: (next: 'component' | 'flow' | 'livePreview') => void,
 ): void {
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {

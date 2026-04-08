@@ -1,0 +1,47 @@
+.builder-embedded-preview {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  width: 100%;
+}
+
+.builder-embedded-preview__note {
+  flex-shrink: 0;
+  padding: 6px 12px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--td-text-color-secondary);
+  background: var(--td-bg-color-container-hover);
+  border-bottom: 1px solid var(--td-component-border);
+}
+
+/*
+ * .main-body 在搭建器三栏布局里 width:0 + flex:1（flex-row），
+ * 嵌入预览走的是 flex-column，必须把 width 重置为 100%，
+ * 否则整条宽度链塌缩。
+ */
+.builder-embedded-preview .main-body {
+  width: 100%;
+  padding: 8px;
+}
+
+.builder-embedded-preview .main-inner {
+  margin-top: 0;
+}
+
+/* 嵌入时不要用 100vh，跟随模拟器滚动区域 */
+.builder-embedded-preview .preview-engine-page,
+.builder-embedded-preview__canvas-inner {
+  width: 100%;
+  min-height: 100%;
+  height: auto;
+  background: #fff;
+}
+
+.builder-embedded-preview .simulator-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  background: #fff;
+}

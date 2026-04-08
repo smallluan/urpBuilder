@@ -20,14 +20,14 @@ export const initModeLongTaskObserver = () => {
   }
 };
 
-export const markModeSwitchStart = (mode: 'component' | 'flow') => {
+export const markModeSwitchStart = (mode: 'component' | 'flow' | 'livePreview') => {
   if (typeof performance === 'undefined') {
     return;
   }
   performance.mark(`mode-switch-start-${mode}`);
 };
 
-export const markModeSwitchEnd = (mode: 'component' | 'flow') => {
+export const markModeSwitchEnd = (mode: 'component' | 'flow' | 'livePreview') => {
   if (typeof performance === 'undefined') {
     return;
   }
