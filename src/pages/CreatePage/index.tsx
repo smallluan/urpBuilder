@@ -525,7 +525,6 @@ const CreatePage: React.FC = () => {
               <BuilderUiWorkbenchLayout
                 composeToolbarExtra={(
                   <div className="builder-compose-toolbar-extras">
-                    <PageRouteToolbar />
                     <DependencyManagerDrawer
                       readOnly={readOnly}
                       collectDependencyRows={collectDependencyRows}
@@ -545,6 +544,7 @@ const CreatePage: React.FC = () => {
                     />
                   </div>
                 )}
+                composeToolbarRight={<PageRouteToolbar />}
               />
             ) : null}
           </div>

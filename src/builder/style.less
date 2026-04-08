@@ -726,16 +726,44 @@
       align-items: center;
     }
 
-    .page-route-toolbar {
+    /*
+     * 路由分组：与左侧 .builder-sidebar-toolbar-group 对称，用 border-left 拉满分组高度，
+     * 避免单独 20px 的 .divider 比侧栏 border-right 显短。
+     */
+    .page-route-toolbar-group {
       display: inline-flex;
-      align-items: flex-end;
-      gap: 6px;
+      align-items: center;
+      gap: 8px;
       flex-wrap: nowrap;
-      white-space: nowrap;
+      min-width: 0;
+      align-self: flex-end;
+      margin-left: 8px;
+      padding-left: 12px;
+      border-left: 1px solid var(--builder-divider);
     }
 
-    .page-route-toolbar__select {
-      width: 126px;
+    .page-route-toolbar__summary {
+      font-size: 11px;
+      line-height: 1.25;
+      color: var(--builder-text-soft);
+      max-width: min(200px, 28vw);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      text-align: left;
+    }
+
+    .page-route-popup {
+      min-width: 280px;
+    }
+
+    .page-route-popup__select-wide {
+      width: 100%;
+    }
+
+    .page-route-popup .page-route-popup__path {
+      font-family: ui-monospace, monospace;
+      font-size: 12px;
     }
 
     .builder-compose-toolbar-extras {

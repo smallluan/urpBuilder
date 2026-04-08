@@ -11,7 +11,10 @@ import { BuilderSidebarToggles } from './BuilderWorkbenchChrome';
 
 const { Text } = Typography;
 
-const ComponentMainBody: React.FC<{ toolbarExtra?: React.ReactNode }> = ({ toolbarExtra }) => {
+const ComponentMainBody: React.FC<{ toolbarExtra?: React.ReactNode; toolbarRight?: React.ReactNode }> = ({
+  toolbarExtra,
+  toolbarRight,
+}) => {
   const { useStore } = useBuilderContext();
   const { readOnly } = useBuilderAccess();
   const screenSize = useStore((state) => state.screenSize);
@@ -188,6 +191,7 @@ const ComponentMainBody: React.FC<{ toolbarExtra?: React.ReactNode }> = ({ toolb
                 onClick={() => setShortcutDialogVisible(true)}
               />
             </TopbarGroup>
+              {toolbarRight}
             </>
           )}
         />

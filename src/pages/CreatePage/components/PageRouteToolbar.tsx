@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { Button, Dialog, Drawer, Input, Select, Switch } from 'tdesign-react';
-import { AddIcon, SettingIcon } from 'tdesign-icons-react';
-import { TopbarIconButton } from '../../../builder/components/UnifiedBuilderTopbar';
+import { Button, Dialog, Divider, Drawer, Input, Popup, Select, Space, Switch } from 'tdesign-react';
+import { GitBranch } from 'lucide-react';
+import { TopbarGroup, TopbarIconButton } from '../../../builder/components/UnifiedBuilderTopbar';
 import { useBuilderContext } from '../../../builder/context/BuilderContext';
 import type { UiTreeNode } from '../../../builder/store/types';
 import { emitApiAlert } from '../../../api/alertBus';
@@ -49,6 +49,7 @@ const PageRouteToolbar: React.FC = () => {
   const removePageRoute = useStore((state) => state.removePageRoute);
   const setDefaultPageRoute = useStore((state) => state.setDefaultPageRoute);
 
+  const [routePopupVisible, setRoutePopupVisible] = useState(false);
   const [pageSettingsVisible, setPageSettingsVisible] = useState(false);
   const [deleteRouteDialogVisible, setDeleteRouteDialogVisible] = useState(false);
   const [routeConfigDraft, setRouteConfigDraft] = useState<RouteConfigDraft>({
@@ -61,6 +62,26 @@ const PageRouteToolbar: React.FC = () => {
 
   const routeOutlets = React.useMemo(() => collectRouteOutlets(uiPageData), [uiPageData]);
 
+  const activeRoute = pageRoutes.find((route) => route.routeId === activePageRouteId);
+  const pathDisplay = (activeRoute?.routeConfig.routePath ?? pageRouteConfig?.routePath ?? '').trim() || '/';
+  const nameDisplay =
+    (activeRoute?.routeConfig.menuTitle ?? activeRoute?.routeConfig.pageTitle ?? activeRoute?.routeConfig.routeName ?? '')
+      .trim() || '';
+  const summaryLine = nameDisplay ? `${nameDisplay} · ${pathDisplay}` : pathDisplay;
+
+  const handleRoutePopupVisibleChange: NonNullable<React.ComponentProps<typeof Popup>['onVisibleChange']> = (
+    visible,
+    ctx,
+  ) => {
+    if (!visible && ctx.trigger === 'document' && ctx.e && 'target' in ctx.e) {
+      const el = ctx.e.target as HTMLElement | null;
+      if (el?.closest?.('.t-select__dropdown')) {
+        return;
+      }
+    }
+    setRoutePopupVisible(visible);
+  };
+
   const handleOpenRouteSettings = () => {
     setRouteConfigDraft({
       routePath: pageRouteConfig?.routePath ?? '',
@@ -69,6 +90,7 @@ const PageRouteToolbar: React.FC = () => {
       menuTitle: pageRouteConfig?.menuTitle ?? '',
       useLayout: pageRouteConfig?.useLayout !== false,
     });
+    setRoutePopupVisible(false);
     setPageSettingsVisible(true);
   };
 
@@ -176,11 +198,11 @@ const PageRouteToolbar: React.FC = () => {
       setDeleteRouteDialogVisible(false);
       return;
     }
-    const activeRoute = pageRoutes.find((route) => route.routeId === activePageRouteId);
+    const activeRouteFound = pageRoutes.find((route) => route.routeId === activePageRouteId);
     const routeLabel =
-      activeRoute?.routeConfig.routePath
-      || activeRoute?.routeConfig.menuTitle
-      || activeRoute?.routeConfig.routeName
+      activeRouteFound?.routeConfig.routePath
+      || activeRouteFound?.routeConfig.menuTitle
+      || activeRouteFound?.routeConfig.routeName
       || '当前路由';
     removePageRoute(activePageRouteId);
     setDeleteRouteDialogVisible(false);
@@ -197,38 +219,98 @@ const PageRouteToolbar: React.FC = () => {
     emitApiAlert('设置成功', '当前路由已设为默认路由', 'success');
   };
 
+  const routePopupContent = (
+    <div className="builder-viewport-popup page-route-popup">
+      <header className="builder-viewport-popup__header">
+        <div className="builder-viewport-popup__header-stack">
+          <span className="builder-viewport-popup__title">路由</span>
+          <div className="builder-viewport-popup__header-meta-row">
+            <div className="builder-viewport-popup__header-main">
+              <span className="builder-viewport-popup__subtitle page-route-popup__path" title={summaryLine}>
+                {pathDisplay}
+              </span>
+            </div>
+          </div>
+        </div>
+      </header>
+      <div className="builder-viewport-popup__body">
+        <section className="builder-viewport-popup__section">
+          <div className="builder-viewport-popup__section-head">
+            <span className="builder-viewport-popup__section-title">切换路由</span>
+          </div>
+          <Select
+            size="small"
+            className="builder-viewport-popup__select page-route-popup__select-wide"
+            value={activePageRouteId ?? undefined}
+            options={pageRoutes.map((route) => ({
+              label: `${route.routeConfig.menuTitle || route.routeConfig.pageTitle || route.routeConfig.routeName} · ${route.routeConfig.routePath || '/'}`,
+              value: route.routeId,
+            }))}
+            onChange={(value) => switchPageRoute(String(value ?? ''))}
+            popupProps={{ overlayClassName: 'builder-viewport-popup__select-overlay', zIndex: 5600 }}
+          />
+        </section>
+
+        {routeOutlets.length > 0 ? (
+          <>
+            <Divider layout="horizontal" className="builder-viewport-popup__divider" />
+            <section className="builder-viewport-popup__section">
+              <div className="builder-viewport-popup__section-head">
+                <span className="builder-viewport-popup__section-title">路由出口</span>
+              </div>
+              <Select
+                size="small"
+                className="builder-viewport-popup__select page-route-popup__select-wide"
+                value={activeRouteOutletKey ?? undefined}
+                options={routeOutlets.map((outlet) => ({
+                  label: outlet.label,
+                  value: outlet.key,
+                }))}
+                onChange={(value) => setActiveRouteOutletKey(String(value ?? ''))}
+                popupProps={{ overlayClassName: 'builder-viewport-popup__select-overlay', zIndex: 5600 }}
+              />
+            </section>
+          </>
+        ) : null}
+
+        <Divider layout="horizontal" className="builder-viewport-popup__divider" />
+
+        <section className="builder-viewport-popup__section page-route-popup__actions">
+          <Space size={8} breakLine>
+            <Button size="small" theme="primary" variant="outline" onClick={handleCreateRoute}>
+              新增路由
+            </Button>
+            <Button size="small" theme="default" variant="outline" onClick={handleOpenRouteSettings}>
+              路由设置
+            </Button>
+          </Space>
+        </section>
+      </div>
+    </div>
+  );
+
   return (
     <>
-      <div className="page-route-toolbar">
-        <Select
-          size='small'
-          className="page-route-toolbar__select"
-          value={activePageRouteId ?? undefined}
-          options={pageRoutes.map((route) => ({
-            label: `${route.routeConfig.menuTitle || route.routeConfig.pageTitle || route.routeConfig.routeName} · ${route.routeConfig.routePath || '/'}`,
-            value: route.routeId,
-          }))}
-          onChange={(value) => switchPageRoute(String(value ?? ''))}
-        />
-        {routeOutlets.length > 0 ? (
-          <Select
-            className="page-route-toolbar__select"
-            value={activeRouteOutletKey ?? undefined}
-            options={routeOutlets.map((outlet) => ({
-              label: outlet.label,
-              value: outlet.key,
-            }))}
-            onChange={(value) => setActiveRouteOutletKey(String(value ?? ''))}
+      <TopbarGroup className="page-route-toolbar-group">
+        <Popup
+          visible={routePopupVisible}
+          onVisibleChange={handleRoutePopupVisibleChange}
+          trigger="click"
+          placement="bottom-left"
+          showArrow={false}
+          overlayInnerClassName="builder-viewport-popup__panel"
+          content={routePopupContent}
+        >
+          <TopbarIconButton
+            tip="切换路由、新增路由与路由设置"
+            label="路由"
+            icon={<GitBranch size={16} strokeWidth={2} />}
           />
-        ) : null}
-        <TopbarIconButton
-          tip="当前路由的路径、标题与布局等"
-          label="路由设置"
-          icon={<SettingIcon />}
-          onClick={handleOpenRouteSettings}
-        />
-        <TopbarIconButton tip="新增一条页面路由" label="新增路由" icon={<AddIcon />} onClick={handleCreateRoute} />
-      </div>
+        </Popup>
+        <span className="page-route-toolbar__summary" title={summaryLine}>
+          {summaryLine}
+        </span>
+      </TopbarGroup>
 
       <Drawer
         visible={pageSettingsVisible}
