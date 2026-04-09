@@ -28,6 +28,7 @@ import AnnotatedEdge, { type AnnotatedEdgeData } from './edges/AnnotatedEdge';
 import { FlowNodeActionsProvider, type FlowNodeActionsValue } from './context/FlowNodeActionsContext';
 import { FlowEdgeActionsProvider, type FlowEdgeActionsValue } from './context/FlowEdgeActionsContext';
 import { useBuilderAccess, useBuilderContext } from '../context/BuilderContext';
+import { useBuilderWorkbenchLayoutHotkeys } from '../components/BuilderWorkbenchChrome';
 import { useBuilderThemeStore } from '../theme/builderThemeStore';
 import FlowTopbar, { type FlowCanvasTool } from './components/FlowTopbar';
 import { useFlowEditorPrefsStore } from './flowEditorPrefsStore';
@@ -132,6 +133,7 @@ function snapFlowPosition(
 const FlowCanvas: React.FC = () => {
   const { useStore } = useBuilderContext();
   const { readOnly } = useBuilderAccess();
+  useBuilderWorkbenchLayoutHotkeys('flow');
   const colorMode = useBuilderThemeStore((s) => s.colorMode);
   const flowSnapToGrid = useFlowEditorPrefsStore((s) => s.flowSnapToGrid);
   const setFlowSnapToGrid = useFlowEditorPrefsStore((s) => s.setFlowSnapToGrid);

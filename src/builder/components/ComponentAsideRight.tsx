@@ -43,7 +43,9 @@ const ComponentAsideRight: React.FC = () => {
 				showSaved
 				savedLabel="自定义组件"
 				libraryPanel={
-					<ComponentLibraryPanel selectedName={selectedName} onSelect={setSelectedName} hideSavedComponents />
+					<div className="right-panel-library-shell">
+						<ComponentLibraryPanel selectedName={selectedName} onSelect={setSelectedName} hideSavedComponents />
+					</div>
 				}
 				savedPanel={
 					<SavedComponentPanel selectedName={selectedName} onSelect={setSelectedName} active={mode === 'saved'} />

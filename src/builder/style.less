@@ -16,12 +16,28 @@
   }
 
   .create-header {
+    box-sizing: border-box;
+    flex-shrink: 0;
     height: 60px;
     display: flex;
     align-items: center;
     padding: 0 8px;
     background: var(--builder-surface);
     border-bottom: 1px solid var(--builder-border-strong);
+    overflow: hidden;
+    transition:
+      height 0.22s ease,
+      padding 0.22s ease,
+      border-bottom-width 0.22s ease;
+
+    &.create-header--collapsed {
+      height: 0;
+      min-height: 0;
+      padding-top: 0;
+      padding-bottom: 0;
+      border-bottom-width: 0;
+      pointer-events: none;
+    }
 
     .header-controls {
       width: 100%;
@@ -1576,6 +1592,26 @@
       }
     }
 
+    .right-panel-tabs .t-tab-panel.right-panel-tab-panel--library {
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .right-panel-library-shell {
+      flex: 1 1 auto;
+      min-height: 0;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .right-panel-library-shell .library-panel {
+      flex: 1 1 auto;
+      min-height: 0;
+    }
+
     /* Tab 鍐呴潰鏉垮幓鎺夊啀濂椾竴灞傜伆妗嗭紝浜ょ粰鍗＄墖 Tab 鎵胯浇灞傛 */
     .right-panel-tabs .right-panel-body {
       border: none;
@@ -1590,6 +1626,14 @@
       flex-direction: column;
       flex: 1 1 auto;
       min-height: 0;
+      overflow: hidden;
+    }
+
+    .right-panel-tabs .library-panel .library-panel__chrome {
+      flex: 0 0 auto;
+      z-index: 1;
+      padding-bottom: 4px;
+      background: var(--builder-structure-panel-bg, var(--builder-surface));
     }
 
     .right-panel-tabs .library-panel .library-content {
@@ -1598,6 +1642,7 @@
       min-height: 0;
       display: flex;
       flex-direction: column;
+      overflow: hidden;
     }
 
     .right-panel-tabs .library-panel .library-list {
@@ -1605,20 +1650,43 @@
       min-height: 0;
       margin-top: 4px;
       gap: 8px;
+      overflow-x: hidden;
+      overflow-y: auto;
+      scrollbar-width: thin;
+      scrollbar-gutter: stable;
+      scrollbar-color: rgba(120, 130, 150, 0.42) transparent;
+
+      &::-webkit-scrollbar {
+        width: 4px;
+      }
+
+      &::-webkit-scrollbar-track {
+        background: transparent;
+      }
+
+      &::-webkit-scrollbar-thumb {
+        border-radius: 4px;
+        background: rgba(120, 130, 150, 0.42);
+      }
+
+      &::-webkit-scrollbar-thumb:hover {
+        background: rgba(100, 110, 130, 0.55);
+      }
     }
 
     .right-panel-tabs .library-panel .library-search-row {
-      margin: 0 0 8px;
+      margin: 0;
       padding: 0;
       border-bottom: none;
       background: transparent;
-      position: static;
-      top: auto;
+      position: sticky;
+      top: 0;
+      z-index: 2;
     }
 
     .right-panel-tabs .library-panel .library-source-tabs {
       margin-top: 0;
-      padding: 0 0 8px;
+      padding: 0 0 6px;
       border-bottom: none;
     }
 
@@ -2104,12 +2172,38 @@
       min-width: 0;
       flex: 1;
       overflow: auto;
+      scrollbar-width: thin;
+      scrollbar-gutter: stable;
+      scrollbar-color: rgba(120, 130, 150, 0.42) transparent;
+
+      &::-webkit-scrollbar {
+        width: 4px;
+      }
+
+      &::-webkit-scrollbar-track {
+        background: transparent;
+      }
+
+      &::-webkit-scrollbar-thumb {
+        border-radius: 4px;
+        background: rgba(120, 130, 150, 0.42);
+      }
+
+      &::-webkit-scrollbar-thumb:hover {
+        background: rgba(100, 110, 130, 0.55);
+      }
     }
 
     .library-content {
-      display: block;
+      display: flex;
+      flex-direction: column;
+      flex: 1 1 auto;
       min-height: 0;
-      height: calc(100% - 96px);
+      overflow: hidden;
+    }
+
+    .library-panel__chrome {
+      flex: 0 0 auto;
     }
 
     .library-source-tabs {
@@ -2244,12 +2338,11 @@
 
     .library-search-row {
       position: sticky;
-      top: -8px;
+      top: 0;
       z-index: 2;
       background: var(--builder-library-search-bg);
-      margin: -8px -8px 8px;
-      padding: 8px;
-      padding-bottom: 8px;
+      margin: 0 0 8px;
+      padding: 0 0 8px;
       border-bottom: 1px solid var(--builder-library-search-border);
     }
 

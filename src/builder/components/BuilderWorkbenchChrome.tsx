@@ -1,5 +1,5 @@
-import React, { useCallback, useRef } from 'react';
-import { PanelLeft, PanelLeftOpen, PanelRight, PanelRightOpen } from 'lucide-react';
+import React, { useCallback, useEffect, useRef } from 'react';
+import { PanelLeft, PanelLeftOpen, PanelRight, PanelRightOpen, PanelTop, PanelTopOpen } from 'lucide-react';
 import { useBuilderContext } from '../context/BuilderContext';
 import type { BuilderWorkbenchAsideMode } from '../store/types';
 import {
@@ -7,9 +7,51 @@ import {
   BUILDER_ASIDE_MIN_PX,
   clampBuilderAsideWidth,
 } from '../constants/builderWorkbenchChrome';
+import { isEditableTarget } from '../hooks/useBuilderModeHotkeys';
 import { TopbarGroup, TopbarIconButton } from './UnifiedBuilderTopbar';
 
 const SIDEBAR_ICON_SIZE = 16;
+
+/**
+ * 左/右侧栏 + 页面顶栏（保存/预览）快捷键：Ctrl/Cmd+Shift+1/2/3（需在可编辑区域外）。
+ * 仅当前视图与 workbenchMode 一致时生效（搭建 UI / 流程画布互不干扰）。
+ */
+export function useBuilderWorkbenchLayoutHotkeys(workbenchMode: BuilderWorkbenchAsideMode): void {
+  const { useStore, builderViewMode } = useBuilderContext();
+  const toggleAside = useStore((s) => s.toggleBuilderAsideCollapsed);
+  const toggleShellHeader = useStore((s) => s.toggleBuilderShellHeaderCollapsed);
+
+  useEffect(() => {
+    const wantView = workbenchMode === 'component' ? 'component' : 'flow';
+    const onKey = (e: KeyboardEvent) => {
+      if (builderViewMode !== wantView) {
+        return;
+      }
+      if (isEditableTarget(e.target)) {
+        return;
+      }
+      if (!(e.ctrlKey || e.metaKey) || !e.shiftKey) {
+        return;
+      }
+      if (e.key === '1') {
+        e.preventDefault();
+        toggleAside(workbenchMode, 'left');
+        return;
+      }
+      if (e.key === '2') {
+        e.preventDefault();
+        toggleAside(workbenchMode, 'right');
+        return;
+      }
+      if (e.key === '3') {
+        e.preventDefault();
+        toggleShellHeader();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [builderViewMode, workbenchMode, toggleAside, toggleShellHeader]);
+}
 
 /** 侧栏显隐：图标 + 文案，与「画布」等一致；展开态高亮（搭建 UI / 流程各自独立） */
 export const BuilderSidebarToggles: React.FC<{ mode: BuilderWorkbenchAsideMode }> = ({ mode }) => {
@@ -20,12 +62,14 @@ export const BuilderSidebarToggles: React.FC<{ mode: BuilderWorkbenchAsideMode }
   const rightCollapsed = useStore((s) =>
     mode === 'component' ? s.builderComponentRightAsideCollapsed : s.builderFlowRightAsideCollapsed,
   );
+  const shellHeaderCollapsed = useStore((s) => s.builderShellHeaderCollapsed);
   const toggleAside = useStore((s) => s.toggleBuilderAsideCollapsed);
+  const toggleShellHeader = useStore((s) => s.toggleBuilderShellHeaderCollapsed);
 
   return (
     <TopbarGroup className="builder-sidebar-toolbar-group">
       <TopbarIconButton
-        tip={leftCollapsed ? '展开左侧面板' : '收起左侧面板'}
+        tip={leftCollapsed ? '展开左侧面板（Ctrl/Cmd+Shift+1）' : '收起左侧面板（Ctrl/Cmd+Shift+1）'}
         label="左栏"
         icon={
           leftCollapsed ? (
@@ -38,7 +82,7 @@ export const BuilderSidebarToggles: React.FC<{ mode: BuilderWorkbenchAsideMode }
         onClick={() => toggleAside(mode, 'left')}
       />
       <TopbarIconButton
-        tip={rightCollapsed ? '展开右侧面板' : '收起右侧面板'}
+        tip={rightCollapsed ? '展开右侧面板（Ctrl/Cmd+Shift+2）' : '收起右侧面板（Ctrl/Cmd+Shift+2）'}
         label="右栏"
         icon={
           rightCollapsed ? (
@@ -49,6 +93,23 @@ export const BuilderSidebarToggles: React.FC<{ mode: BuilderWorkbenchAsideMode }
         }
         active={!rightCollapsed}
         onClick={() => toggleAside(mode, 'right')}
+      />
+      <TopbarIconButton
+        tip={
+          shellHeaderCollapsed
+            ? '展开页面顶栏（保存/预览等）（Ctrl/Cmd+Shift+3）'
+            : '收起页面顶栏（保存/预览等）（Ctrl/Cmd+Shift+3）'
+        }
+        label="页头"
+        icon={
+          shellHeaderCollapsed ? (
+            <PanelTopOpen size={SIDEBAR_ICON_SIZE} strokeWidth={2} />
+          ) : (
+            <PanelTop size={SIDEBAR_ICON_SIZE} strokeWidth={2} />
+          )
+        }
+        active={!shellHeaderCollapsed}
+        onClick={toggleShellHeader}
       />
     </TopbarGroup>
   );

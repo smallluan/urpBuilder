@@ -276,6 +276,8 @@ export interface BuilderStore {
   builderComponentRightAsideCollapsed: boolean;
   builderFlowLeftAsideCollapsed: boolean;
   builderFlowRightAsideCollapsed: boolean;
+  /** 页面级顶栏（保存/预览等，BuilderShell 的 header）收起，不入保存 payload */
+  builderShellHeaderCollapsed: boolean;
 
   // Actions — 视图环境
   setPreviewUiLibrary: (library: UiPreviewLibrary) => void;
@@ -287,6 +289,7 @@ export interface BuilderStore {
   setSimulatorChromeStyle: (style: SimulatorChromeStyle) => void;
   setBuilderAsideWidthPx: (mode: BuilderWorkbenchAsideMode, side: 'left' | 'right', width: number) => void;
   toggleBuilderAsideCollapsed: (mode: BuilderWorkbenchAsideMode, side: 'left' | 'right') => void;
+  toggleBuilderShellHeaderCollapsed: () => void;
   setCurrentPageMeta: (payload: {
     pageId?: string;
     pageName?: string;

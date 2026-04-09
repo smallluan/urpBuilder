@@ -7,7 +7,7 @@ import { getBreakpointByWidth, resolveBuilderViewportWidth } from '../utils/grid
 import { Monitor, Settings2 } from 'lucide-react';
 import { SimulatorAppearancePopupContent } from './SimulatorAppearancePopup';
 import UnifiedBuilderTopbar, { TopbarGroup, TopbarIconButton } from './UnifiedBuilderTopbar';
-import { BuilderSidebarToggles } from './BuilderWorkbenchChrome';
+import { BuilderSidebarToggles, useBuilderWorkbenchLayoutHotkeys } from './BuilderWorkbenchChrome';
 
 const { Text } = Typography;
 
@@ -17,6 +17,7 @@ const ComponentMainBody: React.FC<{ toolbarExtra?: React.ReactNode; toolbarRight
 }) => {
   const { useStore } = useBuilderContext();
   const { readOnly } = useBuilderAccess();
+  useBuilderWorkbenchLayoutHotkeys('component');
   const screenSize = useStore((state) => state.screenSize);
   const autoWidth = useStore((state) => state.autoWidth);
   const setScreenSize = useStore((state) => state.setScreenSize);
@@ -265,6 +266,18 @@ const ComponentMainBody: React.FC<{ toolbarExtra?: React.ReactNode; toolbarRight
           <Row justify="space-between" align="middle">
             <div>退出（全局对话框）：</div>
             <Text code>Esc </Text>
+          </Row>
+          <Row justify="space-between" align="middle">
+            <div>收起 / 展开左侧面板：</div>
+            <Text code>Ctrl/Cmd+Shift+1</Text>
+          </Row>
+          <Row justify="space-between" align="middle">
+            <div>收起 / 展开右侧面板：</div>
+            <Text code>Ctrl/Cmd+Shift+2</Text>
+          </Row>
+          <Row justify="space-between" align="middle">
+            <div>收起 / 展开页面顶栏（保存/预览等）：</div>
+            <Text code>Ctrl/Cmd+Shift+3</Text>
           </Row>
         </Space>
       </Dialog>

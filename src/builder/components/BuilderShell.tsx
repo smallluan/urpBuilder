@@ -9,7 +9,7 @@
  */
 
 import React from 'react';
-import { useBuilderAccess } from '../context/BuilderContext';
+import { useBuilderAccess, useBuilderContext } from '../context/BuilderContext';
 import '../style.less';
 
 export interface BuilderShellProps {
@@ -27,10 +27,17 @@ export const BuilderShell: React.FC<BuilderShellProps> = ({
   className = 'create-page',
 }) => {
   const { readOnly, readOnlyReason } = useBuilderAccess();
+  const { useStore } = useBuilderContext();
+  const headerCollapsed = useStore((s) => s.builderShellHeaderCollapsed);
 
   return (
-    <div className={className}>
-      <header className="create-header">{header}</header>
+    <div className={`${className}${headerCollapsed ? ' create-page--shell-header-collapsed' : ''}`}>
+      <header
+        className={`create-header${headerCollapsed ? ' create-header--collapsed' : ''}`}
+        aria-hidden={headerCollapsed}
+      >
+        {header}
+      </header>
       {readOnly ? (
         <div className="builder-readonly-banner">
           当前为只读模式。{readOnlyReason || '你可以查看结构和配置，但不能修改或保存。'}

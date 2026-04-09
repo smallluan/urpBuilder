@@ -520,6 +520,7 @@ export const createBuilderStore = (options: CreateBuilderStoreOptions = {}) => {
     builderComponentRightAsideCollapsed: false,
     builderFlowLeftAsideCollapsed: false,
     builderFlowRightAsideCollapsed: false,
+    builderShellHeaderCollapsed: false,
     currentPageId: '',
     currentPageName: '',
     currentPageDescription: '',
@@ -611,6 +612,9 @@ export const createBuilderStore = (options: CreateBuilderStoreOptions = {}) => {
         }
         return { builderFlowRightAsideCollapsed: !state.builderFlowRightAsideCollapsed };
       }),
+
+    toggleBuilderShellHeaderCollapsed: () =>
+      set((state) => ({ builderShellHeaderCollapsed: !state.builderShellHeaderCollapsed })),
 
     setCurrentPageMeta: ({ pageId, pageName, description, visibility }) =>
       set((state) => ({

@@ -48,6 +48,7 @@ const RightPanelHeader: React.FC<RightPanelHeaderProps> = ({
 			>
 				<Tabs.TabPanel
 					value="library"
+					className="right-panel-tab-panel--library"
 					label={<TabLabel Icon={LayoutGrid} text={libraryLabel} />}
 					destroyOnHide={false}
 					lazy

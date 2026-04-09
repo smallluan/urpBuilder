@@ -335,6 +335,8 @@ const ComponentLibraryPanel: React.FC<ComponentLibraryPanelProps> = ({ selectedN
   const previewUiLibrary = useStore((s) => s.previewUiLibrary);
   const { currentTeamId } = useTeam();
   const [keyword, setKeyword] = useState('');
+  /** 与 ECharts 图表物料分区展示，不与通用组件混列表 */
+  const [librarySource, setLibrarySource] = useState<'components' | 'charts'>('components');
   const [openedGroupKey, setOpenedGroupKey] = useState<string | null>(null);
   const [customComponentSchemas, setCustomComponentSchemas] = useState<CustomComponentSchema[]>([]);
 
@@ -388,9 +390,17 @@ const ComponentLibraryPanel: React.FC<ComponentLibraryPanelProps> = ({ selectedN
   }, [entityType]);
 
   const libraryEntries = useMemo(() => {
+    const chartMode = librarySource === 'charts';
     const plainEntries: ComponentLibraryEntry[] = componentCatalog
       .filter((component) => {
         const type = String(component.type ?? '');
+        if (chartMode) {
+          if (!ECHART_COMPONENT_TYPES.has(type)) {
+            return false;
+          }
+        } else if (ECHART_COMPONENT_TYPES.has(type)) {
+          return false;
+        }
         if (type === 'ComponentSlotOutlet' && entityType !== 'component') {
           return false;
         }
@@ -407,8 +417,9 @@ const ComponentLibraryPanel: React.FC<ComponentLibraryPanelProps> = ({ selectedN
         category: getCategoryByType(String(component.type ?? '')),
       }));
 
-    return [...presetLibraryEntriesForEntity, ...plainEntries];
-  }, [entityType, presetLibraryEntriesForEntity]);
+    const preset = chartMode ? [] : presetLibraryEntriesForEntity;
+    return [...preset, ...plainEntries];
+  }, [entityType, presetLibraryEntriesForEntity, librarySource]);
 
   const sourceFilteredEntries = useMemo(() => {
     const matchSource = (componentType: string) =>
@@ -724,19 +735,43 @@ const ComponentLibraryPanel: React.FC<ComponentLibraryPanelProps> = ({ selectedN
 
   return (
     <div className="right-panel-body library-panel">
-      <div className="library-search-row">
-        <Input
-          size="small"
-          clearable
-          value={keyword}
-          placeholder="搜索组件（中文名）"
-          suffixIcon={<SearchIcon />}
-          onChange={(value) => setKeyword(String(value ?? ''))}
-        />
+      <div className="library-panel__chrome">
+        <div className="library-source-tabs library-source-tabs--horizontal" role="tablist" aria-label="物料分区">
+          <div className="library-source-tabs__track">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={librarySource === 'components'}
+              className={`library-source-tabs__item${librarySource === 'components' ? ' is-active' : ''}`}
+              onClick={() => setLibrarySource('components')}
+            >
+              <span className="library-source-tabs__label">组件</span>
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={librarySource === 'charts'}
+              className={`library-source-tabs__item${librarySource === 'charts' ? ' is-active' : ''}`}
+              onClick={() => setLibrarySource('charts')}
+            >
+              <span className="library-source-tabs__label">图表</span>
+            </button>
+          </div>
+        </div>
+        <div className="library-search-row">
+          <Input
+            size="small"
+            clearable
+            value={keyword}
+            placeholder="搜索名称、类型或关键词"
+            suffixIcon={<SearchIcon />}
+            onChange={(value) => setKeyword(String(value ?? ''))}
+          />
+        </div>
       </div>
       <div className="library-content">
         <div className="library-list">
-        {!hideSavedComponents && filteredCustomComponentSchemas.length > 0 ? (
+        {librarySource === 'components' && !hideSavedComponents && filteredCustomComponentSchemas.length > 0 ? (
           <div className="library-section">
             <div className="library-section-head">
               <div className="library-section-title">
@@ -772,67 +807,27 @@ const ComponentLibraryPanel: React.FC<ComponentLibraryPanelProps> = ({ selectedN
           </div>
         ) : null}
 
-        {CATEGORY_ORDER.map((category) => {
-          const categoryEntries = groupedCatalog[category] ?? [];
-          if (categoryEntries.length === 0) {
-            return null;
-          }
-
-          const categoryMeta = CATEGORY_META_MAP[category];
-
-          return (
-            <div key={category} className="library-section">
+        {librarySource === 'charts' ? (
+          filteredEntries.length === 0 ? (
+            <div className="library-empty">未找到匹配图表</div>
+          ) : (
+            <div className="library-section">
               <div className="library-section-head">
                 <div className="library-section-title">
-                  <categoryMeta.Icon size={14} strokeWidth={2} />
-                  <span>{categoryMeta.label}</span>
+                  <BarChart3 size={14} strokeWidth={2} />
+                  <span>ECharts 图表</span>
                 </div>
-                <span className="library-section-count">{categoryEntries.length}</span>
+                <span className="library-section-count">{filteredEntries.length}</span>
               </div>
-
               <div className="library-section-grid">
-                {categoryEntries.map((entry) => {
+                {filteredEntries.map((entry) => {
                   if (entry.kind === 'group') {
-                    const IconComponent = getIconByType(entry.iconType || entry.key);
-                    const isActive = isGroupEntrySelected(entry, selectedName, schemaMap);
-
-                    return (
-                      <div className="library-group-trigger" key={entry.key}>
-                        <Popup
-                          destroyOnClose={false}
-                          placement="left-top"
-                          showArrow={false}
-                          trigger="click"
-                          visible={openedGroupKey === entry.key}
-                          onVisibleChange={(visible) => {
-                            setOpenedGroupKey(visible ? entry.key : null);
-                          }}
-                          content={renderGroupPopupContent(entry)}
-                        >
-                          <div
-                            className={`library-item library-item--group ${isActive ? 'is-active' : ''}${openedGroupKey === entry.key ? ' is-open' : ''}`}
-                            title={`${entry.name}（点击选择子组件）`}
-                          >
-                            <span className="library-item-group-marker" aria-hidden="true">
-                              <MousePointerClick size={11} strokeWidth={2.2} />
-                            </span>
-                            <div className={`library-item-icon library-item-icon--${entry.category}`}>
-                              <IconComponent size={14} strokeWidth={2} />
-                            </div>
-                            <div className="library-item-main">
-                              <div className="library-item-name">{entry.name}</div>
-                            </div>
-                          </div>
-                        </Popup>
-                      </div>
-                    );
+                    return null;
                   }
-
                   const schema = schemaMap.get(entry.type);
                   if (!schema) {
                     return null;
                   }
-
                   return (
                     <DragableWrapper
                       onDragStart={handleOnDrapStart}
@@ -846,10 +841,87 @@ const ComponentLibraryPanel: React.FC<ComponentLibraryPanelProps> = ({ selectedN
                 })}
               </div>
             </div>
-          );
-        })}
+          )
+        ) : (
+          CATEGORY_ORDER.map((category) => {
+            const categoryEntries = groupedCatalog[category] ?? [];
+            if (categoryEntries.length === 0) {
+              return null;
+            }
 
-        {filteredEntries.length === 0 ? (
+            const categoryMeta = CATEGORY_META_MAP[category];
+
+            return (
+              <div key={category} className="library-section">
+                <div className="library-section-head">
+                  <div className="library-section-title">
+                    <categoryMeta.Icon size={14} strokeWidth={2} />
+                    <span>{categoryMeta.label}</span>
+                  </div>
+                  <span className="library-section-count">{categoryEntries.length}</span>
+                </div>
+
+                <div className="library-section-grid">
+                  {categoryEntries.map((entry) => {
+                    if (entry.kind === 'group') {
+                      const IconComponent = getIconByType(entry.iconType || entry.key);
+                      const isActive = isGroupEntrySelected(entry, selectedName, schemaMap);
+
+                      return (
+                        <div className="library-group-trigger" key={entry.key}>
+                          <Popup
+                            destroyOnClose={false}
+                            placement="left-top"
+                            showArrow={false}
+                            trigger="click"
+                            visible={openedGroupKey === entry.key}
+                            onVisibleChange={(visible) => {
+                              setOpenedGroupKey(visible ? entry.key : null);
+                            }}
+                            content={renderGroupPopupContent(entry)}
+                          >
+                            <div
+                              className={`library-item library-item--group ${isActive ? 'is-active' : ''}${openedGroupKey === entry.key ? ' is-open' : ''}`}
+                              title={`${entry.name}（点击选择子组件）`}
+                            >
+                              <span className="library-item-group-marker" aria-hidden="true">
+                                <MousePointerClick size={11} strokeWidth={2.2} />
+                              </span>
+                              <div className={`library-item-icon library-item-icon--${entry.category}`}>
+                                <IconComponent size={14} strokeWidth={2} />
+                              </div>
+                              <div className="library-item-main">
+                                <div className="library-item-name">{entry.name}</div>
+                              </div>
+                            </div>
+                          </Popup>
+                        </div>
+                      );
+                    }
+
+                    const schema = schemaMap.get(entry.type);
+                    if (!schema) {
+                      return null;
+                    }
+
+                    return (
+                      <DragableWrapper
+                        onDragStart={handleOnDrapStart}
+                        onDragEnd={handleLibraryDragEnd}
+                        key={entry.key}
+                        data={schema}
+                      >
+                        {renderLibraryItemCard(schema, selectedName === schema.name)}
+                      </DragableWrapper>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })
+        )}
+
+        {filteredEntries.length === 0 && librarySource === 'components' ? (
           <div className="library-empty">未找到匹配组件</div>
         ) : null}
         </div>
