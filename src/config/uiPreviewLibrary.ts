@@ -1,5 +1,4 @@
 import type { UiTreeNode } from '../builder/store/types';
-import { ECHART_COMPONENT_TYPES } from '../constants/echart';
 import { ANTD_TD_MIRROR_PAIRS } from './antdCatalogMirror';
 
 export type UiPreviewLibrary = 'tdesign' | 'antd';
@@ -51,27 +50,20 @@ const TD_TO_ANTD = new Map<string, string>(
   ANTD_TD_MIRROR_PAIRS.map((p) => [p.tdesignType, p.antdType]),
 );
 
-/** 右侧组件库在 Ant Design 壳下应展示的物料（与 {@link resolveAntdPreviewTypeForCanonical} 可渲染集合一致，并含图表与布局）。 */
-export function catalogTypeMatchesPreviewLibrary(type: string, library: UiPreviewLibrary): boolean {
-  const t = String(type ?? '').trim();
-  if (library === 'tdesign') {
-    return true;
-  }
-  if (ECHART_COMPONENT_TYPES.includes(t)) {
-    return true;
-  }
-  if (SHARED_LAYOUT_TD_TYPES.has(t)) {
-    return true;
-  }
-  if (t === 'Drawer') {
-    return true;
-  }
-  return TD_TO_ANTD.has(t);
+/**
+ * 右侧组件库是否展示某物料 type。
+ * Ant Design 预览下 DSL 仍以 TDesign `type` 为主：仅有 {@link ANTD_TD_MIRROR_PAIRS} 且未被
+ * {@link SHARED_LAYOUT_TD_TYPES} 兜底的节点会走 antd 渲染；其余（如 BackTop、Calendar、TimePicker、Steps）
+ * 仍走 TDesign 注册表——这些也必须出现在面板中，否则会被误当成「删掉」。
+ */
+export function catalogTypeMatchesPreviewLibrary(_type: string, library: UiPreviewLibrary): boolean {
+  return library === 'tdesign' || library === 'antd';
 }
 
 /**
- * 画布 / 预览在 Ant Design 模式下应使用的 antd.* 分发键；若返回 null 则走 TDesign 注册表。
- * Drawer 根据 shellPresentation 区分对话框与抽屉（与 antdCatalogMirror 中 Modal/Drawer 镜像一致）。
+ * 画布 / 预览在 Ant Design 模式下应使用的 antd.* 分发键；若返回 null 则**始终**走 TDesign 注册表 / PreviewRenderer 的 TDesign 分支。
+ * - {@link SHARED_LAYOUT_TD_TYPES}：布局/菜单/步骤条等强制 TDesign，避免与 DSL 不一致（镜像表里的 antd.Row 等不会生效）。
+ * - Drawer：按 shellPresentation 映射 antd.Modal / antd.Drawer。
  */
 export function resolveAntdPreviewTypeForCanonical(node: UiTreeNode): string | null {
   const t = String(node.type ?? '').trim();
