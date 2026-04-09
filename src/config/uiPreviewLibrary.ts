@@ -20,7 +20,8 @@ const getStringProp = (node: UiTreeNode, propName: string): string | undefined =
 };
 
 /**
- * 布局与导航骨架在任意组件库预览下均走 TDesign 实现，避免栅格/菜单等与 DSL 不一致。
+ * 仅「可承载任意子内容」的容器类在两种预览下统一走 TDesign，优先保证布局骨架与 DSL 一致。
+ * 菜单、步骤条等仅允许固定子物料的节点不放入此集合，Ant Design 预览可走 antd.* 镜像。
  */
 export const SHARED_LAYOUT_TD_TYPES = new Set<string>([
   'Grid.Row',
@@ -37,13 +38,6 @@ export const SHARED_LAYOUT_TD_TYPES = new Set<string>([
   'Space',
   'RouteOutlet',
   'ComponentSlotOutlet',
-  'HeadMenu',
-  'Menu',
-  'Menu.Submenu',
-  'Menu.Item',
-  'Menu.Group',
-  'Steps',
-  'Steps.Item',
 ]);
 
 const TD_TO_ANTD = new Map<string, string>(
@@ -59,7 +53,7 @@ export const CARD_SHELL_ALWAYS_ANTD_TYPES = new Set<string>(['Card', 'antd.Card'
 /**
  * 右侧组件库是否展示某物料 type。
  * Ant Design 预览下 DSL 仍以 TDesign `type` 为主：仅有 {@link ANTD_TD_MIRROR_PAIRS} 且未被
- * {@link SHARED_LAYOUT_TD_TYPES} 兜底的节点会走 antd 渲染；其余（如 BackTop、Calendar、TimePicker、Steps）
+ * {@link SHARED_LAYOUT_TD_TYPES} 兜底的节点会走 antd 渲染；其余（如 BackTop、Calendar、TimePicker）
  * 仍走 TDesign 注册表——这些也必须出现在面板中，否则会被误当成「删掉」。
  */
 export function catalogTypeMatchesPreviewLibrary(_type: string, library: UiPreviewLibrary): boolean {
@@ -68,7 +62,7 @@ export function catalogTypeMatchesPreviewLibrary(_type: string, library: UiPrevi
 
 /**
  * 画布 / 预览在 Ant Design 模式下应使用的 antd.* 分发键；若返回 null 则**始终**走 TDesign 注册表 / PreviewRenderer 的 TDesign 分支。
- * - {@link SHARED_LAYOUT_TD_TYPES}：布局/菜单/步骤条等强制 TDesign，避免与 DSL 不一致（镜像表里的 antd.Row 等不会生效）。
+ * - {@link SHARED_LAYOUT_TD_TYPES}：仅布局容器类强制 TDesign；菜单、步骤条等可走镜像 antd.*。
  * - Drawer：按 shellPresentation 映射 antd.Modal / antd.Drawer。
  */
 export function resolveAntdPreviewTypeForCanonical(node: UiTreeNode): string | null {

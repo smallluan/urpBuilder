@@ -34,6 +34,7 @@ import {
   Slider,
   Space,
   Spin,
+  Steps as AntSteps,
   Statistic as AntStatistic,
   Switch,
   Table,
@@ -61,6 +62,7 @@ import {
   tdesignTableColumnsToAntd,
   drawerWidthPxFromTdesignSize,
 } from '../../../utils/antdTdesignPropBridge';
+import { collectDslStepRows, dslStepStatusToAntd } from '../../../builder/utils/stepsDsl';
 import { AntdCollapsePreviewBridge, AntdTabsPreviewBridge } from './antdPreviewBridges';
 
 const { Title, Paragraph, Text, Link } = Typography;
@@ -90,6 +92,22 @@ function getFiniteNumberProp(node: UiTreeNode, propName: string) {
   if (typeof v === 'string' && v.trim()) {
     const n = Number(v);
     return Number.isFinite(n) ? n : undefined;
+  }
+  return undefined;
+}
+
+function getStepsCurrentProp(node: UiTreeNode, propName: string): string | number | undefined {
+  const value = getProp(node, propName);
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value;
+  }
+  if (typeof value === 'string') {
+    const text = value.trim();
+    if (!text) {
+      return undefined;
+    }
+    const parsed = Number(text);
+    return Number.isFinite(parsed) ? parsed : text;
   }
   return undefined;
 }
@@ -808,6 +826,7 @@ export function tryRenderAntdPreview(ctx: AntdPreviewContext): React.ReactElemen
       const max = getFiniteNumberProp(node, 'max') ?? 100;
       const val = getFiniteNumberProp(node, 'value') ?? min;
       const defVal = getFiniteNumberProp(node, 'defaultValue') ?? min;
+      const merged = mergeStyle();
       return (
         <Slider
           min={min}
@@ -815,7 +834,13 @@ export function tryRenderAntdPreview(ctx: AntdPreviewContext): React.ReactElemen
           value={controlled ? val : undefined}
           defaultValue={controlled ? undefined : defVal}
           disabled={getBooleanProp(node, 'disabled') === true}
-          style={mergeStyle()}
+          style={{
+            width: '100%',
+            minWidth: 200,
+            maxWidth: '100%',
+            boxSizing: 'border-box',
+            ...(merged ?? {}),
+          }}
           onChange={(v) => {
             syncNodeValue(v);
             emitInteractionLifecycle('onChange', { value: v });
@@ -901,6 +926,39 @@ export function tryRenderAntdPreview(ctx: AntdPreviewContext): React.ReactElemen
           {renderAntdPreviewMenu(node.children, onLifecycle, emitInteractionLifecycle, navigatePreviewByHref)}
         </Menu>
       );
+    case 'antd.Steps': {
+      const isControlled = getBooleanProp(node, 'controlled') !== false;
+      const current = getStepsCurrentProp(node, 'current');
+      const defaultCurrent = getStepsCurrentProp(node, 'defaultCurrent');
+      const rows = collectDslStepRows(node.children);
+      const items = rows.map((row) => ({
+        title: row.title,
+        description: row.content,
+        status: dslStepStatusToAntd(row.status),
+      }));
+      const rawIndex = isControlled ? (current ?? 0) : (defaultCurrent ?? 0);
+      const currentNum = typeof rawIndex === 'number' ? rawIndex : Number(rawIndex);
+      const safeCurrent = Number.isFinite(currentNum) ? Math.max(0, Math.floor(currentNum)) : 0;
+      const layout = getStringProp(node, 'layout') as 'horizontal' | 'vertical' | undefined;
+      const theme = getStringProp(node, 'theme');
+      const fallbackMinHeight = layout === 'vertical' ? 160 : 88;
+      return (
+        <AntSteps
+          current={safeCurrent}
+          orientation={layout === 'vertical' ? 'vertical' : 'horizontal'}
+          type={theme === 'dot' ? 'dot' : undefined}
+          responsive={false}
+          items={items}
+          onChange={(next) => {
+            emitInteractionLifecycle('onChange', {
+              current: next,
+              previous: safeCurrent,
+            });
+          }}
+          style={mergeStyle({ minHeight: fallbackMinHeight })}
+        />
+      );
+    }
     default:
       return <Empty description={`未实现的 Ant Design 节点：${type}`} style={mergeStyle()} />;
   }
@@ -929,14 +987,14 @@ function renderAntdPreviewMenu(
     if (getChildBool('visible') === false) {
       return null;
     }
-    if (childType === 'antd.Menu.SubMenu') {
+    if (childType === 'antd.Menu.SubMenu' || childType === 'Menu.Submenu') {
       return (
         <Menu.SubMenu key={child.key} title={getChildString('title') || '子菜单'}>
           {renderAntdPreviewMenu(child.children, onLifecycle, emitInteractionLifecycle, navigatePreviewByHref)}
         </Menu.SubMenu>
       );
     }
-    if (childType === 'antd.Menu.Item') {
+    if (childType === 'antd.Menu.Item' || childType === 'Menu.Item') {
       const href = getChildString('href') || undefined;
       return (
         <Menu.Item

@@ -46,6 +46,8 @@ export const ANTD_TD_MIRROR_PAIRS: readonly MirrorPair[] = [
   { antdType: 'antd.Menu', tdesignType: 'Menu' },
   { antdType: 'antd.Menu.Item', tdesignType: 'Menu.Item' },
   { antdType: 'antd.Menu.SubMenu', tdesignType: 'Menu.Submenu' },
+  { antdType: 'antd.Steps', tdesignType: 'Steps' },
+  { antdType: 'antd.Steps.Item', tdesignType: 'Steps.Item' },
   { antdType: 'antd.BackTop', tdesignType: 'BackTop' },
   { antdType: 'antd.Progress', tdesignType: 'Progress' },
   { antdType: 'antd.Image', tdesignType: 'Image' },

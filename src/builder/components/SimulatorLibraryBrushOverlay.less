@@ -51,7 +51,7 @@
   }
 }
 
-/* 双栈：已提交层撑高，目标层绝对覆盖做 clip */
+/* 双栈：已提交层撑高；白遮罩 + 新库层绝对叠放做两段斜线 clip */
 .simulator-library-transition-stack--dual {
   isolation: isolate;
 
@@ -62,7 +62,8 @@
     min-height: 0;
   }
 
-  .simulator-library-transition-layer--new {
+  /* 前半场：沿对角线扩大，盖住旧画布（纯色，不挂第二套物料） */
+  .simulator-library-transition-layer--white-mask {
     position: absolute;
     left: 0;
     top: 0;
@@ -73,5 +74,46 @@
     pointer-events: none;
     background-color: var(--builder-simulator-device-bg, #ffffff);
     will-change: clip-path;
+  }
+
+  /* 后半场：目标组件库再斜线揭示（过半才挂载，减轻双树并行闪屏） */
+  .simulator-library-transition-layer--new {
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 3;
+    overflow: hidden;
+    pointer-events: none;
+    background-color: var(--builder-simulator-device-bg, #ffffff);
+    will-change: clip-path;
+  }
+
+  /* 沿切割边移动的极细高光（中性白、无彩色晕，避免「灯管感」） */
+  .simulator-library-edge-glint {
+    position: absolute;
+    z-index: 4;
+    left: 0;
+    top: 0;
+    height: 2px;
+    margin: 0;
+    padding: 0;
+    border: none;
+    border-radius: 1px;
+    pointer-events: none;
+    opacity: 0;
+    transform-origin: center center;
+    will-change: transform, width, opacity;
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      rgba(255, 255, 255, 0) 40%,
+      rgba(255, 255, 255, 0.75) 50%,
+      rgba(255, 255, 255, 0) 60%,
+      transparent 100%
+    );
+    box-shadow: none;
+    filter: none;
   }
 }

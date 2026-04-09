@@ -34,6 +34,7 @@ import {
   Slider,
   Space,
   Spin,
+  Steps as AntSteps,
   Statistic as AntStatistic,
   Switch,
   Table,
@@ -56,6 +57,7 @@ import {
 } from '../../utils/collapse';
 import { getTabsPanelSlotKey, getTabsSlotNodeByValue } from '../../utils/tabs';
 import type { MenuProps } from 'antd';
+import { collectDslStepRows, dslStepStatusToAntd } from '../../utils/stepsDsl';
 import type { UiDropDataHandler, UiTreeNode } from '../../store/types';
 import { getNodeSlotKey, isSlotNode } from '../../utils/slot';
 import type { ComponentRegistry } from '../componentContext';
@@ -142,7 +144,7 @@ function renderAntdMenuChildren(
     if (getChildBool('visible') === false) {
       return null;
     }
-    if (childType === 'antd.Menu.SubMenu') {
+    if (childType === 'antd.Menu.SubMenu' || childType === 'Menu.Submenu') {
       const subKids = child.children ?? [];
       return (
         <Menu.SubMenu key={child.key} title={getChildString('title') || '子菜单'}>
@@ -154,7 +156,7 @@ function renderAntdMenuChildren(
         </Menu.SubMenu>
       );
     }
-    if (childType === 'antd.Menu.Item') {
+    if (childType === 'antd.Menu.Item' || childType === 'Menu.Item') {
       return (
         <Menu.Item
           key={child.key}
@@ -680,6 +682,46 @@ export function registerAntdComponents(registry: ComponentRegistry): void {
     );
   });
 
+  registry.set('antd.Steps', (ctx) => {
+    const {
+      data, onDropData, getStringProp, getBooleanProp, mergeStyle, handleActivateSelf, isNodeActive, getStepsCurrentProp,
+    } = ctx;
+    const isControlled = getBooleanProp('controlled') !== false;
+    const current = getStepsCurrentProp('current');
+    const defaultCurrent = getStepsCurrentProp('defaultCurrent');
+    const rows = collectDslStepRows(data?.children);
+    const items = rows.map((row) => ({
+      title: row.title,
+      description: row.content,
+      status: dslStepStatusToAntd(row.status),
+    }));
+    const rawIndex = isControlled ? (current ?? 0) : (defaultCurrent ?? 0);
+    const currentNum = typeof rawIndex === 'number' ? rawIndex : Number(rawIndex);
+    const safeCurrent = Number.isFinite(currentNum) ? Math.max(0, Math.floor(currentNum)) : 0;
+    const layout = getStringProp('layout') as 'horizontal' | 'vertical' | undefined;
+    const theme = getStringProp('theme');
+    const fallbackMinHeight = layout === 'vertical' ? 160 : 88;
+    return (
+      <DropArea data={data} onDropData={onDropData} emptyText="拖拽步骤项到步骤条" compactWhenFilled isTreeNode>
+        <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf} nodeKey={data?.key} active={isNodeActive}>
+          <AntSteps
+            current={safeCurrent}
+            orientation={layout === 'vertical' ? 'vertical' : 'horizontal'}
+            type={theme === 'dot' ? 'dot' : undefined}
+            responsive={false}
+            items={items}
+            onChange={() => {
+              /* 搭建态仅展示 */
+            }}
+            style={mergeStyle({ minHeight: fallbackMinHeight })}
+          />
+        </ActivateWrapper>
+      </DropArea>
+    );
+  });
+
+  registry.set('antd.Steps.Item', () => null);
+
   registry.set('antd.Breadcrumb', (ctx) => {
     const { getStringProp, mergeStyle, handleActivateSelf, data, isNodeActive } = ctx;
     const items = parseJsonRecordArray(getStringProp('items')).map((it, i) => ({
@@ -959,6 +1001,7 @@ export function registerAntdComponents(registry: ComponentRegistry): void {
     const max = getFiniteNumberProp('max') ?? 100;
     const v = getSliderValueProp('value');
     const single = typeof v === 'number' ? v : Array.isArray(v) ? v[0] : min;
+    const merged = mergeStyle();
     return (
       <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf} nodeKey={data?.key} active={isNodeActive}>
         <Slider
@@ -967,6 +1010,13 @@ export function registerAntdComponents(registry: ComponentRegistry): void {
           value={controlled ? single : undefined}
           defaultValue={!controlled ? getFiniteNumberProp('defaultValue') ?? min : undefined}
           disabled={getBooleanProp('disabled') === true}
+          style={{
+            width: '100%',
+            minWidth: 200,
+            maxWidth: '100%',
+            boxSizing: 'border-box',
+            ...(merged ?? {}),
+          }}
         />
       </ActivateWrapper>
     );
