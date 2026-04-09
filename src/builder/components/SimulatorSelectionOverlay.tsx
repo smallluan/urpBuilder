@@ -24,6 +24,7 @@ const SimulatorSelectionOverlay: React.FC<SimulatorSelectionOverlayProps> = ({ s
   const uiPageData = useStore((state) => state.uiPageData);
   /** 切换预览组件库时 DOM 重挂载但 DSL 引用常不变，须参与依赖以重算选区 */
   const previewUiLibrary = useStore((state) => state.previewUiLibrary);
+  const simulatorLibraryTransition = useStore((state) => state.simulatorLibraryTransition);
   const [rect, setRect] = useState<OverlayRect | null>(null);
 
   useLayoutEffect(() => {
@@ -43,7 +44,11 @@ const SimulatorSelectionOverlay: React.FC<SimulatorSelectionOverlayProps> = ({ s
       if (cancelled) {
         return;
       }
-      const el = container.querySelector<HTMLElement>(`[data-builder-node-key="${safeKey}"]`);
+      const newLayer = container.querySelector<HTMLElement>(
+        '[data-urpbuilder-simulator-preview-layer="new"]',
+      );
+      const scope = newLayer ?? container;
+      const el = scope.querySelector<HTMLElement>(`[data-builder-node-key="${safeKey}"]`);
       if (!el) {
         setRect(null);
         return;
@@ -81,7 +86,11 @@ const SimulatorSelectionOverlay: React.FC<SimulatorSelectionOverlayProps> = ({ s
         update();
       }
     });
-    const observed = container.querySelector<HTMLElement>(`[data-builder-node-key="${safeKey}"]`);
+    const newLayerForObserve = container.querySelector<HTMLElement>(
+      '[data-urpbuilder-simulator-preview-layer="new"]',
+    );
+    const observeScope = newLayerForObserve ?? container;
+    const observed = observeScope.querySelector<HTMLElement>(`[data-builder-node-key="${safeKey}"]`);
     if (observed) {
       ro.observe(getScrollTargetForBuilderNode(observed));
     }
@@ -96,7 +105,7 @@ const SimulatorSelectionOverlay: React.FC<SimulatorSelectionOverlayProps> = ({ s
       container.removeEventListener('scroll', update);
       window.removeEventListener('resize', update);
     };
-  }, [activeNodeKey, scrollContainerRef, uiPageData, previewUiLibrary]);
+  }, [activeNodeKey, scrollContainerRef, uiPageData, previewUiLibrary, simulatorLibraryTransition]);
 
   if (!rect || rect.width <= 0 || rect.height <= 0) {
     return null;

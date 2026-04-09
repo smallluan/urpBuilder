@@ -1,4 +1,4 @@
-/* 单层模拟器内容区；过渡由 View Transitions API 驱动，避免双 React 树 */
+/* 模拟器内容区根容器；组件库切换为底层已提交预览 + 顶 clip-path 揭示目标库 */
 .simulator-library-brush-root {
   position: relative;
   width: 100%;
@@ -8,6 +8,13 @@
   max-width: 100%;
   box-sizing: border-box;
   isolation: isolate;
+  /* 裁掉流光层对角大画布在视口外的贴图硬边，避免出现“移动矩形” */
+  overflow: hidden;
+  /*
+   * 与 View Transition 新帧快照对齐：antd 比 tdesign 矮时，新快照下方常为透明像素，
+   * 会透出下层旧快照（如分页器叠影）。根节点铺实底，避免“透明洞”透出旧层。
+   */
+  background-color: var(--builder-simulator-device-bg, #ffffff);
 }
 
 .urpbuilder-simulator-vt-surface--main {
@@ -18,48 +25,53 @@
   view-transition-name: urpbuilder-sim-embedded;
 }
 
-/* 仅 Chromium / Safari 18+ 等支持 View Transitions；其余浏览器无伪元素匹配，等同即时切换 */
-@media (prefers-reduced-motion: no-preference) {
-  ::view-transition-old(urpbuilder-sim-main),
-  ::view-transition-new(urpbuilder-sim-main) {
-    animation-duration: 0.58s;
-    animation-timing-function: cubic-bezier(0.33, 1, 0.68, 1);
-  }
+.simulator-library-brush-root--transitioning {
+  pointer-events: none;
+}
 
-  ::view-transition-old(urpbuilder-sim-embedded),
-  ::view-transition-new(urpbuilder-sim-embedded) {
-    animation-duration: 0.58s;
-    animation-timing-function: cubic-bezier(0.33, 1, 0.68, 1);
-  }
+.simulator-library-transition-stack {
+  position: relative;
+  width: 100%;
+  min-height: 0;
+  min-width: 0;
+  max-width: 100%;
+}
 
-  /* 新帧：对角 mask 揭示（与旧实现同向）；旧帧保持默认淡出以叠在下方 */
-  ::view-transition-new(urpbuilder-sim-main),
-  ::view-transition-new(urpbuilder-sim-embedded) {
-    -webkit-mask-image: linear-gradient(135deg, #000 50%, transparent 50%);
-    mask-image: linear-gradient(135deg, #000 50%, transparent 50%);
-    -webkit-mask-size: 250% 250%;
-    mask-size: 250% 250%;
-    -webkit-mask-repeat: no-repeat;
-    mask-repeat: no-repeat;
-    -webkit-mask-position: 100% 100%;
-    mask-position: 100% 100%;
-    animation-name: urpbuilder-vt-new-reveal;
-    animation-fill-mode: forwards;
-  }
+/* 空闲：仅已提交层参与文档流 */
+.simulator-library-transition-stack--idle {
+  isolation: isolate;
 
-  @keyframes urpbuilder-vt-new-reveal {
-    to {
-      -webkit-mask-position: 0% 0%;
-      mask-position: 0% 0%;
-    }
+  .simulator-library-transition-layer--committed {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    min-height: 0;
+    overflow: visible;
+    background-color: var(--builder-simulator-device-bg, #ffffff);
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  ::view-transition-old(urpbuilder-sim-main),
-  ::view-transition-new(urpbuilder-sim-main),
-  ::view-transition-old(urpbuilder-sim-embedded),
-  ::view-transition-new(urpbuilder-sim-embedded) {
-    animation-duration: 0.001ms !important;
+/* 双栈：已提交层撑高，目标层绝对覆盖做 clip */
+.simulator-library-transition-stack--dual {
+  isolation: isolate;
+
+  .simulator-library-transition-layer--committed {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    min-height: 0;
+  }
+
+  .simulator-library-transition-layer--new {
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 2;
+    overflow: hidden;
+    pointer-events: none;
+    background-color: var(--builder-simulator-device-bg, #ffffff);
+    will-change: clip-path;
   }
 }

@@ -1,18 +1,24 @@
 import React from 'react';
 import {
   Alert,
+  Avatar,
+  BackTop,
   Badge,
   Breadcrumb,
   Button,
+  Calendar as AntCalendar,
   Card as AntCard,
+  Carousel,
   Checkbox,
   Col,
+  ColorPicker as AntColorPicker,
   DatePicker,
   Divider,
   Drawer,
   Dropdown,
   Empty,
   Form,
+  Image,
   Input,
   InputNumber,
   Layout,
@@ -20,20 +26,38 @@ import {
   Menu,
   Modal,
   Pagination,
+  Popover,
+  Progress,
   Radio,
   Row,
   Select,
+  Slider,
   Space,
   Spin,
   Statistic as AntStatistic,
   Switch,
   Table,
   Tag,
+  Tabs as AntTabs,
   Typography,
+  TimePicker as AntTimePicker,
+  Upload,
+  Collapse as AntCollapse,
 } from 'antd';
 import { ArrowDownOutlined, ArrowUpOutlined } from '@ant-design/icons';
+import dayjs from 'dayjs';
+import {
+  getCollapseHeaderSlotKey,
+  getCollapseHeaderSlotNodeByValue,
+  getCollapsePanelSlotKey,
+  getCollapsePanelSlotNodeByValue,
+  normalizeCollapseList,
+  normalizeCollapseValue,
+} from '../../utils/collapse';
+import { getTabsPanelSlotKey, getTabsSlotNodeByValue } from '../../utils/tabs';
 import type { MenuProps } from 'antd';
 import type { UiDropDataHandler, UiTreeNode } from '../../store/types';
+import { getNodeSlotKey, isSlotNode } from '../../utils/slot';
 import type { ComponentRegistry } from '../componentContext';
 import { ActivateWrapper } from '../componentHelpers';
 import DropArea from '../../../components/DropArea';
@@ -52,6 +76,8 @@ import {
 
 const { Title, Paragraph, Text, Link } = Typography;
 const { Header, Content, Footer, Sider } = Layout;
+const { RangePicker } = AntTimePicker;
+const { Panel: AntCollapsePanel } = AntCollapse;
 
 type AntdCardDropShellProps = {
   children?: React.ReactNode;
@@ -765,6 +791,342 @@ export function registerAntdComponents(registry: ComponentRegistry): void {
           emptyText: <DropArea data={data} onDropData={onDropData} emptyText="拖拽列表项" style={{ minHeight: 100 }} />,
         }}
       />
+    );
+  });
+
+  registry.set('antd.BackTop', (ctx) => {
+    const {
+      mergeStyle, handleActivateSelf, data, isNodeActive,
+      getFiniteNumberProp, getBackTopVisibleHeightProp, getBackTopContentNode,
+    } = ctx;
+    const vhRaw = getBackTopVisibleHeightProp('visibleHeight');
+    const vh = typeof vhRaw === 'number' ? vhRaw : typeof vhRaw === 'string' ? Number(vhRaw) : 400;
+    return (
+      <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf} nodeKey={data?.key} active={isNodeActive}>
+        <BackTop visibilityHeight={Number.isFinite(vh) ? vh : 400} style={mergeStyle()}>
+          {getBackTopContentNode()}
+        </BackTop>
+      </ActivateWrapper>
+    );
+  });
+
+  registry.set('antd.Progress', (ctx) => {
+    const { getFiniteNumberProp, mergeStyle, handleActivateSelf, data, isNodeActive, getProgressStatusProp } = ctx;
+    const pct = Math.max(0, Math.min(100, getFiniteNumberProp('percentage') ?? 0));
+    const st = getProgressStatusProp();
+    const status = st === 'success' ? 'success' : st === 'exception' || st === 'error' ? 'exception' : undefined;
+    return (
+      <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf} nodeKey={data?.key} active={isNodeActive}>
+        <Progress percent={pct} status={status} />
+      </ActivateWrapper>
+    );
+  });
+
+  registry.set('antd.Image', (ctx) => {
+    const { getStringProp, getFiniteNumberProp, getBooleanProp, mergeStyle, handleActivateSelf, data, isNodeActive } = ctx;
+    return (
+      <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf} nodeKey={data?.key} active={isNodeActive}>
+        <Image
+          src={getStringProp('src') || ''}
+          alt={getStringProp('alt') || ''}
+          width={getFiniteNumberProp('width')}
+          height={getFiniteNumberProp('height')}
+          preview={getBooleanProp('gallery') === true ? {} : false}
+        />
+      </ActivateWrapper>
+    );
+  });
+
+  registry.set('antd.Avatar', (ctx) => {
+    const { getStringProp, mergeStyle, handleActivateSelf, data, isNodeActive } = ctx;
+    const src = getStringProp('src');
+    const shape = getStringProp('shape') === 'round' ? 'circle' : 'square';
+    const sz = getStringProp('size');
+    const size = sz === 'large' ? 'large' : sz === 'small' ? 'small' : 'default';
+    return (
+      <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf} nodeKey={data?.key} active={isNodeActive}>
+        <Avatar src={src || undefined} shape={shape} size={size}>
+          {!src ? getStringProp('alt') || 'A' : null}
+        </Avatar>
+      </ActivateWrapper>
+    );
+  });
+
+  registry.set('antd.ColorPicker', (ctx) => {
+    const { getStringProp, getBooleanProp, mergeStyle, handleActivateSelf, data, isNodeActive } = ctx;
+    const controlled = getBooleanProp('controlled') !== false;
+    const v = getStringProp('value') || getStringProp('defaultValue') || '#1677ff';
+    return (
+      <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf} nodeKey={data?.key} active={isNodeActive}>
+        <AntColorPicker
+          value={controlled ? v : undefined}
+          defaultValue={controlled ? undefined : v}
+          disabled={getBooleanProp('disabled') === true}
+          showText
+        />
+      </ActivateWrapper>
+    );
+  });
+
+  registry.set('antd.TimePicker', (ctx) => {
+    const { getStringProp, getBooleanProp, mergeStyle, handleActivateSelf, data, isNodeActive } = ctx;
+    const fmt = getStringProp('format') || 'HH:mm:ss';
+    const controlled = getBooleanProp('controlled') !== false;
+    const raw = getStringProp('value');
+    const def = getStringProp('defaultValue');
+    return (
+      <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf} nodeKey={data?.key} active={isNodeActive}>
+        <AntTimePicker
+          format={fmt}
+          value={controlled && raw ? dayjs(raw, fmt) : undefined}
+          defaultValue={!controlled && def ? dayjs(def, fmt) : undefined}
+          disabled={getBooleanProp('disabled') === true}
+          placeholder={getStringProp('placeholder') || undefined}
+        />
+      </ActivateWrapper>
+    );
+  });
+
+  registry.set('antd.TimeRangePicker', (ctx) => {
+    const { getStringProp, getBooleanProp, mergeStyle, handleActivateSelf, data, isNodeActive, getTimeRangeValueProp } = ctx;
+    const fmt = getStringProp('format') || 'HH:mm:ss';
+    const controlled = getBooleanProp('controlled') !== false;
+    const toPair = (arr: string[] | undefined) => {
+      if (!arr || arr.length < 2) {
+        return undefined;
+      }
+      const a = dayjs(arr[0], fmt);
+      const b = dayjs(arr[1], fmt);
+      return a.isValid() && b.isValid() ? ([a, b] as [dayjs.Dayjs, dayjs.Dayjs]) : undefined;
+    };
+    const val = toPair(getTimeRangeValueProp('value'));
+    const def = toPair(getTimeRangeValueProp('defaultValue'));
+    return (
+      <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf} nodeKey={data?.key} active={isNodeActive}>
+        <RangePicker
+          format={fmt}
+          value={controlled ? val : undefined}
+          defaultValue={!controlled ? def : undefined}
+          disabled={getBooleanProp('disabled') === true}
+        />
+      </ActivateWrapper>
+    );
+  });
+
+  registry.set('antd.Slider', (ctx) => {
+    const { getFiniteNumberProp, getBooleanProp, mergeStyle, handleActivateSelf, data, isNodeActive, getSliderValueProp } = ctx;
+    const controlled = getBooleanProp('controlled') !== false;
+    const min = getFiniteNumberProp('min') ?? 0;
+    const max = getFiniteNumberProp('max') ?? 100;
+    const v = getSliderValueProp('value');
+    const single = typeof v === 'number' ? v : Array.isArray(v) ? v[0] : min;
+    return (
+      <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf} nodeKey={data?.key} active={isNodeActive}>
+        <Slider
+          min={min}
+          max={max}
+          value={controlled ? single : undefined}
+          defaultValue={!controlled ? getFiniteNumberProp('defaultValue') ?? min : undefined}
+          disabled={getBooleanProp('disabled') === true}
+        />
+      </ActivateWrapper>
+    );
+  });
+
+  registry.set('antd.Upload', (ctx) => {
+    const { onDropData, data, mergeStyle, handleActivateSelf, isNodeActive } = ctx;
+    return (
+      <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf} nodeKey={data?.key} active={isNodeActive}>
+        <Upload beforeUpload={() => false} showUploadList={false}>
+          <DropArea data={data} onDropData={onDropData} emptyText="拖拽或点击上传" />
+        </Upload>
+      </ActivateWrapper>
+    );
+  });
+
+  registry.set('antd.Popover', (ctx) => {
+    const { data, onDropData, getStringProp, mergeStyle, handleActivateSelf, isNodeActive } = ctx;
+    const slotNodes = (data?.children ?? []).filter((child) => isSlotNode(child));
+    const triggerSlotNode = slotNodes.find((child) => getNodeSlotKey(child) === 'trigger');
+    const contentSlotNode = slotNodes.find((child) => getNodeSlotKey(child) === 'content');
+    const tr = getStringProp('trigger') === 'click' ? 'click' : 'hover';
+    return (
+      <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf} nodeKey={data?.key} active={isNodeActive}>
+        <Popover
+          trigger={tr}
+          content={
+            contentSlotNode ? (
+              <DropArea
+                data={contentSlotNode}
+                onDropData={onDropData}
+                dropSlotKey="content"
+                selectable={false}
+                compactWhenFilled
+                emptyText="拖拽组件到浮层内容"
+              />
+            ) : null
+          }
+        >
+          <span>
+            {triggerSlotNode ? (
+              <DropArea
+                data={triggerSlotNode}
+                onDropData={onDropData}
+                dropSlotKey="trigger"
+                selectable={false}
+                compactWhenFilled
+                emptyText="拖拽组件到触发器"
+              />
+            ) : (
+              <span />
+            )}
+          </span>
+        </Popover>
+      </ActivateWrapper>
+    );
+  });
+
+  registry.set('antd.Calendar', (ctx) => {
+    const { getStringProp, mergeStyle, handleActivateSelf, data, isNodeActive, getCalendarValueProp } = ctx;
+    const raw = getCalendarValueProp('value');
+    const v = raw ? dayjs(raw) : dayjs();
+    return (
+      <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf} nodeKey={data?.key} active={isNodeActive}>
+        <AntCalendar fullscreen={false} value={v} />
+      </ActivateWrapper>
+    );
+  });
+
+  registry.set('antd.Tabs', (ctx) => {
+    const {
+      data, onDropData, getStringProp, getBooleanProp, mergeStyle, handleActivateSelf, isNodeActive,
+      getTabsListProp, getTabsControlledValue, getTabsDefaultValue, tabsInnerValue, setTabsInnerValue,
+    } = ctx;
+    const tabsList = getTabsListProp();
+    const controlledValue = getTabsControlledValue();
+    const defaultValue = getTabsDefaultValue();
+    const firstValue = tabsList[0]?.value;
+    const activeTabValue = controlledValue ?? tabsInnerValue ?? defaultValue ?? firstValue;
+    const items = tabsList.map((item) => {
+      const slotNode = getTabsSlotNodeByValue(data, item.value);
+      const slotKey = getTabsPanelSlotKey(item.value);
+      return {
+        key: String(item.value),
+        label: item.label,
+        disabled: item.disabled,
+        children: (
+          <DropArea
+            data={slotNode}
+            onDropData={onDropData}
+            dropSlotKey={slotKey}
+            selectable={false}
+            compactWhenFilled
+            emptyText={`拖拽组件到「${item.label}」面板`}
+          />
+        ),
+      };
+    });
+    const placement = getStringProp('placement');
+    const tabPosition =
+      placement === 'bottom' ? 'bottom' : placement === 'left' ? 'left' : placement === 'right' ? 'right' : 'top';
+    return (
+      <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf} nodeKey={data?.key} active={isNodeActive}>
+        <AntTabs
+          activeKey={String(activeTabValue ?? '')}
+          items={items}
+          tabPosition={tabPosition as 'top' | 'left' | 'right' | 'bottom'}
+          size={getStringProp('size') === 'large' ? 'large' : getStringProp('size') === 'small' ? 'small' : 'middle'}
+          onChange={(k) => setTabsInnerValue(k)}
+        />
+      </ActivateWrapper>
+    );
+  });
+
+  registry.set('antd.Collapse', (ctx) => {
+    const {
+      data, onDropData, getProp, getStringProp, getBooleanProp, mergeStyle, handleActivateSelf, isNodeActive,
+    } = ctx;
+    const collapseList = normalizeCollapseList(getProp('list'));
+    const controlledValue = normalizeCollapseValue(getProp('value'));
+    const defaultValue = normalizeCollapseValue(getProp('defaultValue'));
+    const firstValue = collapseList[0]?.value;
+    const toCollapseValueArray = (value: unknown) => {
+      const normalized = normalizeCollapseValue(value);
+      if (typeof normalized === 'undefined') {
+        return undefined;
+      }
+      return Array.isArray(normalized) ? normalized : [normalized];
+    };
+    const controlledValueArray = toCollapseValueArray(controlledValue);
+    const defaultValueArray = toCollapseValueArray(defaultValue);
+    const accordion = getBooleanProp('expandMutex') === true;
+    const controlledKey =
+      typeof controlledValue !== 'undefined'
+        ? accordion
+          ? (controlledValueArray?.[0] !== undefined ? String(controlledValueArray[0]) : undefined)
+          : (controlledValueArray?.map(String) as string[] | undefined)
+        : undefined;
+    const defaultKey =
+      typeof controlledValue === 'undefined'
+        ? (defaultValueArray ?? (typeof firstValue !== 'undefined' ? [String(firstValue)] : undefined))
+        : undefined;
+
+    const collapseControlledProps =
+      typeof controlledValue !== 'undefined'
+        ? { activeKey: controlledKey as React.Key | React.Key[] }
+        : { defaultActiveKey: defaultKey as React.Key | React.Key[] };
+
+    return (
+      <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf} nodeKey={data?.key} active={isNodeActive}>
+        <AntCollapse
+          accordion={accordion}
+          bordered={getBooleanProp('bordered') !== false}
+          {...collapseControlledProps}
+          onChange={() => { /* 搭建态 */ }}
+        >
+          {collapseList.map((item) => {
+            const headerSlotNode = getCollapseHeaderSlotNodeByValue(data, item.value);
+            const panelSlotNode = getCollapsePanelSlotNodeByValue(data, item.value);
+            const headerSlotKey = getCollapseHeaderSlotKey(item.value);
+            const panelSlotKey = getCollapsePanelSlotKey(item.value);
+            return (
+              <AntCollapsePanel
+                key={`${data?.key ?? 'collapse'}-${String(item.value)}`}
+                header={(
+                  <DropArea
+                    data={headerSlotNode}
+                    onDropData={onDropData}
+                    dropSlotKey={headerSlotKey}
+                    selectable={false}
+                    compactWhenFilled
+                    emptyText={`拖拽到「${item.label}」头部`}
+                  />
+                )}
+              >
+                <DropArea
+                  data={panelSlotNode}
+                  onDropData={onDropData}
+                  dropSlotKey={panelSlotKey}
+                  selectable={false}
+                  compactWhenFilled
+                  emptyText={`拖拽到「${item.label}」内容`}
+                />
+              </AntCollapsePanel>
+            );
+          })}
+        </AntCollapse>
+      </ActivateWrapper>
+    );
+  });
+
+  registry.set('antd.Carousel', (ctx) => {
+    const { data, onDropData, mergeStyle, handleActivateSelf, isNodeActive } = ctx;
+    return (
+      <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf} nodeKey={data?.key} active={isNodeActive}>
+        <Carousel dots>
+          <DropArea data={data} onDropData={onDropData} emptyText="拖拽轮播项" />
+        </Carousel>
+      </ActivateWrapper>
     );
   });
 }

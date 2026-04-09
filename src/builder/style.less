@@ -1005,7 +1005,7 @@
         }
       }
 
-      /* View Transition 外壳插在 scroll 与根 DropArea 之间，须与直连 .drop-area-root 同等 flex 占位 */
+      /* View Transition / 组件库叠层外壳插在 scroll 与根 DropArea 之间，须与直连 .drop-area-root 同等 flex 占位 */
       .simulator-scroll > .drop-area-root,
       .simulator-scroll > .simulator-library-brush-root {
         position: relative;
@@ -1020,7 +1020,79 @@
         min-width: 0;
       }
 
-      .simulator-scroll > .simulator-library-brush-root > .drop-area-root {
+      /* 主画布：根 DropArea 在 brush-root > transition-stack > layer--committed（已提交预览层）下 */
+      .simulator-scroll > .simulator-library-brush-root > .simulator-library-transition-stack {
+        position: relative;
+        flex: 1 1 auto;
+        min-height: 100%;
+        width: 100%;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .simulator-scroll
+        > .simulator-library-brush-root
+        > .simulator-library-transition-stack
+        > .simulator-library-transition-layer--committed {
+        flex: 1 1 auto;
+        min-height: 100%;
+        width: 100%;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .simulator-scroll
+        > .simulator-library-brush-root
+        > .simulator-library-transition-stack
+        > .simulator-library-transition-layer--committed
+        > .drop-area-root {
+        flex: 1 1 auto;
+        min-height: 100%;
+        width: 100%;
+      }
+
+      /* 嵌入预览：brush-root 在 .preview-engine-canvas 内，链路与主画布一致 */
+      .simulator-scroll > .preview-engine-canvas > .simulator-library-brush-root {
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+        position: relative;
+        flex: 1 0 auto;
+        min-height: 100%;
+        width: 100%;
+      }
+
+      .simulator-scroll > .preview-engine-canvas > .simulator-library-brush-root > .simulator-library-transition-stack {
+        position: relative;
+        flex: 1 1 auto;
+        min-height: 100%;
+        width: 100%;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .simulator-scroll
+        > .preview-engine-canvas
+        > .simulator-library-brush-root
+        > .simulator-library-transition-stack
+        > .simulator-library-transition-layer--committed {
+        flex: 1 1 auto;
+        min-height: 100%;
+        width: 100%;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .simulator-scroll
+        > .preview-engine-canvas
+        > .simulator-library-brush-root
+        > .simulator-library-transition-stack
+        > .simulator-library-transition-layer--committed
+        > .drop-area-root {
         flex: 1 1 auto;
         min-height: 100%;
         width: 100%;

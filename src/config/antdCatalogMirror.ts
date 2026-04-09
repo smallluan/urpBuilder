@@ -46,6 +46,20 @@ export const ANTD_TD_MIRROR_PAIRS: readonly MirrorPair[] = [
   { antdType: 'antd.Menu', tdesignType: 'Menu' },
   { antdType: 'antd.Menu.Item', tdesignType: 'Menu.Item' },
   { antdType: 'antd.Menu.SubMenu', tdesignType: 'Menu.Submenu' },
+  { antdType: 'antd.BackTop', tdesignType: 'BackTop' },
+  { antdType: 'antd.Progress', tdesignType: 'Progress' },
+  { antdType: 'antd.Image', tdesignType: 'Image' },
+  { antdType: 'antd.Avatar', tdesignType: 'Avatar' },
+  { antdType: 'antd.ColorPicker', tdesignType: 'ColorPicker' },
+  { antdType: 'antd.TimePicker', tdesignType: 'TimePicker' },
+  { antdType: 'antd.TimeRangePicker', tdesignType: 'TimeRangePicker' },
+  { antdType: 'antd.Slider', tdesignType: 'Slider' },
+  { antdType: 'antd.Upload', tdesignType: 'Upload' },
+  { antdType: 'antd.Popover', tdesignType: 'Popup' },
+  { antdType: 'antd.Calendar', tdesignType: 'Calendar' },
+  { antdType: 'antd.Tabs', tdesignType: 'Tabs' },
+  { antdType: 'antd.Collapse', tdesignType: 'Collapse' },
+  { antdType: 'antd.Carousel', tdesignType: 'Swiper' },
 ];
 
 function deepCloneCatalogItem<T>(item: T): T {

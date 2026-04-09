@@ -507,6 +507,7 @@ export const createBuilderStore = (options: CreateBuilderStoreOptions = {}) => {
 
   return create<BuilderStore>((set) => ({
     previewUiLibrary: 'tdesign',
+    simulatorLibraryTransition: null,
     // ===== 视图环境 =====
     screenSize: 375,
     autoWidth: 375,
@@ -553,6 +554,28 @@ export const createBuilderStore = (options: CreateBuilderStoreOptions = {}) => {
     // ===== Actions — 视图环境 =====
 
     setPreviewUiLibrary: (library) => set({ previewUiLibrary: library }),
+
+    beginSimulatorLibraryTransition: (to) =>
+      set((state) => {
+        const from = state.previewUiLibrary;
+        if (from === to) {
+          return {};
+        }
+        return { simulatorLibraryTransition: { from, to } };
+      }),
+
+    cancelSimulatorLibraryTransition: () => set({ simulatorLibraryTransition: null }),
+
+    commitSimulatorLibraryTransition: () =>
+      set((state) => {
+        if (!state.simulatorLibraryTransition) {
+          return {};
+        }
+        return {
+          previewUiLibrary: state.simulatorLibraryTransition.to,
+          simulatorLibraryTransition: null,
+        };
+      }),
 
     setScreenSize: (screenSize) => set({ screenSize }),
 

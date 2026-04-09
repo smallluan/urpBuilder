@@ -1,18 +1,24 @@
 import React from 'react';
 import {
   Alert,
+  Avatar,
+  BackTop,
   Badge,
   Breadcrumb,
   Button,
+  Calendar as AntCalendar,
   Card as AntCard,
+  Carousel,
   Checkbox,
   Col,
+  ColorPicker as AntColorPicker,
   DatePicker,
   Divider,
   Drawer,
   Dropdown,
   Empty,
   Form,
+  Image,
   Input,
   InputNumber,
   Layout,
@@ -20,16 +26,21 @@ import {
   Menu,
   Modal,
   Pagination,
+  Popover,
+  Progress,
   Radio,
   Row,
   Select,
+  Slider,
   Space,
   Spin,
   Statistic as AntStatistic,
   Switch,
   Table,
   Tag,
+  TimePicker as AntTimePicker,
   Typography,
+  Upload as AntUpload,
 } from 'antd';
 import { ArrowDownOutlined, ArrowUpOutlined } from '@ant-design/icons';
 import type { MenuProps } from 'antd';
@@ -49,8 +60,10 @@ import {
   BUILDER_CARD_BODY_STYLE,
   tdesignTableColumnsToAntd,
 } from '../../../utils/antdTdesignPropBridge';
+import { AntdCollapsePreviewBridge, AntdTabsPreviewBridge } from './antdPreviewBridges';
 
 const { Title, Paragraph, Text, Link } = Typography;
+const { RangePicker } = AntTimePicker;
 const { Header, Content, Footer, Sider } = Layout;
 
 function getProp(node: UiTreeNode, propName: string) {
@@ -626,6 +639,215 @@ export function tryRenderAntdPreview(ctx: AntdPreviewContext): React.ReactElemen
         </List>
       );
     }
+    case 'antd.BackTop': {
+      const vh = getFiniteNumberProp(node, 'visibleHeight');
+      return (
+        <BackTop
+          className="preview-back-top"
+          visibilityHeight={vh !== undefined && Number.isFinite(vh) ? vh : 400}
+          style={mergeStyle()}
+          onClick={() => emitInteractionLifecycle('onClick')}
+        />
+      );
+    }
+    case 'antd.Progress': {
+      const pct = Math.max(0, Math.min(100, getFiniteNumberProp(node, 'percentage') ?? 0));
+      const theme = getStringProp(node, 'theme');
+      const status =
+        theme === 'success' ? 'success' : theme === 'error' ? 'exception' : ('active' as const);
+      return (
+        <Progress
+          percent={pct}
+          status={theme === 'success' || theme === 'error' ? status : undefined}
+          strokeWidth={getFiniteNumberProp(node, 'strokeWidth')}
+          style={mergeStyle()}
+        />
+      );
+    }
+    case 'antd.Image': {
+      const src = getStringProp(node, 'src') || '';
+      return (
+        <Image
+          src={src}
+          alt={getStringProp(node, 'alt') || ''}
+          width={getFiniteNumberProp(node, 'width')}
+          height={getFiniteNumberProp(node, 'height')}
+          style={mergeStyle()}
+          preview={getBooleanProp(node, 'gallery') === true ? {} : false}
+        />
+      );
+    }
+    case 'antd.Avatar': {
+      const src = getStringProp(node, 'src') || undefined;
+      const shape = getStringProp(node, 'shape') === 'round' ? 'circle' : 'square';
+      const sz = getStringProp(node, 'size');
+      const size = sz === 'large' ? 'large' : sz === 'small' ? 'small' : 'default';
+      return (
+        <Avatar src={src} shape={shape} size={size} style={mergeStyle()}>
+          {!src ? getStringProp(node, 'alt') || 'A' : null}
+        </Avatar>
+      );
+    }
+    case 'antd.ColorPicker': {
+      const controlled = getBooleanProp(node, 'controlled') !== false;
+      const raw = getStringProp(node, 'value') || getStringProp(node, 'defaultValue') || '#1677ff';
+      return (
+        <AntColorPicker
+          value={controlled ? raw : undefined}
+          defaultValue={controlled ? undefined : raw}
+          disabled={getBooleanProp(node, 'disabled') === true}
+          showText
+          style={mergeStyle()}
+          onChange={(_, hex) => {
+            syncNodeValue(hex);
+            emitInteractionLifecycle('onChange', { value: hex });
+          }}
+        />
+      );
+    }
+    case 'antd.TimePicker': {
+      const controlled = getBooleanProp(node, 'controlled') !== false;
+      const fmt = getStringProp(node, 'format') || 'HH:mm:ss';
+      const raw = getStringProp(node, 'value');
+      const def = getStringProp(node, 'defaultValue');
+      const parsed = raw ? dayjs(raw, fmt) : undefined;
+      const parsedDef = def ? dayjs(def, fmt) : undefined;
+      return (
+        <AntTimePicker
+          format={fmt}
+          value={controlled ? parsed : undefined}
+          defaultValue={controlled ? undefined : parsedDef}
+          disabled={getBooleanProp(node, 'disabled') === true}
+          placeholder={getStringProp(node, 'placeholder') || undefined}
+          style={mergeStyle()}
+          onChange={(d) => {
+            const s = d ? d.format(fmt) : '';
+            syncNodeValue(s);
+            emitInteractionLifecycle('onChange', { value: s });
+          }}
+        />
+      );
+    }
+    case 'antd.TimeRangePicker': {
+      const controlled = getBooleanProp(node, 'controlled') !== false;
+      const fmt = getStringProp(node, 'format') || 'HH:mm:ss';
+      const raw = getProp(node, 'value');
+      const def = getProp(node, 'defaultValue');
+      const parsePair = (v: unknown): [Dayjs, Dayjs] | undefined => {
+        if (!Array.isArray(v) || v.length < 2) {
+          return undefined;
+        }
+        const a = dayjs(String(v[0]), fmt);
+        const b = dayjs(String(v[1]), fmt);
+        return a.isValid() && b.isValid() ? [a, b] : undefined;
+      };
+      const valPair = parsePair(raw);
+      const defPair = parsePair(def);
+      return (
+        <RangePicker
+          format={fmt}
+          value={controlled ? valPair : undefined}
+          defaultValue={controlled ? undefined : defPair}
+          disabled={getBooleanProp(node, 'disabled') === true}
+          style={mergeStyle()}
+          onChange={(range) => {
+            const out =
+              range && range[0] && range[1] ? [range[0].format(fmt), range[1].format(fmt)] : [];
+            syncNodeValue(out);
+            emitInteractionLifecycle('onChange', { value: out });
+          }}
+        />
+      );
+    }
+    case 'antd.Slider': {
+      const controlled = getBooleanProp(node, 'controlled') !== false;
+      const min = getFiniteNumberProp(node, 'min') ?? 0;
+      const max = getFiniteNumberProp(node, 'max') ?? 100;
+      const val = getFiniteNumberProp(node, 'value') ?? min;
+      const defVal = getFiniteNumberProp(node, 'defaultValue') ?? min;
+      return (
+        <Slider
+          min={min}
+          max={max}
+          value={controlled ? val : undefined}
+          defaultValue={controlled ? undefined : defVal}
+          disabled={getBooleanProp(node, 'disabled') === true}
+          style={mergeStyle()}
+          onChange={(v) => {
+            syncNodeValue(v);
+            emitInteractionLifecycle('onChange', { value: v });
+          }}
+        />
+      );
+    }
+    case 'antd.Upload':
+      return (
+        <AntUpload
+          style={mergeStyle()}
+          beforeUpload={() => false}
+          showUploadList={false}
+          onChange={(info) => emitInteractionLifecycle('onChange', { fileList: info.fileList })}
+        >
+          {renderChildList(node.children ?? [])}
+        </AntUpload>
+      );
+    case 'antd.Popover': {
+      const triggerChildren = getSlotChildren(node, 'trigger');
+      const contentChildren = getSlotChildren(node, 'content');
+      const trig = triggerChildren.length > 0 ? renderChildList(triggerChildren) : <span />;
+      const content = contentChildren.length > 0 ? renderChildList(contentChildren) : null;
+      const tr = getStringProp(node, 'trigger') === 'click' ? 'click' : 'hover';
+      return (
+        <Popover
+          trigger={tr}
+          content={content}
+          getPopupContainer={() => getPortalContainer()}
+          onOpenChange={(open) => emitInteractionLifecycle('onVisibleChange', { visible: open })}
+        >
+          <span style={mergeStyle()}>{trig}</span>
+        </Popover>
+      );
+    }
+    case 'antd.Calendar': {
+      const raw = getStringProp(node, 'value');
+      const parsed = raw ? dayjs(raw) : dayjs();
+      return (
+        <AntCalendar
+          fullscreen={false}
+          value={parsed}
+          style={mergeStyle()}
+          onSelect={(d) => {
+            const s = d.format('YYYY-MM-DD');
+            syncNodeValue(s);
+            emitInteractionLifecycle('onCellClick', { date: s });
+          }}
+        />
+      );
+    }
+    case 'antd.Tabs':
+      return (
+        <AntdTabsPreviewBridge
+          node={node}
+          mergeStyle={mergeStyle}
+          renderChildList={renderChildList}
+          emitInteractionLifecycle={emitInteractionLifecycle}
+        />
+      );
+    case 'antd.Collapse':
+      return (
+        <AntdCollapsePreviewBridge
+          node={node}
+          mergeStyle={mergeStyle}
+          renderChildList={renderChildList}
+          emitInteractionLifecycle={emitInteractionLifecycle}
+        />
+      );
+    case 'antd.Carousel':
+      return (
+        <Carousel style={mergeStyle()} dots>
+          {renderChildList(node.children ?? [])}
+        </Carousel>
+      );
     case 'antd.Menu':
       return (
         <Menu

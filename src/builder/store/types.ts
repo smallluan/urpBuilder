@@ -8,6 +8,12 @@ import type { UiPreviewLibrary } from '../../config/uiPreviewLibrary';
 
 export type ScreenSize = string | number;
 
+/** 模拟器内双 DOM 叠层切换：from=当前已提交库，to=目标库 */
+export type SimulatorLibraryTransitionState = {
+  from: UiPreviewLibrary;
+  to: UiPreviewLibrary;
+};
+
 /** 侧栏状态按搭建 UI（component）与流程（flow）两套独立保存 */
 export type BuilderWorkbenchAsideMode = 'component' | 'flow';
 export type StateAction<T> = T | ((previous: T) => T);
@@ -217,6 +223,8 @@ export interface BuilderStore {
    * 预览与右侧组件库壳：TDesign 或 Ant Design（DSL 始终为 TDesign 物料 type）。
    */
   previewUiLibrary: UiPreviewLibrary;
+  /** 非 null 时模拟器叠层渲染 from（下）与 to（上 clip 揭示），提交后清空 */
+  simulatorLibraryTransition: SimulatorLibraryTransitionState | null;
   // 视图环境
   screenSize: ScreenSize;
   autoWidth: number;
@@ -271,6 +279,9 @@ export interface BuilderStore {
 
   // Actions — 视图环境
   setPreviewUiLibrary: (library: UiPreviewLibrary) => void;
+  beginSimulatorLibraryTransition: (to: UiPreviewLibrary) => void;
+  cancelSimulatorLibraryTransition: () => void;
+  commitSimulatorLibraryTransition: () => void;
   setScreenSize: (screenSize: ScreenSize) => void;
   setAutoWidth: (width: number) => void;
   setSimulatorChromeStyle: (style: SimulatorChromeStyle) => void;

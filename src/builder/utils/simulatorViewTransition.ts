@@ -1,37 +1,78 @@
-import { flushSync } from 'react-dom';
+/**
+ * 模拟器组件库切换：纯几何 + Promise 协调（双 DOM 叠层动画在 SimulatorLibraryBrushOverlay）。
+ */
 
-type ViewTransitionResult = {
-  finished: Promise<void>;
-  ready: Promise<void>;
-  updateCallbackDone: Promise<void>;
-  domUpdated: Promise<void>;
+export const BRUSH_DURATION_MS = 2000;
+
+export type SimulatorViewTransitionOutcome = 'completed' | 'aborted';
+
+type Point = {
+  x: number;
+  y: number;
 };
 
-function getStartViewTransition(): ((cb: () => void) => ViewTransitionResult) | undefined {
-  if (typeof document === 'undefined') {
-    return undefined;
-  }
-  const doc = document as Document & { startViewTransition?: (cb: () => void) => ViewTransitionResult };
-  return typeof doc.startViewTransition === 'function' ? doc.startViewTransition.bind(document) : undefined;
+let pendingResolve: ((outcome: SimulatorViewTransitionOutcome) => void) | null = null;
+
+/** 新一次切换会结束上一笔 Promise（aborted） */
+export function startSimulatorLibraryTransitionRun(): Promise<SimulatorViewTransitionOutcome> {
+  pendingResolve?.('aborted');
+  return new Promise((resolve) => {
+    pendingResolve = resolve;
+  });
 }
 
-/**
- * 组件库切换：用 View Transitions 在「旧帧纹理 → 新 DOM」之间做一次 GPU 合成，避免双 React 实例。
- * 不支持时退化为同步 flush（无动画、无额外层）。
- */
-export function runSimulatorViewTransition(update: () => void): void {
-  if (typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
-    flushSync(update);
-    return;
+export function endSimulatorLibraryTransitionRun(outcome: SimulatorViewTransitionOutcome): void {
+  pendingResolve?.(outcome);
+  pendingResolve = null;
+}
+
+/** 矩形内满足 x+y<=threshold 的区域（新层自上而下增长，与旧层位图裁剪互补） */
+export function clipRectByDiagonalLess(width: number, height: number, threshold: number): Point[] {
+  const source: Point[] = [
+    { x: 0, y: 0 },
+    { x: width, y: 0 },
+    { x: width, y: height },
+    { x: 0, y: height },
+  ];
+
+  const isInside = (p: Point) => p.x + p.y <= threshold;
+  const intersect = (a: Point, b: Point): Point => {
+    const delta = b.x - a.x + (b.y - a.y);
+    if (delta === 0) {
+      return { x: a.x, y: a.y };
+    }
+    const t = (threshold - a.x - a.y) / delta;
+    return {
+      x: a.x + (b.x - a.x) * t,
+      y: a.y + (b.y - a.y) * t,
+    };
+  };
+
+  const result: Point[] = [];
+  for (let i = 0; i < source.length; i += 1) {
+    const current = source[i];
+    const previous = source[(i + source.length - 1) % source.length];
+    const currentInside = isInside(current);
+    const previousInside = isInside(previous);
+
+    if (currentInside) {
+      if (!previousInside) {
+        result.push(intersect(previous, current));
+      }
+      result.push(current);
+    } else if (previousInside) {
+      result.push(intersect(previous, current));
+    }
   }
 
-  const startVT = getStartViewTransition();
-  if (startVT) {
-    startVT(() => {
-      flushSync(update);
-    });
-    return;
-  }
+  return result;
+}
 
-  flushSync(update);
+export function toClipPath(points: Point[], width: number, height: number): string {
+  if (points.length === 0 || width <= 0 || height <= 0) {
+    return 'polygon(0 0, 0 0, 0 0)';
+  }
+  return `polygon(${points
+    .map((p) => `${(p.x / width) * 100}% ${(p.y / height) * 100}%`)
+    .join(', ')})`;
 }

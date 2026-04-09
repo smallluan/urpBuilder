@@ -1,8 +1,11 @@
-import React, { useEffect, useState } from 'react';
-import { Select } from 'tdesign-react';
+import React, { useEffect, useRef, useState } from 'react';
+import { MessagePlugin, Select } from 'tdesign-react';
 import { useBuilderAccess, useBuilderContext } from '../context/BuilderContext';
 import { PREVIEW_UI_LIBRARY_OPTIONS, type UiPreviewLibrary } from '../../config/uiPreviewLibrary';
-import { runSimulatorViewTransition } from '../utils/simulatorViewTransition';
+import {
+  endSimulatorLibraryTransitionRun,
+  startSimulatorLibraryTransitionRun,
+} from '../utils/simulatorViewTransition';
 
 /**
  * 搭建画布工具栏右侧：预览组件库下拉（DSL 仍为 TDesign；扩展库时在 PREVIEW_UI_LIBRARY_OPTIONS 追加）。
@@ -11,8 +14,8 @@ const PreviewUiLibraryToolbarSelect: React.FC = () => {
   const { useStore } = useBuilderContext();
   const { readOnly } = useBuilderAccess();
   const previewUiLibrary = useStore((s) => s.previewUiLibrary);
-  const setPreviewUiLibrary = useStore((s) => s.setPreviewUiLibrary);
   const [selectValue, setSelectValue] = useState<UiPreviewLibrary>(previewUiLibrary);
+  const librarySwitchLoadingRef = useRef<Promise<unknown> | null>(null);
 
   useEffect(() => {
     setSelectValue(previewUiLibrary);
@@ -32,13 +35,44 @@ const PreviewUiLibraryToolbarSelect: React.FC = () => {
           if (next !== 'tdesign' && next !== 'antd') {
             return;
           }
-          const current = useStore.getState().previewUiLibrary;
-          if (next === current) {
+          const state = useStore.getState();
+          const { previewUiLibrary: committed, simulatorLibraryTransition } = state;
+
+          if (simulatorLibraryTransition) {
+            if (next === simulatorLibraryTransition.to) {
+              return;
+            }
+            if (next === committed) {
+              setSelectValue(committed);
+              state.cancelSimulatorLibraryTransition();
+              endSimulatorLibraryTransitionRun('aborted');
+              return;
+            }
+          }
+
+          if (next === committed && !simulatorLibraryTransition) {
             return;
           }
+
           setSelectValue(next);
-          runSimulatorViewTransition(() => {
-            setPreviewUiLibrary(next);
+          const runPromise = startSimulatorLibraryTransitionRun();
+          state.beginSimulatorLibraryTransition(next);
+
+          const prevLoading = librarySwitchLoadingRef.current;
+          if (prevLoading) {
+            MessagePlugin.close(prevLoading);
+            librarySwitchLoadingRef.current = null;
+          }
+          const loadingMsg = MessagePlugin.loading({ content: '组件库切换中…', duration: 0 });
+          librarySwitchLoadingRef.current = loadingMsg;
+          void runPromise.then((outcome) => {
+            if (librarySwitchLoadingRef.current === loadingMsg) {
+              MessagePlugin.close(loadingMsg);
+              librarySwitchLoadingRef.current = null;
+            }
+            if (outcome === 'completed') {
+              MessagePlugin.success('组件库切换成功');
+            }
           });
         }}
         popupProps={{
