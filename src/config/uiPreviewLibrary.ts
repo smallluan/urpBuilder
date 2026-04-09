@@ -36,6 +36,8 @@ export const SHARED_LAYOUT_TD_TYPES = new Set<string>([
   'Stack',
   'Inline',
   'Space',
+  /** 列表 DSL 与 TDesign 强绑定（物料、插槽、示例数据）；Ant Design 预览也统一走 TDesign List */
+  'List',
   'RouteOutlet',
   'ComponentSlotOutlet',
 ]);

@@ -1,4 +1,5 @@
 import React from 'react';
+import { antdProgressPropsFromDsl } from '../../utils/progressAntdBridge';
 import {
   Alert,
   Avatar,
@@ -22,7 +23,6 @@ import {
   Input,
   InputNumber,
   Layout,
-  List,
   Menu,
   Modal,
   Pagination,
@@ -645,19 +645,57 @@ export function registerAntdComponents(registry: ComponentRegistry): void {
   });
 
   registry.set('antd.Menu', (ctx) => {
-    const { getStringProp, data, mergeStyle, setActiveNode, onDropData } = ctx;
+    const { getStringProp, getBooleanProp, data, mergeStyle, setActiveNode, onDropData, getMenuWidthProp } = ctx;
     const kids = data?.children ?? [];
     const theme = getStringProp('theme') === 'dark' ? 'dark' : 'light';
+    const collapsed = getBooleanProp('collapsed') === true;
+    const w = getMenuWidthProp('width');
+    const widthCss = Array.isArray(w) ? w[0] : w;
+    const widthResolved = widthCss ?? 232;
     if (kids.length === 0) {
       return (
-        <div style={mergeStyle()}>
+        <div style={mergeStyle({ minWidth: collapsed ? 48 : widthResolved })}>
           <DropArea data={data} onDropData={onDropData} emptyText="拖入 antd.Menu.Item / SubMenu" />
         </div>
       );
     }
     return (
       <div style={mergeStyle()}>
-        <Menu mode="vertical" theme={theme} selectable={false} style={{ width: getStringProp('width') || undefined }}>
+        <Menu
+          mode="inline"
+          theme={theme}
+          inlineCollapsed={collapsed}
+          selectable={false}
+          style={{
+            width: collapsed ? undefined : widthResolved,
+            minWidth: collapsed ? 48 : undefined,
+          }}
+        >
+          {renderAntdMenuChildren(kids, setActiveNode, onDropData)}
+        </Menu>
+      </div>
+    );
+  });
+
+  registry.set('antd.HeadMenu', (ctx) => {
+    const { getStringProp, data, mergeStyle, setActiveNode, onDropData } = ctx;
+    const kids = data?.children ?? [];
+    const theme = getStringProp('theme') === 'dark' ? 'dark' : 'light';
+    if (kids.length === 0) {
+      return (
+        <div style={mergeStyle({ width: '100%' })}>
+          <DropArea data={data} onDropData={onDropData} emptyText="拖入菜单项 / 子菜单" />
+        </div>
+      );
+    }
+    return (
+      <div style={mergeStyle({ width: '100%', minWidth: 0 })}>
+        <Menu
+          mode="horizontal"
+          theme={theme}
+          selectable={false}
+          style={{ width: '100%', maxWidth: '100%', minWidth: 0, flex: '1 1 auto' }}
+        >
           {renderAntdMenuChildren(kids, setActiveNode, onDropData)}
         </Menu>
       </div>
@@ -857,24 +895,6 @@ export function registerAntdComponents(registry: ComponentRegistry): void {
     );
   });
 
-  registry.set('antd.List', (ctx) => {
-    const { getBooleanProp, getStringProp, onDropData, data, mergeStyle } = ctx;
-    const header = getStringProp('header')?.trim();
-    const footer = getStringProp('footer')?.trim();
-    return (
-      <List
-        bordered={getBooleanProp('split') === true}
-        header={header ? <span>{header}</span> : undefined}
-        footer={footer ? <span>{footer}</span> : undefined}
-        dataSource={[]}
-        style={mergeStyle()}
-        locale={{
-          emptyText: <DropArea data={data} onDropData={onDropData} emptyText="拖拽列表项" style={{ minHeight: 100 }} />,
-        }}
-      />
-    );
-  });
-
   registry.set('antd.BackTop', (ctx) => {
     const {
       mergeStyle, handleActivateSelf, data, isNodeActive,
@@ -892,13 +912,24 @@ export function registerAntdComponents(registry: ComponentRegistry): void {
   });
 
   registry.set('antd.Progress', (ctx) => {
-    const { getFiniteNumberProp, mergeStyle, handleActivateSelf, data, isNodeActive, getProgressStatusProp } = ctx;
+    const {
+      getFiniteNumberProp, getStringProp, mergeStyle, handleActivateSelf, data, isNodeActive,
+      getProgressStatusProp, getProgressColorProp, getProgressLabelProp, getProgressSizeProp,
+    } = ctx;
     const pct = Math.max(0, Math.min(100, getFiniteNumberProp('percentage') ?? 0));
-    const st = getProgressStatusProp();
-    const status = st === 'success' ? 'success' : st === 'exception' || st === 'error' ? 'exception' : undefined;
+    const props = antdProgressPropsFromDsl({
+      theme: getStringProp('theme') || 'line',
+      percentage: pct,
+      status: getProgressStatusProp(),
+      color: getProgressColorProp('color'),
+      trackColor: getStringProp('trackColor')?.trim() || undefined,
+      strokeWidth: getFiniteNumberProp('strokeWidth'),
+      size: getStringProp('size') ?? getProgressSizeProp('size'),
+      label: getProgressLabelProp(),
+    });
     return (
       <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf} nodeKey={data?.key} active={isNodeActive}>
-        <Progress percent={pct} status={status} />
+        <Progress {...props} style={mergeStyle()} />
       </ActivateWrapper>
     );
   });

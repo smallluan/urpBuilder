@@ -53,13 +53,13 @@
   align-items: stretch;
 }
 
-/* 根画布：用纵向 flex 排兄弟，避免 antd 等 inline-flex/inline-block 根节点在 block 流里横向并排（与 TDesign 纵向堆叠对齐）；flex-start 避免把按钮等拉成整行宽 */
+/* 根画布：纵向 flex 排兄弟，避免 antd 等 inline 级根横向并排；cross-axis 用 stretch 让 Card/选项卡/折叠/列表等恢复默认整行宽 */
 .drop-area-root > .drop-area__body {
   flex: 1 1 auto;
   min-height: 100%;
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
+  align-items: stretch;
   width: 100%;
   min-width: 0;
   box-sizing: border-box;
@@ -69,6 +69,20 @@
   flex: 0 0 auto;
   min-width: 0;
   max-width: 100%;
+}
+
+/* 行内级控件仍按内容宽度，避免被拉成整行按钮 */
+.drop-area-root > .drop-area__body > button,
+.drop-area-root > .drop-area__body > .t-button,
+.drop-area-root > .drop-area__body > .t-link,
+.drop-area-root > .drop-area__body > .t-avatar,
+.drop-area-root > .drop-area__body > .t-tag,
+.drop-area-root > .drop-area__body > .t-badge,
+.drop-area-root > .drop-area__body > .ant-btn,
+.drop-area-root > .drop-area__body > .ant-float-btn,
+.drop-area-root > .drop-area__body > .ant-avatar,
+.drop-area-root > .drop-area__body > .ant-tag {
+  align-self: flex-start;
 }
 
 .drop-area-active {
@@ -107,13 +121,26 @@
   flex-direction: column;
 }
 
-/* 列 flex 默认 align-items: stretch 会把子项在横轴拉满，按钮/开关等会像 block 一样全宽；改为贴左按内容宽度 */
+/* 与根画布一致：块级组件整行宽；行内控件见下条 */
 .builder-route-outlet > .drop-area--route-outlet > .drop-area__body {
   flex: 1;
   min-height: 0;
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
+  align-items: stretch;
+}
+
+.builder-route-outlet > .drop-area--route-outlet > .drop-area__body > button,
+.builder-route-outlet > .drop-area--route-outlet > .drop-area__body > .t-button,
+.builder-route-outlet > .drop-area--route-outlet > .drop-area__body > .t-link,
+.builder-route-outlet > .drop-area--route-outlet > .drop-area__body > .t-avatar,
+.builder-route-outlet > .drop-area--route-outlet > .drop-area__body > .t-tag,
+.builder-route-outlet > .drop-area--route-outlet > .drop-area__body > .t-badge,
+.builder-route-outlet > .drop-area--route-outlet > .drop-area__body > .ant-btn,
+.builder-route-outlet > .drop-area--route-outlet > .drop-area__body > .ant-float-btn,
+.builder-route-outlet > .drop-area--route-outlet > .drop-area__body > .ant-avatar,
+.builder-route-outlet > .drop-area--route-outlet > .drop-area__body > .ant-tag {
+  align-self: flex-start;
 }
 
 .builder-route-outlet > .drop-area--route-outlet .drop-area__body .drop-area-empty {

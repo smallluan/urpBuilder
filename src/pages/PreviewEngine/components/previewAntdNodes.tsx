@@ -22,7 +22,6 @@ import {
   Input,
   InputNumber,
   Layout,
-  List,
   Menu,
   Modal,
   Pagination,
@@ -63,6 +62,11 @@ import {
   drawerWidthPxFromTdesignSize,
 } from '../../../utils/antdTdesignPropBridge';
 import { collectDslStepRows, dslStepStatusToAntd } from '../../../builder/utils/stepsDsl';
+import {
+  antdProgressPropsFromDsl,
+  parseProgressColorValue,
+  parseProgressLabelValue,
+} from '../../../builder/utils/progressAntdBridge';
 import { AntdCollapsePreviewBridge, AntdTabsPreviewBridge } from './antdPreviewBridges';
 
 const { Title, Paragraph, Text, Link } = Typography;
@@ -686,20 +690,6 @@ export function tryRenderAntdPreview(ctx: AntdPreviewContext): React.ReactElemen
         />
       );
     }
-    case 'antd.List': {
-      const header = getStringProp(node, 'header')?.trim();
-      const footer = getStringProp(node, 'footer')?.trim();
-      return (
-        <List
-          bordered={getBooleanProp(node, 'split') === true}
-          header={header ? <span>{header}</span> : undefined}
-          footer={footer ? <span>{footer}</span> : undefined}
-          style={mergeStyle()}
-        >
-          {renderChildren(node, onLifecycle)}
-        </List>
-      );
-    }
     case 'antd.BackTop': {
       const vh = getFiniteNumberProp(node, 'visibleHeight');
       return (
@@ -713,17 +703,19 @@ export function tryRenderAntdPreview(ctx: AntdPreviewContext): React.ReactElemen
     }
     case 'antd.Progress': {
       const pct = Math.max(0, Math.min(100, getFiniteNumberProp(node, 'percentage') ?? 0));
-      const theme = getStringProp(node, 'theme');
-      const status =
-        theme === 'success' ? 'success' : theme === 'error' ? 'exception' : ('active' as const);
-      return (
-        <Progress
-          percent={pct}
-          status={theme === 'success' || theme === 'error' ? status : undefined}
-          strokeWidth={getFiniteNumberProp(node, 'strokeWidth')}
-          style={mergeStyle()}
-        />
-      );
+      const statusRaw = getStringProp(node, 'status')?.trim();
+      const status = !statusRaw || statusRaw === 'default' ? undefined : statusRaw;
+      const props = antdProgressPropsFromDsl({
+        theme: getStringProp(node, 'theme') || 'line',
+        percentage: pct,
+        status,
+        color: parseProgressColorValue(getPropValue(node, 'color')),
+        trackColor: getStringProp(node, 'trackColor')?.trim() || undefined,
+        strokeWidth: getFiniteNumberProp(node, 'strokeWidth'),
+        size: getStringProp(node, 'size') ?? getFiniteNumberProp(node, 'size'),
+        label: parseProgressLabelValue(getBooleanProp(node, 'showLabel'), getStringProp(node, 'labelText')),
+      });
+      return <Progress {...props} style={mergeStyle()} />;
     }
     case 'antd.Image': {
       const src = getStringProp(node, 'src') || '';
@@ -916,12 +908,31 @@ export function tryRenderAntdPreview(ctx: AntdPreviewContext): React.ReactElemen
           {renderChildList(node.children ?? [])}
         </Carousel>
       );
-    case 'antd.Menu':
+    case 'antd.Menu': {
+      const collapsed = getBooleanProp(node, 'collapsed') === true;
+      const widthRaw = getStringProp(node, 'width')?.trim();
+      const widthResolved = widthRaw || 232;
       return (
         <Menu
-          mode="vertical"
+          mode="inline"
           theme={getStringProp(node, 'theme') === 'dark' ? 'dark' : 'light'}
-          style={{ ...mergeStyle(), width: getStringProp(node, 'width') || undefined }}
+          inlineCollapsed={collapsed}
+          style={{
+            ...mergeStyle(),
+            width: collapsed ? undefined : widthResolved,
+            minWidth: collapsed ? 48 : undefined,
+          }}
+        >
+          {renderAntdPreviewMenu(node.children, onLifecycle, emitInteractionLifecycle, navigatePreviewByHref)}
+        </Menu>
+      );
+    }
+    case 'antd.HeadMenu':
+      return (
+        <Menu
+          mode="horizontal"
+          theme={getStringProp(node, 'theme') === 'dark' ? 'dark' : 'light'}
+          style={{ width: '100%', maxWidth: '100%', minWidth: 0, ...mergeStyle() }}
         >
           {renderAntdPreviewMenu(node.children, onLifecycle, emitInteractionLifecycle, navigatePreviewByHref)}
         </Menu>

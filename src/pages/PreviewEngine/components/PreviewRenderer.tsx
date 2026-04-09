@@ -37,6 +37,7 @@ import {
   resolveExposedLifecycles,
 } from '../../../utils/customComponentRuntime';
 import { resolveSimulatorStyle } from '../../../builder/utils/simulatorStyle';
+import { parseProgressColorValue } from '../../../builder/utils/progressAntdBridge';
 import type { PreviewDataHub } from '../runtime/dataHub';
 import { tryRenderAntdPreview } from './previewAntdNodes';
 import type { UiPreviewLibrary } from '../../../config/uiPreviewLibrary';
@@ -594,56 +595,8 @@ const getDrawerSizeDraggableProp = (node: UiTreeNode): boolean | { min: number; 
   return true;
 };
 
-const getProgressColorProp = (node: UiTreeNode, propName: string): string | string[] | Record<string, string> | undefined => {
-  const value = getProp(node, propName);
-
-  if (typeof value === 'string') {
-    const text = value.trim();
-    if (!text) {
-      return undefined;
-    }
-
-    if ((text.startsWith('{') && text.endsWith('}')) || (text.startsWith('[') && text.endsWith(']'))) {
-      try {
-        const parsed = JSON.parse(text);
-        if (Array.isArray(parsed)) {
-          const list = parsed.map((item) => String(item).trim()).filter(Boolean);
-          return list.length ? list : undefined;
-        }
-
-        if (parsed && typeof parsed === 'object') {
-          const entries = Object.entries(parsed as Record<string, unknown>)
-            .map(([key, item]) => [key, String(item).trim()] as const)
-            .filter(([, item]) => !!item);
-          return entries.length ? Object.fromEntries(entries) : undefined;
-        }
-      } catch {
-        return text;
-      }
-    }
-
-    const splitList = text.split(/,|，/).map((item) => item.trim()).filter(Boolean);
-    if (splitList.length >= 2) {
-      return splitList;
-    }
-
-    return text;
-  }
-
-  if (Array.isArray(value)) {
-    const list = value.map((item) => String(item).trim()).filter(Boolean);
-    return list.length ? list : undefined;
-  }
-
-  if (value && typeof value === 'object') {
-    const entries = Object.entries(value as Record<string, unknown>)
-      .map(([key, item]) => [key, String(item).trim()] as const)
-      .filter(([, item]) => !!item);
-    return entries.length ? Object.fromEntries(entries) : undefined;
-  }
-
-  return undefined;
-};
+const getProgressColorProp = (node: UiTreeNode, propName: string): string | string[] | Record<string, string> | undefined =>
+  parseProgressColorValue(getProp(node, propName));
 
 const getProgressLabelProp = (node: UiTreeNode): string | boolean => {
   if (getBooleanProp(node, 'showLabel') === false) {
