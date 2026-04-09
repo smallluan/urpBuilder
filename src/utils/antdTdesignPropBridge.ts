@@ -11,7 +11,7 @@ export const BUILDER_CARD_BODY_STYLE: CSSProperties = {
 
 /**
  * Ant Design Statistic 根节点默认偏块级、易独占一行；TDesign Statistic 更接近行内块。
- * 垂直方向与根下兄弟对齐由 `.drop-area-root > .drop-area__body > *` / `.preview-page-root__body > *` 统一 `vertical-align: top`。
+ * 根节点下兄弟的纵向排列由 `.drop-area-root > .drop-area__body` / `.preview-page-root__body` 的纵向 flex（`align-items: flex-start`）与 `min-width:0` 约束统一，避免 antd inline-flex 根在 block 流里横向并排。
  */
 export function antStatisticRootStyleMerge(user?: CSSProperties): CSSProperties {
   return {
@@ -143,4 +143,31 @@ const TABLE_FALLBACK = [
 
 export function resolveAntdTableDataSource(raw: unknown): Array<Record<string, unknown>> {
   return Array.isArray(raw) && raw.length > 0 ? (raw as Array<Record<string, unknown>>) : TABLE_FALLBACK;
+}
+
+/**
+ * TDesign Drawer 的 `size`（及可选数值 `width`）与 antd Drawer 的 `width`/`height` 对齐。
+ * 尺寸表与 tdesign-react `drawer/Drawer.js` 内 `sizeMap` 一致（small/medium/large）。
+ */
+export function drawerWidthPxFromTdesignSize(opts: {
+  width?: number;
+  size?: string;
+}): number {
+  if (typeof opts.width === 'number' && opts.width > 0) {
+    return opts.width;
+  }
+  const raw = String(opts.size ?? 'small').trim().toLowerCase();
+  const sizeMap: Record<string, number> = {
+    small: 300,
+    medium: 500,
+    large: 760,
+  };
+  if (sizeMap[raw]) {
+    return sizeMap[raw];
+  }
+  const n = Number(raw);
+  if (Number.isFinite(n) && n > 0) {
+    return n;
+  }
+  return 300;
 }

@@ -20,8 +20,7 @@
   overflow: visible;
 }
 
-/* 与搭建态 .drop-area-root > .drop-area__body 对齐：页面子节点在 block 流中排布，
-   避免根层 flex + align-items:stretch 把 Button 等直接子项拉成整行宽度。 */
+/* 与搭建态 .drop-area-root > .drop-area__body 对齐：根下子节点纵向排列，避免 antd 等 inline 级根并排成一行 */
 .preview-page-root {
   width: 100%;
   min-height: 100%;
@@ -35,13 +34,17 @@
   flex: 1 1 auto;
   min-height: 100%;
   width: 100%;
-  display: block;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
   box-sizing: border-box;
 }
 
-/* 与搭建态 .drop-area-root 一致：根下兄弟并排时顶对齐，避免 baseline 贴底 */
 .preview-page-root__body > * {
-  vertical-align: top;
+  flex: 0 0 auto;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .preview-engine-page .preview-back-top {

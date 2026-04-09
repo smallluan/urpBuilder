@@ -56,6 +56,8 @@ export interface ComponentRenderContext {
   mergeStyle: (baseStyle?: React.CSSProperties) => React.CSSProperties | undefined;
   handleActivateSelf: (event: React.MouseEvent<HTMLElement>) => void;
   isNodeActive: boolean;
+  /** 当前选中节点是否在本节点子树内（含自身），用于抽屉等：点内部子组件时仍视为「在本容器上下文中」。 */
+  isSubtreeActive: boolean;
   // Space props
   spaceDirection: 'horizontal' | 'vertical' | undefined;
   isSpaceSplitEnabled: boolean;

@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { MessagePlugin, Select } from 'tdesign-react';
+import type { MessageInstance } from 'tdesign-react/es/message/type';
 import { useBuilderAccess, useBuilderContext } from '../context/BuilderContext';
 import { PREVIEW_UI_LIBRARY_OPTIONS, type UiPreviewLibrary } from '../../config/uiPreviewLibrary';
 import {
@@ -15,7 +16,7 @@ const PreviewUiLibraryToolbarSelect: React.FC = () => {
   const { readOnly } = useBuilderAccess();
   const previewUiLibrary = useStore((s) => s.previewUiLibrary);
   const [selectValue, setSelectValue] = useState<UiPreviewLibrary>(previewUiLibrary);
-  const librarySwitchLoadingRef = useRef<Promise<unknown> | null>(null);
+  const librarySwitchLoadingRef = useRef<Promise<MessageInstance> | null>(null);
 
   useEffect(() => {
     setSelectValue(previewUiLibrary);

@@ -53,14 +53,22 @@
   align-items: stretch;
 }
 
+/* 根画布：用纵向 flex 排兄弟，避免 antd 等 inline-flex/inline-block 根节点在 block 流里横向并排（与 TDesign 纵向堆叠对齐）；flex-start 避免把按钮等拉成整行宽 */
 .drop-area-root > .drop-area__body {
   flex: 1 1 auto;
   min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
-/* 根下多个 inline/inline-block 兄弟同一行时，默认 baseline 会像「底对齐」；统一顶对齐，与 antd/td 物料混排一致 */
 .drop-area-root > .drop-area__body > * {
-  vertical-align: top;
+  flex: 0 0 auto;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .drop-area-active {

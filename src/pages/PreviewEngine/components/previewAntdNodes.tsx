@@ -59,6 +59,7 @@ import {
   antStatisticRootStyleMerge,
   BUILDER_CARD_BODY_STYLE,
   tdesignTableColumnsToAntd,
+  drawerWidthPxFromTdesignSize,
 } from '../../../utils/antdTdesignPropBridge';
 import { AntdCollapsePreviewBridge, AntdTabsPreviewBridge } from './antdPreviewBridges';
 
@@ -506,22 +507,64 @@ export function tryRenderAntdPreview(ctx: AntdPreviewContext): React.ReactElemen
           {renderChildren(node, onLifecycle)}
         </Modal>
       );
-    case 'antd.Drawer':
+    case 'antd.Drawer': {
+      const placement = (getStringProp(node, 'placement') as 'top' | 'right' | 'bottom' | 'left') || 'right';
+      const drawerPx = drawerWidthPxFromTdesignSize({
+        width: getFiniteNumberProp(node, 'width'),
+        size: getStringProp(node, 'size'),
+      });
+      const showHeader = getBooleanProp(node, 'showHeader') !== false;
+      const hasDrawerChildren = (node.children?.length ?? 0) > 0;
+      const drawerBodyText = getStringProp(node, 'body')?.trim();
+      const z = getFiniteNumberProp(node, 'zIndex');
       return (
         <Drawer
-          title={getStringProp(node, 'header') || undefined}
+          title={showHeader ? (getStringProp(node, 'header') || undefined) : undefined}
+          closable={getBooleanProp(node, 'closeBtn') !== false}
           open={drawerInnerVisible}
-          placement={getStringProp(node, 'placement') as 'top' | 'right' | 'bottom' | 'left' | undefined}
+          placement={placement}
           getContainer={getPortalContainer}
+          width={placement === 'left' || placement === 'right' ? drawerPx : undefined}
+          height={placement === 'top' || placement === 'bottom' ? drawerPx : undefined}
+          destroyOnHidden={getBooleanProp(node, 'destroyOnClose') === true}
+          mask={getBooleanProp(node, 'showOverlay') !== false}
+          maskClosable={getBooleanProp(node, 'closeOnOverlayClick') !== false}
+          zIndex={typeof z === 'number' ? z : undefined}
+          rootStyle={mergeStyle()}
+          styles={{ body: { padding: 12 } }}
+          footer={
+            getBooleanProp(node, 'footer') === false ? null : (
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+                <Button
+                  onClick={() => {
+                    syncDrawerVisible(false);
+                    emitInteractionLifecycle('onCancel');
+                  }}
+                >
+                  {getStringProp(node, 'cancelBtn') || '取消'}
+                </Button>
+                <Button
+                  type="primary"
+                  onClick={() => {
+                    emitInteractionLifecycle('onConfirm');
+                    syncDrawerVisible(false);
+                  }}
+                >
+                  {getStringProp(node, 'confirmBtn') || '确定'}
+                </Button>
+              </div>
+            )
+          }
           onClose={() => {
             syncDrawerVisible(false);
             emitInteractionLifecycle('onClose');
           }}
-          style={mergeStyle()}
         >
+          {!hasDrawerChildren && drawerBodyText ? <div style={{ marginBottom: 8 }}>{drawerBodyText}</div> : null}
           {renderChildren(node, onLifecycle)}
         </Drawer>
       );
+    }
     case 'antd.Spin':
       return (
         <Spin spinning={getBooleanProp(node, 'spinning') !== false} tip={getStringProp(node, 'tip') || undefined} style={mergeStyle()}>

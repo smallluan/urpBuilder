@@ -1,7 +1,6 @@
 import React from 'react';
 import { Collapse as AntCollapse, Tabs as AntTabs } from 'antd';
 import type { UiTreeNode } from '../../../builder/store/types';
-import type { ComponentLifecycleHandler } from '../../../types/component';
 import {
   getCollapseHeaderSlotNodeByValue,
   getCollapsePanelSlotNodeByValue,

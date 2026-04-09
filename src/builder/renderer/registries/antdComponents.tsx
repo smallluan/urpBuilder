@@ -72,6 +72,7 @@ import {
   antStatisticRootStyleMerge,
   BUILDER_CARD_BODY_STYLE,
   tdesignTableColumnsToAntd,
+  drawerWidthPxFromTdesignSize,
 } from '../../../utils/antdTdesignPropBridge';
 
 const { Title, Paragraph, Text, Link } = Typography;
@@ -563,19 +564,57 @@ export function registerAntdComponents(registry: ComponentRegistry): void {
   });
 
   registry.set('antd.Drawer', (ctx) => {
-    const { getStringProp, onDropData, data, mergeStyle, getBuilderDrawerAttach } = ctx;
+    const {
+      getStringProp,
+      getBooleanProp,
+      getFiniteNumberProp,
+      getNumberProp,
+      onDropData,
+      data,
+      mergeStyle,
+      getBuilderDrawerAttach,
+      handleActivateSelf,
+      isSubtreeActive,
+    } = ctx;
     const getContainer = () => getBuilderDrawerAttach()();
+    const placement = (getStringProp('placement') as 'top' | 'right' | 'bottom' | 'left') || 'right';
+    const drawerPx = drawerWidthPxFromTdesignSize({
+      width: getFiniteNumberProp('width'),
+      size: getStringProp('size'),
+    });
+    const shellOpen = getBooleanProp('visible') === true && isSubtreeActive;
+    const showHeader = getBooleanProp('showHeader') !== false;
+    const titleText = getStringProp('header')?.trim();
+    const hasDrawerChildren = (data?.children?.length ?? 0) > 0;
+    const drawerBodyText = getStringProp('body')?.trim();
     return (
-      <Drawer
-        title={getStringProp('header') || undefined}
-        open={true}
-        placement={getStringProp('placement') as 'top' | 'right' | 'bottom' | 'left' | undefined}
-        getContainer={getContainer}
-      >
-        <div style={mergeStyle({ minHeight: 80 })}>
-          <DropArea data={data} onDropData={onDropData} />
+      <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf} nodeKey={data?.key} active={isSubtreeActive}>
+        <div style={{ position: 'relative' }}>
+          <Drawer
+            title={showHeader ? (titleText || undefined) : undefined}
+            closable={getBooleanProp('closeBtn') !== false}
+            open={shellOpen}
+            placement={placement}
+            getContainer={getContainer}
+            width={placement === 'left' || placement === 'right' ? drawerPx : undefined}
+            height={placement === 'top' || placement === 'bottom' ? drawerPx : undefined}
+            destroyOnHidden={getBooleanProp('destroyOnClose') === true}
+            mask={getBooleanProp('showOverlay') !== false}
+            maskClosable={getBooleanProp('closeOnOverlayClick') !== false}
+            footer={getBooleanProp('footer') === false ? null : undefined}
+            zIndex={getNumberProp('zIndex')}
+            styles={{ body: { padding: 12 } }}
+            onClose={() => {
+              /* 搭建态仅展示 */
+            }}
+          >
+            {!hasDrawerChildren && drawerBodyText ? <div style={{ marginBottom: 8 }}>{drawerBodyText}</div> : null}
+            <div style={mergeStyle({ minHeight: 80 })}>
+              <DropArea data={data} onDropData={onDropData} emptyText="拖拽组件到抽屉内容" compactWhenFilled />
+            </div>
+          </Drawer>
         </div>
-      </Drawer>
+      </ActivateWrapper>
     );
   });
 
@@ -797,7 +836,7 @@ export function registerAntdComponents(registry: ComponentRegistry): void {
   registry.set('antd.BackTop', (ctx) => {
     const {
       mergeStyle, handleActivateSelf, data, isNodeActive,
-      getFiniteNumberProp, getBackTopVisibleHeightProp, getBackTopContentNode,
+      getBackTopVisibleHeightProp, getBackTopContentNode,
     } = ctx;
     const vhRaw = getBackTopVisibleHeightProp('visibleHeight');
     const vh = typeof vhRaw === 'number' ? vhRaw : typeof vhRaw === 'string' ? Number(vhRaw) : 400;
@@ -987,7 +1026,7 @@ export function registerAntdComponents(registry: ComponentRegistry): void {
   });
 
   registry.set('antd.Calendar', (ctx) => {
-    const { getStringProp, mergeStyle, handleActivateSelf, data, isNodeActive, getCalendarValueProp } = ctx;
+    const { mergeStyle, handleActivateSelf, data, isNodeActive, getCalendarValueProp } = ctx;
     const raw = getCalendarValueProp('value');
     const v = raw ? dayjs(raw) : dayjs();
     return (
@@ -999,7 +1038,7 @@ export function registerAntdComponents(registry: ComponentRegistry): void {
 
   registry.set('antd.Tabs', (ctx) => {
     const {
-      data, onDropData, getStringProp, getBooleanProp, mergeStyle, handleActivateSelf, isNodeActive,
+      data, onDropData, getStringProp, mergeStyle, handleActivateSelf, isNodeActive,
       getTabsListProp, getTabsControlledValue, getTabsDefaultValue, tabsInnerValue, setTabsInnerValue,
     } = ctx;
     const tabsList = getTabsListProp();
@@ -1044,7 +1083,7 @@ export function registerAntdComponents(registry: ComponentRegistry): void {
 
   registry.set('antd.Collapse', (ctx) => {
     const {
-      data, onDropData, getProp, getStringProp, getBooleanProp, mergeStyle, handleActivateSelf, isNodeActive,
+      data, onDropData, getProp, getBooleanProp, mergeStyle, handleActivateSelf, isNodeActive,
     } = ctx;
     const collapseList = normalizeCollapseList(getProp('list'));
     const controlledValue = normalizeCollapseValue(getProp('value'));
@@ -1073,8 +1112,8 @@ export function registerAntdComponents(registry: ComponentRegistry): void {
 
     const collapseControlledProps =
       typeof controlledValue !== 'undefined'
-        ? { activeKey: controlledKey as React.Key | React.Key[] }
-        : { defaultActiveKey: defaultKey as React.Key | React.Key[] };
+        ? { activeKey: controlledKey as string | string[] | undefined }
+        : { defaultActiveKey: defaultKey as string | string[] | undefined };
 
     return (
       <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf} nodeKey={data?.key} active={isNodeActive}>

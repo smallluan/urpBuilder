@@ -21,6 +21,7 @@ import {
   namespaceUiTreeKeys,
 } from '../../utils/customComponentRuntime';
 import { CARD_SHELL_ALWAYS_ANTD_TYPES, resolveAntdPreviewTypeForCanonical } from '../../config/uiPreviewLibrary';
+import { findNodePathByKey } from '../utils/tree';
 import { SimulatorPreviewLibraryOverrideContext } from '../context/SimulatorPreviewLibraryOverrideContext';
 import { SimulatorScrollContainerContext } from '../context/SimulatorScrollContainerContext';
 
@@ -201,6 +202,15 @@ export default function CommonComponent(properties: CommonComponentProps) {
   const isNodeActive = useStore((state) => (
     !!resolvedActivationKey && state.activeNodeKey === resolvedActivationKey
   ));
+  const uiPageData = useStore((state) => state.uiPageData);
+  const activeNodeKey = useStore((state) => state.activeNodeKey);
+  const isSubtreeActive = React.useMemo(() => {
+    if (!data?.key || !activeNodeKey) {
+      return false;
+    }
+    const path = findNodePathByKey(uiPageData, activeNodeKey);
+    return path?.some((n) => n.key === data.key) ?? false;
+  }, [data?.key, activeNodeKey, uiPageData]);
 
   const mergeStyle = (baseStyle?: React.CSSProperties): React.CSSProperties | undefined => {
     if (!baseStyle && !inlineStyle) return undefined;
@@ -315,7 +325,8 @@ export default function CommonComponent(properties: CommonComponentProps) {
   }
 
   const visible = getBooleanProp('visible');
-  const isDrawerLikeNode = normalizedType === 'Drawer' || normalizedType === 'Popup';
+  const isDrawerLikeNode =
+    normalizedType === 'Drawer' || normalizedType === 'Popup' || normalizedType === 'antd.Drawer';
   // Drawer / 对话框壳 需要允许在“不可见”时依旧保留节点渲染入口（由组件自身处理打开/关闭与挂载策略）。
   if (visible === false && !isDrawerLikeNode) return null;
 
@@ -329,6 +340,7 @@ export default function CommonComponent(properties: CommonComponentProps) {
     mergeStyle,
     handleActivateSelf,
     isNodeActive,
+    isSubtreeActive,
     spaceDirection,
     isSpaceSplitEnabled,
     spaceSplitLayout,

@@ -1,4 +1,3 @@
-import React from 'react';
 import { Upload, Drawer, Popup } from 'tdesign-react';
 import type { ComponentRegistry } from '../componentContext';
 import { ActivateWrapper } from '../componentHelpers';
@@ -62,14 +61,14 @@ export function registerFeedbackComponents(registry: ComponentRegistry): void {
   registry.set('Drawer', (ctx) => {
     const {
       data, onDropData, getStringProp, getBooleanProp, getNumberProp, mergeStyle,
-      handleActivateSelf, isNodeActive,
+      handleActivateSelf, isSubtreeActive,
       getBuilderDrawerAttach, getDrawerHeaderProp, getDrawerFooterProp, getDrawerSizeDraggableProp,
     } = ctx;
     const hasDrawerChildren = (data?.children?.length ?? 0) > 0;
     const drawerBodyText = getStringProp('body')?.trim();
-    const drawerVisible = getBooleanProp('visible') === true;
+    const drawerVisible = getBooleanProp('visible') === true && isSubtreeActive;
     return (
-      <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf} nodeKey={data?.key} active={isNodeActive}>
+      <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf} nodeKey={data?.key} active={isSubtreeActive}>
         <div style={{ position: 'relative' }}>
           <Drawer
             className={getStringProp('className') || undefined}
