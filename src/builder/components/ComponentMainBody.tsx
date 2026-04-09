@@ -191,9 +191,9 @@ const ComponentMainBody: React.FC<{ toolbarExtra?: React.ReactNode; toolbarRight
                 onClick={() => setShortcutDialogVisible(true)}
               />
             </TopbarGroup>
-              {toolbarRight}
             </>
           )}
+          right={toolbarRight ?? null}
         />
       </div>
 

@@ -83,6 +83,7 @@ export function buildPreviewSnapshot(state: BuilderStore, enablePageRouteConfig:
     pageRouteConfig,
     currentPageId,
     currentPageName,
+    previewUiLibrary,
   } = state;
 
   const routeSnapshots = enablePageRouteConfig
@@ -116,13 +117,14 @@ export function buildPreviewSnapshot(state: BuilderStore, enablePageRouteConfig:
     flowEdges: activeRouteSnapshot?.flowEdges ?? flowEdges,
     pageConfig: enablePageRouteConfig
       ? {
+          previewUiLibrary,
           routeConfig: pageRouteConfig,
           pageId: currentPageId,
           pageName: currentPageName,
           defaultRoutePath: activeRouteSnapshot?.routePath ?? activeRoutePath,
           routeSnapshots,
         }
-      : undefined,
+      : { previewUiLibrary },
   };
 }
 

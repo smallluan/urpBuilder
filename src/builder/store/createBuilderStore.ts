@@ -506,6 +506,7 @@ export const createBuilderStore = (options: CreateBuilderStoreOptions = {}) => {
   };
 
   return create<BuilderStore>((set) => ({
+    previewUiLibrary: 'tdesign',
     // ===== 视图环境 =====
     screenSize: 375,
     autoWidth: 375,
@@ -550,6 +551,8 @@ export const createBuilderStore = (options: CreateBuilderStoreOptions = {}) => {
     lastPersistedTemplateFingerprint: '',
 
     // ===== Actions — 视图环境 =====
+
+    setPreviewUiLibrary: (library) => set({ previewUiLibrary: library }),
 
     setScreenSize: (screenSize) => set({ screenSize }),
 

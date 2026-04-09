@@ -1,5 +1,5 @@
 import React from 'react';
-import { Avatar, Button, Card, Col, Divider, Image, Row, Space, Switch, Swiper, Typography, Layout, Calendar, ColorPicker, TimePicker, TimeRangePicker, InputNumber, Slider, Steps, List, Link, Tabs, BackTop, Menu, Drawer, Popup, Progress, Upload, Input, Textarea, Table, Statistic, Collapse } from 'tdesign-react';
+import { Avatar, Button, Card, Col, Dialog, Divider, Image, Row, Space, Switch, Swiper, Typography, Layout, Calendar, ColorPicker, TimePicker, TimeRangePicker, InputNumber, Slider, Steps, List, Link, Tabs, BackTop, Menu, Drawer, Popup, Progress, Upload, Input, Textarea, Table, Statistic, Collapse } from 'tdesign-react';
 import ReactECharts from 'echarts-for-react';
 import type { Edge, Node } from '@xyflow/react';
 import type { UiTreeNode } from '../../../builder/store/types';
@@ -39,10 +39,16 @@ import {
 import { resolveSimulatorStyle } from '../../../builder/utils/simulatorStyle';
 import type { PreviewDataHub } from '../runtime/dataHub';
 import { tryRenderAntdPreview } from './previewAntdNodes';
+import type { UiPreviewLibrary } from '../../../config/uiPreviewLibrary';
+import { resolveAntdPreviewTypeForCanonical } from '../../../config/uiPreviewLibrary';
+import { PreviewBrushSuppressLifecycleContext } from '../context/PreviewBrushSuppressLifecycleContext';
+import { PreviewPortalContainerContext } from '../context/PreviewPortalContainerContext';
 
 const PreviewDataHubRefContext = React.createContext<React.RefObject<PreviewDataHub | null>>({ current: null });
 
-export { PreviewDataHubRefContext };
+export const PreviewUiLibraryContext = React.createContext<UiPreviewLibrary>('tdesign');
+
+export { PreviewDataHubRefContext, PreviewPortalContainerContext };
 
 interface PreviewRendererProps {
   node: UiTreeNode;
@@ -1329,6 +1335,7 @@ function PreviewCustomComponentRenderer({
   onLifecycle?: ComponentLifecycleHandler;
   style?: React.CSSProperties;
 }) {
+  const previewUiLibrary = React.useContext(PreviewUiLibraryContext);
   const [runtimeSeed, setRuntimeSeed] = React.useState<{
     tree: UiTreeNode;
     flowNodes: Node[];
@@ -1625,7 +1632,9 @@ function PreviewCustomComponentRenderer({
 
   const content = (
     <PreviewDataHubRefContext.Provider value={innerHubRef}>
-      <PreviewRenderer key={renderTree.key} node={renderTree} onLifecycle={handleInnerLifecycle} />
+      <PreviewUiLibraryContext.Provider value={previewUiLibrary}>
+        <PreviewRenderer key={renderTree.key} node={renderTree} onLifecycle={handleInnerLifecycle} />
+      </PreviewUiLibraryContext.Provider>
     </PreviewDataHubRefContext.Provider>
   );
 
@@ -1642,9 +1651,19 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) 
   const { Header, Content, Aside, Footer } = Layout;
   const { ListItem, ListItemMeta } = List;
   const scopedHubRef = React.useContext(PreviewDataHubRefContext);
+  const previewUiLibrary = React.useContext(PreviewUiLibraryContext);
+  const suppressBrushLifecycle = React.useContext(PreviewBrushSuppressLifecycleContext);
+  const getPortalContainerFromContext = React.useContext(PreviewPortalContainerContext);
+  const portalAttach = React.useMemo(
+    () => getPortalContainerFromContext ?? (() => document.body),
+    [getPortalContainerFromContext],
+  );
 
-  const isDrawerNode = type === 'Drawer' || type === 'antd.Drawer';
-  const isAntdModalNode = type === 'antd.Modal';
+  const shellPresentation = getStringProp(node, 'shellPresentation');
+  const isDialogShellNode = type === 'Drawer' && shellPresentation === 'dialog';
+  const isDrawerShellNode = type === 'Drawer' && shellPresentation !== 'dialog';
+  const isDrawerNode = isDrawerShellNode;
+  const isAntdModalNode = isDialogShellNode;
   const controlledModalOpen = isAntdModalNode ? getBooleanProp(node, 'visible') === true : false;
   const [modalInnerOpen, setModalInnerOpen] = React.useState<boolean>(controlledModalOpen);
   const lastModalNodeKeyRef = React.useRef<string>(node.key);
@@ -1678,7 +1697,7 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) 
   );
   // 挂载/卸载：仅依赖 node 身份与回调，避免因 lifetimes 数组引用抖动而误触发「整轮卸载再挂载」。
   React.useLayoutEffect(() => {
-    if (!onLifecycle) {
+    if (suppressBrushLifecycle || !onLifecycle) {
       return;
     }
 
@@ -1690,10 +1709,10 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) 
     if (shouldEmitCoreLifetime(lt, 'onBeforeMount')) {
       onLifecycle(node.key, 'onBeforeMount', { nodeType: node.type });
     }
-  }, [node.key, node.type, onLifecycle]);
+  }, [node.key, node.type, onLifecycle, suppressBrushLifecycle]);
 
   React.useEffect(() => {
-    if (!onLifecycle) {
+    if (suppressBrushLifecycle || !onLifecycle) {
       return;
     }
 
@@ -1703,6 +1722,9 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) 
     }
 
     return () => {
+      if (suppressBrushLifecycle) {
+        return;
+      }
       const ltCleanup = lifetimesRef.current;
       if (shouldEmitCoreLifetime(ltCleanup, 'onBeforeUnmount')) {
         onLifecycle(node.key, 'onBeforeUnmount', { nodeType: node.type });
@@ -1712,10 +1734,10 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) 
         onLifecycle(node.key, 'onUnmounted', { nodeType: node.type });
       }
     };
-  }, [node.key, node.type, onLifecycle]);
+  }, [node.key, node.type, onLifecycle, suppressBrushLifecycle]);
 
   React.useLayoutEffect(() => {
-    if (!onLifecycle) {
+    if (suppressBrushLifecycle || !onLifecycle) {
       return;
     }
 
@@ -1738,7 +1760,7 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) 
     if (shouldEmitCoreLifetime(lt, 'onUpdated')) {
       onLifecycle(node.key, 'onUpdated', { nodeType: node.type });
     }
-  }, [nodeRevisionKey, node.key, node.type, onLifecycle]);
+  }, [nodeRevisionKey, node.key, node.type, onLifecycle, suppressBrushLifecycle]);
 
   const visible = getBooleanProp(node, 'visible');
   const controlledDrawerVisible = isDrawerNode ? visible === true : false;
@@ -1921,7 +1943,7 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) 
     return null;
   }
 
-  if (visible === false && !isDrawerNode) {
+  if (visible === false && !isDrawerNode && !isAntdModalNode && type !== 'Popup') {
     return null;
   }
 
@@ -2029,11 +2051,11 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) 
     });
   };
 
-  if (typeof type === 'string' && type.startsWith('antd.')) {
-    return (
-      // eslint-disable-next-line react-hooks/refs -- tryRenderAntdPreview 仅组装 JSX；hub 访问仅在 sync* 事件回调中
-      tryRenderAntdPreview({
-        type,
+  if (previewUiLibrary === 'antd') {
+    const antdPreviewType = resolveAntdPreviewTypeForCanonical(node);
+    if (antdPreviewType) {
+      const antdEl = tryRenderAntdPreview({
+        type: antdPreviewType,
         node,
         mergeStyle,
         renderChildren,
@@ -2046,8 +2068,12 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) 
         syncDrawerVisible,
         modalOpen: modalInnerOpen,
         syncModalVisible,
-      }) ?? null
-    );
+        getPortalContainer: portalAttach,
+      });
+      if (antdEl) {
+        return antdEl;
+      }
+    }
   }
 
   switch (type) {
@@ -2184,12 +2210,63 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) 
         </Upload>
       );
     case 'Drawer': {
+      if (getStringProp(node, 'shellPresentation') === 'dialog') {
+        const hasDialogChildren = (node.children?.length ?? 0) > 0;
+        const dialogBodyText = getStringProp(node, 'body')?.trim();
+        return (
+          <Dialog
+            attach={portalAttach}
+            className={getStringProp(node, 'className') || undefined}
+            header={getDrawerHeaderProp(node) as any}
+            body={!hasDialogChildren ? (dialogBodyText || undefined) : undefined}
+            cancelBtn={getStringProp(node, 'cancelBtn') || undefined}
+            confirmBtn={getStringProp(node, 'confirmBtn') || undefined}
+            closeOnEscKeydown={getBooleanProp(node, 'closeOnEscKeydown') !== false}
+            closeOnOverlayClick={getBooleanProp(node, 'closeOnOverlayClick') !== false}
+            destroyOnClose={getBooleanProp(node, 'destroyOnClose') === true}
+            placement={getStringProp(node, 'placement') as any}
+            preventScrollThrough={getBooleanProp(node, 'preventScrollThrough') !== false}
+            showOverlay={getBooleanProp(node, 'showOverlay') !== false}
+            visible={modalInnerOpen}
+            zIndex={getNumberProp(node, 'zIndex')}
+            style={mergeStyle()}
+            onBeforeOpen={() => emitInteractionLifecycle('onBeforeOpen')}
+            onBeforeClose={() => emitInteractionLifecycle('onBeforeClose')}
+            onCancel={(context) => {
+              syncModalVisible(false);
+              emitInteractionLifecycle('onCancel', context);
+            }}
+            onClose={(context) => {
+              syncModalVisible(false);
+              emitInteractionLifecycle('onClose', context);
+            }}
+            onCloseBtnClick={(context) => {
+              syncModalVisible(false);
+              emitInteractionLifecycle('onCloseBtnClick', context);
+            }}
+            onConfirm={(context) => {
+              emitInteractionLifecycle('onConfirm', context);
+              syncModalVisible(false);
+            }}
+            onEscKeydown={(context) => {
+              syncModalVisible(false);
+              emitInteractionLifecycle('onEscKeydown', context);
+            }}
+            onOverlayClick={(context) => {
+              syncModalVisible(false);
+              emitInteractionLifecycle('onOverlayClick', context);
+            }}
+          >
+            {hasDialogChildren ? renderChildList(node.children ?? [], onLifecycle) : null}
+          </Dialog>
+        );
+      }
       const hasDrawerChildren = (node.children?.length ?? 0) > 0;
       const drawerBodyText = getStringProp(node, 'body')?.trim();
       return (
         <Drawer
           className={getStringProp(node, 'className') || undefined}
-          attach="body"
+          attach={portalAttach}
           body={!hasDrawerChildren ? (drawerBodyText || undefined) : undefined}
           cancelBtn={getStringProp(node, 'cancelBtn') || undefined}
           closeBtn={getBooleanProp(node, 'closeBtn') !== false}
@@ -2243,7 +2320,7 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) 
       const popupContent = renderChildList(contentChildren, onLifecycle);
       return (
         <Popup
-          attach="body"
+          attach={portalAttach}
           trigger={getStringProp(node, 'trigger') as any}
           placement={getStringProp(node, 'placement') as any}
           showArrow={getBooleanProp(node, 'showArrow') !== false}

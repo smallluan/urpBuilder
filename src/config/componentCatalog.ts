@@ -1,6 +1,5 @@
 import type { EChartSeriesType } from '../constants/echart';
 import { ECHART_OPTION_PRESET_OPTIONS, ECHART_TYPE_OPTIONS } from '../constants/echart';
-import { buildAntdCatalogBundle } from './componentCatalogAntd';
 
 const createChartDefaultData = (chartType: EChartSeriesType) => {
   if (chartType === 'sankey' || chartType === 'graph') {
@@ -486,6 +485,17 @@ const tdesignComponentCatalog = [
         editType: 'select',
         payload: {
           options: ['left', 'right', 'top', 'bottom'],
+        },
+      },
+      shellPresentation: {
+        name: '壳形态',
+        value: 'drawer',
+        editType: 'select',
+        payload: {
+          options: [
+            { label: '抽屉', value: 'drawer' },
+            { label: '对话框', value: 'dialog' },
+          ],
         },
       },
       preventScrollThrough: {
@@ -2972,8 +2982,8 @@ const tdesignComponentCatalog = [
   },
 ];
 
-const antdComponentCatalogEntries = buildAntdCatalogBundle(tdesignComponentCatalog);
-const componentCatalog = [...tdesignComponentCatalog, ...antdComponentCatalogEntries];
+/** 单一 DSL：与 TDesign 物料 type 对齐；Ant Design 仅作为预览/搭建壳映射层，不再并入独立物料条目 */
+const componentCatalog = [...tdesignComponentCatalog];
 
 const visibleInjectedComponentCatalog = componentCatalog.map((item) => {
   const current = item as { props?: Record<string, unknown> };

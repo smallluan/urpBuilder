@@ -13,6 +13,8 @@ import type { BuiltInLayoutTemplateId, PageRouteConfig, PageRouteRecord, UiTreeN
 import { findNodeByKey, updateNodeByKey } from '../../utils/createComponentTree';
 import { useCreatePageStore } from './store';
 import PageRouteToolbar from './components/PageRouteToolbar.tsx';
+import PreviewUiLibraryToolbarSelect from '../../builder/components/PreviewUiLibraryToolbarSelect';
+import { TopbarGroup } from '../../builder/components/UnifiedBuilderTopbar';
 import { useAuth } from '../../auth/context';
 import { useBuilderModeHotkeys } from '../../builder/hooks/useBuilderModeHotkeys';
 import { initModeLongTaskObserver, markModeSwitchEnd, markModeSwitchStart } from '../../builder/utils/perf';
@@ -34,6 +36,7 @@ import DependencyManagerDrawer from '../../builder/components/DependencyManagerD
 import BuilderQuickFind from '../../builder/components/BuilderQuickFind';
 import { AntdRuntimeRoot } from '../../builder/antd/AntdRuntimeRoot';
 import { computePersistedTemplateFingerprint } from '../../builder/save/templateFingerprint';
+import { normalizePageRoutesUiTrees, normalizeUiTreeLegacyAntdTypes } from '../../builder/utils/normalizeUiTreeLegacyAntd';
 
 const resolveValidTemplateIdFromUrl = () => {
   const searchParams = new URLSearchParams(window.location.search);
@@ -409,11 +412,13 @@ const CreatePage: React.FC = () => {
 
         const pageConfig = template.pageConfig ?? {};
         const normalizedRouteConfig = normalizeRouteConfig(pageConfig.routeConfig);
-        const normalizedRoutes = normalizeTemplateRoutes(template as unknown as Record<string, unknown>, normalizedRouteConfig);
+        const normalizedRoutes = normalizePageRoutesUiTrees(
+          normalizeTemplateRoutes(template as unknown as Record<string, unknown>, normalizedRouteConfig),
+        );
         const sharedUiTree = pageConfig.sharedUiTree && typeof pageConfig.sharedUiTree === 'object' && !Array.isArray(pageConfig.sharedUiTree)
-          ? (pageConfig.sharedUiTree as unknown as UiTreeNode)
+          ? normalizeUiTreeLegacyAntdTypes(pageConfig.sharedUiTree as unknown as UiTreeNode)
           : (Array.isArray(pageConfig.sharedUiChildren)
-            ? ({
+            ? normalizeUiTreeLegacyAntdTypes({
               key: '__root__',
               label: '该页面',
               props: {},
@@ -443,9 +448,11 @@ const CreatePage: React.FC = () => {
           firstRoute?.uiTree ?? ({ key: '__root__', label: '该页面', props: {}, children: [] } as UiTreeNode),
           typeof pageConfig.activeRouteOutletKey === 'string' ? pageConfig.activeRouteOutletKey : null,
         );
-        const composedUiTree = firstRoute
-          ? composeRouteUiTree(firstRoute.uiTree, sharedUiTree, activeRouteOutletKey)
-          : ({ key: '__root__', label: '该页面', props: {}, children: [] } as UiTreeNode);
+        const composedUiTree = normalizeUiTreeLegacyAntdTypes(
+          firstRoute
+            ? composeRouteUiTree(firstRoute.uiTree, sharedUiTree, activeRouteOutletKey)
+            : ({ key: '__root__', label: '该页面', props: {}, children: [] } as UiTreeNode),
+        );
         const composedFlow = firstRoute
           ? composeRouteFlow(firstRoute.flowNodes, firstRoute.flowEdges, sharedFlowNodes, sharedFlowEdges)
           : { flowNodes: [], flowEdges: [] as Edge[] };
@@ -458,6 +465,7 @@ const CreatePage: React.FC = () => {
         });
 
         useCreatePageStore.setState({
+          previewUiLibrary: pageConfig.previewUiLibrary === 'antd' ? 'antd' : 'tdesign',
           screenSize: (pageConfig.screenSize as string | number | undefined) ?? detail.base?.screenSize ?? 'auto',
           autoWidth:
             typeof pageConfig.autoWidth === 'number'
@@ -546,7 +554,12 @@ const CreatePage: React.FC = () => {
                     />
                   </div>
                 )}
-                composeToolbarRight={<PageRouteToolbar />}
+                composeToolbarRight={(
+                  <TopbarGroup className="builder-compose-toolbar-right-cluster">
+                    <PageRouteToolbar />
+                    <PreviewUiLibraryToolbarSelect />
+                  </TopbarGroup>
+                )}
               />
             ) : null}
           </div>

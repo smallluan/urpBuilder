@@ -4,6 +4,8 @@ import './style.less';
 import HeaderControls from '../../builder/components/HeaderControls';
 import BuilderEmbeddedPreview from '../../builder/components/BuilderEmbeddedPreview';
 import BuilderUiWorkbenchLayout from '../../builder/components/BuilderUiWorkbenchLayout';
+import PreviewUiLibraryToolbarSelect from '../../builder/components/PreviewUiLibraryToolbarSelect';
+import { TopbarGroup } from '../../builder/components/UnifiedBuilderTopbar';
 import FlowLayout from '../../builder/flow/FlowLayout';
 import { getComponentTemplateDetail } from '../../api/componentTemplate';
 import { emitApiAlert } from '../../api/alertBus';
@@ -31,6 +33,7 @@ import DependencyManagerDrawer from '../../builder/components/DependencyManagerD
 import BuilderQuickFind from '../../builder/components/BuilderQuickFind';
 import { AntdRuntimeRoot } from '../../builder/antd/AntdRuntimeRoot';
 import { computePersistedTemplateFingerprint } from '../../builder/save/templateFingerprint';
+import { normalizeUiTreeLegacyAntdTypes } from '../../builder/utils/normalizeUiTreeLegacyAntd';
 
 const resolveValidTemplateIdFromUrl = () => {
   const searchParams = new URLSearchParams(window.location.search);
@@ -224,7 +227,7 @@ const CreateComponent: React.FC = () => {
           visibility: detail.base?.visibility === 'public' ? 'public' : 'private',
         });
 
-        const initialTree = template.uiTree as unknown as UiTreeNode;
+        const initialTree = normalizeUiTreeLegacyAntdTypes(template.uiTree as unknown as UiTreeNode);
         const depInstances = collectCustomComponentInstances(initialTree);
         const depIds = Array.from(new Set(depInstances.map((i) => i.componentId)));
         if (depIds.length === 0) {
@@ -237,6 +240,7 @@ const CreateComponent: React.FC = () => {
         }
 
         useCreateComponentStore.setState({
+          previewUiLibrary: pageConfig.previewUiLibrary === 'antd' ? 'antd' : 'tdesign',
           screenSize: (pageConfig.screenSize as string | number | undefined) ?? detail.base?.screenSize ?? 'auto',
           autoWidth:
             typeof pageConfig.autoWidth === 'number'
@@ -296,6 +300,11 @@ const CreateComponent: React.FC = () => {
           <div className={`mode-keepalive-pane${mode === 'component' ? ' is-active' : ''}`}>
             {componentLayoutMounted ? (
               <BuilderUiWorkbenchLayout
+                composeToolbarRight={(
+                  <TopbarGroup className="builder-compose-toolbar-right-cluster">
+                    <PreviewUiLibraryToolbarSelect />
+                  </TopbarGroup>
+                )}
                 composeToolbarExtra={(
                   <DependencyManagerDrawer
                     readOnly={readOnly}

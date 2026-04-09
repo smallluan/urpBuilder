@@ -511,9 +511,16 @@ export function registerAntdComponents(registry: ComponentRegistry): void {
   });
 
   registry.set('antd.Modal', (ctx) => {
-    const { getStringProp, onDropData, data, mergeStyle } = ctx;
+    const { getStringProp, onDropData, data, mergeStyle, getBuilderDrawerAttach } = ctx;
+    const getContainer = () => getBuilderDrawerAttach()();
     return (
-      <Modal title={getStringProp('header') || undefined} open={true} footer={null} styles={{ body: { padding: 12 } }}>
+      <Modal
+        title={getStringProp('header') || undefined}
+        open={true}
+        footer={null}
+        styles={{ body: { padding: 12 } }}
+        getContainer={getContainer}
+      >
         <div style={mergeStyle({ minHeight: 80 })}>
           <DropArea data={data} onDropData={onDropData} />
         </div>
@@ -522,12 +529,14 @@ export function registerAntdComponents(registry: ComponentRegistry): void {
   });
 
   registry.set('antd.Drawer', (ctx) => {
-    const { getStringProp, onDropData, data, mergeStyle } = ctx;
+    const { getStringProp, onDropData, data, mergeStyle, getBuilderDrawerAttach } = ctx;
+    const getContainer = () => getBuilderDrawerAttach()();
     return (
       <Drawer
         title={getStringProp('header') || undefined}
         open={true}
         placement={getStringProp('placement') as 'top' | 'right' | 'bottom' | 'left' | undefined}
+        getContainer={getContainer}
       >
         <div style={mergeStyle({ minHeight: 80 })}>
           <DropArea data={data} onDropData={onDropData} />

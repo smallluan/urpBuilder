@@ -1,8 +1,10 @@
 import { parse, stringify } from 'flatted';
 import type { Edge, Node } from '@xyflow/react';
 import type { PageRouteConfig, UiTreeNode } from '../../../builder/store/types';
+import type { UiPreviewLibrary } from '../../../config/uiPreviewLibrary';
 
 export interface PreviewPageConfig {
+  previewUiLibrary?: UiPreviewLibrary;
   routeConfig?: PageRouteConfig | null;
   pageId?: string;
   pageName?: string;

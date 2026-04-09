@@ -2,6 +2,7 @@ import type { Edge, Node } from '@xyflow/react';
 import { buildComponentContract } from '../flow/componentContract';
 import { dehydrateUiTree, PROPS_STORAGE_VERSION } from '../template/propsHydration';
 import type { BuiltInLayoutTemplateId, PageRouteConfig, PageRouteRecord, UiTreeNode } from '../store/types';
+import type { UiPreviewLibrary } from '../../config/uiPreviewLibrary';
 
 export type PersistTemplateFingerprintMode = {
   enablePageRouteConfig: boolean;
@@ -9,6 +10,7 @@ export type PersistTemplateFingerprintMode = {
 };
 
 export type PersistTemplateFingerprintState = {
+  previewUiLibrary: UiPreviewLibrary;
   uiPageData: UiTreeNode;
   flowNodes: Node[];
   flowEdges: Edge[];
@@ -50,7 +52,7 @@ export function computePersistedTemplateFingerprint(
   mode: PersistTemplateFingerprintMode,
 ): string {
   const uiTreeData = state.uiPageData;
-  const { flowNodes, flowEdges, screenSize, autoWidth, selectedLayoutTemplateId } = state;
+  const { flowNodes, flowEdges, screenSize, autoWidth, selectedLayoutTemplateId, previewUiLibrary } = state;
   const { pageRouteConfig, pageRoutes, activeRouteOutletKey, sharedUiTree, sharedFlowNodes, sharedFlowEdges } = state;
 
   const componentContract = mode.enableComponentContract
@@ -79,6 +81,7 @@ export function computePersistedTemplateFingerprint(
       screenSize,
       autoWidth,
       selectedLayoutTemplateId,
+      previewUiLibrary,
       propsStorageVersion: PROPS_STORAGE_VERSION,
       ...(mode.enablePageRouteConfig && pageRouteConfig ? { routeConfig: pageRouteConfig } : {}),
       ...(mode.enablePageRouteConfig

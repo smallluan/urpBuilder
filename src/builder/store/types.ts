@@ -1,5 +1,6 @@
 import type { Edge, Node } from '@xyflow/react';
 import type { SimulatorChromeStyle } from '../constants/simulatorChromeStyle';
+import type { UiPreviewLibrary } from '../../config/uiPreviewLibrary';
 
 // ===========================
 // 基础类型
@@ -212,6 +213,10 @@ export interface UpdateNodeKeyResult {
 // ===========================
 
 export interface BuilderStore {
+  /**
+   * 预览与右侧组件库壳：TDesign 或 Ant Design（DSL 始终为 TDesign 物料 type）。
+   */
+  previewUiLibrary: UiPreviewLibrary;
   // 视图环境
   screenSize: ScreenSize;
   autoWidth: number;
@@ -265,6 +270,7 @@ export interface BuilderStore {
   builderFlowRightAsideCollapsed: boolean;
 
   // Actions — 视图环境
+  setPreviewUiLibrary: (library: UiPreviewLibrary) => void;
   setScreenSize: (screenSize: ScreenSize) => void;
   setAutoWidth: (width: number) => void;
   setSimulatorChromeStyle: (style: SimulatorChromeStyle) => void;

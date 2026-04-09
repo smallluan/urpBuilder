@@ -16,7 +16,8 @@ type MirrorPair = {
   name?: string;
 };
 
-const MIRROR_PAIRS: MirrorPair[] = [
+/** 与 {@link buildMirroredAntdCatalogEntries} 使用同一数据源，供预览/搭建分发层做类型映射 */
+export const ANTD_TD_MIRROR_PAIRS: readonly MirrorPair[] = [
   { antdType: 'antd.Divider', tdesignType: 'Divider' },
   { antdType: 'antd.Typography.Title', tdesignType: 'Typography.Title' },
   { antdType: 'antd.Typography.Paragraph', tdesignType: 'Typography.Paragraph' },
@@ -55,7 +56,7 @@ export function buildMirroredAntdCatalogEntries(tdesignCatalog: readonly Catalog
   const byType = new Map(tdesignCatalog.map((c) => [c.type, c]));
   const out: CatalogComponentDef[] = [];
 
-  for (const { antdType, tdesignType, name } of MIRROR_PAIRS) {
+  for (const { antdType, tdesignType, name } of ANTD_TD_MIRROR_PAIRS) {
     const src = byType.get(tdesignType);
     if (!src) {
       continue;

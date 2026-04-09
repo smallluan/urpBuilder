@@ -20,6 +20,9 @@ import {
   loadCustomComponentDetail,
   namespaceUiTreeKeys,
 } from '../../utils/customComponentRuntime';
+import { resolveAntdPreviewTypeForCanonical } from '../../config/uiPreviewLibrary';
+import { SimulatorPreviewLibraryOverrideContext } from '../context/SimulatorPreviewLibraryOverrideContext';
+import { SimulatorScrollContainerContext } from '../context/SimulatorScrollContainerContext';
 
 /**
  * CommonComponent：Builder 运行时的“组件渲染分发器”。
@@ -154,9 +157,26 @@ export default function CommonComponent(properties: CommonComponentProps) {
   const updateActiveNodeProp = useStore((state) => state.updateActiveNodeProp);
   const screenSize = useStore((state) => state.screenSize);
   const autoWidth = useStore((state) => state.autoWidth);
+  const storePreviewLibrary = useStore((state) => state.previewUiLibrary);
+  const previewLibraryOverride = React.useContext(SimulatorPreviewLibraryOverrideContext);
+  const previewUiLibrary = previewLibraryOverride ?? storePreviewLibrary;
 
   const accessors = createPropAccessors(data);
   const { getStyleProp, getStringProp, getBooleanProp, getProp } = accessors;
+  const resolveSimulatorScrollMount = React.useContext(SimulatorScrollContainerContext);
+  const getSimulatorMountEl = React.useCallback((): HTMLElement => {
+    if (resolveSimulatorScrollMount) {
+      const el = resolveSimulatorScrollMount();
+      if (el instanceof HTMLElement) {
+        return el;
+      }
+    }
+    const mainSim = document.querySelector('[data-urpbuilder-simulator-scroll="main"]') as HTMLElement | null;
+    if (mainSim) {
+      return mainSim;
+    }
+    return (document.querySelector('[data-builder-scroll-container="true"]') as HTMLElement | null) ?? document.body;
+  }, [resolveSimulatorScrollMount]);
 
   const renderBuilderMenuNodes = React.useMemo(
     () => buildMenuNodesRenderer(setActiveNode),
@@ -295,16 +315,16 @@ export default function CommonComponent(properties: CommonComponentProps) {
   }
 
   const visible = getBooleanProp('visible');
-  const isDrawerNode = normalizedType === 'Drawer' || normalizedType === 'antd.Drawer';
-  const isPopupNode = normalizedType === 'Popup';
-  // Drawer 需要允许在“不可见”时依旧保留节点渲染入口（由组件自身处理打开/关闭与挂载策略）。
-  if (visible === false && !isDrawerNode && !isPopupNode) return null;
+  const isDrawerLikeNode = normalizedType === 'Drawer' || normalizedType === 'Popup';
+  // Drawer / 对话框壳 需要允许在“不可见”时依旧保留节点渲染入口（由组件自身处理打开/关闭与挂载策略）。
+  if (visible === false && !isDrawerLikeNode) return null;
 
   // ctx 是 renderer 的统一输入协议：把 node 数据、事件、编辑器能力、以及部分组件的预解析 props 打包给 registry renderer。
   const ctx: ComponentRenderContext = {
     data,
     onDropData,
     ...accessors,
+    getBuilderDrawerAttach: () => () => getSimulatorMountEl(),
     renderBuilderMenuNodes,
     mergeStyle,
     handleActivateSelf,
@@ -325,6 +345,10 @@ export default function CommonComponent(properties: CommonComponentProps) {
     updateActiveNodeProp,
   };
 
-  const renderer = registry.get(normalizedType ?? '');
+  const registryLookupType =
+    previewUiLibrary === 'antd' && data
+      ? (resolveAntdPreviewTypeForCanonical(data) ?? normalizedType ?? '')
+      : (normalizedType ?? '');
+  const renderer = registry.get(registryLookupType);
   return renderer ? renderer(ctx) : null;
 }

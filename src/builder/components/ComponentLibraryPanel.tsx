@@ -38,6 +38,8 @@ import { useTeam } from '../../team/context';
 import { resolveComponentSlots, resolveExposedLifecycles, resolveExposedPropSchemas } from '../../utils/customComponentRuntime';
 import { useBuilderContext } from '../context/BuilderContext';
 import { applyBuilderDragPreview } from '../utils/dragPreview';
+import { buildMirroredAntdCatalogEntries, ANTD_TD_MIRROR_PAIRS, type CatalogComponentDef } from '../../config/antdCatalogMirror';
+import { catalogTypeMatchesPreviewLibrary } from '../../config/uiPreviewLibrary';
 
 interface CustomComponentSchema {
   name: string;
@@ -53,9 +55,6 @@ interface ComponentLibraryPanelProps {
 }
 
 type ComponentSchema = (typeof componentCatalog)[number];
-type ComponentSourceType = 'tdesign' | 'antd' | 'echarts';
-
-const isAntdComponentType = (type: string) => type.startsWith('antd.');
 
 interface CategoryMeta {
   label: string;
@@ -332,10 +331,10 @@ const isGroupEntrySelected = (
 };
 
 const ComponentLibraryPanel: React.FC<ComponentLibraryPanelProps> = ({ selectedName, onSelect, hideSavedComponents = false }) => {
-  const { entityType } = useBuilderContext();
+  const { entityType, useStore } = useBuilderContext();
+  const previewUiLibrary = useStore((s) => s.previewUiLibrary);
   const { currentTeamId } = useTeam();
   const [keyword, setKeyword] = useState('');
-  const [sourceType, setSourceType] = useState<ComponentSourceType>('tdesign');
   const [openedGroupKey, setOpenedGroupKey] = useState<string | null>(null);
   const [customComponentSchemas, setCustomComponentSchemas] = useState<CustomComponentSchema[]>([]);
 
@@ -360,6 +359,18 @@ const ComponentLibraryPanel: React.FC<ComponentLibraryPanelProps> = ({ selectedN
     return new Map<string, ComponentSchema>(
       componentCatalog.map((component) => [String(component.type ?? ''), component]),
     );
+  }, []);
+
+  const antdMirrorDisplayNameByTdesignType = useMemo(() => {
+    const mirrored = buildMirroredAntdCatalogEntries(componentCatalog as unknown as CatalogComponentDef[]);
+    const map = new Map<string, string>();
+    mirrored.forEach((entry) => {
+      const pair = ANTD_TD_MIRROR_PAIRS.find((p) => p.antdType === entry.type);
+      if (pair) {
+        map.set(pair.tdesignType, entry.name);
+      }
+    });
+    return map;
   }, []);
 
   /** 页面搭建专用：路由出口；搭建组件时不展示 */
@@ -400,18 +411,8 @@ const ComponentLibraryPanel: React.FC<ComponentLibraryPanelProps> = ({ selectedN
   }, [entityType, presetLibraryEntriesForEntity]);
 
   const sourceFilteredEntries = useMemo(() => {
-    const matchSource = (componentType: string) => {
-      const t = String(componentType ?? '');
-      const isChart = ECHART_COMPONENT_TYPES.has(t);
-      const isAntd = isAntdComponentType(t);
-      if (sourceType === 'echarts') {
-        return isChart;
-      }
-      if (sourceType === 'antd') {
-        return isAntd;
-      }
-      return !isChart && !isAntd;
-    };
+    const matchSource = (componentType: string) =>
+      catalogTypeMatchesPreviewLibrary(String(componentType ?? ''), previewUiLibrary);
 
     return libraryEntries
       .filter((entry) => {
@@ -433,7 +434,7 @@ const ComponentLibraryPanel: React.FC<ComponentLibraryPanelProps> = ({ selectedN
           children,
         };
       });
-  }, [libraryEntries, sourceType]);
+  }, [libraryEntries, previewUiLibrary]);
 
   const filteredEntries = useMemo(() => {
     const text = keyword.trim();
@@ -632,10 +633,6 @@ const ComponentLibraryPanel: React.FC<ComponentLibraryPanelProps> = ({ selectedN
   }, [hideSavedComponents, currentTeamId]);
 
   const filteredCustomComponentSchemas = useMemo(() => {
-    if (sourceType !== 'tdesign') {
-      return [];
-    }
-
     const text = keyword.trim().toLowerCase();
     if (!text) {
       return customComponentSchemas;
@@ -645,23 +642,27 @@ const ComponentLibraryPanel: React.FC<ComponentLibraryPanelProps> = ({ selectedN
       return item.name.toLowerCase().includes(text)
         || String((item.props.__componentId as { value?: unknown } | undefined)?.value ?? '').toLowerCase().includes(text);
     });
-  }, [customComponentSchemas, keyword, sourceType]);
+  }, [customComponentSchemas, keyword]);
 
   const renderLibraryItemCard = (schema: ComponentSchema, isActive: boolean) => {
     const itemCategory = getCategoryByType(String(schema.type ?? ''));
     const IconComponent = getIconByType(String(schema.type ?? ''));
+    const displayName =
+      previewUiLibrary === 'antd'
+        ? (antdMirrorDisplayNameByTdesignType.get(String(schema.type ?? '')) ?? schema.name)
+        : schema.name;
 
     return (
       <div
         className={`library-item ${isActive ? 'is-active' : ''}`}
-        title={String(schema.name)}
+        title={String(displayName)}
         onClick={() => onSelect(String(schema.name))}
       >
         <div className={`library-item-icon library-item-icon--${itemCategory}`}>
           <IconComponent size={14} strokeWidth={2} />
         </div>
         <div className="library-item-main">
-          <div className="library-item-name">{schema.name}</div>
+          <div className="library-item-name">{displayName}</div>
         </div>
       </div>
     );
@@ -683,6 +684,10 @@ const ComponentLibraryPanel: React.FC<ComponentLibraryPanelProps> = ({ selectedN
 
             const IconComponent = getIconByType(String(schema.type ?? ''));
             const itemCategory = getCategoryByType(String(schema.type ?? ''));
+            const popupDisplayName =
+              previewUiLibrary === 'antd'
+                ? (antdMirrorDisplayNameByTdesignType.get(String(schema.type ?? '')) ?? schema.name)
+                : schema.name;
 
             return (
               <DragableWrapper
@@ -693,7 +698,7 @@ const ComponentLibraryPanel: React.FC<ComponentLibraryPanelProps> = ({ selectedN
               >
                 <div
                   className={`library-popup-item ${selectedName === schema.name ? 'is-active' : ''}`}
-                  title={String(schema.name)}
+                  title={String(popupDisplayName)}
                   onClick={() => {
                     onSelect(String(schema.name));
                     setOpenedGroupKey(null);
@@ -703,7 +708,7 @@ const ComponentLibraryPanel: React.FC<ComponentLibraryPanelProps> = ({ selectedN
                     <IconComponent size={16} strokeWidth={2} />
                   </div>
                   <div className="library-popup-item__content">
-                    <div className="library-popup-item__name">{schema.name}</div>
+                    <div className="library-popup-item__name">{popupDisplayName}</div>
                     {child.helperText && child.helperText !== schema.type ? (
                       <div className="library-popup-item__desc">{child.helperText}</div>
                     ) : null}
@@ -729,38 +734,6 @@ const ComponentLibraryPanel: React.FC<ComponentLibraryPanelProps> = ({ selectedN
           onChange={(value) => setKeyword(String(value ?? ''))}
         />
       </div>
-      <div className="library-source-tabs library-source-tabs--scroll" role="tablist" aria-label="组件库来源">
-        <div className="library-source-tabs__track">
-          <button
-            type="button"
-            role="tab"
-            aria-selected={sourceType === 'tdesign'}
-            className={`library-source-tabs__item${sourceType === 'tdesign' ? ' is-active' : ''}`}
-            onClick={() => setSourceType('tdesign')}
-          >
-            <span className="library-source-tabs__label">TDesign</span>
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={sourceType === 'antd'}
-            className={`library-source-tabs__item${sourceType === 'antd' ? ' is-active' : ''}`}
-            onClick={() => setSourceType('antd')}
-          >
-            <span className="library-source-tabs__label">Ant Design</span>
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={sourceType === 'echarts'}
-            className={`library-source-tabs__item${sourceType === 'echarts' ? ' is-active' : ''}`}
-            onClick={() => setSourceType('echarts')}
-          >
-            <span className="library-source-tabs__label">ECharts</span>
-          </button>
-        </div>
-      </div>
-
       <div className="library-content">
         <div className="library-list">
         {!hideSavedComponents && filteredCustomComponentSchemas.length > 0 ? (

@@ -42,16 +42,6 @@ const GROUPED_COMPONENT_TYPES = new Set([
   'Layout.Content',
   'Layout.Aside',
   'Layout.Footer',
-  'antd.Row',
-  'antd.Col',
-  'antd.Menu',
-  'antd.Menu.Item',
-  'antd.Menu.SubMenu',
-  'antd.Layout',
-  'antd.Layout.Header',
-  'antd.Layout.Content',
-  'antd.Layout.Footer',
-  'antd.Layout.Sider',
 ]);
 
 const LIBRARY_GROUP_ENTRIES: ComponentLibraryGroupEntry[] = [

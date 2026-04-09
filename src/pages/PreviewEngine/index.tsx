@@ -2,7 +2,7 @@ import React from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import type { Edge, Node } from '@xyflow/react';
 import cloneDeep from 'lodash/cloneDeep';
-import PreviewRenderer, { PreviewDataHubRefContext } from './components/PreviewRenderer';
+import PreviewRenderer, { PreviewDataHubRefContext, PreviewUiLibraryContext } from './components/PreviewRenderer';
 import { deserializePreviewSnapshot, type PreviewSnapshot } from './utils/snapshot';
 import { createPreviewDataHub, type DataHubRouterState, type PreviewDataHub } from './runtime/dataHub';
 import { createPreviewFlowRuntime, type PreviewFlowRuntime } from './runtime/flowRuntime';
@@ -351,6 +351,7 @@ const PreviewEngine: React.FC = () => {
   const finalPageId = pageId || resolvedPageId;
   const shouldShowResolveError = !parsedSnapshot && !finalPageId && Boolean(routeResolveError);
   const isComponentEntity = entityType === 'component';
+  const previewUiLibrary = snapshot.pageConfig?.previewUiLibrary === 'antd' ? 'antd' : 'tdesign';
 
   const routeSubscribersRef = React.useRef(new Set<(state: DataHubRouterState) => void>());
   const routerState = React.useMemo<DataHubRouterState>(() => ({
@@ -482,11 +483,13 @@ const PreviewEngine: React.FC = () => {
               </div>
             </div>
           ) : (
-            <AntdRuntimeRoot>
-              <PreviewDataHubRefContext.Provider value={dataHubRef}>
-                <PreviewRenderer key={renderTree.key} node={renderTree} onLifecycle={handleLifecycle} />
-              </PreviewDataHubRefContext.Provider>
-            </AntdRuntimeRoot>
+            <PreviewUiLibraryContext.Provider value={previewUiLibrary}>
+              <AntdRuntimeRoot>
+                <PreviewDataHubRefContext.Provider value={dataHubRef}>
+                  <PreviewRenderer key={renderTree.key} node={renderTree} onLifecycle={handleLifecycle} />
+                </PreviewDataHubRefContext.Provider>
+              </AntdRuntimeRoot>
+            </PreviewUiLibraryContext.Provider>
           )}
         </div>
         {debugEnabled && debugPaused && <DebugPauseOverlay />}

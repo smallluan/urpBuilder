@@ -121,6 +121,8 @@ export interface AntdPreviewContext {
   syncDrawerVisible: (next: boolean) => void;
   modalOpen: boolean;
   syncModalVisible: (next: boolean) => void;
+  /** 与 TDesign 预览 attach 一致，避免挂到 document.body 铺满外层窗口 */
+  getPortalContainer: () => HTMLElement;
 }
 
 export function tryRenderAntdPreview(ctx: AntdPreviewContext): React.ReactElement | null {
@@ -138,11 +140,8 @@ export function tryRenderAntdPreview(ctx: AntdPreviewContext): React.ReactElemen
     syncDrawerVisible,
     modalOpen,
     syncModalVisible,
+    getPortalContainer,
   } = ctx;
-
-  if (!type.startsWith('antd.')) {
-    return null;
-  }
 
   switch (type) {
     case 'antd.Divider': {
@@ -477,6 +476,7 @@ export function tryRenderAntdPreview(ctx: AntdPreviewContext): React.ReactElemen
           open={modalOpen}
           okText={getStringProp(node, 'confirmBtn') || '确定'}
           cancelText={getStringProp(node, 'cancelBtn') || '取消'}
+          getContainer={getPortalContainer}
           onOk={() => {
             emitInteractionLifecycle('onConfirm');
             syncModalVisible(false);
@@ -496,6 +496,7 @@ export function tryRenderAntdPreview(ctx: AntdPreviewContext): React.ReactElemen
           title={getStringProp(node, 'header') || undefined}
           open={drawerInnerVisible}
           placement={getStringProp(node, 'placement') as 'top' | 'right' | 'bottom' | 'left' | undefined}
+          getContainer={getPortalContainer}
           onClose={() => {
             syncDrawerVisible(false);
             emitInteractionLifecycle('onClose');

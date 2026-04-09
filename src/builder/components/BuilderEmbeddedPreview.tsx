@@ -1,5 +1,9 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
-import PreviewRenderer, { PreviewDataHubRefContext } from '../../pages/PreviewEngine/components/PreviewRenderer';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import PreviewRenderer, {
+  PreviewDataHubRefContext,
+  PreviewPortalContainerContext,
+  PreviewUiLibraryContext,
+} from '../../pages/PreviewEngine/components/PreviewRenderer';
 import { createPreviewDataHub, type DataHubRouterState, type PreviewDataHub } from '../../pages/PreviewEngine/runtime/dataHub';
 import { createPreviewFlowRuntime, type PreviewFlowRuntime } from '../../pages/PreviewEngine/runtime/flowRuntime';
 import { useBuilderContext } from '../context/BuilderContext';
@@ -11,6 +15,7 @@ import { SIMULATOR_CHROME_FLOATING_PAD_PX } from '../constants/simulatorChromeSt
 import '../../pages/PreviewEngine/style.less';
 import './BuilderEmbeddedPreview.less';
 import { AntdRuntimeRoot } from '../antd/AntdRuntimeRoot';
+import SimulatorLibraryBrushOverlay from './SimulatorLibraryBrushOverlay';
 
 export interface BuilderEmbeddedPreviewProps {
   enablePageRouteConfig: boolean;
@@ -31,8 +36,24 @@ const BuilderEmbeddedPreview: React.FC<BuilderEmbeddedPreviewProps> = ({
   const screenSize = useStore((s) => s.screenSize);
   const autoWidth = useStore((s) => s.autoWidth);
   const simulatorChromeStyle = useStore((s) => s.simulatorChromeStyle);
+  const previewUiLibrary = useStore((s) => s.previewUiLibrary);
   const [previewPath, setPreviewPath] = useState(() => normalizeRoutePath(pageRoutePath ?? '/'));
   const simulatorScrollRef = useRef<HTMLDivElement | null>(null);
+  const [embeddedSimulatorScrollEl, setEmbeddedSimulatorScrollEl] = useState<HTMLDivElement | null>(null);
+
+  const bindEmbeddedSimulatorScrollRef = useCallback((node: HTMLDivElement | null) => {
+    simulatorScrollRef.current = node;
+    setEmbeddedSimulatorScrollEl(node);
+  }, []);
+
+  const embeddedPreviewPortalMount = useCallback((): HTMLElement => {
+    return (
+      embeddedSimulatorScrollEl
+      ?? simulatorScrollRef.current
+      ?? (document.querySelector('[data-urpbuilder-simulator-scroll="embedded"]') as HTMLElement | null)
+      ?? document.body
+    );
+  }, [embeddedSimulatorScrollEl]);
 
   useEffect(() => {
     return useStore.subscribe(() => {
@@ -238,11 +259,19 @@ const BuilderEmbeddedPreview: React.FC<BuilderEmbeddedPreviewProps> = ({
           </div>
         </div>
       ) : (
-        <AntdRuntimeRoot>
-          <PreviewDataHubRefContext.Provider value={dataHubRef}>
-            <PreviewRenderer key={renderTree.key} node={renderTree} onLifecycle={handleLifecycle} />
-          </PreviewDataHubRefContext.Provider>
-        </AntdRuntimeRoot>
+        <PreviewPortalContainerContext.Provider value={embeddedPreviewPortalMount}>
+          <SimulatorLibraryBrushOverlay activeLibrary={previewUiLibrary} variant="embedded">
+            {(lib) => (
+              <PreviewUiLibraryContext.Provider value={lib}>
+                <AntdRuntimeRoot>
+                  <PreviewDataHubRefContext.Provider value={dataHubRef}>
+                    <PreviewRenderer key={`${renderTree.key}-${lib}`} node={renderTree} onLifecycle={handleLifecycle} />
+                  </PreviewDataHubRefContext.Provider>
+                </AntdRuntimeRoot>
+              </PreviewUiLibraryContext.Provider>
+            )}
+          </SimulatorLibraryBrushOverlay>
+        </PreviewPortalContainerContext.Provider>
       )}
     </>
   );
@@ -253,9 +282,11 @@ const BuilderEmbeddedPreview: React.FC<BuilderEmbeddedPreviewProps> = ({
         <SimulatorDeviceChrome variant={simulatorChromeStyle} />
       ) : null}
       <div
-        ref={simulatorScrollRef}
+        ref={bindEmbeddedSimulatorScrollRef}
         className={['simulator-scroll', chromeFloating ? 'simulator-scroll--chrome-inset' : ''].filter(Boolean).join(' ')}
         data-preview-scroll-container="true"
+        data-builder-scroll-container="true"
+        data-urpbuilder-simulator-scroll="embedded"
       >
         <div
           className="preview-engine-canvas builder-embedded-preview__canvas-inner"

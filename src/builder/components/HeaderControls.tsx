@@ -642,6 +642,8 @@ export default function HeaderControls({
         ? pageRoutes
         : [];
 
+      const previewUiLibrary = useStore.getState().previewUiLibrary;
+
       const templatePayload = {
         uiTree: dehydrateUiTree(uiTreeData) as unknown as Record<string, unknown>,
         flowNodes: flowNodes as unknown as Array<Record<string, unknown>>,
@@ -660,6 +662,7 @@ export default function HeaderControls({
           screenSize,
           autoWidth,
           selectedLayoutTemplateId,
+          previewUiLibrary,
           propsStorageVersion: PROPS_STORAGE_VERSION,
           ...(enablePageRouteConfig && pageRouteConfig ? { routeConfig: pageRouteConfig } : {}),
           ...(enablePageRouteConfig ? {

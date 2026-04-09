@@ -1,3 +1,4 @@
+import React from 'react';
 import { Upload, Drawer, Popup } from 'tdesign-react';
 import type { ComponentRegistry } from '../componentContext';
 import { ActivateWrapper } from '../componentHelpers';

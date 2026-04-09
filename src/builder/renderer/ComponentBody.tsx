@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import cloneDeep from 'lodash/cloneDeep';
 import { computePosition, flip, offset, shift } from '@floating-ui/dom';
 import { Button, Divider, MessagePlugin, Row, Space, Typography } from 'tdesign-react';
@@ -11,6 +11,8 @@ import DropArea from '../../components/DropArea';
 import { LIST_TEMPLATE_ALLOWED_TYPES } from '../../constants/componentBuilder';
 import { findNodePathByKey } from '../utils/tree';
 import SimulatorDeviceChrome from '../components/SimulatorDeviceChrome';
+import SimulatorLibraryBrushOverlay from '../components/SimulatorLibraryBrushOverlay';
+import { SimulatorScrollContainerContext } from '../context/SimulatorScrollContainerContext';
 import SimulatorSelectionOverlay from '../components/SimulatorSelectionOverlay';
 import componentCatalog from '../../config/componentCatalog';
 import { getNodeSlotKey, isSlotNode } from '../utils/slot';
@@ -53,16 +55,7 @@ const CONTAINER_NODE_TYPES = new Set([
   'Layout.Aside',
   'Layout.Footer',
   'ComponentSlotOutlet',
-  'antd.Row',
-  'antd.Col',
-  'antd.Layout',
-  'antd.Layout.Header',
-  'antd.Layout.Content',
-  'antd.Layout.Footer',
-  'antd.Layout.Sider',
-  'antd.Space',
-  'antd.Form',
-  'antd.List',
+  'Card',
 ]);
 
 interface TreeNodeDropTarget {
@@ -356,6 +349,7 @@ const ComponentBody: React.FC = () => {
   const screenSize = useStore((state) => state.screenSize);
   const autoWidth = useStore((state) => state.autoWidth);
   const simulatorChromeStyle = useStore((state) => state.simulatorChromeStyle);
+  const previewUiLibrary = useStore((state) => state.previewUiLibrary);
   const uiPageData = useStore((state) => state.uiPageData);
   const activeNodeKey = useStore((state) => state.activeNodeKey);
   const setActiveNode = useStore((state) => state.setActiveNode);
@@ -370,6 +364,21 @@ const ComponentBody: React.FC = () => {
   const hiddenHintKeyRef = useRef<string | null>(null);
   const simulatorContainerRef = useRef<HTMLDivElement | null>(null);
   const simulatorScrollRef = useRef<HTMLDivElement | null>(null);
+  const [mainSimulatorScrollEl, setMainSimulatorScrollEl] = useState<HTMLDivElement | null>(null);
+
+  const bindSimulatorScrollRef = useCallback((node: HTMLDivElement | null) => {
+    simulatorScrollRef.current = node;
+    setMainSimulatorScrollEl(node);
+  }, []);
+
+  const simulatorScrollMountFn = useCallback((): HTMLElement => {
+    return (
+      mainSimulatorScrollEl
+      ?? simulatorScrollRef.current
+      ?? (document.querySelector('[data-urpbuilder-simulator-scroll="main"]') as HTMLElement | null)
+      ?? document.body
+    );
+  }, [mainSimulatorScrollEl]);
   const [contextMenuState, setContextMenuState] = useState<{
     visible: boolean;
     nodeKey: string | null;
@@ -1120,18 +1129,27 @@ const ComponentBody: React.FC = () => {
         <SimulatorDeviceChrome variant={simulatorChromeStyle} />
       ) : null}
       <div
-        ref={simulatorScrollRef}
+        ref={bindSimulatorScrollRef}
         className={['simulator-scroll', chromeFloating ? 'simulator-scroll--chrome-inset' : ''].filter(Boolean).join(' ')}
         data-builder-scroll-container="true"
+        data-urpbuilder-simulator-scroll="main"
       >
-        <DropArea
-          className="drop-area-root"
-          style={resolveSimulatorStyle({ minHeight: '100%', height: 'auto', flex: '1 0 auto' })}
-          data={uiPageData}
-          onDropData={handleDropData}
-          selectable={false}
-        />
-        <SimulatorSelectionOverlay scrollContainerRef={simulatorScrollRef} />
+        <SimulatorScrollContainerContext.Provider value={simulatorScrollMountFn}>
+          <SimulatorLibraryBrushOverlay activeLibrary={previewUiLibrary} variant="main">
+            {() => (
+              <>
+                <DropArea
+                  className="drop-area-root"
+                  style={resolveSimulatorStyle({ minHeight: '100%', height: 'auto', flex: '1 0 auto' })}
+                  data={uiPageData}
+                  onDropData={handleDropData}
+                  selectable={false}
+                />
+                <SimulatorSelectionOverlay scrollContainerRef={simulatorScrollRef} />
+              </>
+            )}
+          </SimulatorLibraryBrushOverlay>
+        </SimulatorScrollContainerContext.Provider>
       </div>
       {showDeviceChrome && chromeFloating ? (
         <SimulatorDeviceChrome variant={simulatorChromeStyle} />
