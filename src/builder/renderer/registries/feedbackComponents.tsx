@@ -85,7 +85,6 @@ export function registerFeedbackComponents(registry: ComponentRegistry): void {
             lazy={getBooleanProp('lazy') !== false}
             placement={getStringProp('placement') as any}
             preventScrollThrough={getBooleanProp('preventScrollThrough') !== false}
-            showInAttachedElement
             showOverlay={getBooleanProp('showOverlay') !== false}
             size={getStringProp('size') || undefined}
             sizeDraggable={getDrawerSizeDraggableProp() as any}
@@ -139,7 +138,6 @@ export function registerFeedbackComponents(registry: ComponentRegistry): void {
           visible={popupVisible}
           zIndex={getNumberProp('zIndex')}
           hideEmptyPopup={getBooleanProp('hideEmptyPopup') !== false}
-          showInAttachedElement={getBooleanProp('showInAttachedElement') !== false}
           overlayClassName={getStringProp('overlayClassName') || undefined}
           overlayInnerClassName={getStringProp('overlayInnerClassName') || undefined}
           delay={getNumberProp('delay') ?? undefined}

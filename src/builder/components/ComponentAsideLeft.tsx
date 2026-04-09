@@ -69,6 +69,7 @@ const CONTAINER_NODE_TYPES = new Set([
   'antd.Space',
   'antd.Form',
   'antd.List',
+  'antd.Card',
 ]);
 
 const MENU_NODE_TYPES = new Set(['Menu.Submenu', 'Menu.Item']);

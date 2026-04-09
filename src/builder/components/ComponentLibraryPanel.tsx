@@ -87,7 +87,7 @@ const CATEGORY_META_MAP: Record<ComponentLibraryCategory, CategoryMeta> = {
 
 const CATEGORY_ORDER: ComponentLibraryCategory[] = ['action', 'layout', 'display', 'text', 'navigation'];
 
-const HIDDEN_COMPONENT_TYPES = new Set(['List.Item']);
+const HIDDEN_COMPONENT_TYPES = new Set(['List.Item', 'Popup']);
 const ECHART_COMPONENT_TYPES = new Set(ECHART_COMPONENT_TYPE_LIST);
 
 const getCategoryByType = (type: string): ComponentLibraryCategory => {
@@ -112,6 +112,12 @@ const getCategoryByType = (type: string): ComponentLibraryCategory => {
       type === 'antd.Button'
       || type === 'antd.Dropdown'
       || type === 'antd.Typography.Link'
+      || type === 'antd.Table'
+      || type === 'antd.Card'
+      || type === 'antd.Statistic'
+      || type === 'antd.Icon'
+      || type === 'antd.Divider'
+      || type === 'antd.Drawer'
     ) {
       return 'action';
     }
@@ -283,6 +289,14 @@ const getIconByType = (type: string) => {
     'Typography.Title': Heading,
     'Typography.Paragraph': AlignLeft,
     'Typography.Text': Type,
+    'antd.Button': MousePointerClick,
+    'antd.Typography.Link': Link2,
+    'antd.Drawer': RectangleHorizontal,
+    'antd.Icon': Star,
+    'antd.Table': MousePointerClick,
+    'antd.Card': RectangleHorizontal,
+    'antd.Statistic': MousePointerClick,
+    'antd.Divider': Minus,
   };
 
   return iconMap[type] ?? getCategoryIcon(getCategoryByType(type));
@@ -715,28 +729,36 @@ const ComponentLibraryPanel: React.FC<ComponentLibraryPanelProps> = ({ selectedN
           onChange={(value) => setKeyword(String(value ?? ''))}
         />
       </div>
-      <div className="library-source-tabs library-source-tabs--horizontal">
-        <button
-          type="button"
-          className={`library-source-tabs__item${sourceType === 'tdesign' ? ' is-active' : ''}`}
-          onClick={() => setSourceType('tdesign')}
-        >
-          TDesign
-        </button>
-        <button
-          type="button"
-          className={`library-source-tabs__item${sourceType === 'antd' ? ' is-active' : ''}`}
-          onClick={() => setSourceType('antd')}
-        >
-          Ant Design
-        </button>
-        <button
-          type="button"
-          className={`library-source-tabs__item${sourceType === 'echarts' ? ' is-active' : ''}`}
-          onClick={() => setSourceType('echarts')}
-        >
-          ECharts
-        </button>
+      <div className="library-source-tabs library-source-tabs--scroll" role="tablist" aria-label="组件库来源">
+        <div className="library-source-tabs__track">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={sourceType === 'tdesign'}
+            className={`library-source-tabs__item${sourceType === 'tdesign' ? ' is-active' : ''}`}
+            onClick={() => setSourceType('tdesign')}
+          >
+            <span className="library-source-tabs__label">TDesign</span>
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={sourceType === 'antd'}
+            className={`library-source-tabs__item${sourceType === 'antd' ? ' is-active' : ''}`}
+            onClick={() => setSourceType('antd')}
+          >
+            <span className="library-source-tabs__label">Ant Design</span>
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={sourceType === 'echarts'}
+            className={`library-source-tabs__item${sourceType === 'echarts' ? ' is-active' : ''}`}
+            onClick={() => setSourceType('echarts')}
+          >
+            <span className="library-source-tabs__label">ECharts</span>
+          </button>
+        </div>
       </div>
 
       <div className="library-content">

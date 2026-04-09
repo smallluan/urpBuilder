@@ -4,6 +4,7 @@ import {
   Badge,
   Breadcrumb,
   Button,
+  Card as AntCard,
   Checkbox,
   Col,
   DatePicker,
@@ -24,15 +25,28 @@ import {
   Select,
   Space,
   Spin,
+  Statistic as AntStatistic,
   Switch,
   Table,
   Tag,
   Typography,
 } from 'antd';
+import { ArrowDownOutlined, ArrowUpOutlined } from '@ant-design/icons';
 import type { MenuProps } from 'antd';
 import dayjs, { type Dayjs } from 'dayjs';
 import type { UiTreeNode } from '../../../builder/store/types';
 import type { ComponentLifecycleHandler } from '../../../types/component';
+import { getNodeSlotKey, isSlotNode } from '../../../builder/utils/slot';
+import { renderNamedIcon } from '../../../constants/iconRegistry';
+import {
+  antTitleLevelFromTdesign,
+  antdSpaceSizeFromTdesign,
+  dividerOrientationFromAlign,
+  mapTdesignButtonToAntd,
+  resolveAntdTableDataSource,
+  statisticColorStyle,
+  tdesignTableColumnsToAntd,
+} from '../../../utils/antdTdesignPropBridge';
 
 const { Title, Paragraph, Text, Link } = Typography;
 const { Header, Content, Footer, Sider } = Layout;
@@ -64,6 +78,23 @@ function getFiniteNumberProp(node: UiTreeNode, propName: string) {
   return undefined;
 }
 
+function getPropValue(node: UiTreeNode, propName: string): unknown {
+  const p = node.props?.[propName] as { value?: unknown } | undefined;
+  return p?.value;
+}
+
+function getSlotChildren(node: UiTreeNode, slotKey: string): UiTreeNode[] {
+  const sourceChildren = node.children ?? [];
+  const slotNode = sourceChildren.find((child) => getNodeSlotKey(child) === slotKey && isSlotNode(child));
+  if (slotNode) {
+    return slotNode.children ?? [];
+  }
+  if (slotKey === 'body') {
+    return sourceChildren.filter((child) => !isSlotNode(child));
+  }
+  return [];
+}
+
 function parseJsonRecordArray(raw: string | undefined): Array<Record<string, unknown>> {
   if (!raw?.trim()) {
     return [];
@@ -81,6 +112,7 @@ export interface AntdPreviewContext {
   node: UiTreeNode;
   mergeStyle: (baseStyle?: React.CSSProperties) => React.CSSProperties | undefined;
   renderChildren: (node: UiTreeNode, onLifecycle?: ComponentLifecycleHandler) => React.ReactNode;
+  renderChildList: (children: UiTreeNode[]) => React.ReactNode;
   emitInteractionLifecycle: (lifetime: string, payload?: unknown) => void;
   syncNodeValue: (nextValue: unknown) => void;
   navigatePreviewByHref: (href: string) => void;
@@ -97,6 +129,7 @@ export function tryRenderAntdPreview(ctx: AntdPreviewContext): React.ReactElemen
     node,
     mergeStyle,
     renderChildren,
+    renderChildList,
     emitInteractionLifecycle,
     syncNodeValue,
     navigatePreviewByHref,
@@ -117,7 +150,7 @@ export function tryRenderAntdPreview(ctx: AntdPreviewContext): React.ReactElemen
       return (
         <Divider
           dashed={getBooleanProp(node, 'dashed') === true}
-          orientation={getStringProp(node, 'orientation') as 'left' | 'center' | 'right' | undefined}
+          orientation={dividerOrientationFromAlign(getStringProp(node, 'align')) as React.ComponentProps<typeof Divider>['orientation']}
           style={mergeStyle()}
         >
           {text || undefined}
@@ -125,8 +158,7 @@ export function tryRenderAntdPreview(ctx: AntdPreviewContext): React.ReactElemen
       );
     }
     case 'antd.Typography.Title': {
-      const level = Number(getStringProp(node, 'level')) || 4;
-      const lv = (level >= 1 && level <= 5 ? level : 4) as 1 | 2 | 3 | 4 | 5;
+      const lv = antTitleLevelFromTdesign(getStringProp(node, 'level'));
       return <Title level={lv} style={mergeStyle()}>{getStringProp(node, 'content') || '标题'}</Title>;
     }
     case 'antd.Typography.Paragraph':
@@ -144,6 +176,7 @@ export function tryRenderAntdPreview(ctx: AntdPreviewContext): React.ReactElemen
           href={href}
           target={getStringProp(node, 'target') as '_self' | '_blank' | undefined}
           style={mergeStyle()}
+          disabled={getBooleanProp(node, 'disabled') === true}
           onClick={(e) => {
             e.preventDefault();
             emitInteractionLifecycle('onClick');
@@ -170,19 +203,105 @@ export function tryRenderAntdPreview(ctx: AntdPreviewContext): React.ReactElemen
       );
     case 'antd.Empty':
       return <Empty description={getStringProp(node, 'description') || '暂无数据'} style={mergeStyle()} />;
-    case 'antd.Button':
+    case 'antd.Icon':
+      return (
+        <span style={mergeStyle()}>
+          {renderNamedIcon(getStringProp(node, 'iconName'), {
+            size: getFiniteNumberProp(node, 'size') ?? 16,
+            strokeWidth: getFiniteNumberProp(node, 'strokeWidth') ?? 2,
+          })}
+        </span>
+      );
+    case 'antd.Card': {
+      const headerChildren = getSlotChildren(node, 'header');
+      const bodyChildren = getSlotChildren(node, 'body');
+      const hasHeaderSlotContent = headerChildren.length > 0;
+      const titleNode = getStringProp(node, 'subtitle') ? (
+        <span>
+          <span>{getStringProp(node, 'title')}</span>
+          <div style={{ fontSize: 12, opacity: 0.65 }}>{getStringProp(node, 'subtitle')}</div>
+        </span>
+      ) : (
+        getStringProp(node, 'title')
+      );
+      return (
+        <AntCard
+          title={hasHeaderSlotContent ? renderChildList(headerChildren) : titleNode}
+          bordered={getBooleanProp(node, 'bordered') !== false}
+          size={getStringProp(node, 'size') === 'small' ? 'small' : 'default'}
+          style={{
+            ...(mergeStyle() ?? {}),
+            boxShadow: getBooleanProp(node, 'shadow')
+              ? '0 1px 2px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04)'
+              : undefined,
+          }}
+          styles={{
+            header: { borderBottom: getBooleanProp(node, 'headerBordered') ? undefined : 'none' },
+          }}
+        >
+          {renderChildList(bodyChildren)}
+        </AntCard>
+      );
+    }
+    case 'antd.Statistic': {
+      const raw = getFiniteNumberProp(node, 'value') ?? 0;
+      const dp = Math.max(0, Math.min(8, Math.round(getFiniteNumberProp(node, 'decimalPlaces') ?? 0)));
+      const sep = getStringProp(node, 'separator') ?? ',';
+      const trend = getStringProp(node, 'trend');
+      const trendPlacement = getStringProp(node, 'trendPlacement') || 'left';
+      const trendIcon =
+        trend === 'increase' ? (
+          <ArrowUpOutlined style={{ color: '#52c41a' }} />
+        ) : trend === 'decrease' ? (
+          <ArrowDownOutlined style={{ color: '#ff4d4f' }} />
+        ) : null;
+      const unit = getStringProp(node, 'unit') || '';
+      const prefix =
+        trendIcon && trendPlacement === 'left' ? <span style={{ marginRight: 8 }}>{trendIcon}</span> : undefined;
+      const suffix =
+        unit || (trendIcon && trendPlacement === 'right') ? (
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            {unit ? <span>{unit}</span> : null}
+            {trendIcon && trendPlacement === 'right' ? trendIcon : null}
+          </span>
+        ) : undefined;
+      return (
+        <AntStatistic
+          title={getStringProp(node, 'title')}
+          value={raw}
+          precision={dp}
+          groupSeparator={sep}
+          prefix={prefix}
+          suffix={suffix}
+          loading={getBooleanProp(node, 'loading') === true}
+          valueStyle={statisticColorStyle(getStringProp(node, 'color'))}
+          style={mergeStyle()}
+        />
+      );
+    }
+    case 'antd.Button': {
+      const mapped = mapTdesignButtonToAntd({
+        theme: getStringProp(node, 'theme'),
+        variant: getStringProp(node, 'variant'),
+        shape: getStringProp(node, 'shape'),
+        size: getStringProp(node, 'size'),
+        danger: getBooleanProp(node, 'danger'),
+        block: getBooleanProp(node, 'block'),
+      });
       return (
         <Button
-          type={getStringProp(node, 'type') as 'primary' | 'default' | 'dashed' | 'link' | 'text' | undefined}
-          size={getStringProp(node, 'size') as 'large' | 'middle' | 'small' | undefined}
-          danger={getBooleanProp(node, 'danger') === true}
-          block={getBooleanProp(node, 'block') === true}
+          type={mapped.type}
+          size={mapped.size}
+          danger={mapped.danger}
+          block={mapped.block}
+          shape={mapped.shape}
           style={mergeStyle()}
           onClick={() => emitInteractionLifecycle('onClick')}
         >
           {getStringProp(node, 'content') || '按钮'}
         </Button>
       );
+    }
     case 'antd.Dropdown': {
       const items = parseJsonRecordArray(getStringProp(node, 'menuItems')).map((it, i) => ({
         key: String(it.key ?? i),
@@ -210,7 +329,7 @@ export function tryRenderAntdPreview(ctx: AntdPreviewContext): React.ReactElemen
             syncNodeValue(e.target.value);
             emitInteractionLifecycle('onChange', { value: e.target.value });
           }}
-          onPressEnter={(e) => emitInteractionLifecycle('onPressEnter', { value: (e.target as HTMLInputElement).value })}
+          onPressEnter={(e) => emitInteractionLifecycle('onEnter', { value: (e.target as HTMLInputElement).value })}
         />
       );
     }
@@ -309,7 +428,7 @@ export function tryRenderAntdPreview(ctx: AntdPreviewContext): React.ReactElemen
     }
     case 'antd.Switch': {
       const controlled = getBooleanProp(node, 'controlled') !== false;
-      const checked = getBooleanProp(node, 'checked') === true;
+      const checked = getBooleanProp(node, 'value') === true;
       return (
         <Switch
           checked={controlled ? checked : undefined}
@@ -354,12 +473,12 @@ export function tryRenderAntdPreview(ctx: AntdPreviewContext): React.ReactElemen
     case 'antd.Modal':
       return (
         <Modal
-          title={getStringProp(node, 'title') || undefined}
+          title={getStringProp(node, 'header') || undefined}
           open={modalOpen}
-          okText={getStringProp(node, 'okText') || '确定'}
-          cancelText={getStringProp(node, 'cancelText') || '取消'}
+          okText={getStringProp(node, 'confirmBtn') || '确定'}
+          cancelText={getStringProp(node, 'cancelBtn') || '取消'}
           onOk={() => {
-            emitInteractionLifecycle('onOk');
+            emitInteractionLifecycle('onConfirm');
             syncModalVisible(false);
           }}
           onCancel={() => {
@@ -374,7 +493,7 @@ export function tryRenderAntdPreview(ctx: AntdPreviewContext): React.ReactElemen
     case 'antd.Drawer':
       return (
         <Drawer
-          title={getStringProp(node, 'title') || undefined}
+          title={getStringProp(node, 'header') || undefined}
           open={drawerInnerVisible}
           placement={getStringProp(node, 'placement') as 'top' | 'right' | 'bottom' | 'left' | undefined}
           onClose={() => {
@@ -450,12 +569,11 @@ export function tryRenderAntdPreview(ctx: AntdPreviewContext): React.ReactElemen
         </Sider>
       );
     case 'antd.Space': {
-      const sizeMap: Record<string, 'small' | 'middle' | 'large'> = { small: 'small', middle: 'middle', large: 'large' };
-      const sz = getStringProp(node, 'size') || 'small';
+      const rawSize = getPropValue(node, 'size');
       return (
         <Space
           direction={getStringProp(node, 'direction') === 'vertical' ? 'vertical' : 'horizontal'}
-          size={sizeMap[sz] ?? 'small'}
+          size={antdSpaceSizeFromTdesign(rawSize)}
           style={mergeStyle()}
         >
           {renderChildren(node, onLifecycle)}
@@ -463,27 +581,54 @@ export function tryRenderAntdPreview(ctx: AntdPreviewContext): React.ReactElemen
       );
     }
     case 'antd.Table': {
-      const columns = parseJsonRecordArray(getStringProp(node, 'columns'));
-      const dataSource = parseJsonRecordArray(getStringProp(node, 'dataSource'));
+      const columns = tdesignTableColumnsToAntd(getPropValue(node, 'columns'));
+      const dataSource = resolveAntdTableDataSource(getPropValue(node, 'dataSource'));
+      const rowKey = getStringProp(node, 'rowKey') || 'id';
+      const sizeMap: Record<string, 'small' | 'middle' | 'large'> = {
+        small: 'small',
+        medium: 'middle',
+        large: 'large',
+      };
+      const sz = sizeMap[String(getStringProp(node, 'size') ?? 'medium')] ?? 'middle';
+      const pageSize = Math.max(1, getFiniteNumberProp(node, 'pageSize') ?? 5);
+      const paginationEnabled = getBooleanProp(node, 'paginationEnabled') !== false;
       return (
         <Table
-          size="small"
+          rowKey={rowKey}
+          size={sz}
           columns={columns as never}
           dataSource={dataSource as never}
-          pagination={false}
+          bordered={getBooleanProp(node, 'bordered') === true}
+          pagination={
+            paginationEnabled
+              ? { defaultCurrent: 1, defaultPageSize: pageSize, total: dataSource.length }
+              : false
+          }
           style={mergeStyle()}
         />
       );
     }
-    case 'antd.List':
+    case 'antd.List': {
+      const header = getStringProp(node, 'header')?.trim();
+      const footer = getStringProp(node, 'footer')?.trim();
       return (
-        <List bordered={getBooleanProp(node, 'bordered') === true} style={mergeStyle()}>
+        <List
+          bordered={getBooleanProp(node, 'split') === true}
+          header={header ? <span>{header}</span> : undefined}
+          footer={footer ? <span>{footer}</span> : undefined}
+          style={mergeStyle()}
+        >
           {renderChildren(node, onLifecycle)}
         </List>
       );
+    }
     case 'antd.Menu':
       return (
-        <Menu mode={getStringProp(node, 'mode') as 'vertical' | 'horizontal' | 'inline' | undefined} style={mergeStyle()}>
+        <Menu
+          mode="vertical"
+          theme={getStringProp(node, 'theme') === 'dark' ? 'dark' : 'light'}
+          style={{ ...mergeStyle(), width: getStringProp(node, 'width') || undefined }}
+        >
           {renderAntdPreviewMenu(node.children, onLifecycle, emitInteractionLifecycle, navigatePreviewByHref)}
         </Menu>
       );
@@ -534,7 +679,7 @@ function renderAntdPreviewMenu(
             }
           }}
         >
-          {getChildString('title') || '菜单项'}
+          {getChildString('content') || getChildString('title') || '菜单项'}
         </Menu.Item>
       );
     }

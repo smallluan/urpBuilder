@@ -1,6 +1,6 @@
 import type { EChartSeriesType } from '../constants/echart';
 import { ECHART_OPTION_PRESET_OPTIONS, ECHART_TYPE_OPTIONS } from '../constants/echart';
-import { antdComponentCatalogEntries } from './componentCatalogAntd';
+import { buildAntdCatalogBundle } from './componentCatalogAntd';
 
 const createChartDefaultData = (chartType: EChartSeriesType) => {
   if (chartType === 'sankey' || chartType === 'graph') {
@@ -226,7 +226,7 @@ const createChartComponent = (
   lifetimes: ['onClick'],
 });
 
-const componentCatalog = [
+const tdesignComponentCatalog = [
   {
     type: 'Button',
     name: '按钮',
@@ -1168,7 +1168,13 @@ const componentCatalog = [
   {
     type: 'Layout.Aside',
     name: '布局侧栏',
-    props: {}
+    props: {
+      width: {
+        name: '宽度',
+        value: 200,
+        editType: 'inputNumber',
+      },
+    },
   },
   {
     type: 'Layout.Footer',
@@ -2964,8 +2970,10 @@ const componentCatalog = [
       }
     }
   },
-  ...antdComponentCatalogEntries,
 ];
+
+const antdComponentCatalogEntries = buildAntdCatalogBundle(tdesignComponentCatalog);
+const componentCatalog = [...tdesignComponentCatalog, ...antdComponentCatalogEntries];
 
 const visibleInjectedComponentCatalog = componentCatalog.map((item) => {
   const current = item as { props?: Record<string, unknown> };

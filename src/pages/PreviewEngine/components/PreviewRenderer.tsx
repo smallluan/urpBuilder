@@ -2037,6 +2037,7 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) 
         node,
         mergeStyle,
         renderChildren,
+        renderChildList: (children) => renderChildList(children, onLifecycle),
         emitInteractionLifecycle,
         syncNodeValue,
         navigatePreviewByHref,
@@ -2201,7 +2202,6 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) 
           lazy={getBooleanProp(node, 'lazy') !== false}
           placement={getStringProp(node, 'placement') as any}
           preventScrollThrough={getBooleanProp(node, 'preventScrollThrough') !== false}
-          showInAttachedElement={getBooleanProp(node, 'showInAttachedElement') === true}
           showOverlay={getBooleanProp(node, 'showOverlay') !== false}
           size={getStringProp(node, 'size') || undefined}
           sizeDraggable={getDrawerSizeDraggableProp(node) as any}
@@ -2252,14 +2252,14 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) 
           delay={getNumberProp(node, 'delay') ?? undefined}
           zIndex={getNumberProp(node, 'zIndex')}
           hideEmptyPopup={getBooleanProp(node, 'hideEmptyPopup') !== false}
-          showInAttachedElement={getBooleanProp(node, 'showInAttachedElement') === true}
           overlayClassName={getStringProp(node, 'overlayClassName') || undefined}
           overlayInnerClassName={getStringProp(node, 'overlayInnerClassName') || undefined}
           content={popupContent}
-          style={mergeStyle()}
           onVisibleChange={(nextVisible, context) => emitInteractionLifecycle('onVisibleChange', { visible: Boolean(nextVisible), context })}
         >
-          {triggerChildren.length > 0 ? renderChildList(triggerChildren, onLifecycle) : <span />}
+          <span style={mergeStyle()}>
+            {triggerChildren.length > 0 ? renderChildList(triggerChildren, onLifecycle) : <span />}
+          </span>
         </Popup>
       );
     }

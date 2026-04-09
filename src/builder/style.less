@@ -1510,7 +1510,12 @@
       margin-top: 0;
       padding: 0 0 8px;
       border-bottom: none;
+    }
+
+    .right-panel-tabs .library-panel .library-source-tabs__track {
       gap: 6px;
+      padding-top: 0;
+      padding-bottom: 4px;
     }
 
     .right-panel-tabs .library-panel .library-source-tabs__item {
@@ -1998,27 +2003,59 @@
     }
 
     .library-source-tabs {
-      display: inline-flex;
-      flex-direction: row;
-      gap: 8px;
       width: 100%;
+      min-width: 0;
       margin-top: 8px;
       padding: 0 0 8px;
       border-bottom: 1px solid var(--builder-library-tabs-row-border);
     }
 
+    .library-source-tabs--scroll {
+      display: block;
+    }
+
+    .library-source-tabs__track {
+      display: inline-flex;
+      flex-wrap: nowrap;
+      align-items: center;
+      gap: 8px;
+      max-width: 100%;
+      padding: 2px 0 6px;
+      overflow-x: auto;
+      overflow-y: hidden;
+      scrollbar-width: thin;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .library-source-tabs__track::-webkit-scrollbar {
+      height: 4px;
+    }
+
+    .library-source-tabs__track::-webkit-scrollbar-thumb {
+      border-radius: 999px;
+      background: var(--builder-library-tab-scrollbar-thumb, rgba(120, 130, 150, 0.35));
+    }
+
     .library-source-tabs__item {
+      flex: 0 0 auto;
       border: 1px solid var(--builder-library-tab-border);
       border-radius: 999px;
       background: var(--builder-library-tab-bg);
       color: var(--builder-library-tab-fg);
       font-size: 12px;
-      line-height: 18px;
-      padding: 6px 12px;
+      line-height: 1.25;
+      padding: 7px 14px;
       cursor: pointer;
-      transition: all 0.15s ease;
+      transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
       text-align: center;
-      min-width: 82px;
+      white-space: nowrap;
+      max-width: none;
+    }
+
+    .library-source-tabs__label {
+      display: inline-block;
+      white-space: nowrap;
+      letter-spacing: 0.01em;
     }
 
     .library-source-tabs__item:hover {
@@ -2032,6 +2069,7 @@
       background: var(--builder-library-tab-active-bg);
       color: var(--builder-library-tab-active-fg);
       font-weight: 600;
+      box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
     }
 
     .library-source-tabs--horizontal {

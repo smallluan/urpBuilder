@@ -4,6 +4,7 @@ import {
   Badge,
   Breadcrumb,
   Button,
+  Card as AntCard,
   Checkbox,
   Col,
   DatePicker,
@@ -24,19 +25,54 @@ import {
   Select,
   Space,
   Spin,
+  Statistic as AntStatistic,
   Switch,
   Table,
   Tag,
   Typography,
 } from 'antd';
+import { ArrowDownOutlined, ArrowUpOutlined } from '@ant-design/icons';
 import type { MenuProps } from 'antd';
 import type { UiDropDataHandler, UiTreeNode } from '../../store/types';
 import type { ComponentRegistry } from '../componentContext';
 import { ActivateWrapper } from '../componentHelpers';
 import DropArea from '../../../components/DropArea';
+import { renderNamedIcon } from '../../../constants/iconRegistry';
+import {
+  antTitleLevelFromTdesign,
+  antdSpaceSizeFromTdesign,
+  dividerOrientationFromAlign,
+  mapTdesignButtonToAntd,
+  resolveAntdTableDataSource,
+  statisticColorStyle,
+  tdesignTableColumnsToAntd,
+} from '../../../utils/antdTdesignPropBridge';
 
 const { Title, Paragraph, Text, Link } = Typography;
 const { Header, Content, Footer, Sider } = Layout;
+
+type AntdCardDropShellProps = {
+  children?: React.ReactNode;
+  title: React.ReactNode;
+  bordered: boolean;
+  size: 'default' | 'small';
+  styles?: React.ComponentProps<typeof AntCard>['styles'];
+  cardStyle?: React.CSSProperties;
+  onActivate: (e: React.MouseEvent<HTMLElement>) => void;
+  nodeKey?: string;
+  active: boolean;
+};
+
+function AntdCardDropShell(props: AntdCardDropShellProps) {
+  const { children, title, bordered, size, styles, cardStyle, onActivate, nodeKey, active } = props;
+  return (
+    <ActivateWrapper style={cardStyle} onActivate={onActivate} nodeKey={nodeKey} active={active}>
+      <AntCard bordered={bordered} size={size} title={title} styles={styles}>
+        {children}
+      </AntCard>
+    </ActivateWrapper>
+  );
+}
 
 function parseJsonArray<T>(raw: string | undefined, fallback: T[]): T[] {
   if (!raw || !String(raw).trim()) {
@@ -98,7 +134,7 @@ function renderAntdMenuChildren(
             setActiveKey(child.key);
           }}
         >
-          {getChildString('title') || '菜单项'}
+          {getChildString('content') || getChildString('title') || '菜单项'}
         </Menu.Item>
       );
     }
@@ -114,7 +150,7 @@ export function registerAntdComponents(registry: ComponentRegistry): void {
       <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf} nodeKey={data?.key} active={isNodeActive}>
         <Divider
           dashed={getBooleanProp('dashed') === true}
-          orientation={getStringProp('orientation') as 'left' | 'center' | 'right' | undefined}
+          orientation={dividerOrientationFromAlign(getStringProp('align')) as React.ComponentProps<typeof Divider>['orientation']}
         >
           {text || undefined}
         </Divider>
@@ -124,8 +160,7 @@ export function registerAntdComponents(registry: ComponentRegistry): void {
 
   registry.set('antd.Typography.Title', (ctx) => {
     const { getStringProp, mergeStyle, handleActivateSelf, data, isNodeActive } = ctx;
-    const level = Number(getStringProp('level')) || 4;
-    const lv = (level >= 1 && level <= 5 ? level : 4) as 1 | 2 | 3 | 4 | 5;
+    const lv = antTitleLevelFromTdesign(getStringProp('level'));
     return (
       <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf} nodeKey={data?.key} active={isNodeActive}>
         <Title level={lv}>{getStringProp('content') || '标题'}</Title>
@@ -152,10 +187,14 @@ export function registerAntdComponents(registry: ComponentRegistry): void {
   });
 
   registry.set('antd.Typography.Link', (ctx) => {
-    const { getStringProp, mergeStyle, handleActivateSelf, data, isNodeActive } = ctx;
+    const { getStringProp, getBooleanProp, mergeStyle, handleActivateSelf, data, isNodeActive } = ctx;
     return (
       <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf} nodeKey={data?.key} active={isNodeActive}>
-        <Link href={getStringProp('href') || undefined} target={getStringProp('target') as '_self' | '_blank' | undefined}>
+        <Link
+          href={getStringProp('href') || undefined}
+          target={getStringProp('target') as '_self' | '_blank' | undefined}
+          disabled={getBooleanProp('disabled') === true}
+        >
           {getStringProp('content') || '链接'}
         </Link>
       </ActivateWrapper>
@@ -194,18 +233,161 @@ export function registerAntdComponents(registry: ComponentRegistry): void {
 
   registry.set('antd.Button', (ctx) => {
     const { getStringProp, getBooleanProp, mergeStyle, handleActivateSelf, data, isNodeActive } = ctx;
-    const block = getBooleanProp('block') === true;
+    const mapped = mapTdesignButtonToAntd({
+      theme: getStringProp('theme'),
+      variant: getStringProp('variant'),
+      shape: getStringProp('shape'),
+      size: getStringProp('size'),
+      danger: getBooleanProp('danger'),
+      block: getBooleanProp('block'),
+    });
     return (
       <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf} nodeKey={data?.key} active={isNodeActive}>
         <Button
-          type={getStringProp('type') as 'primary' | 'default' | 'dashed' | 'link' | 'text' | undefined}
-          size={getStringProp('size') as 'large' | 'middle' | 'small' | undefined}
-          danger={getBooleanProp('danger') === true}
-          block={block}
+          type={mapped.type}
+          size={mapped.size}
+          danger={mapped.danger}
+          block={mapped.block}
+          shape={mapped.shape}
           onClick={() => {}}
         >
           {getStringProp('content') || '按钮'}
         </Button>
+      </ActivateWrapper>
+    );
+  });
+
+  registry.set('antd.Icon', (ctx) => {
+    const { getStringProp, getNumberProp, mergeStyle, handleActivateSelf, data, isNodeActive } = ctx;
+    const iconNode = renderNamedIcon(getStringProp('iconName'), {
+      size: getNumberProp('size') ?? 16,
+      strokeWidth: getNumberProp('strokeWidth') ?? 2,
+    });
+    return (
+      <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf} nodeKey={data?.key} active={isNodeActive}>
+        {iconNode}
+      </ActivateWrapper>
+    );
+  });
+
+  registry.set('antd.Card', (ctx) => {
+    const {
+      data, onDropData, getStringProp, getBooleanProp, mergeStyle, handleActivateSelf, isNodeActive,
+      cardHeaderSlotNode, cardBodySlotNode, hasCardSlotStructure,
+    } = ctx;
+    const bordered = getBooleanProp('bordered') !== false;
+    const size = getStringProp('size') === 'small' ? 'small' : 'default';
+    const shadow = getBooleanProp('shadow') === true;
+    const headerBordered = getBooleanProp('headerBordered') === true;
+    const title = getStringProp('title');
+    const subtitle = getStringProp('subtitle');
+    const titleNode = subtitle ? (
+      <span>
+        <span>{title}</span>
+        <div style={{ fontSize: 12, opacity: 0.65, fontWeight: 'normal' }}>{subtitle}</div>
+      </span>
+    ) : (
+      title
+    );
+    const cardShellStyle = mergeStyle({
+      boxShadow: shadow ? '0 1px 2px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04)' : undefined,
+    });
+    const cardStyles: React.ComponentProps<typeof AntCard>['styles'] = {
+      header: {
+        borderBottom: headerBordered ? undefined : 'none',
+      },
+    };
+
+    if (!hasCardSlotStructure) {
+      return (
+        <DropArea data={data} onDropData={onDropData}>
+          <AntdCardDropShell
+            title={titleNode}
+            bordered={bordered}
+            size={size}
+            styles={cardStyles}
+            cardStyle={cardShellStyle}
+            onActivate={handleActivateSelf}
+            nodeKey={data?.key}
+            active={isNodeActive}
+          />
+        </DropArea>
+      );
+    }
+
+    const headerTitle = !cardHeaderSlotNode?.children?.length ? titleNode : null;
+    const titleSlot = (
+      <div>
+        {headerTitle}
+        <DropArea
+          data={cardHeaderSlotNode!}
+          onDropData={onDropData}
+          dropSlotKey="header"
+          selectable={false}
+          compactWhenFilled
+          emptyText="拖拽组件到卡片头部"
+        />
+      </div>
+    );
+
+    return (
+      <AntdCardDropShell
+        title={titleSlot}
+        bordered={bordered}
+        size={size}
+        styles={cardStyles}
+        cardStyle={cardShellStyle}
+        onActivate={handleActivateSelf}
+        nodeKey={data?.key}
+        active={isNodeActive}
+      >
+        <DropArea
+          data={cardBodySlotNode!}
+          onDropData={onDropData}
+          dropSlotKey="body"
+          selectable={false}
+          compactWhenFilled
+          emptyText="拖拽组件到卡片内容"
+        />
+      </AntdCardDropShell>
+    );
+  });
+
+  registry.set('antd.Statistic', (ctx) => {
+    const { getStringProp, getBooleanProp, getFiniteNumberProp, mergeStyle, handleActivateSelf, data, isNodeActive } = ctx;
+    const raw = getFiniteNumberProp('value') ?? 0;
+    const dp = Math.max(0, Math.min(8, Math.round(getFiniteNumberProp('decimalPlaces') ?? 0)));
+    const sep = getStringProp('separator') ?? ',';
+    const trend = getStringProp('trend');
+    const trendPlacement = getStringProp('trendPlacement') || 'left';
+    const trendIcon =
+      trend === 'increase' ? (
+        <ArrowUpOutlined style={{ color: '#52c41a' }} />
+      ) : trend === 'decrease' ? (
+        <ArrowDownOutlined style={{ color: '#ff4d4f' }} />
+      ) : null;
+    const unit = getStringProp('unit') || '';
+    const prefix =
+      trendIcon && trendPlacement === 'left' ? <span style={{ marginRight: 8 }}>{trendIcon}</span> : undefined;
+    const suffix = (
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+        {unit ? <span>{unit}</span> : null}
+        {trendIcon && trendPlacement === 'right' ? trendIcon : null}
+      </span>
+    );
+
+    return (
+      <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf} nodeKey={data?.key} active={isNodeActive}>
+        <AntStatistic
+          title={getStringProp('title')}
+          value={raw}
+          precision={dp}
+          groupSeparator={sep}
+          prefix={prefix}
+          suffix={suffix}
+          loading={getBooleanProp('loading') === true}
+          valueStyle={statisticColorStyle(getStringProp('color'))}
+        />
       </ActivateWrapper>
     );
   });
@@ -295,7 +477,7 @@ export function registerAntdComponents(registry: ComponentRegistry): void {
     const { getBooleanProp, mergeStyle, handleActivateSelf, data, isNodeActive } = ctx;
     return (
       <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf} nodeKey={data?.key} active={isNodeActive}>
-        <Switch checked={getBooleanProp('checked') === true} />
+        <Switch checked={getBooleanProp('value') === true} />
       </ActivateWrapper>
     );
   });
@@ -331,7 +513,7 @@ export function registerAntdComponents(registry: ComponentRegistry): void {
   registry.set('antd.Modal', (ctx) => {
     const { getStringProp, onDropData, data, mergeStyle } = ctx;
     return (
-      <Modal title={getStringProp('title') || undefined} open={true} footer={null} styles={{ body: { padding: 12 } }}>
+      <Modal title={getStringProp('header') || undefined} open={true} footer={null} styles={{ body: { padding: 12 } }}>
         <div style={mergeStyle({ minHeight: 80 })}>
           <DropArea data={data} onDropData={onDropData} />
         </div>
@@ -342,7 +524,11 @@ export function registerAntdComponents(registry: ComponentRegistry): void {
   registry.set('antd.Drawer', (ctx) => {
     const { getStringProp, onDropData, data, mergeStyle } = ctx;
     return (
-      <Drawer title={getStringProp('title') || undefined} open={true} placement={getStringProp('placement') as 'top' | 'right' | 'bottom' | 'left' | undefined}>
+      <Drawer
+        title={getStringProp('header') || undefined}
+        open={true}
+        placement={getStringProp('placement') as 'top' | 'right' | 'bottom' | 'left' | undefined}
+      >
         <div style={mergeStyle({ minHeight: 80 })}>
           <DropArea data={data} onDropData={onDropData} />
         </div>
@@ -377,6 +563,7 @@ export function registerAntdComponents(registry: ComponentRegistry): void {
   registry.set('antd.Menu', (ctx) => {
     const { getStringProp, data, mergeStyle, setActiveNode, onDropData } = ctx;
     const kids = data?.children ?? [];
+    const theme = getStringProp('theme') === 'dark' ? 'dark' : 'light';
     if (kids.length === 0) {
       return (
         <div style={mergeStyle()}>
@@ -386,7 +573,7 @@ export function registerAntdComponents(registry: ComponentRegistry): void {
     }
     return (
       <div style={mergeStyle()}>
-        <Menu mode={getStringProp('mode') as 'vertical' | 'horizontal' | 'inline' | undefined} selectable={false}>
+        <Menu mode="vertical" theme={theme} selectable={false} style={{ width: getStringProp('width') || undefined }}>
           {renderAntdMenuChildren(kids, setActiveNode, onDropData)}
         </Menu>
       </div>
@@ -397,7 +584,7 @@ export function registerAntdComponents(registry: ComponentRegistry): void {
     const { getStringProp, mergeStyle, handleActivateSelf, data, isNodeActive } = ctx;
     return (
       <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf} nodeKey={data?.key} active={isNodeActive}>
-        <Menu.Item>{getStringProp('title') || '菜单项'}</Menu.Item>
+        <Menu.Item>{getStringProp('content') || getStringProp('title') || '菜单项'}</Menu.Item>
       </ActivateWrapper>
     );
   });
@@ -493,22 +680,22 @@ export function registerAntdComponents(registry: ComponentRegistry): void {
 
   registry.set('antd.Layout.Sider', (ctx) => {
     const { data, onDropData, getFiniteNumberProp, mergeStyle } = ctx;
+    const w = getFiniteNumberProp('width');
     return (
-      <Sider width={getFiniteNumberProp('width') ?? 200} style={mergeStyle()}>
+      <Sider width={w !== undefined && Number.isFinite(w) ? w : 200} style={mergeStyle()}>
         <DropArea data={data} onDropData={onDropData} />
       </Sider>
     );
   });
 
   registry.set('antd.Space', (ctx) => {
-    const { data, onDropData, getStringProp, mergeStyle } = ctx;
-    const sizeMap: Record<string, 'small' | 'middle' | 'large'> = { small: 'small', middle: 'middle', large: 'large' };
-    const sz = getStringProp('size') || 'small';
+    const { data, onDropData, getProp, getStringProp, mergeStyle } = ctx;
+    const rawSize = getProp('size');
     return (
       <DropArea data={data} onDropData={onDropData}>
         <Space
           direction={getStringProp('direction') === 'vertical' ? 'vertical' : 'horizontal'}
-          size={sizeMap[sz] ?? 'small'}
+          size={antdSpaceSizeFromTdesign(rawSize)}
           style={mergeStyle()}
         />
       </DropArea>
@@ -516,21 +703,45 @@ export function registerAntdComponents(registry: ComponentRegistry): void {
   });
 
   registry.set('antd.Table', (ctx) => {
-    const { getStringProp, mergeStyle, handleActivateSelf, data, isNodeActive } = ctx;
-    const columns = parseJsonRecordArray(getStringProp('columns'));
-    const dataSource = parseJsonRecordArray(getStringProp('dataSource'));
+    const { getProp, getStringProp, getBooleanProp, getFiniteNumberProp, mergeStyle, handleActivateSelf, data, isNodeActive } = ctx;
+    const columns = tdesignTableColumnsToAntd(getProp('columns'));
+    const dataSource = resolveAntdTableDataSource(getProp('dataSource'));
+    const rowKey = getStringProp('rowKey') || 'id';
+    const sizeMap: Record<string, 'small' | 'middle' | 'large'> = {
+      small: 'small',
+      medium: 'middle',
+      large: 'large',
+    };
+    const sz = sizeMap[String(getStringProp('size') ?? 'medium')] ?? 'middle';
+    const pageSize = Math.max(1, getFiniteNumberProp('pageSize') ?? 5);
+    const paginationEnabled = getBooleanProp('paginationEnabled') !== false;
     return (
       <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf} nodeKey={data?.key} active={isNodeActive}>
-        <Table size="small" columns={columns as never} dataSource={dataSource as never} pagination={false} />
+        <Table
+          size={sz}
+          rowKey={rowKey}
+          columns={columns as never}
+          dataSource={dataSource as never}
+          bordered={getBooleanProp('bordered') === true}
+          pagination={
+            paginationEnabled
+              ? { defaultCurrent: 1, defaultPageSize: pageSize, total: dataSource.length }
+              : false
+          }
+        />
       </ActivateWrapper>
     );
   });
 
   registry.set('antd.List', (ctx) => {
-    const { getBooleanProp, onDropData, data, mergeStyle } = ctx;
+    const { getBooleanProp, getStringProp, onDropData, data, mergeStyle } = ctx;
+    const header = getStringProp('header')?.trim();
+    const footer = getStringProp('footer')?.trim();
     return (
       <List
-        bordered={getBooleanProp('bordered') === true}
+        bordered={getBooleanProp('split') === true}
+        header={header ? <span>{header}</span> : undefined}
+        footer={footer ? <span>{footer}</span> : undefined}
         dataSource={[]}
         style={mergeStyle()}
         locale={{

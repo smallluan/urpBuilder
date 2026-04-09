@@ -1,7 +1,7 @@
 import cloneDeep from 'lodash/cloneDeep';
 import type { Edge, Node } from '@xyflow/react';
 import { findNodeByKey, updateNodeByKey } from '../../utils/createComponentTree';
-import type { BuilderStore } from '../store/types';
+import type { BuilderStore, UiTreeNode } from '../store/types';
 import type { PreviewSnapshot } from '../../pages/PreviewEngine/utils/snapshot';
 
 export const normalizeRoutePath = (value: string) => {
@@ -13,28 +13,28 @@ export const normalizeRoutePath = (value: string) => {
 };
 
 const composeRouteUiTree = (
-  privateTree: Parameters<typeof cloneDeep>[0],
-  sharedTree: Parameters<typeof cloneDeep>[0],
+  privateTree: UiTreeNode,
+  sharedTree: UiTreeNode | null | undefined,
   outletKey: string | null,
-) => {
+): UiTreeNode => {
   if (!sharedTree || !outletKey) {
-    return cloneDeep(privateTree);
+    return cloneDeep(privateTree) as UiTreeNode;
   }
 
   const sharedOutlet = findNodeByKey(sharedTree, outletKey);
   if (!sharedOutlet) {
-    return cloneDeep(privateTree);
+    return cloneDeep(privateTree) as UiTreeNode;
   }
 
   const privateOutlet = findNodeByKey(privateTree, outletKey);
   const outletChildren = privateOutlet?.type === 'RouteOutlet'
-    ? cloneDeep(privateOutlet.children ?? [])
+    ? (cloneDeep(privateOutlet.children ?? []) as UiTreeNode[])
     : [];
 
-  return updateNodeByKey(cloneDeep(sharedTree), outletKey, (target) => ({
+  return updateNodeByKey(cloneDeep(sharedTree) as UiTreeNode, outletKey, (target) => ({
     ...target,
     children: outletChildren,
-  }));
+  })) as UiTreeNode;
 };
 
 const composeRouteFlow = (
@@ -98,7 +98,7 @@ export function buildPreviewSnapshot(state: BuilderStore, enablePageRouteConfig:
         return {
           routeId: route.routeId,
           routePath: normalizeRoutePath(route.routeConfig.routePath),
-          uiTreeData: composedUiTree,
+          uiTreeData: composedUiTree as UiTreeNode,
           flowNodes: composedFlow.flowNodes,
           flowEdges: composedFlow.flowEdges,
         };
@@ -111,7 +111,7 @@ export function buildPreviewSnapshot(state: BuilderStore, enablePageRouteConfig:
   const activeRouteSnapshot = routeSnapshots.find((item) => item.routePath === activeRoutePath) ?? routeSnapshots[0];
 
   return {
-    uiTreeData: activeRouteSnapshot?.uiTreeData ?? uiTreeData,
+    uiTreeData: (activeRouteSnapshot?.uiTreeData ?? uiTreeData) as UiTreeNode,
     flowNodes: activeRouteSnapshot?.flowNodes ?? flowNodes,
     flowEdges: activeRouteSnapshot?.flowEdges ?? flowEdges,
     pageConfig: enablePageRouteConfig
