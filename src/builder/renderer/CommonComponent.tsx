@@ -20,7 +20,7 @@ import {
   loadCustomComponentDetail,
   namespaceUiTreeKeys,
 } from '../../utils/customComponentRuntime';
-import { resolveAntdPreviewTypeForCanonical } from '../../config/uiPreviewLibrary';
+import { CARD_SHELL_ALWAYS_ANTD_TYPES, resolveAntdPreviewTypeForCanonical } from '../../config/uiPreviewLibrary';
 import { SimulatorPreviewLibraryOverrideContext } from '../context/SimulatorPreviewLibraryOverrideContext';
 import { SimulatorScrollContainerContext } from '../context/SimulatorScrollContainerContext';
 
@@ -345,10 +345,12 @@ export default function CommonComponent(properties: CommonComponentProps) {
     updateActiveNodeProp,
   };
 
-  const registryLookupType =
-    previewUiLibrary === 'antd' && data
-      ? (resolveAntdPreviewTypeForCanonical(data) ?? normalizedType ?? '')
-      : (normalizedType ?? '');
+  const canonicalType = typeof normalizedType === 'string' ? normalizedType.trim() : '';
+  const registryLookupType = CARD_SHELL_ALWAYS_ANTD_TYPES.has(canonicalType)
+    ? 'antd.Card'
+    : previewUiLibrary === 'antd' && data
+      ? (resolveAntdPreviewTypeForCanonical(data) ?? canonicalType)
+      : canonicalType;
   const renderer = registry.get(registryLookupType);
   return renderer ? renderer(ctx) : null;
 }

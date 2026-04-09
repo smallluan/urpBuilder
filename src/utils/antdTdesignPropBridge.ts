@@ -1,6 +1,27 @@
 import type { CSSProperties } from 'react';
 import { normalizeBuilderTableColumns } from './tableColumnNormalize';
 
+/**
+ * TDesign Card 默认 body 内边距往往比 antd Card 更「松」，同一 DSL 切换预览库时登录区等会显得更靠下、更「空」。
+ * 搭建与预览里为两套 Card 统一内容区内边距，避免纯组件库 token 差异带来的纵向错位观感。
+ */
+export const BUILDER_CARD_BODY_STYLE: CSSProperties = {
+  padding: '20px 24px',
+};
+
+/**
+ * Ant Design Statistic 根节点默认偏块级、易独占一行；TDesign Statistic 更接近行内块。
+ * 垂直方向与根下兄弟对齐由 `.drop-area-root > .drop-area__body > *` / `.preview-page-root__body > *` 统一 `vertical-align: top`。
+ */
+export function antStatisticRootStyleMerge(user?: CSSProperties): CSSProperties {
+  return {
+    display: 'inline-block',
+    maxWidth: '100%',
+    boxSizing: 'border-box',
+    ...(user ?? {}),
+  };
+}
+
 /** TDesign Statistic.color -> Ant Statistic valueStyle */
 export function statisticColorStyle(color: string | undefined): CSSProperties | undefined {
   const map: Record<string, string> = {

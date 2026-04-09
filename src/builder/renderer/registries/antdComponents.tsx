@@ -45,6 +45,8 @@ import {
   mapTdesignButtonToAntd,
   resolveAntdTableDataSource,
   statisticColorStyle,
+  antStatisticRootStyleMerge,
+  BUILDER_CARD_BODY_STYLE,
   tdesignTableColumnsToAntd,
 } from '../../../utils/antdTdesignPropBridge';
 
@@ -296,6 +298,7 @@ export function registerAntdComponents(registry: ComponentRegistry): void {
       header: {
         borderBottom: headerBordered ? undefined : 'none',
       },
+      body: BUILDER_CARD_BODY_STYLE,
     };
 
     if (!hasCardSlotStructure) {
@@ -377,7 +380,12 @@ export function registerAntdComponents(registry: ComponentRegistry): void {
     );
 
     return (
-      <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf} nodeKey={data?.key} active={isNodeActive}>
+      <ActivateWrapper
+        style={antStatisticRootStyleMerge(mergeStyle())}
+        onActivate={handleActivateSelf}
+        nodeKey={data?.key}
+        active={isNodeActive}
+      >
         <AntStatistic
           title={getStringProp('title')}
           value={raw}

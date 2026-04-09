@@ -40,7 +40,8 @@ import { resolveSimulatorStyle } from '../../../builder/utils/simulatorStyle';
 import type { PreviewDataHub } from '../runtime/dataHub';
 import { tryRenderAntdPreview } from './previewAntdNodes';
 import type { UiPreviewLibrary } from '../../../config/uiPreviewLibrary';
-import { resolveAntdPreviewTypeForCanonical } from '../../../config/uiPreviewLibrary';
+import { CARD_SHELL_ALWAYS_ANTD_TYPES, resolveAntdPreviewTypeForCanonical } from '../../../config/uiPreviewLibrary';
+import { BUILDER_CARD_BODY_STYLE } from '../../../utils/antdTdesignPropBridge';
 import { PreviewBrushSuppressLifecycleContext } from '../context/PreviewBrushSuppressLifecycleContext';
 import { PreviewPortalContainerContext } from '../context/PreviewPortalContainerContext';
 
@@ -2051,8 +2052,11 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) 
     });
   };
 
-  if (previewUiLibrary === 'antd') {
-    const antdPreviewType = resolveAntdPreviewTypeForCanonical(node);
+  const useAntdCardShell = CARD_SHELL_ALWAYS_ANTD_TYPES.has(String(type ?? '').trim());
+  if (previewUiLibrary === 'antd' || useAntdCardShell) {
+    const antdPreviewType = useAntdCardShell
+      ? 'antd.Card'
+      : resolveAntdPreviewTypeForCanonical(node);
     if (antdPreviewType) {
       const antdEl = tryRenderAntdPreview({
         type: antdPreviewType,
@@ -2825,6 +2829,7 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) 
           shadow={getBooleanProp(node, 'shadow')}
           hoverShadow={getBooleanProp(node, 'hoverShadow')}
           style={mergeStyle()}
+          bodyStyle={BUILDER_CARD_BODY_STYLE}
         >
           {renderChildList(bodyChildren, onLifecycle)}
         </Card>

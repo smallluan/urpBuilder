@@ -51,6 +51,12 @@ const TD_TO_ANTD = new Map<string, string>(
 );
 
 /**
+ * 卡片壳在任意预览库下均使用 antd Card，避免 TDesign Card 与 antd Card 默认排版（子项行内/块级、header/body）不一致。
+ * DSL `type` 仍为物料表中的 `Card`（与 `antd.Card` 镜像）。
+ */
+export const CARD_SHELL_ALWAYS_ANTD_TYPES = new Set<string>(['Card', 'antd.Card']);
+
+/**
  * 右侧组件库是否展示某物料 type。
  * Ant Design 预览下 DSL 仍以 TDesign `type` 为主：仅有 {@link ANTD_TD_MIRROR_PAIRS} 且未被
  * {@link SHARED_LAYOUT_TD_TYPES} 兜底的节点会走 antd 渲染；其余（如 BackTop、Calendar、TimePicker、Steps）

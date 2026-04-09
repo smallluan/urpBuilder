@@ -45,6 +45,8 @@ import {
   mapTdesignButtonToAntd,
   resolveAntdTableDataSource,
   statisticColorStyle,
+  antStatisticRootStyleMerge,
+  BUILDER_CARD_BODY_STYLE,
   tdesignTableColumnsToAntd,
 } from '../../../utils/antdTdesignPropBridge';
 
@@ -236,6 +238,7 @@ export function tryRenderAntdPreview(ctx: AntdPreviewContext): React.ReactElemen
           }}
           styles={{
             header: { borderBottom: getBooleanProp(node, 'headerBordered') ? undefined : 'none' },
+            body: BUILDER_CARD_BODY_STYLE,
           }}
         >
           {renderChildList(bodyChildren)}
@@ -274,7 +277,7 @@ export function tryRenderAntdPreview(ctx: AntdPreviewContext): React.ReactElemen
           suffix={suffix}
           loading={getBooleanProp(node, 'loading') === true}
           valueStyle={statisticColorStyle(getStringProp(node, 'color'))}
-          style={mergeStyle()}
+          style={antStatisticRootStyleMerge(mergeStyle())}
         />
       );
     }

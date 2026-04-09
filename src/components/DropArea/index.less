@@ -58,6 +58,11 @@
   min-height: 100%;
 }
 
+/* 根下多个 inline/inline-block 兄弟同一行时，默认 baseline 会像「底对齐」；统一顶对齐，与 antd/td 物料混排一致 */
+.drop-area-root > .drop-area__body > * {
+  vertical-align: top;
+}
+
 .drop-area-active {
   border-color: var(--td-brand-color, #0052d9);
   background-color: var(--td-brand-color-1, #f2f3ff);

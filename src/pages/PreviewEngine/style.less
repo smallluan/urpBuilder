@@ -39,6 +39,11 @@
   box-sizing: border-box;
 }
 
+/* 与搭建态 .drop-area-root 一致：根下兄弟并排时顶对齐，避免 baseline 贴底 */
+.preview-page-root__body > * {
+  vertical-align: top;
+}
+
 .preview-engine-page .preview-back-top {
   position: absolute;
   right: 24px;

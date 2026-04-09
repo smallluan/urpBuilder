@@ -1005,9 +1005,23 @@
         }
       }
 
-      .simulator-scroll > .drop-area-root {
+      /* View Transition 外壳插在 scroll 与根 DropArea 之间，须与直连 .drop-area-root 同等 flex 占位 */
+      .simulator-scroll > .drop-area-root,
+      .simulator-scroll > .simulator-library-brush-root {
         position: relative;
         flex: 1 0 auto;
+        min-height: 100%;
+        width: 100%;
+      }
+
+      .simulator-scroll > .simulator-library-brush-root {
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+      }
+
+      .simulator-scroll > .simulator-library-brush-root > .drop-area-root {
+        flex: 1 1 auto;
         min-height: 100%;
         width: 100%;
       }

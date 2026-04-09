@@ -2,6 +2,7 @@ import React from 'react';
 import { Space, Row, Card, Divider, Menu } from 'tdesign-react';
 import type { UiTreeNode } from '../store/types';
 import { renderNamedIcon } from '../../constants/iconRegistry';
+import { BUILDER_CARD_BODY_STYLE } from '../../utils/antdTdesignPropBridge';
 
 /** 激活包裹层：负责点击选中 + 节点锚点标记 */
 export interface ActivateWrapperProps {
@@ -148,6 +149,7 @@ export const CardContent: React.FC<CardContentProps> = ({
       headerBordered={headerBordered}
       shadow={shadow}
       hoverShadow={hoverShadow}
+      bodyStyle={BUILDER_CARD_BODY_STYLE}
     >
       {children}
     </Card>
