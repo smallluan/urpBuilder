@@ -4,6 +4,8 @@ import type { UiTreeNode } from '../store/types';
 import { renderNamedIcon } from '../../constants/iconRegistry';
 import { BUILDER_CARD_BODY_STYLE } from '../../utils/antdTdesignPropBridge';
 
+const ACTIVATE_WRAPPER_STYLE: React.CSSProperties = { display: 'contents' };
+
 /** 激活包裹层：负责点击选中 + 节点锚点标记 */
 export interface ActivateWrapperProps {
   children: React.ReactNode;
@@ -13,33 +15,31 @@ export interface ActivateWrapperProps {
   active?: boolean;
 }
 
-export const ActivateWrapper: React.FC<ActivateWrapperProps> = ({ children, style, onActivate, nodeKey, active }) => (
-  (() => {
-    const onlyChild = React.Children.count(children) === 1 ? React.Children.only(children) : null;
-    if (React.isValidElement(onlyChild)) {
-      const childProps = (onlyChild.props ?? {}) as Record<string, unknown>;
-      const originalClassName = typeof childProps.className === 'string' ? childProps.className : '';
-      const mergedClassName = originalClassName.trim();
-      const originalStyle = (childProps.style as React.CSSProperties | undefined) ?? {};
-      const originalOnClick = childProps.onClick as ((event: React.MouseEvent<HTMLElement>) => void) | undefined;
-      return React.cloneElement(onlyChild as React.ReactElement<Record<string, unknown>>, {
-        ...childProps,
-        style: { ...originalStyle, ...(style ?? {}) },
-        className: mergedClassName || undefined,
-        onClick: (event: React.MouseEvent<HTMLElement>) => {
-          onActivate(event);
-          if (originalOnClick) {
-            originalOnClick(event);
-          }
-        },
-        'data-builder-node-key': nodeKey || undefined,
-        'data-builder-active': active ? 'true' : undefined,
-      });
-    }
-
-    return <>{children}</>;
-  })()
-);
+export const ActivateWrapper: React.FC<ActivateWrapperProps> = ({ children, style, onActivate, nodeKey, active }) => {
+  const onlyChild = React.Children.count(children) === 1 ? React.Children.only(children) : null;
+  if (React.isValidElement(onlyChild)) {
+    const childProps = (onlyChild.props ?? {}) as Record<string, unknown>;
+    const originalClassName = typeof childProps.className === 'string' ? childProps.className : '';
+    const mergedClassName = originalClassName.trim();
+    const originalStyle = (childProps.style as React.CSSProperties | undefined) ?? {};
+    const cloned = React.cloneElement(onlyChild as React.ReactElement<Record<string, unknown>>, {
+      ...childProps,
+      style: { ...originalStyle, ...(style ?? {}) },
+      className: mergedClassName || undefined,
+    });
+    return (
+      <div
+        style={ACTIVATE_WRAPPER_STYLE}
+        onClick={onActivate}
+        data-builder-node-key={nodeKey || undefined}
+        data-builder-active={active ? 'true' : undefined}
+      >
+        {cloned}
+      </div>
+    );
+  }
+  return <>{children}</>;
+};
 
 /** Space 组件包裹层，含 split 功能 */
 export interface SpaceContentProps {
