@@ -9,6 +9,7 @@ import type {
 } from '../../../types/flow';
 import type { RuntimeEvent, RuntimeRequestError, RuntimeRequestSuccess } from '../../../types/flowRuntime';
 import { extractExecutableBodyFromFlowCodeNodeSource } from '../../../builder/components/codeEditor/flowCodeNodeSource';
+import { buildFlowCodeNodeFunctionSource, FLOW_CODE_SANDBOX_VERSION } from './flowCodeSandbox';
 
 const isPlainObject = (value: unknown): value is Record<string, unknown> => {
   return !!value && typeof value === 'object' && !Array.isArray(value);
@@ -525,14 +526,20 @@ export class PreviewFlowRuntime {
         ctx.request = input.request;
       }
 
-      const cacheKey = `${node.id}\0${raw}`;
+      let fnSource: string;
+      try {
+        fnSource = buildFlowCodeNodeFunctionSource(executableBody);
+      } catch (err) {
+        this.dataHub.publish('runtime:error', {
+          nodeId: node.id,
+          message: err instanceof Error ? err.message : String(err),
+        });
+        return null;
+      }
+      const cacheKey = `${node.id}\0${raw}\0v${FLOW_CODE_SANDBOX_VERSION}`;
       let executor = this.codeFnCache.get(cacheKey);
       if (!executor) {
-        executor = new Function(
-          'dataHub',
-          'ctx',
-          `'use strict';\nreturn (async () => {\n${executableBody}\n})();`,
-        );
+        executor = new Function('dataHub', 'ctx', fnSource);
         this.codeFnCache.set(cacheKey, executor);
       }
       const result = await executor(this.dataHub.createCodeContext(), ctx);

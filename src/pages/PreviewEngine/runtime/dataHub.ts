@@ -78,6 +78,38 @@ export interface DataHubDialogContext {
   confirm: (contentOrOptions: string | DataHubDialogOptions) => Promise<boolean>;
 }
 
+/** 仅内存的临时状态（刷新即失），按 scope 隔离 */
+export interface DataHubMemoryStorage {
+  get: (key: string) => unknown;
+  set: (key: string, value: unknown) => void;
+  remove: (key: string) => void;
+  clear: () => void;
+}
+
+/** sessionStorage / localStorage 封装，key 自动加前缀，值支持 JSON 可序列化对象 */
+export interface DataHubWebStorageSlice {
+  get: (key: string) => unknown;
+  set: (key: string, value: unknown) => void;
+  remove: (key: string) => void;
+  clear: () => void;
+}
+
+export interface DataHubStorageContext {
+  memory: DataHubMemoryStorage;
+  session: DataHubWebStorageSlice;
+  local: DataHubWebStorageSlice;
+}
+
+/** 代码节点内允许使用的宿主能力（勿直接使用全局 fetch / window） */
+export interface DataHubRuntimeContext {
+  fetch: typeof fetch;
+  console: Pick<Console, 'log' | 'info' | 'warn' | 'error' | 'debug'>;
+  setTimeout: typeof setTimeout;
+  clearTimeout: typeof clearTimeout;
+  setInterval: typeof setInterval;
+  clearInterval: typeof clearInterval;
+}
+
 export interface DataHubCodeContext {
   scopeId: string;
   composeRef: (componentKey: string) => string;
@@ -90,6 +122,10 @@ export interface DataHubCodeContext {
   dialog: DataHubDialogContext;
   router: DataHubRouterContext;
   cloud: DataHubCloudContext;
+  /** 临时 / 会话 / 持久存储（按 scope 隔离），替代直接访问 localStorage */
+  storage: DataHubStorageContext;
+  /** 白名单宿主 API（网络、定时器等），替代 window 上的同名全局 */
+  runtime: DataHubRuntimeContext;
 }
 
 type DataHubEventHandler = (payload: unknown) => void;
@@ -256,6 +292,39 @@ const collectNodeMaps = (root: UiTreeNode, scopeId: string) => {
   return { keyMap, refMap };
 };
 
+const serializeStorageValue = (value: unknown): string => {
+  if (typeof value === 'string') {
+    return value;
+  }
+  return JSON.stringify(value ?? null);
+};
+
+const deserializeStorageValue = (raw: string | null): unknown => {
+  if (raw == null) {
+    return null;
+  }
+  try {
+    return JSON.parse(raw) as unknown;
+  } catch {
+    return raw;
+  }
+};
+
+const createRuntimeContext = (): DataHubRuntimeContext => ({
+  fetch: (input: RequestInfo | URL, init?: RequestInit) => fetch(input, init),
+  console: {
+    log: (...args: unknown[]) => console.log(...args),
+    info: (...args: unknown[]) => console.info(...args),
+    warn: (...args: unknown[]) => console.warn(...args),
+    error: (...args: unknown[]) => console.error(...args),
+    debug: (...args: unknown[]) => console.debug(...args),
+  },
+  setTimeout: (...args: Parameters<typeof setTimeout>) => setTimeout(...args),
+  clearTimeout: (...args: Parameters<typeof clearTimeout>) => clearTimeout(...args),
+  setInterval: (...args: Parameters<typeof setInterval>) => setInterval(...args),
+  clearInterval: (...args: Parameters<typeof clearInterval>) => clearInterval(...args),
+});
+
 const collectStateMaps = (root: UiTreeNode, scopeId: string) => {
   const keyMap = new Map<string, ComponentStateRecord>();
   const refMap = new Map<string, ComponentStateRecord>();
@@ -310,6 +379,9 @@ export class PreviewDataHub {
   private readonly messageContext: DataHubMessageContext;
 
   private readonly dialogContext: DataHubDialogContext;
+
+  /** 代码节点 storage.memory 后端 */
+  private readonly memoryStore = new Map<string, unknown>();
 
   constructor(uiTreeData: UiTreeNode, options?: { scopeId?: string; router?: DataHubRouterContext; cloud?: DataHubCloudContext }) {
     this.treeRoot = cloneDeep(uiTreeData);
@@ -496,6 +568,94 @@ export class PreviewDataHub {
     handlers.forEach((handler) => handler(payload));
   }
 
+  private memStorageKey(key: string): string {
+    return `mem:${this.scopeId}:${String(key)}`;
+  }
+
+  private webStoragePrefix(kind: 'sess' | 'loc'): string {
+    return `urpbuilder:dh:${this.scopeId}:${kind}:`;
+  }
+
+  private clearWebStorage(kind: 'sess' | 'loc'): void {
+    if (typeof window === 'undefined') {
+      return;
+    }
+    const store = kind === 'sess' ? window.sessionStorage : window.localStorage;
+    const prefix = this.webStoragePrefix(kind);
+    const toRemove: string[] = [];
+    for (let i = 0; i < store.length; i += 1) {
+      const k = store.key(i);
+      if (k?.startsWith(prefix)) {
+        toRemove.push(k);
+      }
+    }
+    toRemove.forEach((k) => store.removeItem(k));
+  }
+
+  private createStorageContext(): DataHubStorageContext {
+    const scopeId = this.scopeId;
+
+    const memory: DataHubMemoryStorage = {
+      get: (key) => {
+        const v = this.memoryStore.get(this.memStorageKey(key));
+        return v === undefined ? undefined : cloneDeep(v);
+      },
+      set: (key, value) => {
+        this.memoryStore.set(this.memStorageKey(key), cloneDeep(value));
+      },
+      remove: (key) => {
+        this.memoryStore.delete(this.memStorageKey(key));
+      },
+      clear: () => {
+        const p = `mem:${scopeId}:`;
+        for (const k of [...this.memoryStore.keys()]) {
+          if (k.startsWith(p)) {
+            this.memoryStore.delete(k);
+          }
+        }
+      },
+    };
+
+    const makeWeb = (kind: 'sess' | 'loc'): DataHubWebStorageSlice => ({
+      get: (key) => {
+        if (typeof window === 'undefined') {
+          return null;
+        }
+        const store = kind === 'sess' ? window.sessionStorage : window.localStorage;
+        const raw = store.getItem(this.webStoragePrefix(kind) + encodeURIComponent(String(key)));
+        return deserializeStorageValue(raw);
+      },
+      set: (key, value) => {
+        if (typeof window === 'undefined') {
+          return;
+        }
+        const store = kind === 'sess' ? window.sessionStorage : window.localStorage;
+        const fullKey = this.webStoragePrefix(kind) + encodeURIComponent(String(key));
+        try {
+          store.setItem(fullKey, serializeStorageValue(value));
+        } catch {
+          /* quota / private mode */
+        }
+      },
+      remove: (key) => {
+        if (typeof window === 'undefined') {
+          return;
+        }
+        const store = kind === 'sess' ? window.sessionStorage : window.localStorage;
+        store.removeItem(this.webStoragePrefix(kind) + encodeURIComponent(String(key)));
+      },
+      clear: () => {
+        this.clearWebStorage(kind);
+      },
+    });
+
+    return {
+      memory,
+      session: makeWeb('sess'),
+      local: makeWeb('loc'),
+    };
+  }
+
   createCodeContext(): DataHubCodeContext {
     return {
       scopeId: this.scopeId,
@@ -509,6 +669,8 @@ export class PreviewDataHub {
       dialog: this.dialogContext,
       router: this.routerContext,
       cloud: this.cloudContext,
+      storage: this.createStorageContext(),
+      runtime: createRuntimeContext(),
     };
   }
 
