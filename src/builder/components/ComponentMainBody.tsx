@@ -11,8 +11,14 @@ import { BuilderSidebarToggles, useBuilderWorkbenchLayoutHotkeys } from './Build
 
 const { Text } = Typography;
 
-const ComponentMainBody: React.FC<{ toolbarExtra?: React.ReactNode; toolbarRight?: React.ReactNode }> = ({
+const ComponentMainBody: React.FC<{
+  toolbarExtra?: React.ReactNode;
+  /** 渲染在「快捷键」按钮之后，与 TopbarIconButton 风格一致 */
+  toolbarAfterShortcuts?: React.ReactNode;
+  toolbarRight?: React.ReactNode;
+}> = ({
   toolbarExtra,
+  toolbarAfterShortcuts,
   toolbarRight,
 }) => {
   const { useStore } = useBuilderContext();
@@ -191,6 +197,9 @@ const ComponentMainBody: React.FC<{ toolbarExtra?: React.ReactNode; toolbarRight
                 icon={<Settings2 size={16} strokeWidth={2} />}
                 onClick={() => setShortcutDialogVisible(true)}
               />
+              {toolbarAfterShortcuts ? (
+                <div className="component-main-toolbar__after-shortcuts">{toolbarAfterShortcuts}</div>
+              ) : null}
             </TopbarGroup>
             </>
           )}

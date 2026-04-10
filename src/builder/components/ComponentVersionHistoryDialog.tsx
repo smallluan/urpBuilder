@@ -177,6 +177,15 @@ const ComponentVersionHistoryDialog: React.FC<ComponentVersionHistoryDialogProps
             <JumpIcon style={{ marginRight: 4 }} />
             独立页查看
           </Button>
+          <Button
+            variant="outline"
+            onClick={() => {
+              const id = encodeURIComponent(componentId);
+              window.open(`/component-version-compare?id=${id}`, '_blank', 'noopener,noreferrer');
+            }}
+          >
+            版本对比 / Diff
+          </Button>
           <Button theme="primary" onClick={onClose}>
             关闭
           </Button>

@@ -73,7 +73,26 @@ const ComponentVersionCatalog: React.FC = () => {
           </div>
         </Space>
 
-        <Card title="已发布版本" bordered>
+        <Card
+          title="已发布版本"
+          bordered
+          actions={
+            <Button
+              size="small"
+              theme="primary"
+              variant="outline"
+              onClick={() =>
+                window.open(
+                  `/component-version-compare?id=${encodeURIComponent(componentId)}`,
+                  '_blank',
+                  'noopener,noreferrer',
+                )
+              }
+            >
+              版本对比 / Diff
+            </Button>
+          }
+        >
           {loading ? (
             <Text>加载中…</Text>
           ) : list.length === 0 ? (

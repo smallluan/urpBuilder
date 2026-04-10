@@ -18,6 +18,7 @@ const TeamAdmin = lazy(() => import('../pages/TeamAdmin'));
 const CreateComponent = lazy(() => import('../pages/CreateComponent'));
 const CreatePage = lazy(() => import('../pages/CreatePage'));
 const ComponentVersionCatalog = lazy(() => import('../pages/ComponentVersionCatalog'));
+const ComponentVersionCompare = lazy(() => import('../pages/ComponentVersionCompare'));
 const PreviewEngine = lazy(() => import('../pages/PreviewEngine'));
 const CodeWorkbench = lazy(() => import('../pages/CodeWorkbench/index.tsx'));
 const Login = lazy(() => import('../pages/Login'));
@@ -107,6 +108,10 @@ export const router = createBrowserRouter([
       {
         path: '/component-version-catalog',
         element: <RequireAuth>{load(<ComponentVersionCatalog />)}</RequireAuth>,
+      },
+      {
+        path: '/component-version-compare',
+        element: <RequireAuth>{load(<ComponentVersionCompare />)}</RequireAuth>,
       },
       {
         path: '/preview-engine',

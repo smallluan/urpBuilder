@@ -1,11 +1,13 @@
 import type { CodeEditorDynamicCompletionContext } from './dynamicCompletions';
 
-export type CodeWorkbenchContext = 'flow' | 'single' | 'json' | 'cloud-function';
+export type CodeWorkbenchContext = 'flow' | 'single' | 'json' | 'cloud-function' | 'diff';
 
 export interface CodeWorkbenchFile {
   id: string;
   path: string;
   code: string;
+  /** 与 code 成对出现时表示只读对比（左侧为 base） */
+  baseCode?: string;
   language?: string;
   editorTheme?: 'vscode-dark' | 'vscode-light';
 }
@@ -15,6 +17,9 @@ export interface CodeWorkbenchPayload {
   returnTo: string;
   title?: string;
   context: CodeWorkbenchContext;
+  /** diff 模式下展示在副标题 */
+  diffBaseLabel?: string;
+  diffCompareLabel?: string;
   completionContext?: CodeEditorDynamicCompletionContext;
   files: CodeWorkbenchFile[];
   activeFileId: string;

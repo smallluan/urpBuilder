@@ -5,6 +5,7 @@ import { undo, redo } from '@codemirror/commands';
 import type { EditorView } from '@codemirror/view';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import CodeMirrorEditor, { type CodeEditorThemeMode } from '../../builder/components/codeEditor/CodeMirrorEditor';
+import CodeMirrorMergePane from '../../builder/components/codeEditor/CodeMirrorMergePane';
 import { buildCodeMirrorExtensions } from '../../builder/components/codeEditor/buildCodeMirrorExtensions';
 import {
   clearCodeWorkbenchPayload,
@@ -60,19 +61,23 @@ const CodeWorkbench: React.FC = () => {
       return;
     }
 
+    /* eslint-disable react-hooks/set-state-in-effect -- 从 localStorage 会话一次性还原工作台状态 */
     setPayload(nextPayload);
     setActiveFileId(nextPayload.activeFileId || nextPayload.files[0].id);
     setCodeMap(toCodeMap(nextPayload.files));
     const initialTheme = nextPayload.files.find((item) => item.id === (nextPayload.activeFileId || nextPayload.files[0].id))?.editorTheme;
     setEditorTheme(initialTheme === 'vscode-light' ? 'vscode-light' : FALLBACK_THEME);
+    /* eslint-enable react-hooks/set-state-in-effect */
   }, [sessionId]);
 
   const activeFile = useMemo(() => payload?.files.find((item) => item.id === activeFileId) ?? null, [activeFileId, payload?.files]);
   const activeCode = activeFile ? (codeMap[activeFile.id] ?? '') : '';
 
+  const isDiffMode = payload?.context === 'diff';
+
   const dirtyFileIdSet = useMemo(() => {
     const dirty = new Set<string>();
-    if (!payload) {
+    if (!payload || isDiffMode) {
       return dirty;
     }
     payload.files.forEach((file) => {
@@ -81,7 +86,7 @@ const CodeWorkbench: React.FC = () => {
       }
     });
     return dirty;
-  }, [codeMap, payload]);
+  }, [codeMap, isDiffMode, payload]);
 
   const activeExtensions = useMemo(
     () =>
@@ -127,7 +132,7 @@ const CodeWorkbench: React.FC = () => {
   };
 
   const handleApply = () => {
-    if (!payload) {
+    if (!payload || payload.context === 'diff') {
       return;
     }
 
@@ -199,12 +204,20 @@ const CodeWorkbench: React.FC = () => {
       <header className="code-workbench-page__header">
         <div className="code-workbench-page__header-main">
           <div className="code-workbench-page__title">{payload.title || 'Code Workbench'}</div>
-          <div className="code-workbench-page__subtitle">{payload.context} · {payload.files.length} file(s)</div>
+          <div className="code-workbench-page__subtitle">
+            {payload.context === 'diff' && payload.diffBaseLabel && payload.diffCompareLabel
+              ? `diff · ${payload.diffBaseLabel} → ${payload.diffCompareLabel} · ${payload.files.length} file(s)`
+              : `${payload.context} · ${payload.files.length} file(s)`}
+          </div>
         </div>
         <Space size={8}>
-          <Button size="small" variant="outline" onClick={() => editorViewRef.current && undo(editorViewRef.current)}>撤销</Button>
-          <Button size="small" variant="outline" onClick={() => editorViewRef.current && redo(editorViewRef.current)}>重做</Button>
-          <Button size="small" variant="outline" icon={<CopyIcon />} onClick={handleCopy}>复制</Button>
+          {!isDiffMode ? (
+            <>
+              <Button size="small" variant="outline" onClick={() => editorViewRef.current && undo(editorViewRef.current)}>撤销</Button>
+              <Button size="small" variant="outline" onClick={() => editorViewRef.current && redo(editorViewRef.current)}>重做</Button>
+            </>
+          ) : null}
+          <Button size="small" variant="outline" icon={<CopyIcon />} onClick={handleCopy}>复制右侧</Button>
           <Select
             size="small"
             style={{ width: 150 }}
@@ -212,8 +225,8 @@ const CodeWorkbench: React.FC = () => {
             value={editorTheme}
             onChange={(nextValue) => setEditorTheme(String(nextValue ?? FALLBACK_THEME) === 'vscode-light' ? 'vscode-light' : 'vscode-dark')}
           />
-          <Button size="small" variant="outline" onClick={handleCancel}>取消</Button>
-          <Button size="small" theme="primary" onClick={handleApply}>应用</Button>
+          <Button size="small" variant="outline" onClick={handleCancel}>{isDiffMode ? '关闭' : '取消'}</Button>
+          {!isDiffMode ? <Button size="small" theme="primary" onClick={handleApply}>应用</Button> : null}
         </Space>
       </header>
 
@@ -238,7 +251,7 @@ const CodeWorkbench: React.FC = () => {
                   }}
                 >
                   <span className="code-workbench-page__file-name">{file.path || file.id}</span>
-                  {isDirty ? <span className="code-workbench-page__file-dirty">●</span> : null}
+                  {!isDiffMode && isDirty ? <span className="code-workbench-page__file-dirty">●</span> : null}
                 </button>
               );
             })}
@@ -252,22 +265,33 @@ const CodeWorkbench: React.FC = () => {
             <span>{activeCode.length} chars</span>
           </div>
           <div className="code-workbench-page__editor-wrap">
-            <CodeMirrorEditor
-              value={activeCode}
-              editorTheme={editorTheme}
-              language={activeFile.language || 'javascript'}
-              extensions={activeExtensions}
-              className="code-workbench-page__editor-shell"
-              onCreateEditor={(view) => {
-                editorViewRef.current = view;
-              }}
-              onChange={(nextCode) => {
-                setCodeMap((previous) => ({
-                  ...previous,
-                  [activeFile.id]: nextCode,
-                }));
-              }}
-            />
+            {isDiffMode && typeof activeFile.baseCode === 'string' ? (
+              <CodeMirrorMergePane
+                path={activeFile.path || activeFile.id}
+                baseText={activeFile.baseCode}
+                compareText={activeCode}
+                editorTheme={editorTheme}
+                className="code-workbench-page__editor-shell"
+                height="100%"
+              />
+            ) : (
+              <CodeMirrorEditor
+                value={activeCode}
+                editorTheme={editorTheme}
+                language={activeFile.language || 'javascript'}
+                extensions={activeExtensions}
+                className="code-workbench-page__editor-shell"
+                onCreateEditor={(view) => {
+                  editorViewRef.current = view;
+                }}
+                onChange={(nextCode) => {
+                  setCodeMap((previous) => ({
+                    ...previous,
+                    [activeFile.id]: nextCode,
+                  }));
+                }}
+              />
+            )}
           </div>
         </main>
       </div>

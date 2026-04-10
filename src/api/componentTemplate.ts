@@ -80,6 +80,20 @@ export const getComponentTemplateDetail = async (componentId: string, options?: 
   return payload;
 };
 
+/** 版本对比用：不水合 props，避免无关 schema 差异干扰 diff */
+export const getComponentTemplateDetailRaw = async (componentId: string, options?: { version?: number | null }) => {
+  const normalizedVersion = Number(options?.version);
+  const response = await requestClient.get<ApiResponse<ComponentDetail>>(`/page-template/${componentId}`, {
+    params: {
+      entityType: 'component',
+      ...(Number.isFinite(normalizedVersion) && normalizedVersion > 0
+        ? { version: Math.floor(normalizedVersion) }
+        : {}),
+    },
+  });
+  return response.data;
+};
+
 export const batchGetComponentMeta = async (payload: ComponentMetaBatchRequest) => {
   const response = await requestClient.post<ApiResponse<ComponentMetaBatchResult>>('/v1/components/meta:batch', payload);
   return response.data;
