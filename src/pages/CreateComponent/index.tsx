@@ -32,6 +32,7 @@ import { collectCustomComponentNodesForId } from '../../utils/customComponentVer
 import type { DependencyUpgradeItem } from '../../builder/components/DependencyUpgradeIndicator';
 import DependencyManagerDrawer from '../../builder/components/DependencyManagerDrawer';
 import BuilderQuickFind from '../../builder/components/BuilderQuickFind';
+import ComponentTemplateJsonImportDialog from '../../builder/components/ComponentTemplateJsonImportDialog';
 import { AntdRuntimeRoot } from '../../builder/antd/AntdRuntimeRoot';
 import { computePersistedTemplateFingerprint } from '../../builder/save/templateFingerprint';
 import { normalizeUiTreeLegacyAntdTypes } from '../../builder/utils/normalizeUiTreeLegacyAntd';
@@ -308,25 +309,32 @@ const CreateComponent: React.FC = () => {
                     <PreviewUiLibraryToolbarSelect />
                   </TopbarGroup>
                 )}
-                toolbarAfterShortcuts={
-                  <TopbarIconButton
-                    tip="组件版本对比（新标签页打开）"
-                    label="对比"
-                    icon={<GitCompare size={16} strokeWidth={2} />}
-                    disabled={!String(currentPageId ?? '').trim()}
-                    onClick={() => {
-                      const id = String(currentPageId ?? '').trim();
-                      if (!id) {
-                        return;
-                      }
-                      window.open(
-                        `/component-version-compare?id=${encodeURIComponent(id)}`,
-                        '_blank',
-                        'noopener,noreferrer',
-                      );
-                    }}
-                  />
-                }
+                toolbarAfterShortcuts={(
+                  <>
+                    <ComponentTemplateJsonImportDialog
+                      useStore={useCreateComponentStore}
+                      setCurrentPageMeta={setCurrentPageMeta}
+                      readOnly={readOnly}
+                    />
+                    <TopbarIconButton
+                      tip="组件版本对比（新标签页打开）"
+                      label="对比"
+                      icon={<GitCompare size={16} strokeWidth={2} />}
+                      disabled={!String(currentPageId ?? '').trim()}
+                      onClick={() => {
+                        const id = String(currentPageId ?? '').trim();
+                        if (!id) {
+                          return;
+                        }
+                        window.open(
+                          `/component-version-compare?id=${encodeURIComponent(id)}`,
+                          '_blank',
+                          'noopener,noreferrer',
+                        );
+                      }}
+                    />
+                  </>
+                )}
                 composeToolbarExtra={<DependencyManagerDrawer
                   readOnly={readOnly}
                   collectDependencyRows={collectDependencyRows}

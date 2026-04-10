@@ -1,0 +1,109 @@
+{
+  "base": {
+    "pageName": "登录表单",
+    "pageId": "login_form_demo",
+    "description": "示例：用户名/密码 + 登录按钮；含一条流程注释节点，可继续接线后保存发布"
+  },
+  "template": {
+    "uiTree": {
+      "key": "root-login-sample",
+      "type": "root",
+      "label": "该组件",
+      "props": {},
+      "lifetimes": [
+        "onInit",
+        "onBeforeMount",
+        "onMounted",
+        "onBeforeUpdate",
+        "onUpdated",
+        "onBeforeUnmount",
+        "onUnmounted"
+      ],
+      "children": [
+        {
+          "key": "card-login",
+          "type": "Card",
+          "label": "卡片",
+          "props": {
+            "title": { "value": "登录" },
+            "bordered": { "value": true },
+            "size": { "value": "medium" },
+            "headerBordered": { "value": true }
+          },
+          "children": [
+            {
+              "key": "stack-login",
+              "type": "Stack",
+              "label": "纵向堆叠",
+              "props": {
+                "gap": { "value": 16 },
+                "justify": { "value": "flex-start" },
+                "align": { "value": "stretch" }
+              },
+              "children": [
+                {
+                  "key": "inp-user",
+                  "type": "Input",
+                  "label": "输入框",
+                  "props": {
+                    "placeholder": { "value": "用户名或邮箱" },
+                    "clearable": { "value": true },
+                    "autocomplete": { "value": "username" }
+                  }
+                },
+                {
+                  "key": "inp-pwd",
+                  "type": "Input",
+                  "label": "输入框",
+                  "props": {
+                    "placeholder": { "value": "密码" },
+                    "type": { "value": "password" },
+                    "autocomplete": { "value": "current-password" }
+                  }
+                },
+                {
+                  "key": "btn-submit",
+                  "type": "Button",
+                  "label": "按钮",
+                  "props": {
+                    "content": { "value": "登录" },
+                    "theme": { "value": "primary" },
+                    "block": { "value": true }
+                  }
+                },
+                {
+                  "key": "link-forgot",
+                  "type": "Link",
+                  "label": "链接",
+                  "props": {
+                    "content": { "value": "忘记密码？" },
+                    "href": { "value": "#" },
+                    "theme": { "value": "primary" },
+                    "underline": { "value": false }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "flowNodes": [
+      {
+        "id": "annotation-login-flow",
+        "type": "annotationNode",
+        "position": { "x": 120, "y": 80 },
+        "connectable": false,
+        "data": {
+          "text": "建议：在此向右添加组件节点 → 代码/网络请求 → 与画布 onClick/onEnter 联动"
+        }
+      }
+    ],
+    "flowEdges": [],
+    "pageConfig": {
+      "screenSize": "auto",
+      "autoWidth": 420,
+      "propsStorageVersion": 2
+    }
+  }
+}
