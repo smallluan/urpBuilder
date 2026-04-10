@@ -1,3 +1,5 @@
+@login-hero-display-font: 'Noto Serif SC', 'Source Han Serif SC', 'Songti SC', 'SimSun', serif;
+
 .login-page {
   position: relative;
   min-height: 100vh;
@@ -102,10 +104,12 @@
     margin-top: 12px;
     max-width: min(620px, 72vw);
     color: var(--td-text-color-primary);
+    font-family: @login-hero-display-font;
     font-size: clamp(30px, 3.1vw, 42px);
-    line-height: 1.14;
+    line-height: 1.12;
     font-weight: 700;
-    letter-spacing: 0.01em;
+    letter-spacing: 0.02em;
+    font-synthesis: none;
     text-shadow: 0 8px 22px color-mix(in srgb, #ffffff 48%, transparent);
   }
 
@@ -113,8 +117,10 @@
     margin-top: 12px;
     max-width: min(600px, 70vw);
     color: var(--td-text-color-secondary);
+    font-family: @login-hero-display-font;
     font-size: clamp(15px, 1.4vw, 19px);
-    line-height: 1.6;
+    font-weight: 400;
+    line-height: 1.72;
   }
 
   &__story-media {
@@ -149,17 +155,29 @@
   &__story-meta {
     margin-top: 14px;
     display: flex;
+    flex-wrap: wrap;
     gap: 10px;
+  }
 
-    span {
-      display: inline-flex;
-      padding: 0;
-      border-radius: 0;
-      border: 0;
-      background: transparent;
-      color: var(--td-text-color-secondary);
-      font-size: 13px;
-    }
+  &__story-meta-chip {
+    display: inline-flex;
+    flex-wrap: wrap;
+    padding: 0;
+    border-radius: 0;
+    border: 0;
+    background: transparent;
+    color: var(--td-text-color-secondary);
+    font-family: @login-hero-display-font;
+    font-size: 13px;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+  }
+
+  &__story-grain-char {
+    display: inline-block;
+    vertical-align: baseline;
+    white-space: pre-wrap;
+    will-change: transform, opacity, filter;
   }
 
   &__mask {
@@ -418,37 +436,56 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .login-page {
-    &__story--enter,
-    &__story--exit {
-      animation: none;
-    }
+  .login-page__story-grain-char {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+    filter: none !important;
+    will-change: auto !important;
   }
 }
 
-@keyframes storyIn {
+@keyframes sandGrainOut {
   0% {
-    transform: translate3d(24%, 0, 0) scale(0.985);
+    transform: translate3d(0, calc(var(--sand-j, 0) * 0.6px), 0) scale(1);
+    opacity: 1;
+    filter: blur(0) brightness(1);
+  }
+  38% {
+    opacity: 0.9;
+    filter: blur(2px) brightness(1.04);
+  }
+  100% {
+    transform: translate3d(
+        calc(-118vw + var(--sand-j, 0) * 6px),
+        calc(var(--sand-j, 0) * 11px),
+        0
+      )
+      scale(0.18);
     opacity: 0;
-    filter: blur(6px);
+    filter: blur(16px) brightness(1.28);
+  }
+}
+
+@keyframes sandGrainIn {
+  0% {
+    transform: translate3d(
+        calc(var(--sand-drift-x, 32) * 1vw + var(--sand-j, 0) * 4px),
+        calc(var(--sand-j, 0) * 15px),
+        0
+      )
+      scale(0.32);
+    opacity: 0;
+    filter: blur(16px) brightness(1.14);
+  }
+  58% {
+    opacity: 0.92;
+    filter: blur(2px) brightness(1.02);
   }
   100% {
     transform: translate3d(0, 0, 0) scale(1);
     opacity: 1;
-    filter: blur(0);
-  }
-}
-
-@keyframes storyOut {
-  0% {
-    transform: translate3d(0, 0, 0) scale(1);
-    opacity: 1;
-    filter: blur(0);
-  }
-  100% {
-    transform: translate3d(-12%, 0, 0) scale(0.992);
-    opacity: 0;
-    filter: blur(8px);
+    filter: blur(0) brightness(1);
   }
 }
 
@@ -509,15 +546,25 @@
   }
 }
 
-.login-page__story--enter {
-  animation: storyIn 260ms cubic-bezier(0.18, 0.92, 0.28, 1) both;
-}
-
 .login-page__story--hold {
   transform: translate3d(0, 0, 0);
   opacity: 1;
 }
 
-.login-page__story--exit {
-  animation: storyOut 220ms cubic-bezier(0.52, 0.02, 0.72, 0.92) both;
+.login-page__story--hold .login-page__story-grain-char {
+  animation: none;
+  opacity: 1;
+  transform: translate3d(0, 0, 0);
+  filter: none;
+  will-change: auto;
+}
+
+.login-page__story--enter .login-page__story-grain-char {
+  animation: sandGrainIn var(--grain-dur-in, 780ms) cubic-bezier(0.2, 0.82, 0.22, 1) both;
+  animation-delay: calc((var(--sand-total, 1) - var(--sand-i, 0) - 1) * var(--grain-stagger-in, 14ms));
+}
+
+.login-page__story--exit .login-page__story-grain-char {
+  animation: sandGrainOut var(--grain-dur-out, 720ms) cubic-bezier(0.46, 0.02, 0.58, 0.34) both;
+  animation-delay: calc(var(--sand-i, 0) * var(--grain-stagger-out, 11ms));
 }
