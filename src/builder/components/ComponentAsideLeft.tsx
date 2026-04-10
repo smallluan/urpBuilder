@@ -51,6 +51,9 @@ const CONTAINER_NODE_TYPES = new Set([
   'Menu',
   'HeadMenu',
   'Menu.Submenu',
+  'antd.Menu',
+  'antd.HeadMenu',
+  'antd.Menu.SubMenu',
   'Grid.Row',
   'Grid.Col',
   'Layout',
@@ -62,8 +65,8 @@ const CONTAINER_NODE_TYPES = new Set([
   'Card',
 ]);
 
-const MENU_NODE_TYPES = new Set(['Menu.Submenu', 'Menu.Item']);
-const MENU_CONTAINER_TYPES = new Set(['Menu', 'HeadMenu', 'Menu.Submenu']);
+const MENU_NODE_TYPES = new Set(['Menu.Submenu', 'Menu.Item', 'antd.Menu.SubMenu', 'antd.Menu.Item']);
+const MENU_CONTAINER_TYPES = new Set(['Menu', 'HeadMenu', 'Menu.Submenu', 'antd.Menu', 'antd.HeadMenu', 'antd.Menu.SubMenu']);
 
 const ABSTRACT_NODE_TYPES = new Set([
   'List.Item',
@@ -783,11 +786,17 @@ const ComponentAsideLeft: React.FC = () => {
         return;
       }
 
-      if ((currentNodeType === 'Menu' || currentNodeType === 'HeadMenu') && !MENU_NODE_TYPES.has(droppedType)) {
+      if (
+        (currentNodeType === 'Menu'
+          || currentNodeType === 'HeadMenu'
+          || currentNodeType === 'antd.Menu'
+          || currentNodeType === 'antd.HeadMenu')
+        && !MENU_NODE_TYPES.has(droppedType)
+      ) {
         return;
       }
 
-      if (currentNodeType === 'Menu.Submenu' && !MENU_NODE_TYPES.has(droppedType)) {
+      if ((currentNodeType === 'Menu.Submenu' || currentNodeType === 'antd.Menu.SubMenu') && !MENU_NODE_TYPES.has(droppedType)) {
         return;
       }
 

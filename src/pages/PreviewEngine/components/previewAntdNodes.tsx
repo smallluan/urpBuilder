@@ -68,6 +68,13 @@ import {
   parseProgressColorValue,
   parseProgressLabelValue,
 } from '../../../builder/utils/progressAntdBridge';
+import {
+  isMenuItemNodeType,
+  isMenuSubmenuNodeType,
+  resolveMenuItemDslValue,
+  resolveMenuSubmenuDslValue,
+  stringifyMenuDslKey,
+} from '../../../builder/utils/menuDslKeys';
 import { AntdCollapsePreviewBridge, AntdTabsPreviewBridge } from './antdPreviewBridges';
 
 const { Title, Paragraph, Text, Link } = Typography;
@@ -144,6 +151,89 @@ function parseJsonRecordArray(raw: string | undefined): Array<Record<string, unk
   } catch {
     return [];
   }
+}
+
+function getMenuSingleValue(node: UiTreeNode, propName: string): string | number | undefined {
+  const value = getProp(node, propName);
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value;
+  }
+  if (typeof value === 'string') {
+    const text = value.trim();
+    if (!text) {
+      return undefined;
+    }
+    const parsed = Number(text);
+    return Number.isFinite(parsed) ? parsed : text;
+  }
+  return undefined;
+}
+
+function getMenuArrayValue(node: UiTreeNode, propName: string): Array<string | number> | undefined {
+  const value = getProp(node, propName);
+  if (Array.isArray(value)) {
+    const normalized = value
+      .map((item) => {
+        if (typeof item === 'number' && Number.isFinite(item)) {
+          return item;
+        }
+        if (typeof item === 'string') {
+          const text = item.trim();
+          if (!text) {
+            return undefined;
+          }
+          const parsed = Number(text);
+          return Number.isFinite(parsed) ? parsed : text;
+        }
+        return undefined;
+      })
+      .filter((item): item is string | number => typeof item !== 'undefined');
+    return normalized.length > 0 ? normalized : undefined;
+  }
+  if (typeof value === 'string') {
+    const normalized = value
+      .split(/\r?\n|,|，/)
+      .map((item) => item.trim())
+      .filter(Boolean)
+      .map((item) => {
+        const parsed = Number(item);
+        return Number.isFinite(parsed) ? parsed : item;
+      });
+    return normalized.length > 0 ? normalized : undefined;
+  }
+  return undefined;
+}
+
+function resolvePreviewAntdMenuSelectionProps(node: UiTreeNode): {
+  kind: 'controlled' | 'default';
+  selectedKeys?: string[];
+  defaultSelectedKeys?: string[];
+} {
+  const value = getMenuSingleValue(node, 'value');
+  const defaultValue = getMenuSingleValue(node, 'defaultValue');
+  if (value !== undefined) {
+    return { kind: 'controlled', selectedKeys: [String(value)] };
+  }
+  if (defaultValue !== undefined) {
+    return { kind: 'default', defaultSelectedKeys: [String(defaultValue)] };
+  }
+  return { kind: 'default' };
+}
+
+function resolvePreviewAntdMenuOpenProps(node: UiTreeNode): {
+  kind: 'controlled' | 'default';
+  openKeys?: string[];
+  defaultOpenKeys?: string[];
+} {
+  const expanded = getMenuArrayValue(node, 'expanded');
+  const defaultExpanded = getMenuArrayValue(node, 'defaultExpanded');
+  if (expanded !== undefined) {
+    return { kind: 'controlled', openKeys: expanded.map(String) };
+  }
+  if (defaultExpanded !== undefined) {
+    return { kind: 'default', defaultOpenKeys: defaultExpanded.map(String) };
+  }
+  return { kind: 'default' };
 }
 
 export interface AntdPreviewContext {
@@ -914,11 +1004,38 @@ export function tryRenderAntdPreview(ctx: AntdPreviewContext): React.ReactElemen
       const collapsed = getBooleanProp(node, 'collapsed') === true;
       const widthRaw = getStringProp(node, 'width')?.trim();
       const widthResolved = widthRaw || 232;
+      const selection = resolvePreviewAntdMenuSelectionProps(node);
+      const selectionProps =
+        selection.kind === 'controlled'
+          ? { selectedKeys: selection.selectedKeys as string[] }
+          : { defaultSelectedKeys: selection.defaultSelectedKeys };
+      const openState = resolvePreviewAntdMenuOpenProps(node);
+      const openProps =
+        openState.kind === 'controlled'
+          ? {
+              openKeys: openState.openKeys,
+              onOpenChange: () => {
+                /* 受控展开：由 DSL 驱动 */
+              },
+            }
+          : { defaultOpenKeys: openState.defaultOpenKeys };
+      const menuRenderKey = [
+        node.key,
+        'antd-inline-menu',
+        selection.kind,
+        selection.kind === 'controlled' ? selection.selectedKeys?.join('\u0001') : selection.defaultSelectedKeys?.join('\u0001'),
+        openState.kind,
+        openState.kind === 'controlled' ? openState.openKeys?.join('\u0001') : openState.defaultOpenKeys?.join('\u0001'),
+      ].join('|');
       return (
         <Menu
+          key={menuRenderKey}
           mode="inline"
           theme={getStringProp(node, 'theme') === 'dark' ? 'dark' : 'light'}
           inlineCollapsed={collapsed}
+          selectable
+          {...selectionProps}
+          {...openProps}
           style={{
             ...mergeStyle(),
             width: collapsed ? undefined : widthResolved,
@@ -930,15 +1047,44 @@ export function tryRenderAntdPreview(ctx: AntdPreviewContext): React.ReactElemen
       );
     }
     case 'antd.HeadMenu':
+      {
+      const selection = resolvePreviewAntdMenuSelectionProps(node);
+      const selectionProps =
+        selection.kind === 'controlled'
+          ? { selectedKeys: selection.selectedKeys as string[] }
+          : { defaultSelectedKeys: selection.defaultSelectedKeys };
+      const openState = resolvePreviewAntdMenuOpenProps(node);
+      const openProps =
+        openState.kind === 'controlled'
+          ? {
+              openKeys: openState.openKeys,
+              onOpenChange: () => {
+                /* 受控展开：由 DSL 驱动 */
+              },
+            }
+          : { defaultOpenKeys: openState.defaultOpenKeys };
+      const menuRenderKey = [
+        node.key,
+        'antd-head-menu',
+        selection.kind,
+        selection.kind === 'controlled' ? selection.selectedKeys?.join('\u0001') : selection.defaultSelectedKeys?.join('\u0001'),
+        openState.kind,
+        openState.kind === 'controlled' ? openState.openKeys?.join('\u0001') : openState.defaultOpenKeys?.join('\u0001'),
+      ].join('|');
       return (
         <Menu
+          key={menuRenderKey}
           mode="horizontal"
           theme={getStringProp(node, 'theme') === 'dark' ? 'dark' : 'light'}
+          selectable
+          {...selectionProps}
+          {...openProps}
           style={{ width: '100%', maxWidth: '100%', minWidth: 0, ...mergeStyle() }}
         >
           {renderAntdPreviewMenu(node.children, onLifecycle, emitInteractionLifecycle, navigatePreviewByHref)}
         </Menu>
       );
+      }
     case 'antd.Steps': {
       const isControlled = getBooleanProp(node, 'controlled') !== false;
       const current = getStepsCurrentProp(node, 'current');
@@ -1000,18 +1146,25 @@ function renderAntdPreviewMenu(
     if (getChildBool('visible') === false) {
       return null;
     }
-    if (childType === 'antd.Menu.SubMenu' || childType === 'Menu.Submenu') {
+    if (isMenuSubmenuNodeType(childType)) {
+      const submenuKey = stringifyMenuDslKey(resolveMenuSubmenuDslValue(child));
       return (
-        <Menu.SubMenu key={child.key} title={getChildString('title') || '子菜单'}>
+        <Menu.SubMenu
+          key={submenuKey}
+          title={getChildString('title') || '子菜单'}
+          disabled={getChildBool('disabled') === true}
+        >
           {renderAntdPreviewMenu(child.children, onLifecycle, emitInteractionLifecycle, navigatePreviewByHref)}
         </Menu.SubMenu>
       );
     }
-    if (childType === 'antd.Menu.Item' || childType === 'Menu.Item') {
+    if (isMenuItemNodeType(childType)) {
       const href = getChildString('href') || undefined;
+      const itemKey = stringifyMenuDslKey(resolveMenuItemDslValue(child));
       return (
         <Menu.Item
-          key={child.key}
+          key={itemKey}
+          disabled={getChildBool('disabled') === true}
           onClick={() => {
             emitInteractionLifecycle('onClick', { nodeType: child.type });
             if (href) {

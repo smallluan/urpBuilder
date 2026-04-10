@@ -43,6 +43,14 @@ import {
   readCodeWorkbenchResult,
   writeCodeWorkbenchPayload,
 } from './codeEditor/workbenchSession';
+import {
+  isMenuContainerNodeType,
+  isMenuItemNodeType,
+  isMenuSubmenuNodeType,
+  readMenuDslBoundValue,
+  resolveMenuItemDslValue,
+  resolveMenuSubmenuDslValue,
+} from '../utils/menuDslKeys';
 
 const toJsonCodeString = (value: unknown): string => {
   if (typeof value === 'string') {
@@ -443,16 +451,10 @@ const LIST_ITEM_META_PROP_KEYS = new Set([
   'actionSize',
 ]);
 
-const MENU_ICON_COMPAT_NODE_TYPES = new Set(['Menu.Item', 'Menu.Submenu']);
-
-/** 从节点 props 读取绑定值（与搭建器 schema 一致） */
-const readBoundPropValue = (node: UiTreeNode, propKey: string): unknown => {
-  const wrap = node.props?.[propKey] as { value?: unknown } | undefined;
-  return wrap?.value;
-};
+const MENU_ICON_COMPAT_NODE_TYPES = new Set(['Menu.Item', 'Menu.Submenu', 'antd.Menu.Item', 'antd.Menu.SubMenu']);
 
 /**
- * 收集 Menu / HeadMenu 下所有「子菜单」的标识，供展开项多选。
+ * 收集 Menu / HeadMenu / antd.Menu / antd.HeadMenu 下所有「子菜单」的标识，供展开项多选。
  * 标识优先取 props.value，空则回退节点 key（与运行时 getMenuValueArrayProp 一致）。
  */
 const collectMenuSubmenuValueOptions = (menuRoot: UiTreeNode): { label: string; value: string | number }[] => {
@@ -462,18 +464,9 @@ const collectMenuSubmenuValueOptions = (menuRoot: UiTreeNode): { label: string; 
       return;
     }
     for (const node of nodes) {
-      if (node.type === 'Menu.Submenu') {
-        const raw = readBoundPropValue(node, 'value');
-        let resolved: string | number;
-        if (typeof raw === 'number' && Number.isFinite(raw)) {
-          resolved = raw;
-        } else if (typeof raw === 'string' && raw.trim()) {
-          const n = Number(raw.trim());
-          resolved = Number.isFinite(n) ? n : raw.trim();
-        } else {
-          resolved = String(node.key ?? '').trim() || 'submenu';
-        }
-        const titleRaw = readBoundPropValue(node, 'title');
+      if (isMenuSubmenuNodeType(node.type)) {
+        const resolved = resolveMenuSubmenuDslValue(node);
+        const titleRaw = readMenuDslBoundValue(node, 'title');
         const title =
           typeof titleRaw === 'string' && titleRaw.trim()
             ? titleRaw.trim()
@@ -493,8 +486,7 @@ const collectMenuSubmenuValueOptions = (menuRoot: UiTreeNode): { label: string; 
 };
 
 /**
- * 收集 Menu / HeadMenu 下所有「菜单项」标识，供激活项单选。
- * 标识优先取 props.value，空则回退节点 key（与运行时 getMenuValueProp 一致）。
+ * 收集菜单容器下所有「菜单项」标识，供激活项单选（含 antd 镜像类型）。
  */
 const collectMenuItemValueOptions = (menuRoot: UiTreeNode): { label: string; value: string | number }[] => {
   const out: { label: string; value: string | number }[] = [];
@@ -504,20 +496,11 @@ const collectMenuItemValueOptions = (menuRoot: UiTreeNode): { label: string; val
       return;
     }
     for (const node of nodes) {
-      if (node.type === 'Menu.Item') {
-        const raw = readBoundPropValue(node, 'value');
-        let resolved: string | number;
-        if (typeof raw === 'number' && Number.isFinite(raw)) {
-          resolved = raw;
-        } else if (typeof raw === 'string' && raw.trim()) {
-          const n = Number(raw.trim());
-          resolved = Number.isFinite(n) ? n : raw.trim();
-        } else {
-          resolved = String(node.key ?? '').trim() || 'item';
-        }
+      if (isMenuItemNodeType(node.type)) {
+        const resolved = resolveMenuItemDslValue(node);
         if (!seen.has(resolved)) {
           seen.add(resolved);
-          const contentRaw = readBoundPropValue(node, 'content');
+          const contentRaw = readMenuDslBoundValue(node, 'content');
           const content =
             typeof contentRaw === 'string' && contentRaw.trim()
               ? contentRaw.trim()
@@ -666,7 +649,7 @@ const resolveMenuPropEditType = (
   nodeType: string | undefined,
   schema: ComponentPropSchema,
 ): EditType => {
-  if (nodeType === 'Menu' || nodeType === 'HeadMenu') {
+  if (isMenuContainerNodeType(nodeType)) {
     if (propKey === 'expanded' || propKey === 'defaultExpanded') {
       return 'menuSubmenuMultiSelect';
     }
@@ -792,14 +775,14 @@ const ComponentConfigPanel: React.FC = () => {
   );
 
   const menuSubmenuSelectOptions = React.useMemo(() => {
-    if (!activeNode || (activeNode.type !== 'Menu' && activeNode.type !== 'HeadMenu')) {
+    if (!activeNode || !isMenuContainerNodeType(activeNode.type)) {
       return [] as { label: string; value: string | number }[];
     }
     return collectMenuSubmenuValueOptions(activeNode);
   }, [activeNode]);
 
   const menuMenuItemSelectOptions = React.useMemo(() => {
-    if (!activeNode || (activeNode.type !== 'Menu' && activeNode.type !== 'HeadMenu')) {
+    if (!activeNode || !isMenuContainerNodeType(activeNode.type)) {
       return [] as { label: string; value: string | number }[];
     }
     return collectMenuItemValueOptions(activeNode);

@@ -59,6 +59,13 @@ import { getTabsPanelSlotKey, getTabsSlotNodeByValue } from '../../utils/tabs';
 import type { MenuProps } from 'antd';
 import { collectDslStepRows, dslStepStatusToAntd } from '../../utils/stepsDsl';
 import type { UiDropDataHandler, UiTreeNode } from '../../store/types';
+import {
+  isMenuItemNodeType,
+  isMenuSubmenuNodeType,
+  resolveMenuItemDslValue,
+  resolveMenuSubmenuDslValue,
+  stringifyMenuDslKey,
+} from '../../utils/menuDslKeys';
 import { getNodeSlotKey, isSlotNode } from '../../utils/slot';
 import type { ComponentRegistry } from '../componentContext';
 import { ActivateWrapper } from '../componentHelpers';
@@ -123,6 +130,49 @@ function parseJsonRecordArray(raw: string | undefined): Array<Record<string, unk
   return parsed.filter((x) => x && typeof x === 'object');
 }
 
+/**
+ * TDesign：同时传 value 与 defaultValue；未配置「激活项」时由 defaultValue 走非受控，可在画布点击切换。
+ * antd：必须二选一 —— 配置了「激活项」(value) 时用受控 selectedKeys；仅「默认激活」时用 defaultSelectedKeys（非受控），否则点击无法切换。
+ */
+function resolveAntdMenuSelectionProps(getMenuValueProp: (name: string) => string | number | undefined): {
+  kind: 'controlled' | 'default';
+  selectedKeys?: string[];
+  defaultSelectedKeys?: string[];
+} {
+  const value = getMenuValueProp('value');
+  const defaultValue = getMenuValueProp('defaultValue');
+  if (value !== undefined && value !== null) {
+    return { kind: 'controlled', selectedKeys: [String(value)] };
+  }
+  if (defaultValue !== undefined && defaultValue !== null) {
+    return { kind: 'default', defaultSelectedKeys: [String(defaultValue)] };
+  }
+  return { kind: 'default', defaultSelectedKeys: undefined };
+}
+
+/** expanded 优先，否则 defaultExpanded；与 getMenuValueArrayProp 语义一致 */
+function buildAntdMenuOpenKeys(getMenuValueArrayProp: (name: string) => Array<string | number> | undefined): string[] {
+  return (getMenuValueArrayProp('expanded') ?? getMenuValueArrayProp('defaultExpanded') ?? []).map(String);
+}
+
+/** 按 DSL 标识找到菜单项节点 key（用于搭建态选中树节点），与 props.value / 节点 key 规则一致 */
+function findMenuItemNodeKeyByDslKey(nodes: UiTreeNode[] | undefined, dslKey: string): string | undefined {
+  for (const n of nodes ?? []) {
+    if (isMenuItemNodeType(n.type)) {
+      if (stringifyMenuDslKey(resolveMenuItemDslValue(n)) === dslKey) {
+        return n.key;
+      }
+    }
+    if (isMenuSubmenuNodeType(n.type)) {
+      const inner = findMenuItemNodeKeyByDslKey(n.children, dslKey);
+      if (inner) {
+        return inner;
+      }
+    }
+  }
+  return undefined;
+}
+
 function renderAntdMenuChildren(
   nodes: UiTreeNode[] | undefined,
   setActiveKey: (key: string) => void,
@@ -147,8 +197,13 @@ function renderAntdMenuChildren(
     }
     if (childType === 'antd.Menu.SubMenu' || childType === 'Menu.Submenu') {
       const subKids = child.children ?? [];
+      const subKey = stringifyMenuDslKey(resolveMenuSubmenuDslValue(child));
       return (
-        <Menu.SubMenu key={child.key} title={getChildString('title') || '子菜单'}>
+        <Menu.SubMenu
+          key={subKey}
+          title={getChildString('title') || '子菜单'}
+          disabled={getChildBool('disabled') === true}
+        >
           {subKids.length === 0 ? (
             <DropArea data={child} onDropData={onDropData} emptyText="拖入子菜单项" />
           ) : (
@@ -158,9 +213,11 @@ function renderAntdMenuChildren(
       );
     }
     if (childType === 'antd.Menu.Item' || childType === 'Menu.Item') {
+      const itemKey = stringifyMenuDslKey(resolveMenuItemDslValue(child));
       return (
         <Menu.Item
-          key={child.key}
+          key={itemKey}
+          disabled={getChildBool('disabled') === true}
           onClick={({ domEvent }) => {
             domEvent.stopPropagation();
             setActiveKey(child.key);
@@ -646,13 +703,30 @@ export function registerAntdComponents(registry: ComponentRegistry): void {
   });
 
   registry.set('antd.Menu', (ctx) => {
-    const { getStringProp, getBooleanProp, data, mergeStyle, setActiveNode, onDropData, getMenuWidthProp } = ctx;
+    const {
+      getStringProp,
+      getBooleanProp,
+      data,
+      mergeStyle,
+      setActiveNode,
+      onDropData,
+      getMenuWidthProp,
+      getMenuValueProp,
+      getMenuValueArrayProp,
+    } = ctx;
     const kids = data?.children ?? [];
     const theme = getStringProp('theme') === 'dark' ? 'dark' : 'light';
     const collapsed = getBooleanProp('collapsed') === true;
     const w = getMenuWidthProp('width');
     const widthCss = Array.isArray(w) ? w[0] : w;
     const widthResolved = widthCss ?? 232;
+    const openKeys = buildAntdMenuOpenKeys(getMenuValueArrayProp);
+    const selection = resolveAntdMenuSelectionProps(getMenuValueProp);
+    const selectionProps =
+      selection.kind === 'controlled'
+        ? { selectedKeys: selection.selectedKeys as string[] }
+        : { defaultSelectedKeys: selection.defaultSelectedKeys };
+    const menuSelectionKey = `${data?.key}-sel-${selection.kind}-${selection.kind === 'controlled' ? selection.selectedKeys?.join('\u0001') : selection.defaultSelectedKeys?.join('\u0001') ?? 'none'}`;
     if (kids.length === 0) {
       return (
         <div style={mergeStyle({ minWidth: collapsed ? 48 : widthResolved })}>
@@ -663,10 +737,22 @@ export function registerAntdComponents(registry: ComponentRegistry): void {
     return (
       <div style={mergeStyle()}>
         <Menu
+          key={menuSelectionKey}
           mode="inline"
           theme={theme}
           inlineCollapsed={collapsed}
-          selectable={false}
+          selectable
+          openKeys={openKeys}
+          onOpenChange={() => {
+            /* 搭建态仅展示，与 TDesign onExpand 空实现一致，不由点击改写展开 */
+          }}
+          {...selectionProps}
+          onSelect={({ key }) => {
+            const nk = findMenuItemNodeKeyByDslKey(kids, String(key));
+            if (nk) {
+              setActiveNode(nk);
+            }
+          }}
           style={{
             width: collapsed ? undefined : widthResolved,
             minWidth: collapsed ? 48 : undefined,
@@ -679,9 +765,16 @@ export function registerAntdComponents(registry: ComponentRegistry): void {
   });
 
   registry.set('antd.HeadMenu', (ctx) => {
-    const { getStringProp, data, mergeStyle, setActiveNode, onDropData } = ctx;
+    const { getStringProp, data, mergeStyle, setActiveNode, onDropData, getMenuValueProp, getMenuValueArrayProp } = ctx;
     const kids = data?.children ?? [];
     const theme = getStringProp('theme') === 'dark' ? 'dark' : 'light';
+    const openKeys = buildAntdMenuOpenKeys(getMenuValueArrayProp);
+    const selection = resolveAntdMenuSelectionProps(getMenuValueProp);
+    const selectionProps =
+      selection.kind === 'controlled'
+        ? { selectedKeys: selection.selectedKeys as string[] }
+        : { defaultSelectedKeys: selection.defaultSelectedKeys };
+    const menuSelectionKey = `${data?.key}-sel-${selection.kind}-${selection.kind === 'controlled' ? selection.selectedKeys?.join('\u0001') : selection.defaultSelectedKeys?.join('\u0001') ?? 'none'}`;
     if (kids.length === 0) {
       return (
         <div style={mergeStyle({ width: '100%' })}>
@@ -692,9 +785,21 @@ export function registerAntdComponents(registry: ComponentRegistry): void {
     return (
       <div style={mergeStyle({ width: '100%', minWidth: 0 })}>
         <Menu
+          key={menuSelectionKey}
           mode="horizontal"
           theme={theme}
-          selectable={false}
+          selectable
+          openKeys={openKeys}
+          onOpenChange={() => {
+            /* 搭建态仅展示 */
+          }}
+          {...selectionProps}
+          onSelect={({ key }) => {
+            const nk = findMenuItemNodeKeyByDslKey(kids, String(key));
+            if (nk) {
+              setActiveNode(nk);
+            }
+          }}
           style={{ width: '100%', maxWidth: '100%', minWidth: 0, flex: '1 1 auto' }}
         >
           {renderAntdMenuChildren(kids, setActiveNode, onDropData)}

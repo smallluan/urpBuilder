@@ -1,4 +1,11 @@
-.builder-embedded-preview {
+/*
+ * 实时预览仅在 BuilderShell（.create-page）内使用。
+ * `.create-page .main-body` 为三栏横向 flex 设计为 width:0 + flex:1；嵌入预览父级为 flex-column，
+ * 必须重置宽度。若仅用 `.builder-embedded-preview .main-body`（2 个类），与 `.create-page .main-body`
+ * 特异性相同，生产打包后 CSS 顺序可能让 width:0 后写入而覆盖 width:100%，导致 main-body 宽度为 0。
+ * 故统一挂在 `.create-page .builder-embedded-preview` 下提高优先级。
+ */
+.create-page .builder-embedded-preview {
   display: flex;
   flex-direction: column;
   flex: 1;
@@ -7,9 +14,14 @@
   width: 100%;
 }
 
-.builder-embedded-preview__note {
+.create-page .builder-embedded-preview__note {
   flex-shrink: 0;
-  padding: 6px 12px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 16px;
+  padding: 8px 12px;
   font-size: 12px;
   line-height: 1.45;
   color: var(--td-text-color-secondary);
@@ -17,30 +29,58 @@
   border-bottom: 1px solid var(--td-component-border);
 }
 
+.create-page .builder-embedded-preview__note-text {
+  margin: 0;
+  flex: 1 1 220px;
+  min-width: 0;
+}
+
+.create-page .builder-embedded-preview__note-actions {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.create-page .builder-embedded-preview__auto-refresh {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.create-page .builder-embedded-preview__auto-refresh-label {
+  font-size: 12px;
+  color: var(--td-text-color-primary);
+  white-space: nowrap;
+}
+
 /*
  * .main-body 在搭建器三栏布局里 width:0 + flex:1（flex-row），
  * 嵌入预览走的是 flex-column，必须把 width 重置为 100%，
  * 否则整条宽度链塌缩。
  */
-.builder-embedded-preview .main-body {
+.create-page .builder-embedded-preview .main-body {
   width: 100%;
   padding: 8px;
 }
 
-.builder-embedded-preview .main-inner {
+.create-page .builder-embedded-preview .main-body .main-inner {
   margin-top: 0;
 }
 
 /* 嵌入时不要用 100vh，跟随模拟器滚动区域 */
-.builder-embedded-preview .preview-engine-page,
-.builder-embedded-preview__canvas-inner {
+.create-page .builder-embedded-preview .preview-engine-page,
+.create-page .builder-embedded-preview__canvas-inner {
   width: 100%;
   min-height: 100%;
   height: auto;
   background: #fff;
 }
 
-.builder-embedded-preview .simulator-scroll {
+.create-page .builder-embedded-preview .simulator-scroll {
   flex: 1 1 auto;
   min-height: 0;
   background: #fff;

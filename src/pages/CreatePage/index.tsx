@@ -568,7 +568,11 @@ const CreatePage: React.FC = () => {
             {flowLayoutMounted ? <FlowLayout /> : null}
           </div>
           <div className={`mode-keepalive-pane${mode === 'livePreview' ? ' is-active' : ''}`}>
-            <BuilderEmbeddedPreview enablePageRouteConfig entityType="page" />
+            <BuilderEmbeddedPreview
+              enablePageRouteConfig
+              entityType="page"
+              previewActive={mode === 'livePreview'}
+            />
           </div>
         </div>
         </AntdRuntimeRoot>

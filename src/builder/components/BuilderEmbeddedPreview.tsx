@@ -1,4 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Button, Switch } from 'tdesign-react';
+import { RefreshCw } from 'lucide-react';
 import PreviewRenderer, {
   PreviewDataHubRefContext,
   PreviewPortalContainerContext,
@@ -17,9 +19,13 @@ import './BuilderEmbeddedPreview.less';
 import { AntdRuntimeRoot } from '../antd/AntdRuntimeRoot';
 import SimulatorLibraryBrushOverlay from './SimulatorLibraryBrushOverlay';
 
+const AUTO_REFRESH_STORAGE_KEY = 'urpbuilder.embeddedPreview.autoRefreshOnShow';
+
 export interface BuilderEmbeddedPreviewProps {
   enablePageRouteConfig: boolean;
   entityType: 'page' | 'component';
+  /** 当前是否为「实时预览」可见页签；为 true 时可根据开关在展示时自动刷新快照 */
+  previewActive?: boolean;
 }
 
 /**
@@ -29,9 +35,22 @@ export interface BuilderEmbeddedPreviewProps {
 const BuilderEmbeddedPreview: React.FC<BuilderEmbeddedPreviewProps> = ({
   enablePageRouteConfig,
   entityType,
+  previewActive,
 }) => {
   const { useStore } = useBuilderContext();
   const [storeRev, setStoreRev] = useState(0);
+  const [refreshTick, setRefreshTick] = useState(0);
+  const [autoRefreshOnShow, setAutoRefreshOnShow] = useState(() => {
+    try {
+      return window.localStorage.getItem(AUTO_REFRESH_STORAGE_KEY) !== 'false';
+    } catch {
+      return true;
+    }
+  });
+
+  const bumpRefresh = useCallback(() => {
+    setRefreshTick((n) => n + 1);
+  }, []);
   const pageRoutePath = useStore((s) => s.pageRouteConfig?.routePath);
   const screenSize = useStore((s) => s.screenSize);
   const autoWidth = useStore((s) => s.autoWidth);
@@ -60,6 +79,13 @@ const BuilderEmbeddedPreview: React.FC<BuilderEmbeddedPreviewProps> = ({
       setStoreRev((n) => n + 1);
     });
   }, [useStore]);
+
+  useEffect(() => {
+    if (previewActive !== true || !autoRefreshOnShow) {
+      return;
+    }
+    bumpRefresh();
+  }, [previewActive, autoRefreshOnShow, bumpRefresh]);
 
   useEffect(() => {
     setPreviewPath(normalizeRoutePath(pageRoutePath ?? '/'));
@@ -121,8 +147,9 @@ const BuilderEmbeddedPreview: React.FC<BuilderEmbeddedPreviewProps> = ({
 
   const snapshot: PreviewSnapshot = useMemo(() => {
     void storeRev;
+    void refreshTick;
     return buildPreviewSnapshot(useStore.getState(), enablePageRouteConfig);
-  }, [storeRev, useStore, enablePageRouteConfig]);
+  }, [storeRev, refreshTick, useStore, enablePageRouteConfig]);
 
   const routeSnapshots = useMemo(
     () => (Array.isArray(snapshot.pageConfig?.routeSnapshots) ? snapshot.pageConfig?.routeSnapshots : []),
@@ -212,7 +239,7 @@ const BuilderEmbeddedPreview: React.FC<BuilderEmbeddedPreviewProps> = ({
         delete window.dataHub;
       }
     };
-  }, [effectiveFlowEdges, effectiveFlowNodes, effectiveUiTree, routerContext, scopeId]);
+  }, [effectiveFlowEdges, effectiveFlowNodes, effectiveUiTree, routerContext, scopeId, refreshTick]);
 
   const handleLifecycle = React.useCallback((componentKey: string, lifetime: string, payload?: unknown) => {
     queueMicrotask(() => {
@@ -265,7 +292,11 @@ const BuilderEmbeddedPreview: React.FC<BuilderEmbeddedPreviewProps> = ({
               <PreviewUiLibraryContext.Provider value={lib}>
                 <AntdRuntimeRoot>
                   <PreviewDataHubRefContext.Provider value={dataHubRef}>
-                    <PreviewRenderer key={`${renderTree.key}-${lib}`} node={renderTree} onLifecycle={handleLifecycle} />
+                    <PreviewRenderer
+                      key={`${renderTree.key}-${lib}-${refreshTick}`}
+                      node={renderTree}
+                      onLifecycle={handleLifecycle}
+                    />
                   </PreviewDataHubRefContext.Provider>
                 </AntdRuntimeRoot>
               </PreviewUiLibraryContext.Provider>
@@ -304,7 +335,36 @@ const BuilderEmbeddedPreview: React.FC<BuilderEmbeddedPreviewProps> = ({
   return (
     <div className="builder-embedded-preview">
       <div className="builder-embedded-preview__note">
-        壳内预览随搭建即时更新。上线前建议仍用右上角「预览」新开独立窗口，更接近真实页面环境。
+        <p className="builder-embedded-preview__note-text">
+          壳内预览随搭建即时更新。上线前建议仍用右上角「预览」新开独立窗口，更接近真实页面环境。
+        </p>
+        <div className="builder-embedded-preview__note-actions" role="toolbar" aria-label="实时预览工具">
+          <Button
+            size="small"
+            theme="default"
+            variant="outline"
+            onClick={bumpRefresh}
+          >
+            <RefreshCw size={14} strokeWidth={2} style={{ marginRight: 4, verticalAlign: '-2px' }} />
+            刷新预览
+          </Button>
+          <label className="builder-embedded-preview__auto-refresh">
+            <span className="builder-embedded-preview__auto-refresh-label">进入本页自动刷新</span>
+            <Switch
+              size="small"
+              value={autoRefreshOnShow}
+              onChange={(v) => {
+                const next = Boolean(v);
+                setAutoRefreshOnShow(next);
+                try {
+                  window.localStorage.setItem(AUTO_REFRESH_STORAGE_KEY, next ? 'true' : 'false');
+                } catch {
+                  /* ignore */
+                }
+              }}
+            />
+          </label>
+        </div>
       </div>
       <div className="main-body">
         <div className="main-inner">
