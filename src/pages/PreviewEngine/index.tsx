@@ -287,11 +287,14 @@ const PreviewEngine: React.FC = () => {
         const defaultRoutePath = routeSnapshots[0]?.routePath
           ?? normalizeRoutePath(routeConfig?.routePath ?? '/');
 
+        const previewUiLibraryFromTemplate = pageConfig.previewUiLibrary === 'antd' ? 'antd' : 'tdesign';
+
         setRemoteSnapshot({
           uiTreeData: routeSnapshots[0]?.uiTreeData ?? ((template.uiTree as unknown as UiTreeNode) ?? EMPTY_ROOT),
           flowNodes: routeSnapshots[0]?.flowNodes ?? ((template.flowNodes as unknown as Node[]) ?? []),
           flowEdges: routeSnapshots[0]?.flowEdges ?? ((template.flowEdges as unknown as Edge[]) ?? []),
           pageConfig: {
+            previewUiLibrary: previewUiLibraryFromTemplate,
             routeConfig,
             pageId: finalPageId,
             defaultRoutePath,

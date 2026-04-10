@@ -375,6 +375,7 @@ export default function HeaderControls({
   const sharedFlowEdges = useStore((state) => state.sharedFlowEdges);
   const setCurrentPageMeta = useStore((state) => state.setCurrentPageMeta);
   const selectedLayoutTemplateId = useStore((state) => state.selectedLayoutTemplateId);
+  const setPreviewUiLibrary = useStore((state) => state.setPreviewUiLibrary);
   const undo = useStore((state) => state.undo);
   const redo = useStore((state) => state.redo);
   const jumpToHistory = useStore((state) => state.jumpToHistory);
@@ -385,6 +386,8 @@ export default function HeaderControls({
   const [componentId, setComponentId] = useState('');
   const [componentDescription, setComponentDescription] = useState('');
   const [saving, setSaving] = useState(false);
+  /** 保存并发布时锁定的组件库（与发布接口 previewUiLibrary 一致；已有数据默认 tdesign） */
+  const [publishUiLibrary, setPublishUiLibrary] = useState<'tdesign' | 'antd'>('tdesign');
   const canUndo = history.pointer >= 0;
   const canRedo = history.pointer < history.actions.length - 1;
   const isEditMode = Boolean(currentPageId);
@@ -456,11 +459,16 @@ export default function HeaderControls({
     });
   };
 
+  const syncPublishLibraryFromStore = () => {
+    setPublishUiLibrary(useStore.getState().previewUiLibrary === 'antd' ? 'antd' : 'tdesign');
+  };
+
   const handleOpenSaveDialog = () => {
     setSaveIntent('save');
     setComponentName(currentPageName || '');
     setComponentId(currentPageId || '');
     setComponentDescription(currentPageDescription || '');
+    syncPublishLibraryFromStore();
     setSaveDialogVisible(true);
   };
 
@@ -469,6 +477,7 @@ export default function HeaderControls({
     setComponentName(currentPageName || '');
     setComponentId(currentPageId || '');
     setComponentDescription(currentPageDescription || '');
+    syncPublishLibraryFromStore();
     setSaveDialogVisible(true);
   };
 
@@ -541,6 +550,7 @@ export default function HeaderControls({
     const currentTemplateFingerprint = computePersistedTemplateFingerprint(storeSnapshot, {
       enablePageRouteConfig,
       enableComponentContract,
+      includePreviewUiLibrary: entityType === 'page',
     });
     const noPersistableChangeMessage = getBlockMessageWhenNoPersistableChanges({
       isEditingExisting: isEditMode,
@@ -590,6 +600,10 @@ export default function HeaderControls({
     setSaving(true);
 
     try {
+      if (saveIntent === 'saveAndPublish' && entityType === 'page') {
+        setPreviewUiLibrary(publishUiLibrary);
+      }
+
       if (resolvedOwnerType === 'user') {
         const usedComponentIds = Array.from(
           collectAllUsedCustomComponentIds(
@@ -662,7 +676,7 @@ export default function HeaderControls({
           screenSize,
           autoWidth,
           selectedLayoutTemplateId,
-          previewUiLibrary,
+          ...(entityType === 'page' ? { previewUiLibrary } : {}),
           propsStorageVersion: PROPS_STORAGE_VERSION,
           ...(enablePageRouteConfig && pageRouteConfig ? { routeConfig: pageRouteConfig } : {}),
           ...(enablePageRouteConfig ? {
@@ -735,6 +749,7 @@ export default function HeaderControls({
         computePersistedTemplateFingerprint(postSaveSnapshot, {
           enablePageRouteConfig,
           enableComponentContract,
+          includePreviewUiLibrary: entityType === 'page',
         }),
       );
 
@@ -744,7 +759,7 @@ export default function HeaderControls({
           if (entityType === 'component') {
             await publishComponent({ pageId });
           } else {
-            await publishPage({ pageId });
+            await publishPage({ pageId, previewUiLibrary: publishUiLibrary });
           }
           emitApiAlert('保存并发布成功', `${saveEntityLabel} ${pageName} 已保存并发布`, 'success');
         } catch (error: unknown) {
@@ -893,6 +908,22 @@ export default function HeaderControls({
             />
           </div>
 
+          {saveIntent === 'saveAndPublish' && entityType === 'page' ? (
+            <div>
+              <div style={{ marginBottom: 6 }}>发布为（必选）</div>
+              <Radio.Group
+                variant="default-filled"
+                value={publishUiLibrary}
+                onChange={(v) => setPublishUiLibrary(v === 'antd' ? 'antd' : 'tdesign')}
+              >
+                <Radio.Button value="tdesign">TDesign</Radio.Button>
+                <Radio.Button value="antd">Ant Design</Radio.Button>
+              </Radio.Group>
+              <div style={{ marginTop: 6, fontSize: 12, color: 'var(--td-text-color-placeholder)' }}>
+                决定已发布页面版本的预览与物料解析体系；未带该字段的历史数据按 TDesign 处理。
+              </div>
+            </div>
+          ) : null}
 
         </div>
       </Dialog>

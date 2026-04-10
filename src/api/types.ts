@@ -147,14 +147,21 @@ export interface ComponentDetail {
   template: ComponentTemplateContent;
 }
 
+/** 发布时锁定的预览组件库；缺省由服务端视为 tdesign */
+export type PublishedUiLibrary = 'tdesign' | 'antd';
+
 export interface PublishPagePayload {
   pageId: string;
   versionNote?: string;
+  /** 发布为 TDesign 或 Ant Design 物料体系，写入 template.pageConfig.previewUiLibrary */
+  previewUiLibrary?: PublishedUiLibrary;
 }
 
 export interface PublishComponentPayload {
   pageId: string;
   versionNote?: string;
+  /** 发布为 TDesign 或 Ant Design 物料体系，写入 template.pageConfig.previewUiLibrary */
+  previewUiLibrary?: PublishedUiLibrary;
 }
 
 export interface UpdateTemplateVisibilityPayload {

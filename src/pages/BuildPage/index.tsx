@@ -7,6 +7,7 @@ import {
   List,
   Pagination,
   Popup,
+  Radio,
   Select,
   Space,
   Table,
@@ -22,7 +23,7 @@ import {
   updatePageVisibility,
   withdrawPageToDraft,
 } from '../../api/pageTemplate';
-import type { PageTemplateBaseInfo, ResourceVisibility } from '../../api/types';
+import type { PageTemplateBaseInfo, PublishedUiLibrary, ResourceVisibility } from '../../api/types';
 import type { ResourceContributor, ResourceTeamSummary } from '../../api/types';
 import { emitApiAlert } from '../../api/alertBus';
 import { useAuth } from '../../auth/context';
@@ -137,6 +138,8 @@ const BuildPage: React.FC = () => {
   const [deleteTarget, setDeleteTarget] = useState<PageTemplateRow | null>(null);
   const [detailTarget, setDetailTarget] = useState<PageTemplateRow | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [publishTarget, setPublishTarget] = useState<PageTemplateRow | null>(null);
+  const [publishLibrary, setPublishLibrary] = useState<PublishedUiLibrary>('tdesign');
 
   useEffect(() => {
     if (!teamInitialized) {
@@ -267,15 +270,33 @@ const BuildPage: React.FC = () => {
     setDeleteTarget(row);
   };
 
-  const handlePublish = async (row: PageTemplateRow) => {
+  const handlePublish = (row: PageTemplateRow) => {
     if (!isValidTemplateId(row.pageId) || publishingId) {
+      return;
+    }
+
+    setPublishLibrary('tdesign');
+    setPublishTarget(row);
+  };
+
+  const handleClosePublishDialog = () => {
+    if (publishingId) {
+      return;
+    }
+    setPublishTarget(null);
+  };
+
+  const handleConfirmPublish = async () => {
+    const row = publishTarget;
+    if (!row || !isValidTemplateId(row.pageId) || publishingId) {
       return;
     }
 
     setPublishingId(row.pageId);
     try {
-      await publishPage({ pageId: row.pageId });
+      await publishPage({ pageId: row.pageId, previewUiLibrary: publishLibrary });
       emitApiAlert('发布成功', `页面 ${row.pageName} 已发布`, 'success');
+      setPublishTarget(null);
       fetchPageList({
         page,
         pageSize,
@@ -635,6 +656,31 @@ const BuildPage: React.FC = () => {
           <div className="detail-row"><span>主布局</span><strong>{detailTarget?.useLayout || '-'}</strong></div>
           <div className="detail-row"><span>更新时间</span><strong>{detailTarget?.updatedAt || '-'}</strong></div>
         </div>
+      </Dialog>
+
+      <Dialog
+        visible={Boolean(publishTarget)}
+        header="发布页面"
+        confirmBtn={{
+          loading: Boolean(publishingId && publishTarget && publishingId === publishTarget.pageId),
+          content: '确认发布',
+        }}
+        cancelBtn={{
+          disabled: Boolean(publishingId),
+          content: '取消',
+        }}
+        onClose={handleClosePublishDialog}
+        onConfirm={handleConfirmPublish}
+      >
+        <div style={{ marginBottom: 8 }}>选择运行时组件库（决定已发布版本的预览与物料解析体系）。</div>
+        <Radio.Group
+          variant="default-filled"
+          value={publishLibrary}
+          onChange={(v) => setPublishLibrary(v === 'antd' ? 'antd' : 'tdesign')}
+        >
+          <Radio.Button value="tdesign">TDesign</Radio.Button>
+          <Radio.Button value="antd">Ant Design</Radio.Button>
+        </Radio.Group>
       </Dialog>
 
       <Dialog

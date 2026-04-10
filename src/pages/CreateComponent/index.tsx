@@ -265,6 +265,7 @@ const CreateComponent: React.FC = () => {
           computePersistedTemplateFingerprint(useCreateComponentStore.getState(), {
             enablePageRouteConfig: false,
             enableComponentContract: true,
+            includePreviewUiLibrary: false,
           }),
         );
       } catch {

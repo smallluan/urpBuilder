@@ -494,6 +494,7 @@ const CreatePage: React.FC = () => {
           computePersistedTemplateFingerprint(useCreatePageStore.getState(), {
             enablePageRouteConfig: true,
             enableComponentContract: false,
+            includePreviewUiLibrary: true,
           }),
         );
       } catch {

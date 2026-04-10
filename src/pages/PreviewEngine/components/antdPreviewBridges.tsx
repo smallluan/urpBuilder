@@ -7,7 +7,7 @@ import {
   normalizeCollapseList,
   normalizeCollapseValue,
 } from '../../../builder/utils/collapse';
-import { getTabsSlotNodeByValue, normalizeTabsList } from '../../../builder/utils/tabs';
+import { getTabsSlotNodeByValue, normalizeTabsList, normalizeTabsValue } from '../../../builder/utils/tabs';
 
 function getProp(node: UiTreeNode, propName: string) {
   const prop = node?.props?.[propName] as { value?: unknown } | undefined;
@@ -35,8 +35,9 @@ export function AntdTabsPreviewBridge(props: {
 }): React.ReactElement {
   const { node, mergeStyle, renderChildList, emitInteractionLifecycle } = props;
   const tabsList = normalizeTabsList(getProp(node, 'list'));
-  const controlled = getStringProp(node, 'value');
-  const defaultVal = getStringProp(node, 'defaultValue');
+  /** 与搭建器 CommonComponent/propAccessors 一致：支持 number，否则 activeKey 与 items[].key 不一致会导致指示条不渲染 */
+  const controlled = normalizeTabsValue(getProp(node, 'value'));
+  const defaultVal = normalizeTabsValue(getProp(node, 'defaultValue'));
   const first = tabsList[0]?.value;
   const [inner, setInner] = React.useState<string | number | undefined>(
     controlled ?? defaultVal ?? first,

@@ -7,6 +7,11 @@ import type { UiPreviewLibrary } from '../../config/uiPreviewLibrary';
 export type PersistTemplateFingerprintMode = {
   enablePageRouteConfig: boolean;
   enableComponentContract: boolean;
+  /**
+   * 默认 true。组件模板不持久化 `previewUiLibrary` 时也应从指纹排除，
+   * 避免仅切换预览壳就提示「有未保存变更」。
+   */
+  includePreviewUiLibrary?: boolean;
 };
 
 export type PersistTemplateFingerprintState = {
@@ -61,6 +66,8 @@ export function computePersistedTemplateFingerprint(
 
   const resolvedPageRoutes = mode.enablePageRouteConfig && pageRoutes.length > 0 ? pageRoutes : [];
 
+  const includePreviewLib = mode.includePreviewUiLibrary !== false;
+
   const templatePayload = {
     uiTree: dehydrateUiTree(uiTreeData) as unknown as Record<string, unknown>,
     flowNodes: flowNodes as unknown as Array<Record<string, unknown>>,
@@ -81,7 +88,7 @@ export function computePersistedTemplateFingerprint(
       screenSize,
       autoWidth,
       selectedLayoutTemplateId,
-      previewUiLibrary,
+      ...(includePreviewLib ? { previewUiLibrary } : {}),
       propsStorageVersion: PROPS_STORAGE_VERSION,
       ...(mode.enablePageRouteConfig && pageRouteConfig ? { routeConfig: pageRouteConfig } : {}),
       ...(mode.enablePageRouteConfig
