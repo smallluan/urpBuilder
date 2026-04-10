@@ -32,7 +32,7 @@ const CloudPuff: React.FC<{ variant: 'day' | 'night' }> = ({ variant }) => (
  */
 const ThemeModeAnimatedToggle: React.FC<ThemeModeAnimatedToggleProps> = ({ className = '', disabled }) => {
   const colorMode = useBuilderThemeStore((s) => s.colorMode);
-  const toggleColorMode = useBuilderThemeStore((s) => s.toggleColorMode);
+  const beginThemeDiagonalToggle = useBuilderThemeStore((s) => s.beginThemeDiagonalToggle);
   const isDark = colorMode === 'dark';
 
   return (
@@ -46,7 +46,7 @@ const ThemeModeAnimatedToggle: React.FC<ThemeModeAnimatedToggleProps> = ({ class
       className={`theme-mode-animated-toggle${isDark ? ' theme-mode-animated-toggle--dark' : ''}${className ? ` ${className}` : ''}`}
       onClick={() => {
         if (!disabled) {
-          toggleColorMode();
+          beginThemeDiagonalToggle();
         }
       }}
     >

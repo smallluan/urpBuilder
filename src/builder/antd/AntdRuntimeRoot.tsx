@@ -1,6 +1,7 @@
 import React from 'react';
-import { App, ConfigProvider } from 'antd';
+import { App, ConfigProvider, theme } from 'antd';
 import zhCN from 'antd/locale/zh_CN';
+import { useBuilderThemeStore } from '../theme/builderThemeStore';
 
 /**
  * 与 .create-body（横向 flex）衔接：App 根节点需占满剩余空间并成为纵向 flex 容器，
@@ -20,8 +21,16 @@ const APP_SHELL_STYLE: React.CSSProperties = {
  * 与全站 TDesign 并存，仅包裹使用 antd 节点的区域。
  */
 export function AntdRuntimeRoot({ children }: { children: React.ReactNode }) {
+  const colorMode = useBuilderThemeStore((s) => s.colorMode);
+  const isDark = colorMode === 'dark';
+
   return (
-    <ConfigProvider locale={zhCN}>
+    <ConfigProvider
+      locale={zhCN}
+      theme={{
+        algorithm: isDark ? theme.darkAlgorithm : theme.defaultAlgorithm,
+      }}
+    >
       <App style={APP_SHELL_STYLE}>{children}</App>
     </ConfigProvider>
   );

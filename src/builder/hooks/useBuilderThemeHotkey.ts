@@ -7,7 +7,7 @@ import { isEditableTarget } from './useBuilderModeHotkeys';
  * 在输入框、文本域或可编辑区域内不触发，避免与正文输入冲突。
  */
 export function useBuilderThemeHotkey(): void {
-  const toggleColorMode = useBuilderThemeStore((s) => s.toggleColorMode);
+  const beginThemeDiagonalToggle = useBuilderThemeStore((s) => s.beginThemeDiagonalToggle);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -23,10 +23,10 @@ export function useBuilderThemeHotkey(): void {
       }
       event.preventDefault();
       event.stopPropagation();
-      toggleColorMode();
+      beginThemeDiagonalToggle();
     };
 
     window.addEventListener('keydown', onKeyDown, true);
     return () => window.removeEventListener('keydown', onKeyDown, true);
-  }, [toggleColorMode]);
+  }, [beginThemeDiagonalToggle]);
 }

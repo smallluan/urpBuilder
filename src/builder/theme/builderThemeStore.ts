@@ -42,16 +42,36 @@ type BuilderThemeState = {
   colorMode: ColorMode;
   setColorMode: (mode: ColorMode) => void;
   toggleColorMode: () => void;
+  /**
+   * 非 null：主题对角线过渡进行中（View Transitions：新快照 clip 推进，未覆盖处仍为旧快照）。
+   */
+  themeDiagonalTransition: null | { to: ColorMode };
+  /** 亮暗切换：优先走对角线过渡；系统偏好减少动效时等同 toggleColorMode */
+  beginThemeDiagonalToggle: () => void;
+  endThemeDiagonalTransition: () => void;
 };
 
 export const useBuilderThemeStore = create<BuilderThemeState>()(
   persist(
     (set, get) => ({
       colorMode: getResolvedColorMode(),
+      themeDiagonalTransition: null,
       setColorMode: (colorMode) => set({ colorMode }),
       toggleColorMode: () => {
         const next = get().colorMode === 'dark' ? 'light' : 'dark';
         set({ colorMode: next });
+      },
+      endThemeDiagonalTransition: () => set({ themeDiagonalTransition: null }),
+      beginThemeDiagonalToggle: () => {
+        if (get().themeDiagonalTransition) {
+          return;
+        }
+        if (typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
+          get().toggleColorMode();
+          return;
+        }
+        const to = get().colorMode === 'dark' ? 'light' : 'dark';
+        set({ themeDiagonalTransition: { to } });
       },
     }),
     {

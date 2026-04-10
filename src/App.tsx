@@ -6,6 +6,7 @@ import { AuthProvider } from './auth/context';
 import { TeamProvider } from './team/context';
 import { useBuilderThemeHotkey } from './builder/hooks/useBuilderThemeHotkey';
 import { applyColorModeToDocument, useBuilderThemeStore } from './builder/theme/builderThemeStore';
+import { ThemeModeDiagonalTransition } from './builder/theme/ThemeModeDiagonalTransition';
 
 function App() {
   useBuilderThemeHotkey();
@@ -29,6 +30,7 @@ function App() {
       <TeamProvider>
         <RouterProvider router={router} />
       </TeamProvider>
+      <ThemeModeDiagonalTransition />
       <ApiAlertHost />
     </AuthProvider>
   );

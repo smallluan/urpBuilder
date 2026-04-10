@@ -32,6 +32,7 @@
     "echarts": "^6.0.0",
     "echarts-for-react": "^3.0.6",
     "flatted": "^3.4.0",
+    "html-to-image": "^1.11.13",
     "lodash": "^4.17.23",
     "lucide-react": "^0.577.0",
     "react": "^18.3.1",
