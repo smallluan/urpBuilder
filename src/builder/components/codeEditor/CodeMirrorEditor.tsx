@@ -3,6 +3,7 @@ import CodeMirror from '@uiw/react-codemirror';
 import { vscodeDark, vscodeLight } from '@uiw/codemirror-theme-vscode';
 import type { Extension } from '@codemirror/state';
 import type { EditorView } from '@codemirror/view';
+import { codeMirrorAutocompleteTheme } from './codeMirrorAutocompleteTheme';
 
 export type CodeEditorThemeMode = 'vscode-dark' | 'vscode-light';
 
@@ -30,13 +31,18 @@ const CodeMirrorEditor: React.FC<CodeMirrorEditorProps> = ({
 }) => {
   const theme = useMemo(() => (editorTheme === 'vscode-light' ? vscodeLight : vscodeDark), [editorTheme]);
 
+  const mergedExtensions = useMemo(
+    () => [...extensions, codeMirrorAutocompleteTheme],
+    [extensions],
+  );
+
   return (
     <div className={className} style={{ fontSize, height }}>
       <CodeMirror
         value={value}
         height="100%"
         theme={theme}
-        extensions={extensions}
+        extensions={mergedExtensions}
         basicSetup={{
           lineNumbers: true,
           foldGutter: true,

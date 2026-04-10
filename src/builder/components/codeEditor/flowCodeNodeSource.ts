@@ -52,6 +52,22 @@ export const setLeadingBlockComment = (code: string, note: string): string => {
   return block + rest;
 };
 
+/**
+ * 从 `{` `}` 之间取出的 innerBody 通常自带「紧贴大括号内侧」的一层换行；
+ * buildStrictFlowCodeSource 又会用 `{\n${body}\n}` 包一层。若不先剥掉内侧各一层换行，
+ * 每次 normalize/应用 都会在函数体首尾各多出一行空行。
+ */
+function stripBracePaddingNewlinesOnce(innerBody: string): string {
+  let b = innerBody.replace(/\r\n/g, '\n');
+  if (b.startsWith('\n')) {
+    b = b.slice(1);
+  }
+  if (b.endsWith('\n')) {
+    b = b.slice(0, -1);
+  }
+  return b;
+}
+
 function tryExtractFlowCodeNodeParts(source: string): { innerBody: string } | null {
   const trimmed = source.trim();
   let rest = trimmed;
@@ -81,7 +97,7 @@ function tryExtractFlowCodeNodeParts(source: string): { innerBody: string } | nu
 /** 规范外壳：JSDoc + async function codeNode(dataHub, ctx) { innerBody } */
 export function buildStrictFlowCodeSource(note: string, innerBody: string): string {
   const doc = formatLeadingJsDocBlock(String(note ?? ''));
-  const body = innerBody.replace(/\r\n/g, '\n');
+  const body = stripBracePaddingNewlinesOnce(innerBody);
   return `${doc}async function ${FLOW_CODE_NODE_FN_NAME}(dataHub, ctx) {\n${body}\n}`;
 }
 

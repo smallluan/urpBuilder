@@ -62,4 +62,13 @@ describe('normalizeFlowCodeNodeSource', () => {
     const n = normalizeFlowCodeNodeSource(raw, '');
     expect(n.fatal).toBe(true);
   });
+
+  it('does not accumulate leading/trailing blank lines when applied repeatedly', () => {
+    const raw = `async function ${FLOW_CODE_NODE_FN_NAME}(dataHub, ctx) {\n  return 1;\n}`;
+    const once = normalizeFlowCodeNodeSource(raw, '');
+    expect(once.fatal).toBe(false);
+    const twice = normalizeFlowCodeNodeSource(once.code, '');
+    expect(twice.fatal).toBe(false);
+    expect(twice.code).toBe(once.code);
+  });
 });

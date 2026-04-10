@@ -19,7 +19,7 @@ const CreateComponent = lazy(() => import('../pages/CreateComponent'));
 const CreatePage = lazy(() => import('../pages/CreatePage'));
 const ComponentVersionCatalog = lazy(() => import('../pages/ComponentVersionCatalog'));
 const PreviewEngine = lazy(() => import('../pages/PreviewEngine'));
-const CodeWorkbench = lazy(() => import('../pages/CodeWorkbench'));
+const CodeWorkbench = lazy(() => import('../pages/CodeWorkbench/index.tsx'));
 const Login = lazy(() => import('../pages/Login'));
 
 const routeSuspenseFallback = (
