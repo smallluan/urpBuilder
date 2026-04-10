@@ -1,7 +1,8 @@
 import React from 'react';
-import { Grid3x3, Hand, MousePointer2 } from 'lucide-react';
+import { Grid3x3, Hand, Maximize2, Minimize2, MousePointer2 } from 'lucide-react';
 import UnifiedBuilderTopbar, { TopbarGroup, TopbarIconButton } from '../../components/UnifiedBuilderTopbar';
 import { BuilderSidebarToggles } from '../../components/BuilderWorkbenchChrome';
+import { useFullscreenControl } from '../../hooks/useFullscreenControl';
 
 export type FlowCanvasTool = 'pan' | 'select';
 
@@ -19,45 +20,60 @@ const FlowTopbar: React.FC<FlowTopbarProps> = ({
   onCanvasToolChange,
   snapToGrid,
   onSnapToGridChange,
-}) => (
-  <UnifiedBuilderTopbar
-    className="flow-topbar"
-    left={(
-      <>
-        <BuilderSidebarToggles mode="flow" />
-        <TopbarGroup className="flow-topbar__group">
-        <TopbarIconButton
-          tip="平移画布（左键拖背景）"
-          label="平移"
-          icon={<Hand size={16} strokeWidth={2} />}
-          active={canvasTool === 'pan'}
-          disabled={readOnly}
-          onClick={() => onCanvasToolChange('pan')}
-        />
-        <TopbarIconButton
-          tip="框选节点（左键拖背景）；按住空格拖可平移画布"
-          label="选择"
-          icon={<MousePointer2 size={16} strokeWidth={2} />}
-          active={canvasTool === 'select'}
-          disabled={readOnly}
-          onClick={() => onCanvasToolChange('select')}
-        />
-        <TopbarIconButton
-          tip={
-            snapToGrid
-              ? '已开启网格吸附（16px 步进），点击关闭'
-              : '开启网格吸附：拖放/移动节点对齐背景网格'
-          }
-          label="网格"
-          icon={<Grid3x3 size={16} strokeWidth={2} />}
-          active={snapToGrid}
-          disabled={readOnly}
-          onClick={() => onSnapToGridChange(!snapToGrid)}
-        />
-      </TopbarGroup>
-      </>
-    )}
-  />
-);
+}) => {
+  const { isFullscreen, toggle: toggleFullscreen } = useFullscreenControl();
+
+  return (
+    <UnifiedBuilderTopbar
+      className="flow-topbar"
+      left={(
+        <>
+          <BuilderSidebarToggles mode="flow" />
+          <TopbarGroup className="flow-topbar__group">
+            <TopbarIconButton
+              tip="平移画布（左键拖背景）"
+              label="平移"
+              icon={<Hand size={16} strokeWidth={2} />}
+              active={canvasTool === 'pan'}
+              disabled={readOnly}
+              onClick={() => onCanvasToolChange('pan')}
+            />
+            <TopbarIconButton
+              tip="框选节点（左键拖背景）；按住空格拖可平移画布"
+              label="选择"
+              icon={<MousePointer2 size={16} strokeWidth={2} />}
+              active={canvasTool === 'select'}
+              disabled={readOnly}
+              onClick={() => onCanvasToolChange('select')}
+            />
+            <TopbarIconButton
+              tip={
+                snapToGrid
+                  ? '已开启网格吸附（16px 步进），点击关闭'
+                  : '开启网格吸附：拖放/移动节点对齐背景网格'
+              }
+              label="网格"
+              icon={<Grid3x3 size={16} strokeWidth={2} />}
+              active={snapToGrid}
+              disabled={readOnly}
+              onClick={() => onSnapToGridChange(!snapToGrid)}
+            />
+            <TopbarIconButton
+              tip={
+                isFullscreen
+                  ? '退出全屏（Esc）'
+                  : '全屏：隐藏浏览器页签与地址栏，与 F11 相同'
+              }
+              label="全屏"
+              icon={isFullscreen ? <Minimize2 size={16} strokeWidth={2} /> : <Maximize2 size={16} strokeWidth={2} />}
+              active={isFullscreen}
+              onClick={toggleFullscreen}
+            />
+          </TopbarGroup>
+        </>
+      )}
+    />
+  );
+};
 
 export default FlowTopbar;

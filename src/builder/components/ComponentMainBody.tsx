@@ -4,10 +4,11 @@ import ComponentBody from '../renderer/ComponentBody';
 import SCREEN_SIZES from '../config/screenSizes';
 import { useBuilderAccess, useBuilderContext } from '../context/BuilderContext';
 import { getBreakpointByWidth, resolveBuilderViewportWidth } from '../utils/gridResponsive';
-import { Monitor, Settings2 } from 'lucide-react';
+import { Maximize2, Minimize2, Monitor, Settings2 } from 'lucide-react';
 import { SimulatorAppearancePopupContent } from './SimulatorAppearancePopup';
 import UnifiedBuilderTopbar, { TopbarGroup, TopbarIconButton } from './UnifiedBuilderTopbar';
 import { BuilderSidebarToggles, useBuilderWorkbenchLayoutHotkeys } from './BuilderWorkbenchChrome';
+import { useFullscreenControl } from '../hooks/useFullscreenControl';
 
 const { Text } = Typography;
 
@@ -24,6 +25,7 @@ const ComponentMainBody: React.FC<{
   const { useStore } = useBuilderContext();
   const { readOnly } = useBuilderAccess();
   useBuilderWorkbenchLayoutHotkeys('component');
+  const { isFullscreen, toggle: toggleFullscreen } = useFullscreenControl();
   const screenSize = useStore((state) => state.screenSize);
   const autoWidth = useStore((state) => state.autoWidth);
   const setScreenSize = useStore((state) => state.setScreenSize);
@@ -197,6 +199,17 @@ const ComponentMainBody: React.FC<{
                 icon={<Settings2 size={16} strokeWidth={2} />}
                 onClick={() => setShortcutDialogVisible(true)}
               />
+              <TopbarIconButton
+                tip={
+                  isFullscreen
+                    ? '退出全屏（Esc）'
+                    : '全屏：隐藏浏览器页签与地址栏，与 F11 相同'
+                }
+                label="全屏"
+                icon={isFullscreen ? <Minimize2 size={16} strokeWidth={2} /> : <Maximize2 size={16} strokeWidth={2} />}
+                active={isFullscreen}
+                onClick={toggleFullscreen}
+              />
               {toolbarAfterShortcuts ? (
                 <div className="component-main-toolbar__after-shortcuts">{toolbarAfterShortcuts}</div>
               ) : null}
@@ -231,6 +244,10 @@ const ComponentMainBody: React.FC<{
           <Row justify="space-between" align="middle">
             <div>切换浅色 / 深色主题（D = Dark）：</div>
             <Text code>Ctrl/Cmd+Shift+D</Text>
+          </Row>
+          <Row justify="space-between" align="middle">
+            <div>全屏 / 退出全屏（与工具栏「全屏」同步）：</div>
+            <Text code>F11</Text>
           </Row>
           <Row justify="space-between" align="middle">
             <div>结构树仅展示子树（右键菜单）：</div>
