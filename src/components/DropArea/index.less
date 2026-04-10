@@ -71,25 +71,13 @@
   max-width: 100%;
 }
 
-/* 行内级控件仍按内容宽度，避免被拉成整行按钮 */
-.drop-area-root > .drop-area__body > button,
-.drop-area-root > .drop-area__body > .t-button,
-.drop-area-root > .drop-area__body > .t-link,
-.drop-area-root > .drop-area__body > .t-avatar,
-.drop-area-root > .drop-area__body > .t-tag,
-.drop-area-root > .drop-area__body > .t-badge,
-.drop-area-root > .drop-area__body > .ant-btn,
-.drop-area-root > .drop-area__body > .ant-float-btn,
-.drop-area-root > .drop-area__body > .ant-avatar,
-.drop-area-root > .drop-area__body > .ant-tag,
-/* Ant Design：日期/时间/颜色/输入等字段根节点，避免被 stretch 拉满整行（Table/Card/Collapse/List/Tabs 等块级勿加） */
-.drop-area-root > .drop-area__body > .ant-picker,
-/* ColorPicker 触发器根节点为 ant-color-picker-trigger（Popover+Trigger，未必含 .ant-color-picker） */
-.drop-area-root > .drop-area__body > .ant-color-picker,
-.drop-area-root > .drop-area__body > .ant-color-picker-trigger,
-.drop-area-root > .drop-area__body > .ant-input-affix-wrapper,
-.drop-area-root > .drop-area__body > .ant-input-number,
-.drop-area-root > .drop-area__body > textarea.ant-input {
+/*
+ * 组件布局类型系统：由 data-builder-display 属性驱动（值来自 componentLayoutType.ts）。
+ * ActivateWrapper 的 display:contents div 携带该属性，其直接子元素是真正的 flex 子项。
+ * - block（默认）: align-items:stretch 自然拉满，无需额外规则
+ * - inline: align-self:flex-start 让控件按内容缩窄
+ */
+.drop-area-root > .drop-area__body [data-builder-display="inline"] > * {
   align-self: flex-start;
 }
 
@@ -138,22 +126,7 @@
   align-items: stretch;
 }
 
-.builder-route-outlet > .drop-area--route-outlet > .drop-area__body > button,
-.builder-route-outlet > .drop-area--route-outlet > .drop-area__body > .t-button,
-.builder-route-outlet > .drop-area--route-outlet > .drop-area__body > .t-link,
-.builder-route-outlet > .drop-area--route-outlet > .drop-area__body > .t-avatar,
-.builder-route-outlet > .drop-area--route-outlet > .drop-area__body > .t-tag,
-.builder-route-outlet > .drop-area--route-outlet > .drop-area__body > .t-badge,
-.builder-route-outlet > .drop-area--route-outlet > .drop-area__body > .ant-btn,
-.builder-route-outlet > .drop-area--route-outlet > .drop-area__body > .ant-float-btn,
-.builder-route-outlet > .drop-area--route-outlet > .drop-area__body > .ant-avatar,
-.builder-route-outlet > .drop-area--route-outlet > .drop-area__body > .ant-tag,
-.builder-route-outlet > .drop-area--route-outlet > .drop-area__body > .ant-picker,
-.builder-route-outlet > .drop-area--route-outlet > .drop-area__body > .ant-color-picker,
-.builder-route-outlet > .drop-area--route-outlet > .drop-area__body > .ant-color-picker-trigger,
-.builder-route-outlet > .drop-area--route-outlet > .drop-area__body > .ant-input-affix-wrapper,
-.builder-route-outlet > .drop-area--route-outlet > .drop-area__body > .ant-input-number,
-.builder-route-outlet > .drop-area--route-outlet > .drop-area__body > textarea.ant-input {
+.builder-route-outlet > .drop-area--route-outlet > .drop-area__body [data-builder-display="inline"] > * {
   align-self: flex-start;
 }
 

@@ -24,6 +24,7 @@ import { CARD_SHELL_ALWAYS_ANTD_TYPES, resolveAntdPreviewTypeForCanonical } from
 import { findNodePathByKey } from '../utils/tree';
 import { SimulatorPreviewLibraryOverrideContext } from '../context/SimulatorPreviewLibraryOverrideContext';
 import { SimulatorScrollContainerContext } from '../context/SimulatorScrollContainerContext';
+import { ComponentLayoutContext, getComponentLayoutType } from './componentLayoutType';
 
 /**
  * CommonComponent：Builder 运行时的“组件渲染分发器”。
@@ -363,6 +364,12 @@ export default function CommonComponent(properties: CommonComponentProps) {
     : previewUiLibrary === 'antd' && data
       ? (resolveAntdPreviewTypeForCanonical(data) ?? canonicalType)
       : canonicalType;
+  const layoutType = getComponentLayoutType(registryLookupType);
   const renderer = registry.get(registryLookupType);
-  return renderer ? renderer(ctx) : null;
+  if (!renderer) return null;
+  return (
+    <ComponentLayoutContext.Provider value={layoutType}>
+      {renderer(ctx)}
+    </ComponentLayoutContext.Provider>
+  );
 }

@@ -33,11 +33,7 @@ const FlowFit: React.FC<{ signature: string }> = ({ signature }) => {
   const rf = useReactFlow();
   useEffect(() => {
     const t = window.requestAnimationFrame(() => {
-      try {
-        rf.fitView({ padding: 0.2, duration: 0 });
-      } catch {
-        /* ignore */
-      }
+      try { rf.fitView({ padding: 0.2, duration: 0 }); } catch { /* ignore */ }
     });
     return () => window.cancelAnimationFrame(t);
   }, [rf, signature]);
@@ -56,9 +52,7 @@ const FlowCanvas: React.FC<{
 
   useEffect(() => {
     selfRfRef.current = rf;
-    return () => {
-      selfRfRef.current = null;
-    };
+    return () => { selfRfRef.current = null; };
   }, [rf, selfRfRef]);
 
   return (
@@ -78,22 +72,12 @@ const FlowCanvas: React.FC<{
         zoomOnPinch
         onMove={(_, viewport) => {
           const peer = peerRfRef?.current;
-          if (!peer) {
-            return;
-          }
-          if (syncLockRef.current) {
-            return;
-          }
+          if (!peer || syncLockRef.current) return;
           syncLockRef.current = true;
           peer.setViewport(viewport);
-          queueMicrotask(() => {
-            syncLockRef.current = false;
-          });
+          queueMicrotask(() => { syncLockRef.current = false; });
         }}
-        defaultEdgeOptions={{
-          type: 'annotatedEdge',
-          markerEnd: { type: MarkerType.ArrowClosed },
-        }}
+        defaultEdgeOptions={{ type: 'annotatedEdge', markerEnd: { type: MarkerType.ArrowClosed } }}
         proOptions={{ hideAttribution: true }}
       >
         <Background gap={16} />
@@ -114,31 +98,16 @@ const FlowColumn: React.FC<{
   peerRfRef: React.MutableRefObject<ReactFlowInstance | null> | null;
   syncLockRef: React.MutableRefObject<boolean>;
   selfRfRef: React.MutableRefObject<ReactFlowInstance | null>;
-  /** 嵌入单页滚动条内的块 */
   unifiedPane?: boolean;
 }> = ({ title, nodes, edges, nodeStatus, edgeStatus, role, peerRfRef, syncLockRef, selfRfRef, unifiedPane }) => {
-  const styledNodes = useMemo(
-    () => applyFlowDiffStyles(nodes, nodeStatus, role),
-    [nodes, nodeStatus, role],
-  );
-  const styledEdges = useMemo(
-    () => applyEdgeDiffStyles(edges, edgeStatus, role),
-    [edges, edgeStatus, role],
-  );
-
+  const styledNodes = useMemo(() => applyFlowDiffStyles(nodes, nodeStatus, role), [nodes, nodeStatus, role]);
+  const styledEdges = useMemo(() => applyEdgeDiffStyles(edges, edgeStatus, role), [edges, edgeStatus, role]);
   const signature = `${styledNodes.map((n) => n.id).join('|')}::${styledEdges.map((e) => e.id).join('|')}`;
 
   const canvas = (
     <div className={`cv-diff-flow__canvas flow-canvas${unifiedPane ? ' cv-diff-flow__canvas--unified-pane' : ''}`}>
       <ReactFlowProvider>
-        <FlowCanvas
-          styledNodes={styledNodes}
-          styledEdges={styledEdges}
-          signature={signature}
-          peerRfRef={peerRfRef}
-          syncLockRef={syncLockRef}
-          selfRfRef={selfRfRef}
-        />
+        <FlowCanvas styledNodes={styledNodes} styledEdges={styledEdges} signature={signature} peerRfRef={peerRfRef} syncLockRef={syncLockRef} selfRfRef={selfRfRef} />
       </ReactFlowProvider>
     </div>
   );
@@ -169,15 +138,10 @@ type Props = {
 };
 
 const VersionDiffFlow: React.FC<Props> = ({
-  baseNodes,
-  baseEdges,
-  compareNodes,
-  compareEdges,
-  paneLayout = 'unified',
+  baseNodes, baseEdges, compareNodes, compareEdges, paneLayout = 'unified',
 }) => {
   const baseEdgesF = useMemo(() => filterEdgesForNodes(baseEdges, baseNodes), [baseEdges, baseNodes]);
   const compareEdgesF = useMemo(() => filterEdgesForNodes(compareEdges, compareNodes), [compareEdges, compareNodes]);
-
   const { nodeBase, nodeCompare, edgeBase, edgeCompare } = useMemo(
     () => computeFlowDiff(baseNodes, baseEdgesF, compareNodes, compareEdgesF),
     [baseNodes, baseEdgesF, compareNodes, compareEdgesF],
@@ -187,78 +151,30 @@ const VersionDiffFlow: React.FC<Props> = ({
   const compareRfRef = useRef<ReactFlowInstance | null>(null);
   const noPeerRef = useRef<ReactFlowInstance | null>(null);
   const syncLockRef = useRef(false);
-
   const isDual = paneLayout === 'split' || paneLayout === 'stack';
 
   return (
     <div className="cv-diff-flow">
       <div className="cv-diff-ui__legend">
-        <span>节点/连线：</span>
         <span className="cv-diff-ui__pill cv-diff-ui__pill--removed">删</span>
         <span>删除</span>
         <span className="cv-diff-ui__pill cv-diff-ui__pill--added">新</span>
         <span>新增</span>
         <span className="cv-diff-ui__pill cv-diff-ui__pill--modified">改</span>
         <span>修改</span>
-        {isDual ? <span className="cv-diff-ui__legend-sync">· 双栏时平移/缩放同步</span> : null}
-        {paneLayout === 'unified' ? (
-          <span className="cv-diff-ui__legend-sync">· 单页内上旧下新</span>
-        ) : null}
       </div>
       <div className={`cv-diff-flow__split cv-diff-flow__split--${paneLayout}`}>
         {paneLayout === 'unified' ? (
           <div className="cv-diff-flow__unified-scroll">
-            <FlowColumn
-              unifiedPane
-              title="旧版（Base）流程"
-              nodes={baseNodes}
-              edges={baseEdgesF}
-              nodeStatus={nodeBase}
-              edgeStatus={edgeBase}
-              role="base"
-              selfRfRef={baseRfRef}
-              peerRfRef={noPeerRef}
-              syncLockRef={syncLockRef}
-            />
+            <FlowColumn unifiedPane title="Base（旧版）" nodes={baseNodes} edges={baseEdgesF} nodeStatus={nodeBase} edgeStatus={edgeBase} role="base" selfRfRef={baseRfRef} peerRfRef={noPeerRef} syncLockRef={syncLockRef} />
             <div className="cv-diff-flow__unified-sep" role="separator" aria-hidden />
-            <FlowColumn
-              unifiedPane
-              title="新版（Compare）流程"
-              nodes={compareNodes}
-              edges={compareEdgesF}
-              nodeStatus={nodeCompare}
-              edgeStatus={edgeCompare}
-              role="compare"
-              selfRfRef={compareRfRef}
-              peerRfRef={noPeerRef}
-              syncLockRef={syncLockRef}
-            />
+            <FlowColumn unifiedPane title="Compare（新版）" nodes={compareNodes} edges={compareEdgesF} nodeStatus={nodeCompare} edgeStatus={edgeCompare} role="compare" selfRfRef={compareRfRef} peerRfRef={noPeerRef} syncLockRef={syncLockRef} />
           </div>
         ) : null}
         {isDual ? (
           <>
-            <FlowColumn
-              title="Base 流程"
-              nodes={baseNodes}
-              edges={baseEdgesF}
-              nodeStatus={nodeBase}
-              edgeStatus={edgeBase}
-              role="base"
-              selfRfRef={baseRfRef}
-              peerRfRef={compareRfRef}
-              syncLockRef={syncLockRef}
-            />
-            <FlowColumn
-              title="Compare 流程"
-              nodes={compareNodes}
-              edges={compareEdgesF}
-              nodeStatus={nodeCompare}
-              edgeStatus={edgeCompare}
-              role="compare"
-              selfRfRef={compareRfRef}
-              peerRfRef={baseRfRef}
-              syncLockRef={syncLockRef}
-            />
+            <FlowColumn title="Base" nodes={baseNodes} edges={baseEdgesF} nodeStatus={nodeBase} edgeStatus={edgeBase} role="base" selfRfRef={baseRfRef} peerRfRef={compareRfRef} syncLockRef={syncLockRef} />
+            <FlowColumn title="Compare" nodes={compareNodes} edges={compareEdgesF} nodeStatus={nodeCompare} edgeStatus={edgeCompare} role="compare" selfRfRef={compareRfRef} peerRfRef={baseRfRef} syncLockRef={syncLockRef} />
           </>
         ) : null}
       </div>

@@ -3,6 +3,7 @@ import { Space, Row, Card, Divider, Menu } from 'tdesign-react';
 import type { UiTreeNode } from '../store/types';
 import { renderNamedIcon } from '../../constants/iconRegistry';
 import { BUILDER_CARD_BODY_STYLE } from '../../utils/antdTdesignPropBridge';
+import { ComponentLayoutContext } from './componentLayoutType';
 
 const ACTIVATE_WRAPPER_STYLE: React.CSSProperties = { display: 'contents' };
 
@@ -16,6 +17,7 @@ export interface ActivateWrapperProps {
 }
 
 export const ActivateWrapper: React.FC<ActivateWrapperProps> = ({ children, style, onActivate, nodeKey, active }) => {
+  const layoutType = React.useContext(ComponentLayoutContext);
   const onlyChild = React.Children.count(children) === 1 ? React.Children.only(children) : null;
   if (React.isValidElement(onlyChild)) {
     const childProps = (onlyChild.props ?? {}) as Record<string, unknown>;
@@ -33,6 +35,7 @@ export const ActivateWrapper: React.FC<ActivateWrapperProps> = ({ children, styl
         onClick={onActivate}
         data-builder-node-key={nodeKey || undefined}
         data-builder-active={active ? 'true' : undefined}
+        data-builder-display={layoutType}
       >
         {cloned}
       </div>
