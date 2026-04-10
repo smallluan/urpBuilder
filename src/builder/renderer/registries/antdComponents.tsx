@@ -75,6 +75,7 @@ import {
   BUILDER_CARD_BODY_STYLE,
   tdesignTableColumnsToAntd,
   drawerWidthPxFromTdesignSize,
+  antdImageStylesFromMergeStyle,
 } from '../../../utils/antdTdesignPropBridge';
 
 const { Title, Paragraph, Text, Link } = Typography;
@@ -936,14 +937,16 @@ export function registerAntdComponents(registry: ComponentRegistry): void {
 
   registry.set('antd.Image', (ctx) => {
     const { getStringProp, getFiniteNumberProp, getBooleanProp, mergeStyle, handleActivateSelf, data, isNodeActive } = ctx;
+    const merged = mergeStyle();
     return (
-      <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf} nodeKey={data?.key} active={isNodeActive}>
+      <ActivateWrapper style={undefined} onActivate={handleActivateSelf} nodeKey={data?.key} active={isNodeActive}>
         <Image
           src={getStringProp('src') || ''}
           alt={getStringProp('alt') || ''}
           width={getFiniteNumberProp('width')}
           height={getFiniteNumberProp('height')}
           preview={getBooleanProp('gallery') === true ? {} : false}
+          styles={antdImageStylesFromMergeStyle(merged)}
         />
       </ActivateWrapper>
     );

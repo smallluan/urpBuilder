@@ -2,6 +2,8 @@
 
 本文档描述搭建器与预览引擎中「预览组件库」的**完整现状**：设计目标、数据流、分发算法、持久化、UI 行为、扩展方式与常见误区。实现以仓库源码为准，修改分发规则或镜像表时请**同步更新本文档**与 `src/config/uiPreviewLibrary.ts` 内注释。
 
+**同一套 DSL 下 TDesign 与 Ant Design 的刻意对齐**（如 Image 宽高落点、Card 内边距等）见专门短文：[tdesign-antd-dsl-alignment.md](./tdesign-antd-dsl-alignment.md)。
+
 ---
 
 ## 目录

@@ -60,6 +60,7 @@ import {
   BUILDER_CARD_BODY_STYLE,
   tdesignTableColumnsToAntd,
   drawerWidthPxFromTdesignSize,
+  antdImageStylesFromMergeStyle,
 } from '../../../utils/antdTdesignPropBridge';
 import { collectDslStepRows, dslStepStatusToAntd } from '../../../builder/utils/stepsDsl';
 import {
@@ -719,13 +720,14 @@ export function tryRenderAntdPreview(ctx: AntdPreviewContext): React.ReactElemen
     }
     case 'antd.Image': {
       const src = getStringProp(node, 'src') || '';
+      const merged = mergeStyle();
       return (
         <Image
           src={src}
           alt={getStringProp(node, 'alt') || ''}
           width={getFiniteNumberProp(node, 'width')}
           height={getFiniteNumberProp(node, 'height')}
-          style={mergeStyle()}
+          styles={antdImageStylesFromMergeStyle(merged)}
           preview={getBooleanProp(node, 'gallery') === true ? {} : false}
         />
       );

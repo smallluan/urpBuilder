@@ -2,7 +2,7 @@ import type { ComponentTemplateContent } from '../../api/types';
 import type { Edge, Node } from '@xyflow/react';
 import cloneDeep from 'lodash/cloneDeep';
 import { hydrateTemplateContentTrees, PROPS_STORAGE_VERSION } from '../template/propsHydration';
-import type { UiTreeNode } from '../store/types';
+import type { UiHistoryAction, UiTreeNode } from '../store/types';
 
 export type ParsedComponentTemplateImport = {
   template: ComponentTemplateContent;
@@ -106,6 +106,6 @@ export function templateToBuilderStatePatch(data: ParsedComponentTemplateImport)
     flowActiveNodeId: null,
     activeNodeKey: null,
     activeNode: null,
-    history: { pointer: -1, actions: [] } as const,
+    history: { pointer: -1, actions: [] as UiHistoryAction[] },
   };
 }

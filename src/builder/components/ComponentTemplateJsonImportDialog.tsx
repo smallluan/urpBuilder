@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Dialog, Textarea, MessagePlugin } from 'tdesign-react';
 import { FileJson2 } from 'lucide-react';
 import {
@@ -27,7 +27,8 @@ const PLACEHOLDER = `支持两种格式：
 1) 仅模板：{ "uiTree": {...}, "flowNodes": [], "flowEdges": [], "pageConfig": {} }
 2) 含元数据：{ "base": { "pageName", "pageId", "description" }, "template": { ... } }
 
-示例见文档：docs/examples/login-component.template.json`;
+说明：导入时只会用 base 里的名称与描述；不会应用 base.pageId（请用保存对话框填写/锁定组件 ID）。
+示例见：docs/examples/login-component.template.json`;
 
 export default function ComponentTemplateJsonImportDialog({
   useStore,
@@ -61,8 +62,9 @@ export default function ComponentTemplateJsonImportDialog({
 
       const b = result.data.base;
       if (b) {
+        // 不要写入 base.pageId：示例 JSON 里的 pageId 仅作文档/复制用。若写入 store，会把「新建」误判成「编辑」
+        //（isEditMode=有 currentPageId），保存会走 update 而非 create，后端无该 id 则报「模板不存在」。
         setCurrentPageMeta({
-          ...(b.pageId !== undefined ? { pageId: b.pageId } : {}),
           ...(b.pageName !== undefined ? { pageName: b.pageName } : {}),
           ...(b.description !== undefined ? { description: b.description } : {}),
         });

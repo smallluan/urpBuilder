@@ -1,3 +1,7 @@
+/**
+ * 双库（TDesign / Ant Design）DSL 桥接与样式约定。
+ * 维护说明与 Image 等易回归点：见 `docs/tdesign-antd-dsl-alignment.md`。
+ */
 import type { CSSProperties } from 'react';
 import { normalizeBuilderTableColumns } from './tableColumnNormalize';
 
@@ -170,4 +174,28 @@ export function drawerWidthPxFromTdesignSize(opts: {
     return n;
   }
   return 300;
+}
+
+/**
+ * Ant Design Image：TDesign 把 DSL 的 `style` 叠在组件**外层 wrapper** 上；antd 若把同一套 `style` 只给 `<img>`，
+ * 会出现「壳 100%、图 50%」与 TDesign 不一致。
+ * 做法：DSL 整段进 `styles.root`（与 TDesign 外层一致）；`styles.image` 只负责在壳内铺满：
+ * width/height 100% + objectFit（与 TDesign 内层 img 填满 wrapper 一致）。
+ * 不要同时把 `style={merged}` 传给 antd Image，否则 rc-image 仍会叠到 img 上再算一遍宽高。
+ */
+export function antdImageStylesFromMergeStyle(merged: CSSProperties | undefined): {
+  root: CSSProperties;
+  image: CSSProperties;
+} {
+  const m = merged ?? {};
+  const objectFit = (m.objectFit as CSSProperties['objectFit']) ?? 'cover';
+  return {
+    root: { ...m },
+    image: {
+      width: '100%',
+      height: '100%',
+      objectFit,
+      verticalAlign: 'middle',
+    },
+  };
 }

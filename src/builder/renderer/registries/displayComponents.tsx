@@ -1,3 +1,4 @@
+import type { DragEvent } from 'react';
 import { Image, Avatar, Swiper, Divider, Typography, Statistic, MessagePlugin } from 'tdesign-react';
 import type { ComponentRegistry } from '../componentContext';
 import { ActivateWrapper } from '../componentHelpers';
@@ -41,13 +42,12 @@ export function registerDisplayComponents(registry: ComponentRegistry): void {
     return (
       <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf} nodeKey={data?.key} active={isNodeActive}>
         <div
-          style={{ display: 'inline-block', maxWidth: '100%', verticalAlign: 'top' }}
-          onDragOver={(e) => {
+          onDragOver={(e: DragEvent<HTMLDivElement>) => {
             e.preventDefault();
             e.stopPropagation();
             e.dataTransfer.dropEffect = 'copy';
           }}
-          onDrop={(e) => {
+          onDrop={(e: DragEvent<HTMLDivElement>) => {
             e.preventDefault();
             e.stopPropagation();
             const url = getMediaAssetUrlFromDrop(e);
@@ -65,7 +65,6 @@ export function registerDisplayComponents(registry: ComponentRegistry): void {
             fit={getStringProp('fit') as any}
             shape={getStringProp('shape') as any}
             gallery={getBooleanProp('gallery')}
-            style={mergeStyle()}
           />
         </div>
       </ActivateWrapper>
