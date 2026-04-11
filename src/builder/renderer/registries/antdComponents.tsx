@@ -202,10 +202,21 @@ function renderAntdMenuChildren(
     if (childType === 'antd.Menu.SubMenu' || childType === 'Menu.Submenu') {
       const subKids = child.children ?? [];
       const subKey = stringifyMenuDslKey(resolveMenuSubmenuDslValue(child));
+      const submenuIcon = renderNamedIcon(getChildString('iconName'));
+      const submenuTitleText = getChildString('title') || '子菜单';
+      const submenuTitle =
+        submenuIcon ? (
+          <Space size={8}>
+            {submenuIcon}
+            <span>{submenuTitleText}</span>
+          </Space>
+        ) : (
+          submenuTitleText
+        );
       return (
         <Menu.SubMenu
           key={subKey}
-          title={getChildString('title') || '子菜单'}
+          title={submenuTitle}
           disabled={getChildBool('disabled') === true}
         >
           {subKids.length === 0 ? (
@@ -218,9 +229,11 @@ function renderAntdMenuChildren(
     }
     if (childType === 'antd.Menu.Item' || childType === 'Menu.Item') {
       const itemKey = stringifyMenuDslKey(resolveMenuItemDslValue(child));
+      const itemIcon = renderNamedIcon(getChildString('iconName'));
       return (
         <Menu.Item
           key={itemKey}
+          icon={itemIcon ? (itemIcon as React.ReactNode) : undefined}
           disabled={getChildBool('disabled') === true}
           onClick={({ domEvent }) => {
             domEvent.stopPropagation();
@@ -281,6 +294,9 @@ export function registerAntdComponents(registry: ComponentRegistry): void {
 
   registry.set('antd.Typography.Link', (ctx) => {
     const { getStringProp, getBooleanProp, mergeStyle, handleActivateSelf, data, isNodeActive } = ctx;
+    const prefixIcon = renderNamedIcon(getStringProp('prefixIconName'));
+    const suffixIcon = renderNamedIcon(getStringProp('suffixIconName'));
+    const linkText = getStringProp('content') || '链接';
     return (
       <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf} nodeKey={data?.key} active={isNodeActive}>
         <Link
@@ -288,7 +304,11 @@ export function registerAntdComponents(registry: ComponentRegistry): void {
           target={getStringProp('target') as '_self' | '_blank' | undefined}
           disabled={getBooleanProp('disabled') === true}
         >
-          {getStringProp('content') || '链接'}
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            {prefixIcon}
+            <span>{linkText}</span>
+            {suffixIcon}
+          </span>
         </Link>
       </ActivateWrapper>
     );
@@ -334,6 +354,17 @@ export function registerAntdComponents(registry: ComponentRegistry): void {
       danger: getBooleanProp('danger'),
       block: getBooleanProp('block'),
     });
+    const prefixIcon = renderNamedIcon(getStringProp('prefixIconName'));
+    const suffixIcon = renderNamedIcon(getStringProp('suffixIconName'));
+    const label = getStringProp('content') || '按钮';
+    const buttonChildren = suffixIcon ? (
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+        <span>{label}</span>
+        {suffixIcon}
+      </span>
+    ) : (
+      label
+    );
     return (
       <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf} nodeKey={data?.key} active={isNodeActive}>
         <Button
@@ -342,9 +373,10 @@ export function registerAntdComponents(registry: ComponentRegistry): void {
           danger={mapped.danger}
           block={mapped.block}
           shape={mapped.shape}
+          icon={prefixIcon ? (prefixIcon as React.ReactNode) : undefined}
           onClick={() => {}}
         >
-          {getStringProp('content') || '按钮'}
+          {buttonChildren}
         </Button>
       </ActivateWrapper>
     );
@@ -961,17 +993,31 @@ export function registerAntdComponents(registry: ComponentRegistry): void {
 
   registry.set('antd.Menu.Item', (ctx) => {
     const { getStringProp, mergeStyle, handleActivateSelf, data, isNodeActive } = ctx;
+    const itemIcon = renderNamedIcon(getStringProp('iconName'));
     return (
       <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf} nodeKey={data?.key} active={isNodeActive}>
-        <Menu.Item>{getStringProp('content') || getStringProp('title') || '菜单项'}</Menu.Item>
+        <Menu.Item icon={itemIcon ? (itemIcon as React.ReactNode) : undefined}>
+          {getStringProp('content') || getStringProp('title') || '菜单项'}
+        </Menu.Item>
       </ActivateWrapper>
     );
   });
 
   registry.set('antd.Menu.SubMenu', (ctx) => {
     const { getStringProp, onDropData, data, mergeStyle } = ctx;
+    const submenuIcon = renderNamedIcon(getStringProp('iconName'));
+    const titleText = getStringProp('title') || '子菜单';
+    const titleNode =
+      submenuIcon ? (
+        <Space size={8}>
+          {submenuIcon}
+          <span>{titleText}</span>
+        </Space>
+      ) : (
+        titleText
+      );
     return (
-      <Menu.SubMenu title={getStringProp('title') || '子菜单'} style={mergeStyle()}>
+      <Menu.SubMenu title={titleNode} style={mergeStyle()}>
         <DropArea data={data} onDropData={onDropData} />
       </Menu.SubMenu>
     );

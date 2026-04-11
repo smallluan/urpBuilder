@@ -23,6 +23,12 @@
 
 ---
 
+## 图标（DSL，Lucide）
+
+业务图标在 DSL 中统一为 **Lucide 图标名**，经 `renderNamedIcon` 渲染；TDesign 与 antd 仅插槽形状不同，字段与数据源一致。详见 [icon-dsl.md](./icon-dsl.md)。
+
+---
+
 ## Image（`Image` / `antd.Image`）
 
 ### 现象与根因
@@ -122,11 +128,13 @@ TDesign 内部 `useLengthLimit` 仅在配置了 **`maxlength` 或 `maxcharacter`
 | Drawer 尺寸 | `drawerWidthPxFromTdesignSize` |
 | Input / Textarea | `mapTdesignInputPropsToAntd`、`mapTdesignTextareaPropsToAntd`、`parseDslAutosizeValue`；TDesign 专用 `BuilderTdesignInputField` |
 | InputNumber | `mapTdesignInputNumberPropsToAntd` |
+| DSL 图标（Lucide） | `renderNamedIcon`、`resolveIconName`（`iconRegistry.ts`）；见 [icon-dsl.md](./icon-dsl.md) |
 
 ---
 
 ## 相关文档
 
+- [DSL 图标契约（Lucide）](./icon-dsl.md)  
 - [预览组件库总览](./preview-component-library.md)（分发、镜像表、预览壳）  
 - [画布 block/inline 布局](./builder-component-layout.md)（与 `ActivateWrapper`、`display: contents` 相关，勿与 Image 双写 `mergeStyle` 混为一谈）
 - [输入框 DSL 与双库行为说明](./input-field-dsl.md)（受控、字数统计、已移除属性、相关文件）

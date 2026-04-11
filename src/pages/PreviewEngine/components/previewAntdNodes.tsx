@@ -336,6 +336,9 @@ export function tryRenderAntdPreview(ctx: AntdPreviewContext): React.ReactElemen
       );
     case 'antd.Typography.Link': {
       const href = getStringProp(node, 'href') || undefined;
+      const prefixIcon = renderNamedIcon(getStringProp(node, 'prefixIconName'));
+      const suffixIcon = renderNamedIcon(getStringProp(node, 'suffixIconName'));
+      const linkText = getStringProp(node, 'content') || '链接';
       return (
         <Link
           href={href}
@@ -350,7 +353,11 @@ export function tryRenderAntdPreview(ctx: AntdPreviewContext): React.ReactElemen
             }
           }}
         >
-          {getStringProp(node, 'content') || '链接'}
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            {prefixIcon}
+            <span>{linkText}</span>
+            {suffixIcon}
+          </span>
         </Link>
       );
     }
@@ -454,6 +461,17 @@ export function tryRenderAntdPreview(ctx: AntdPreviewContext): React.ReactElemen
         danger: getBooleanProp(node, 'danger'),
         block: getBooleanProp(node, 'block'),
       });
+      const prefixIcon = renderNamedIcon(getStringProp(node, 'prefixIconName'));
+      const suffixIcon = renderNamedIcon(getStringProp(node, 'suffixIconName'));
+      const label = getStringProp(node, 'content') || '按钮';
+      const buttonChildren = suffixIcon ? (
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+          <span>{label}</span>
+          {suffixIcon}
+        </span>
+      ) : (
+        label
+      );
       return (
         <Button
           type={mapped.type}
@@ -462,9 +480,10 @@ export function tryRenderAntdPreview(ctx: AntdPreviewContext): React.ReactElemen
           block={mapped.block}
           shape={mapped.shape}
           style={mergeStyle()}
+          icon={prefixIcon ? (prefixIcon as React.ReactNode) : undefined}
           onClick={() => emitInteractionLifecycle('onClick')}
         >
-          {getStringProp(node, 'content') || '按钮'}
+          {buttonChildren}
         </Button>
       );
     }
@@ -1284,10 +1303,21 @@ function renderAntdPreviewMenu(
     }
     if (isMenuSubmenuNodeType(childType)) {
       const submenuKey = stringifyMenuDslKey(resolveMenuSubmenuDslValue(child));
+      const submenuIcon = renderNamedIcon(getChildString('iconName'));
+      const submenuTitleText = getChildString('title') || '子菜单';
+      const submenuTitle =
+        submenuIcon ? (
+          <Space size={8}>
+            {submenuIcon}
+            <span>{submenuTitleText}</span>
+          </Space>
+        ) : (
+          submenuTitleText
+        );
       return (
         <Menu.SubMenu
           key={submenuKey}
-          title={getChildString('title') || '子菜单'}
+          title={submenuTitle}
           disabled={getChildBool('disabled') === true}
         >
           {renderAntdPreviewMenu(child.children, onLifecycle, emitInteractionLifecycle, navigatePreviewByHref)}
@@ -1297,9 +1327,11 @@ function renderAntdPreviewMenu(
     if (isMenuItemNodeType(childType)) {
       const href = getChildString('href') || undefined;
       const itemKey = stringifyMenuDslKey(resolveMenuItemDslValue(child));
+      const itemIcon = renderNamedIcon(getChildString('iconName'));
       return (
         <Menu.Item
           key={itemKey}
+          icon={itemIcon ? (itemIcon as React.ReactNode) : undefined}
           disabled={getChildBool('disabled') === true}
           onClick={() => {
             emitInteractionLifecycle('onClick', { nodeType: child.type });
