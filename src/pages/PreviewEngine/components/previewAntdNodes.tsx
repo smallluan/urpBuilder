@@ -601,18 +601,20 @@ export function tryRenderAntdPreview(ctx: AntdPreviewContext): React.ReactElemen
         theme: getStringProp(node, 'theme'),
         decimalPlaces: getFiniteNumberProp(node, 'decimalPlaces'),
       });
-      const { styles: semanticStyles, ...antdMapped } = mapped;
-      const stylesMerged: React.ComponentProps<typeof InputNumber>['styles'] = {
+      const { styles: semanticStylesRaw, ...antdMapped } = mapped;
+      const semanticStyles = semanticStylesRaw as { root?: React.CSSProperties; input?: React.CSSProperties } | undefined;
+      const stylesMerged = {
         root: { ...(mergeStyle() ?? {}), ...(semanticStyles?.root ?? {}) },
         ...(semanticStyles?.input ? { input: semanticStyles.input } : {}),
-      };
+      } as React.ComponentProps<typeof InputNumber>['styles'];
       const val = getInputNumberValueProp(node, 'value');
       const defVal = getInputNumberValueProp(node, 'defaultValue');
+      const defValNormalized = defVal === null ? undefined : defVal;
       return (
         <InputNumber
           {...antdMapped}
           value={controlled ? val : undefined}
-          defaultValue={controlled ? undefined : defVal}
+          defaultValue={controlled ? undefined : defValNormalized}
           min={getFiniteNumberProp(node, 'min')}
           max={getFiniteNumberProp(node, 'max')}
           step={getFiniteNumberProp(node, 'step')}

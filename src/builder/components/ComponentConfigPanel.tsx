@@ -8,6 +8,7 @@ import type { UiTreeNode } from '../store/types';
 import NodeStyleTab from './NodeStyleTab';
 import { isSlotNode } from '../utils/slot';
 import AssetPickerModal from './AssetPickerModal';
+import IconPickerModal from './IconPickerModal';
 import { findNodePathByKey } from '../utils/tree';
 import {
   GRID_BREAKPOINTS,
@@ -17,13 +18,7 @@ import {
   type GridBreakpoint,
   type GridResponsiveConfig,
 } from '../utils/gridResponsive';
-import {
-  getIconOptionsByFilters,
-  ICON_INITIAL_FILTER_OPTIONS,
-  ICON_QUICK_FILTER_OPTIONS,
-  type IconInitialFilterKey,
-  type IconQuickFilterKey,
-} from '../../constants/iconRegistry';
+import type { IconInitialFilterKey, IconQuickFilterKey } from '../../constants/iconRegistry';
 import componentCatalog from '../../config/componentCatalog';
 import { createDefaultTabsList, normalizeTabsList } from '../utils/tabs';
 import { loadCustomComponentDetail, resolveExposedPropSchemas } from '../../utils/customComponentRuntime';
@@ -701,6 +696,7 @@ const ComponentConfigPanel: React.FC = () => {
   const [activeBreakpoint, setActiveBreakpoint] = useState<GridBreakpoint>('xs');
   const [iconQuickFilters, setIconQuickFilters] = useState<Record<string, IconQuickFilterKey>>({});
   const [iconInitialFilters, setIconInitialFilters] = useState<Record<string, IconInitialFilterKey>>({});
+  const [iconPickerPropKey, setIconPickerPropKey] = useState<string | null>(null);
   const [customComponentFallbackProps, setCustomComponentFallbackProps] = useState<Array<[string, ComponentPropSchema]>>([]);
   const [configMainTab, setConfigMainTab] = useState<'props' | 'style'>('props');
 
@@ -1185,48 +1181,15 @@ const ComponentConfigPanel: React.FC = () => {
     }
 
     if (editType === 'iconSelect') {
-      const currentQuickFilter = iconQuickFilters[propKey] ?? 'all';
-      const currentInitialFilter = iconInitialFilters[propKey] ?? 'all';
-      const options = getIconOptionsByFilters(currentQuickFilter, currentInitialFilter);
-
       return (
-        <Select
-          size='small'
-          clearable
-          filterable
-          options={options}
-          value={typeof currentValue === 'string' && currentValue.trim() ? currentValue : undefined}
-          placeholder="先筛选，再搜索图标"
-          panelTopContent={(
-            <div style={{ display: 'grid', gap: 8, padding: '8px 8px 4px' }}>
-              <Select
-                size="small"
-                options={ICON_QUICK_FILTER_OPTIONS}
-                value={currentQuickFilter}
-                onChange={(value) => {
-                  const nextFilter = String(value ?? 'all') as IconQuickFilterKey;
-                  setIconQuickFilters((previous) => ({
-                    ...previous,
-                    [propKey]: nextFilter,
-                  }));
-                }}
-              />
-              <Select
-                size="small"
-                options={ICON_INITIAL_FILTER_OPTIONS}
-                value={currentInitialFilter}
-                onChange={(value) => {
-                  const nextFilter = String(value ?? 'all') as IconInitialFilterKey;
-                  setIconInitialFilters((previous) => ({
-                    ...previous,
-                    [propKey]: nextFilter,
-                  }));
-                }}
-              />
-            </div>
-          )}
-          onChange={(value) => updateActiveNodeProp(propKey, String(value ?? ''))}
-        />
+        <Button
+          size="small"
+          variant="outline"
+          disabled={readOnly}
+          onClick={() => setIconPickerPropKey(propKey)}
+        >
+          浏览图标
+        </Button>
       );
     }
 
@@ -2699,6 +2662,52 @@ const ComponentConfigPanel: React.FC = () => {
           </div>
         </div>
       </Dialog>
+
+      <IconPickerModal
+        visible={iconPickerPropKey !== null}
+        propKey={iconPickerPropKey ?? ''}
+        readOnly={readOnly}
+        value={
+          iconPickerPropKey
+            ? String(
+                ((activeNode.props ?? {})[iconPickerPropKey] as { value?: unknown } | undefined)?.value ?? '',
+              )
+            : ''
+        }
+        quickFilter={iconPickerPropKey ? iconQuickFilters[iconPickerPropKey] ?? 'all' : 'all'}
+        initialFilter={iconPickerPropKey ? iconInitialFilters[iconPickerPropKey] ?? 'all' : 'all'}
+        onQuickFilterChange={(next) => {
+          if (!iconPickerPropKey) {
+            return;
+          }
+          setIconQuickFilters((previous) => ({
+            ...previous,
+            [iconPickerPropKey]: next,
+          }));
+        }}
+        onInitialFilterChange={(next) => {
+          if (!iconPickerPropKey) {
+            return;
+          }
+          setIconInitialFilters((previous) => ({
+            ...previous,
+            [iconPickerPropKey]: next,
+          }));
+        }}
+        onSelect={(iconName) => {
+          if (!iconPickerPropKey) {
+            return;
+          }
+          updateActiveNodeProp(iconPickerPropKey, iconName);
+        }}
+        onClear={() => {
+          if (!iconPickerPropKey) {
+            return;
+          }
+          updateActiveNodeProp(iconPickerPropKey, '');
+        }}
+        onClose={() => setIconPickerPropKey(null)}
+      />
 
       <AssetPickerModal
         visible={assetPickerTarget !== null}

@@ -36,7 +36,7 @@ export const BuilderTdesignInputField: React.FC<BuilderTdesignInputFieldProps> =
     setSuffixCount(String(dslValue ?? '').length);
   }, [dslValue]);
 
-  const handleChange = useCallback<InputProps['onChange']>(
+  const handleChange = useCallback<NonNullable<InputProps['onChange']>>(
     (val, context) => {
       if (showSuffixOnly) {
         setSuffixCount(String(val ?? '').length);

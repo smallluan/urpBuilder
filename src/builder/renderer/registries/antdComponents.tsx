@@ -675,11 +675,12 @@ export function registerAntdComponents(registry: ComponentRegistry): void {
       theme: getStringProp('theme'),
       decimalPlaces: getFiniteNumberProp('decimalPlaces'),
     });
-    const { styles: semanticStyles, ...antdMapped } = mapped;
-    const stylesMerged: React.ComponentProps<typeof InputNumber>['styles'] = {
+    const { styles: semanticStylesRaw, ...antdMapped } = mapped;
+    const semanticStyles = semanticStylesRaw as { root?: React.CSSProperties; input?: React.CSSProperties } | undefined;
+    const stylesMerged = {
       root: { ...(mergeStyle() ?? {}), ...(semanticStyles?.root ?? {}) },
       ...(semanticStyles?.input ? { input: semanticStyles.input } : {}),
-    };
+    } as React.ComponentProps<typeof InputNumber>['styles'];
 
     const handleChange = (next: number | string | null) => {
       if (data?.key) {
@@ -690,9 +691,10 @@ export function registerAntdComponents(registry: ComponentRegistry): void {
       }
     };
 
+    const rawDefault = getInputNumberValueProp('defaultValue') as number | string | null | undefined;
     const valueProps = isControlled
       ? { value: getInputNumberValueProp('value') as number | string | null | undefined }
-      : { defaultValue: getInputNumberValueProp('defaultValue') as number | string | null | undefined };
+      : { defaultValue: rawDefault === null ? undefined : rawDefault };
 
     return (
       <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf} nodeKey={data?.key} active={isNodeActive}>
