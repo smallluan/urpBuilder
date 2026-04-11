@@ -1070,7 +1070,14 @@
         flex-direction: column;
         overflow: auto;
         overscroll-behavior: contain;
-        contain: layout paint style;
+        /*
+         * 仅保留 style 级 contain（计数器/引号不泄漏）。
+         * 不设 layout/paint：
+         *   - layout/paint 会让 position: sticky 失效（Chromium 实现限制）
+         *   - position: fixed 的隔离已由 resolveSimulatorStyle(mapFixedToAbsolute) 处理
+         *   - Drawer/Dialog/Popup 的 portal 已挂载到兄弟节点 .simulator-overlay-root（有自己的 contain: layout paint style）
+         */
+        contain: style;
         /* 隐藏滚动条，仍可滚轮/触控滚动 */
         scrollbar-width: none;
         -ms-overflow-style: none;
@@ -1096,7 +1103,8 @@
          * contain: layout → position: fixed 子节点以本元素为包含块（而非 viewport）
          * contain: paint  → 裁剪溢出，同时为 abs 后代建立包含块
          * contain: style  → 计数器/引号不泄漏
-         * 与 .simulator-scroll 保持一致，让 Drawer/Dialog/Popup 的 fixed 遮罩被限制在模拟器内。
+         * 注意：.simulator-scroll 已去除 layout/paint（为兼容 position: sticky），
+         * 此叠层独立保留完整 contain，让 Drawer/Dialog/Popup 的 fixed 遮罩仍被限制在模拟器内。
          */
         contain: layout paint style;
 
@@ -1252,9 +1260,18 @@
         height: 12px;
       }
 
+      /* 与「手机屏幕」底色一致，避免吸顶等内容滚过时透出下层，视觉发脏 */
       .simulator-device-chrome--dynamic-island {
-        background: transparent;
+        background: var(--builder-simulator-device-bg);
         color: rgba(0, 0, 0, 0.88);
+      }
+
+      :root[theme-mode='dark'] .simulator-device-chrome--dynamic-island {
+        color: rgba(255, 255, 255, 0.92);
+      }
+
+      :root[theme-mode='dark'] .simulator-device-chrome--dynamic-island .simulator-device-chrome__time {
+        color: rgba(255, 255, 255, 0.92);
       }
 
       .simulator-device-chrome--notch {

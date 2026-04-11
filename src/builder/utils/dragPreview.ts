@@ -78,7 +78,7 @@ function categoryZhByType(type: string): string {
   if (t === 'List') {
     return '列表';
   }
-  if (t.startsWith('Flex') || t === 'Stack' || t === 'Space' || t === 'Inline') {
+  if (t.startsWith('Flex') || t === 'Stack' || t === 'Space' || t === 'Inline' || t === 'StickyBoundary') {
     return '布局';
   }
   return '';

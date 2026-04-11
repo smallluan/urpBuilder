@@ -1192,6 +1192,40 @@ const tdesignComponentCatalog = [
     props: {}
   },
   {
+    type: 'StickyBoundary',
+    name: '吸附边界',
+    props: {
+      affix: {
+        name: '启用吸顶',
+        value: true,
+        editType: 'switch',
+      },
+      offsetTop: {
+        name: '吸顶距离顶部',
+        value: 0,
+        editType: 'inputNumber',
+      },
+      zIndex: {
+        name: '固钉层级',
+        value: 500,
+        editType: 'inputNumber',
+      },
+      overflow: {
+        name: '溢出',
+        value: 'visible',
+        editType: 'select',
+        payload: {
+          options: ['visible', 'hidden', 'auto', 'scroll', 'clip'],
+        },
+      },
+      minHeight: {
+        name: '最小高度',
+        value: 0,
+        editType: 'inputNumber',
+      },
+    },
+  },
+  {
     type: 'RouteOutlet',
     name: '路由出口',
     props: {

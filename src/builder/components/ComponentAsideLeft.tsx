@@ -64,6 +64,7 @@ const CONTAINER_NODE_TYPES = new Set([
   'Layout.Footer',
   'ComponentSlotOutlet',
   'Card',
+  'StickyBoundary',
 ]);
 
 const MENU_NODE_TYPES = new Set(['Menu.Submenu', 'Menu.Item', 'antd.Menu.SubMenu', 'antd.Menu.Item']);

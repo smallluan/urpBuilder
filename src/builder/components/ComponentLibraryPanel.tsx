@@ -27,6 +27,7 @@ import {
   Star,
   ArrowUpToLine,
   BarChart3,
+  Pin,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import componentCatalog from '../../config/componentCatalog';
@@ -165,6 +166,7 @@ const getCategoryByType = (type: string): ComponentLibraryCategory => {
     || type === 'Layout'
     || type === 'RouteOutlet'
     || type === 'ComponentSlotOutlet'
+    || type === 'StickyBoundary'
   ) {
     return 'layout';
   }
@@ -248,6 +250,7 @@ const getIconByType = (type: string) => {
     'Grid.Row': Rows3,
     'Grid.Col': Columns3,
     RouteOutlet: RectangleHorizontal,
+    StickyBoundary: Pin,
     ComponentSlotOutlet: RectangleHorizontal,
     Card: RectangleHorizontal,
     Image: ImageIcon,

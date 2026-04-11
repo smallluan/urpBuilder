@@ -3,6 +3,7 @@ import { Col, Layout } from 'tdesign-react';
 import type { ComponentRegistry } from '../componentContext';
 import { SpaceContent, RowContent } from '../componentHelpers';
 import DropArea from '../../../components/DropArea';
+import { StickyBoundaryHost } from '../../components/StickyBoundaryHost';
 
 const { Header, Content, Aside, Footer } = Layout;
 
@@ -227,6 +228,39 @@ export function registerLayoutComponents(registry: ComponentRegistry): void {
     return (
       <DropArea data={data} onDropData={onDropData}>
         <BuilderLayoutFooterRoot style={mergeStyle()} />
+      </DropArea>
+    );
+  });
+
+  /**
+   * 吸附边界：原生 position: sticky。
+   * 不用 TDesign Affix（内部 position: fixed 在 contain: layout 的模拟器内退化成 absolute，吸不住）。
+   */
+  registry.set('StickyBoundary', (ctx) => {
+    const { data, onDropData, getStringProp, getNumberProp, getBooleanProp, mergeStyle } = ctx;
+    const overflowRaw = getStringProp('overflow')?.trim();
+    const overflow = (overflowRaw === 'visible'
+      || overflowRaw === 'hidden'
+      || overflowRaw === 'auto'
+      || overflowRaw === 'scroll'
+      || overflowRaw === 'clip'
+      ? overflowRaw
+      : 'visible') as React.CSSProperties['overflow'];
+    const minHeight = getNumberProp('minHeight');
+    const affixEnabled = getBooleanProp('affix') !== false;
+    const offsetTop = getNumberProp('offsetTop') ?? 0;
+    const zRaw = getNumberProp('zIndex');
+    const zIndex = typeof zRaw === 'number' && !Number.isNaN(zRaw) ? zRaw : 500;
+    return (
+      <DropArea data={data} onDropData={onDropData}>
+        <StickyBoundaryHost
+          affix={affixEnabled}
+          offsetTop={offsetTop}
+          zIndex={zIndex}
+          overflow={overflow}
+          minHeight={typeof minHeight === 'number' && minHeight > 0 ? minHeight : undefined}
+          mergeStyle={mergeStyle}
+        />
       </DropArea>
     );
   });

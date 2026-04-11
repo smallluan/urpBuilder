@@ -184,6 +184,11 @@ const LIBRARY_GROUP_ENTRIES: ComponentLibraryGroupEntry[] = [
         keywords: ['底部'],
       },
       {
+        type: 'StickyBoundary',
+        helperText: 'TDesign Affix 吸顶容器：子内容随模拟器滚动，可配吸顶距顶/底与层级；关闭「启用吸顶」则仅为普通布局盒',
+        keywords: ['sticky', '吸附', '边界', 'Affix', '吸顶'],
+      },
+      {
         type: 'RouteOutlet',
         helperText: '路由内容出口，切换路由时内部内容同步替换',
         keywords: ['路由出口', 'outlet', '路由内容'],

@@ -40,6 +40,7 @@ export const SHARED_LAYOUT_TD_TYPES = new Set<string>([
   'List',
   'RouteOutlet',
   'ComponentSlotOutlet',
+  'StickyBoundary',
 ]);
 
 const TD_TO_ANTD = new Map<string, string>(

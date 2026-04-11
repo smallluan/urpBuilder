@@ -8,11 +8,15 @@
   max-width: 100%;
   box-sizing: border-box;
   isolation: isolate;
-  /* 裁掉流光层对角大画布在视口外的贴图硬边，避免出现“移动矩形” */
-  overflow: hidden;
+  /*
+   * 裁掉流光层对角大画布在视口外的贴图硬边，避免出现"移动矩形"。
+   * 用 clip 而非 hidden：clip 同样裁剪溢出，但不会创建 scroll container，
+   * 从而不阻断后代 position: sticky 向上找到 .simulator-scroll 做粘附。
+   */
+  overflow: clip;
   /*
    * 与 View Transition 新帧快照对齐：antd 比 tdesign 矮时，新快照下方常为透明像素，
-   * 会透出下层旧快照（如分页器叠影）。根节点铺实底，避免“透明洞”透出旧层。
+   * 会透出下层旧快照（如分页器叠影）。根节点铺实底，避免"透明洞"透出旧层。
    */
   background-color: var(--builder-simulator-device-bg, #ffffff);
 }

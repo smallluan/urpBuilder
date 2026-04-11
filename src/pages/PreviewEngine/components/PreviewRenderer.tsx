@@ -46,6 +46,7 @@ import { CARD_SHELL_ALWAYS_ANTD_TYPES, resolveAntdPreviewTypeForCanonical } from
 import { BUILDER_CARD_BODY_STYLE } from '../../../utils/antdTdesignPropBridge';
 import { PreviewBrushSuppressLifecycleContext } from '../context/PreviewBrushSuppressLifecycleContext';
 import { PreviewPortalContainerContext } from '../context/PreviewPortalContainerContext';
+import { StickyBoundaryPreview } from '../../../builder/components/StickyBoundaryHost';
 
 const PreviewDataHubRefContext = React.createContext<React.RefObject<PreviewDataHub | null>>({ current: null });
 
@@ -2550,6 +2551,33 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) 
           {renderChildren(node, onLifecycle)}
         </div>
       );
+    case 'StickyBoundary': {
+      const ob = getStringProp(node, 'overflow')?.trim();
+      const overflow = (ob === 'visible'
+        || ob === 'hidden'
+        || ob === 'auto'
+        || ob === 'scroll'
+        || ob === 'clip'
+        ? ob
+        : 'visible') as React.CSSProperties['overflow'];
+      const mh = getNumberProp(node, 'minHeight');
+      const affixEnabled = getBooleanProp(node, 'affix') !== false;
+      const offsetTop = getNumberProp(node, 'offsetTop') ?? 0;
+      const zRaw = getNumberProp(node, 'zIndex');
+      const zIndex = typeof zRaw === 'number' && !Number.isNaN(zRaw) ? zRaw : 500;
+      return (
+        <StickyBoundaryPreview
+          affix={affixEnabled}
+          offsetTop={offsetTop}
+          zIndex={zIndex}
+          overflow={overflow}
+          minHeight={typeof mh === 'number' && mh > 0 ? mh : undefined}
+          mergeStyle={mergeStyle}
+        >
+          {renderChildren(node, onLifecycle)}
+        </StickyBoundaryPreview>
+      );
+    }
     case 'Inline':
       return (
         <div
