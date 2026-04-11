@@ -239,6 +239,15 @@ const isListItemTemplateDroppable = (node: any, root: any) => {
   return Boolean((listAncestor.props?.customTemplateEnabled as { value?: unknown } | undefined)?.value);
 };
 
+const isDynamicListItemDroppable = (node: any, root: any) => {
+  if (node.type !== 'DynamicList.Item') {
+    return false;
+  }
+
+  const path = findNodePathByKey(root, node.key);
+  return !!path?.slice().reverse().find((item: any) => item.type === 'DynamicList');
+};
+
 const getCardPreferredSlotNode = (node: any) => {
   const slotChildren = (node.children ?? []).filter((child: any) => isSlotNode(child));
   const bodySlot = slotChildren.find((child: any) => getNodeSlotKey(child) === 'body');
@@ -282,6 +291,12 @@ const getTreeNodeDropTarget = (node: any, root: any): TreeNodeDropTarget | null 
   }
 
   if (isListItemTemplateDroppable(node, root)) {
+    return {
+      parentKey: node.key,
+    };
+  }
+
+  if (isDynamicListItemDroppable(node, root)) {
     return {
       parentKey: node.key,
     };
@@ -483,6 +498,18 @@ const ComponentBody: React.FC = () => {
         && Boolean((listAncestor.props?.customTemplateEnabled as { value?: unknown } | undefined)?.value);
 
       if (customModeEnabled && !LIST_TEMPLATE_ALLOWED_TYPES.has(droppedType)) {
+        return;
+      }
+    }
+
+    if (parentType === 'DynamicList') {
+      return;
+    }
+
+    if (parentType === 'DynamicList.Item') {
+      const parentPath = findNodePathByKey(uiPageData, String(parent.key));
+      const parentNode = parentPath?.at(-1);
+      if (parentNode && (parentNode.children ?? []).length > 0) {
         return;
       }
     }

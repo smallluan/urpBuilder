@@ -1,0 +1,446 @@
+{
+  "base": {
+    "pageName": "待办应用",
+    "pageId": "todos_app_demo",
+    "description": "多路由待办示例：全部 / 已完成 / 关于；侧栏壳层 + RouteOutlet。复制到平台作为页面模板发布即可带路由预览。"
+  },
+  "template": {
+    "uiTree": {
+      "key": "__root__",
+      "type": "root",
+      "label": "该页面",
+      "props": {},
+      "lifetimes": [
+        "onInit",
+        "onBeforeMount",
+        "onMounted",
+        "onBeforeUpdate",
+        "onUpdated",
+        "onBeforeUnmount",
+        "onUnmounted"
+      ],
+      "children": []
+    },
+    "flowNodes": [
+      {
+        "id": "annotation-todos",
+        "type": "annotationNode",
+        "position": { "x": 80, "y": 60 },
+        "connectable": false,
+        "data": {
+          "text": "待办示例：可在流程里接数据/脚本，与按钮、列表联动。"
+        }
+      }
+    ],
+    "flowEdges": [],
+    "routes": [
+      {
+        "routeId": "route-all",
+        "routeConfig": {
+          "routePath": "/",
+          "routeName": "all",
+          "pageTitle": "待办 · 全部",
+          "menuTitle": "全部",
+          "useLayout": true
+        },
+        "selectedLayoutTemplateId": null,
+        "flowNodes": [],
+        "flowEdges": [],
+        "uiTree": {
+          "key": "root-route-all",
+          "type": "root",
+          "label": "该页面",
+          "props": {},
+          "lifetimes": [
+            "onInit",
+            "onBeforeMount",
+            "onMounted",
+            "onBeforeUpdate",
+            "onUpdated",
+            "onBeforeUnmount",
+            "onUnmounted"
+          ],
+          "children": [
+            {
+              "key": "outlet-main",
+              "type": "RouteOutlet",
+              "label": "路由出口",
+              "props": {
+                "minHeight": { "value": 280 }
+              },
+              "children": [
+                {
+                  "key": "card-all",
+                  "type": "Card",
+                  "label": "列表卡片",
+                  "props": {
+                    "title": { "value": "今日待办" },
+                    "bordered": { "value": true },
+                    "size": { "value": "medium" }
+                  },
+                  "children": [
+                    {
+                      "key": "stack-all",
+                      "type": "Stack",
+                      "label": "内容区",
+                      "props": {
+                        "gap": { "value": 16 },
+                        "justify": { "value": "flex-start" },
+                        "align": { "value": "stretch" }
+                      },
+                      "children": [
+                        {
+                          "key": "row-add",
+                          "type": "Inline",
+                          "label": "添加行",
+                          "props": {
+                            "gap": { "value": 8 },
+                            "wrap": { "value": true },
+                            "align": { "value": "center" }
+                          },
+                          "children": [
+                            {
+                              "key": "inp-new",
+                              "type": "Input",
+                              "label": "输入框",
+                              "props": {
+                                "placeholder": { "value": "添加一条待办…" },
+                                "clearable": { "value": true }
+                              }
+                            },
+                            {
+                              "key": "btn-add",
+                              "type": "Button",
+                              "label": "按钮",
+                              "props": {
+                                "content": { "value": "添加" },
+                                "theme": { "value": "primary" },
+                                "size": { "value": "medium" }
+                              }
+                            }
+                          ]
+                        },
+                        {
+                          "key": "row-t1",
+                          "type": "Inline",
+                          "label": "任务1",
+                          "props": {
+                            "gap": { "value": 8 },
+                            "align": { "value": "center" }
+                          },
+                          "children": [
+                            {
+                              "key": "t1-text",
+                              "type": "Typography.Text",
+                              "label": "文本",
+                              "props": {
+                                "content": { "value": "买牛奶" }
+                              }
+                            },
+                            {
+                              "key": "t1-meta",
+                              "type": "Typography.Text",
+                              "props": {
+                                "content": { "value": "（待处理）" },
+                                "__style": { "value": { "color": "#64748b", "fontSize": "12px" } }
+                              }
+                            }
+                          ]
+                        },
+                        {
+                          "key": "row-t2",
+                          "type": "Inline",
+                          "label": "任务2",
+                          "props": {
+                            "gap": { "value": 8 },
+                            "align": { "value": "center" }
+                          },
+                          "children": [
+                            {
+                              "key": "t2-text",
+                              "type": "Typography.Text",
+                              "props": {
+                                "content": { "value": "写周报" }
+                              }
+                            },
+                            {
+                              "key": "t2-meta",
+                              "type": "Typography.Text",
+                              "props": {
+                                "content": { "value": "（待处理）" },
+                                "__style": { "value": { "color": "#64748b", "fontSize": "12px" } }
+                              }
+                            }
+                          ]
+                        },
+                        {
+                          "key": "row-t3",
+                          "type": "Inline",
+                          "label": "任务3",
+                          "props": {
+                            "gap": { "value": 8 },
+                            "align": { "value": "center" }
+                          },
+                          "children": [
+                            {
+                              "key": "t3-text",
+                              "type": "Typography.Text",
+                              "props": {
+                                "content": { "value": "预约会议" }
+                              }
+                            },
+                            {
+                              "key": "t3-meta",
+                              "type": "Typography.Text",
+                              "props": {
+                                "content": { "value": "（待处理）" },
+                                "__style": { "value": { "color": "#64748b", "fontSize": "12px" } }
+                              }
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "routeId": "route-done",
+        "routeConfig": {
+          "routePath": "/done",
+          "routeName": "done",
+          "pageTitle": "待办 · 已完成",
+          "menuTitle": "已完成",
+          "useLayout": true
+        },
+        "selectedLayoutTemplateId": null,
+        "flowNodes": [],
+        "flowEdges": [],
+        "uiTree": {
+          "key": "root-route-done",
+          "type": "root",
+          "label": "该页面",
+          "props": {},
+          "lifetimes": [
+            "onInit",
+            "onBeforeMount",
+            "onMounted",
+            "onBeforeUpdate",
+            "onUpdated",
+            "onBeforeUnmount",
+            "onUnmounted"
+          ],
+          "children": [
+            {
+              "key": "outlet-main",
+              "type": "RouteOutlet",
+              "label": "路由出口",
+              "props": {
+                "minHeight": { "value": 240 }
+              },
+              "children": [
+                {
+                  "key": "card-done",
+                  "type": "Card",
+                  "label": "已完成",
+                  "props": {
+                    "title": { "value": "已完成" },
+                    "bordered": { "value": true }
+                  },
+                  "children": [
+                    {
+                      "key": "txt-done-hint",
+                      "type": "Typography.Paragraph",
+                      "label": "说明",
+                      "props": {
+                        "content": { "value": "当前为示例页：暂无已完成项。接入数据后可在此展示已勾选任务。" }
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "routeId": "route-about",
+        "routeConfig": {
+          "routePath": "/about",
+          "routeName": "about",
+          "pageTitle": "待办 · 关于",
+          "menuTitle": "关于",
+          "useLayout": true
+        },
+        "selectedLayoutTemplateId": null,
+        "flowNodes": [],
+        "flowEdges": [],
+        "uiTree": {
+          "key": "root-route-about",
+          "type": "root",
+          "label": "该页面",
+          "props": {},
+          "lifetimes": [
+            "onInit",
+            "onBeforeMount",
+            "onMounted",
+            "onBeforeUpdate",
+            "onUpdated",
+            "onBeforeUnmount",
+            "onUnmounted"
+          ],
+          "children": [
+            {
+              "key": "outlet-main",
+              "type": "RouteOutlet",
+              "label": "路由出口",
+              "props": {
+                "minHeight": { "value": 200 }
+              },
+              "children": [
+                {
+                  "key": "card-about",
+                  "type": "Card",
+                  "label": "关于",
+                  "props": {
+                    "title": { "value": "关于本应用" },
+                    "bordered": { "value": true }
+                  },
+                  "children": [
+                    {
+                      "key": "para-about",
+                      "type": "Typography.Paragraph",
+                      "props": {
+                        "content": { "value": "这是一个带多路由的待办示例：顶部导航可在「全部 / 已完成 / 关于」之间切换，便于在平台中以「站点/应用」形式预览路由行为。" }
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "pageConfig": {
+      "screenSize": "auto",
+      "autoWidth": 520,
+      "propsStorageVersion": 2,
+      "previewUiLibrary": "antd",
+      "activeRouteOutletKey": "outlet-main",
+      "sharedUiTree": {
+        "key": "root-todos-shell",
+        "type": "root",
+        "label": "该页面",
+        "props": {},
+        "lifetimes": [
+          "onInit",
+          "onBeforeMount",
+          "onMounted",
+          "onBeforeUpdate",
+          "onUpdated",
+          "onBeforeUnmount",
+          "onUnmounted"
+        ],
+        "children": [
+          {
+            "key": "shell-stack",
+            "type": "Stack",
+            "label": "壳层",
+            "props": {
+              "gap": { "value": 16 },
+              "justify": { "value": "flex-start" },
+              "align": { "value": "stretch" },
+              "__style": {
+                "value": {
+                  "padding": "16px",
+                  "minHeight": "100%",
+                  "boxSizing": "border-box"
+                }
+              }
+            },
+            "children": [
+              {
+                "key": "app-title",
+                "type": "Typography.Title",
+                "label": "标题",
+                "props": {
+                  "content": { "value": "我的待办" },
+                  "level": { "value": "h4" },
+                  "__style": { "value": { "margin": 0 } }
+                }
+              },
+              {
+                "key": "nav-row",
+                "type": "Inline",
+                "label": "路由导航",
+                "props": {
+                  "gap": { "value": 16 },
+                  "wrap": { "value": true },
+                  "align": { "value": "center" }
+                },
+                "children": [
+                  {
+                    "key": "nav-all",
+                    "type": "Link",
+                    "label": "全部",
+                    "props": {
+                      "content": { "value": "全部" },
+                      "href": { "value": "/" },
+                      "theme": { "value": "primary" },
+                      "underline": { "value": true }
+                    }
+                  },
+                  {
+                    "key": "nav-done",
+                    "type": "Link",
+                    "label": "已完成",
+                    "props": {
+                      "content": { "value": "已完成" },
+                      "href": { "value": "/done" },
+                      "theme": { "value": "default" },
+                      "underline": { "value": false }
+                    }
+                  },
+                  {
+                    "key": "nav-about",
+                    "type": "Link",
+                    "label": "关于",
+                    "props": {
+                      "content": { "value": "关于" },
+                      "href": { "value": "/about" },
+                      "theme": { "value": "default" },
+                      "underline": { "value": false }
+                    }
+                  }
+                ]
+              },
+              {
+                "key": "outlet-main",
+                "type": "RouteOutlet",
+                "label": "路由出口",
+                "props": {
+                  "minHeight": { "value": 320 }
+                },
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      "sharedFlowNodes": [],
+      "sharedFlowEdges": [],
+      "routeConfig": {
+        "routePath": "/",
+        "routeName": "todos-app",
+        "pageTitle": "待办应用",
+        "menuTitle": "待办应用",
+        "useLayout": true
+      }
+    }
+  }
+}

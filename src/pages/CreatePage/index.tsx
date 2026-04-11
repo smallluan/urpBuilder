@@ -37,6 +37,8 @@ import BuilderQuickFind from '../../builder/components/BuilderQuickFind';
 import { AntdRuntimeRoot } from '../../builder/antd/AntdRuntimeRoot';
 import { computePersistedTemplateFingerprint } from '../../builder/save/templateFingerprint';
 import { normalizePageRoutesUiTrees, normalizeUiTreeLegacyAntdTypes } from '../../builder/utils/normalizeUiTreeLegacyAntd';
+import type { PageTemplateBaseInfo } from '../../api/types';
+import PageTemplateJsonImportDialog from '../../builder/components/PageTemplateJsonImportDialog';
 
 const resolveValidTemplateIdFromUrl = () => {
   const searchParams = new URLSearchParams(window.location.search);
@@ -334,6 +336,118 @@ const CreatePage: React.FC = () => {
   const addPageRoute = useCreatePageStore((state) => state.addPageRoute);
   const switchPageRoute = useCreatePageStore((state) => state.switchPageRoute);
 
+  const applyPageTemplateDetailToEditor = useCallback(
+    async (
+      detail: { base?: PageTemplateBaseInfo | null; template?: Record<string, unknown> | null },
+      options?: { pageIdFallback?: string; ignoreBasePageId?: boolean },
+    ): Promise<boolean> => {
+      const template = detail.template;
+      if (!template || typeof template !== 'object') {
+        emitApiAlert('加载失败', '未获取到页面模板数据（template）');
+        return false;
+      }
+
+      const pageConfig = (template.pageConfig ?? {}) as Record<string, unknown>;
+      const normalizedRouteConfig = normalizeRouteConfig(pageConfig.routeConfig);
+      const normalizedRoutes = normalizePageRoutesUiTrees(
+        normalizeTemplateRoutes(template as unknown as Record<string, unknown>, normalizedRouteConfig),
+      );
+      const sharedUiTree = pageConfig.sharedUiTree && typeof pageConfig.sharedUiTree === 'object' && !Array.isArray(pageConfig.sharedUiTree)
+        ? normalizeUiTreeLegacyAntdTypes(pageConfig.sharedUiTree as unknown as UiTreeNode)
+        : (Array.isArray(pageConfig.sharedUiChildren)
+          ? normalizeUiTreeLegacyAntdTypes({
+            key: '__root__',
+            label: '该页面',
+            props: {},
+            children: pageConfig.sharedUiChildren as unknown as UiTreeNode[],
+          } as UiTreeNode)
+          : null);
+      const sharedFlowNodes = Array.isArray(pageConfig.sharedFlowNodes)
+        ? (pageConfig.sharedFlowNodes as unknown as Node[])
+        : [];
+      const sharedFlowEdges = Array.isArray(pageConfig.sharedFlowEdges)
+        ? (pageConfig.sharedFlowEdges as unknown as Edge[])
+        : [];
+
+      const depInstances = collectPageDirectCustomInstances(normalizedRoutes, sharedUiTree);
+      const depIds = Array.from(new Set(depInstances.map((i) => i.componentId)));
+      if (depIds.length === 0) {
+        latestByIdRef.current = new Map();
+        setDependencyUpdates([]);
+      } else {
+        const latestMap = await fetchLatestComponentInfoMap(depIds);
+        latestByIdRef.current = latestMap;
+        setDependencyUpdates(computeDependencyUpgradeItems(depInstances, latestMap, ignoredDependencyIdsRef.current));
+      }
+
+      const firstRoute = normalizedRoutes[0] ?? null;
+      const activeRouteOutletKey = resolveEffectiveOutletKey(
+        firstRoute?.uiTree ?? ({ key: '__root__', label: '该页面', props: {}, children: [] } as UiTreeNode),
+        typeof pageConfig.activeRouteOutletKey === 'string' ? pageConfig.activeRouteOutletKey : null,
+      );
+      const composedUiTree = normalizeUiTreeLegacyAntdTypes(
+        firstRoute
+          ? composeRouteUiTree(firstRoute.uiTree, sharedUiTree, activeRouteOutletKey)
+          : ({ key: '__root__', label: '该页面', props: {}, children: [] } as UiTreeNode),
+      );
+      const composedFlow = firstRoute
+        ? composeRouteFlow(firstRoute.flowNodes, firstRoute.flowEdges, sharedFlowNodes, sharedFlowEdges)
+        : { flowNodes: [] as Node[], flowEdges: [] as Edge[] };
+
+      const fallbackId = options?.pageIdFallback ?? '';
+      const storeBefore = useCreatePageStore.getState();
+      const resolvedPageId = options?.ignoreBasePageId
+        ? (fallbackId || storeBefore.currentPageId || '')
+        : ((detail.base?.pageId && String(detail.base.pageId).trim())
+          || fallbackId
+          || storeBefore.currentPageId
+          || '');
+
+      setCurrentPageMeta({
+        pageId: resolvedPageId,
+        pageName: detail.base?.pageName ?? '',
+        description: detail.base?.description ?? '',
+        visibility: detail.base?.visibility === 'public' ? 'public' : 'private',
+      });
+
+      useCreatePageStore.setState({
+        previewUiLibrary: pageConfig.previewUiLibrary === 'antd' ? 'antd' : 'tdesign',
+        screenSize: (pageConfig.screenSize as string | number | undefined) ?? detail.base?.screenSize ?? 'auto',
+        autoWidth:
+          typeof pageConfig.autoWidth === 'number'
+            ? pageConfig.autoWidth
+            : (detail.base?.autoWidth ?? 1800),
+        uiPageData: composedUiTree,
+        flowNodes: composedFlow.flowNodes,
+        flowEdges: composedFlow.flowEdges,
+        selectedLayoutTemplateId: firstRoute?.selectedLayoutTemplateId ?? null,
+        pageRouteConfig: firstRoute?.routeConfig ?? normalizedRouteConfig,
+        pageRoutes: normalizedRoutes,
+        activePageRouteId: firstRoute?.routeId ?? null,
+        activeRouteOutletKey,
+        sharedUiTree,
+        sharedFlowNodes,
+        sharedFlowEdges,
+        flowActiveNodeId: null,
+        activeNodeKey: null,
+        activeNode: null,
+        history: {
+          pointer: -1,
+          actions: [],
+        },
+      });
+      useCreatePageStore.getState().setLastPersistedTemplateFingerprint(
+        computePersistedTemplateFingerprint(useCreatePageStore.getState(), {
+          enablePageRouteConfig: true,
+          enableComponentContract: false,
+          includePreviewUiLibrary: true,
+        }),
+      );
+      return true;
+    },
+    [setCurrentPageMeta, setDependencyUpdates],
+  );
+
   useEffect(() => {
     initModeLongTaskObserver();
   }, []);
@@ -402,100 +516,17 @@ const CreatePage: React.FC = () => {
         if (detail.base?.ownerId && user?.id && detail.base.ownerId !== user.id) {
           setReadOnly(true);
           setReadOnlyReason('当前页面不属于你，已自动切换为只读查看。');
+        } else {
+          setReadOnly(false);
+          setReadOnlyReason('');
         }
-        const template = detail?.template;
-
-        if (!template) {
+        if (!detail?.template) {
           emitApiAlert('加载失败', '未获取到页面详情数据');
           return;
         }
-
-        const pageConfig = template.pageConfig ?? {};
-        const normalizedRouteConfig = normalizeRouteConfig(pageConfig.routeConfig);
-        const normalizedRoutes = normalizePageRoutesUiTrees(
-          normalizeTemplateRoutes(template as unknown as Record<string, unknown>, normalizedRouteConfig),
-        );
-        const sharedUiTree = pageConfig.sharedUiTree && typeof pageConfig.sharedUiTree === 'object' && !Array.isArray(pageConfig.sharedUiTree)
-          ? normalizeUiTreeLegacyAntdTypes(pageConfig.sharedUiTree as unknown as UiTreeNode)
-          : (Array.isArray(pageConfig.sharedUiChildren)
-            ? normalizeUiTreeLegacyAntdTypes({
-              key: '__root__',
-              label: '该页面',
-              props: {},
-              children: pageConfig.sharedUiChildren as unknown as UiTreeNode[],
-            } as UiTreeNode)
-            : null);
-        const sharedFlowNodes = Array.isArray(pageConfig.sharedFlowNodes)
-          ? (pageConfig.sharedFlowNodes as unknown as Node[])
-          : [];
-        const sharedFlowEdges = Array.isArray(pageConfig.sharedFlowEdges)
-          ? (pageConfig.sharedFlowEdges as unknown as Edge[])
-          : [];
-
-        const depInstances = collectPageDirectCustomInstances(normalizedRoutes, sharedUiTree);
-        const depIds = Array.from(new Set(depInstances.map((i) => i.componentId)));
-        if (depIds.length === 0) {
-          latestByIdRef.current = new Map();
-          setDependencyUpdates([]);
-        } else {
-          const latestMap = await fetchLatestComponentInfoMap(depIds);
-          latestByIdRef.current = latestMap;
-          setDependencyUpdates(computeDependencyUpgradeItems(depInstances, latestMap, ignoredDependencyIdsRef.current));
-        }
-
-        const firstRoute = normalizedRoutes[0] ?? null;
-        const activeRouteOutletKey = resolveEffectiveOutletKey(
-          firstRoute?.uiTree ?? ({ key: '__root__', label: '该页面', props: {}, children: [] } as UiTreeNode),
-          typeof pageConfig.activeRouteOutletKey === 'string' ? pageConfig.activeRouteOutletKey : null,
-        );
-        const composedUiTree = normalizeUiTreeLegacyAntdTypes(
-          firstRoute
-            ? composeRouteUiTree(firstRoute.uiTree, sharedUiTree, activeRouteOutletKey)
-            : ({ key: '__root__', label: '该页面', props: {}, children: [] } as UiTreeNode),
-        );
-        const composedFlow = firstRoute
-          ? composeRouteFlow(firstRoute.flowNodes, firstRoute.flowEdges, sharedFlowNodes, sharedFlowEdges)
-          : { flowNodes: [], flowEdges: [] as Edge[] };
-
-        setCurrentPageMeta({
-          pageId: detail.base?.pageId ?? pageId,
-          pageName: detail.base?.pageName ?? '',
-          description: detail.base?.description ?? '',
-          visibility: detail.base?.visibility === 'public' ? 'public' : 'private',
-        });
-
-        useCreatePageStore.setState({
-          previewUiLibrary: pageConfig.previewUiLibrary === 'antd' ? 'antd' : 'tdesign',
-          screenSize: (pageConfig.screenSize as string | number | undefined) ?? detail.base?.screenSize ?? 'auto',
-          autoWidth:
-            typeof pageConfig.autoWidth === 'number'
-              ? pageConfig.autoWidth
-              : (detail.base?.autoWidth ?? 1800),
-          uiPageData: composedUiTree,
-          flowNodes: composedFlow.flowNodes,
-          flowEdges: composedFlow.flowEdges,
-          selectedLayoutTemplateId: firstRoute?.selectedLayoutTemplateId ?? null,
-          pageRouteConfig: firstRoute?.routeConfig ?? normalizedRouteConfig,
-          pageRoutes: normalizedRoutes,
-          activePageRouteId: firstRoute?.routeId ?? null,
-          activeRouteOutletKey,
-          sharedUiTree,
-          sharedFlowNodes,
-          sharedFlowEdges,
-          flowActiveNodeId: null,
-          activeNodeKey: null,
-          activeNode: null,
-          history: {
-            pointer: -1,
-            actions: [],
-          },
-        });
-        useCreatePageStore.getState().setLastPersistedTemplateFingerprint(
-          computePersistedTemplateFingerprint(useCreatePageStore.getState(), {
-            enablePageRouteConfig: true,
-            enableComponentContract: false,
-            includePreviewUiLibrary: true,
-          }),
+        await applyPageTemplateDetailToEditor(
+          { base: detail.base ?? null, template: detail.template as unknown as Record<string, unknown> },
+          { pageIdFallback: pageId },
         );
       } catch {
         emitApiAlert('加载失败', '页面详情请求失败，请稍后重试');
@@ -503,7 +534,7 @@ const CreatePage: React.FC = () => {
     };
 
     void loadPageDetail();
-  }, [setCurrentPageMeta, user?.id]);
+  }, [applyPageTemplateDetailToEditor, user?.id]);
 
   return (
     <BuilderProvider
@@ -534,6 +565,17 @@ const CreatePage: React.FC = () => {
           <div className={`mode-keepalive-pane${mode === 'component' ? ' is-active' : ''}`}>
             {componentLayoutMounted ? (
               <BuilderUiWorkbenchLayout
+                toolbarAfterShortcuts={(
+                  <PageTemplateJsonImportDialog
+                    readOnly={readOnly}
+                    applyPageTemplateDetailToEditor={applyPageTemplateDetailToEditor}
+                    pageIdFallback={pageIdFromUrl}
+                    onImported={() => {
+                      setReadOnly(false);
+                      setReadOnlyReason('');
+                    }}
+                  />
+                )}
                 composeToolbarExtra={(
                   <div className="builder-compose-toolbar-extras">
                     <DependencyManagerDrawer

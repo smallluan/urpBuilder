@@ -87,7 +87,7 @@ const CATEGORY_META_MAP: Record<ComponentLibraryCategory, CategoryMeta> = {
 
 const CATEGORY_ORDER: ComponentLibraryCategory[] = ['action', 'layout', 'display', 'text', 'navigation'];
 
-const HIDDEN_COMPONENT_TYPES = new Set(['List.Item', 'Popup']);
+const HIDDEN_COMPONENT_TYPES = new Set(['List.Item', 'DynamicList.Item', 'Popup']);
 const ECHART_COMPONENT_TYPES = new Set(ECHART_COMPONENT_TYPE_LIST);
 
 const getCategoryByType = (type: string): ComponentLibraryCategory => {
@@ -177,6 +177,7 @@ const getCategoryByType = (type: string): ComponentLibraryCategory => {
     || type === 'Calendar'
     || type === 'Progress'
     || type === 'List'
+    || type === 'DynamicList'
     || ECHART_COMPONENT_TYPES.has(type)
     || type === 'Tabs'
     || type === 'Collapse'

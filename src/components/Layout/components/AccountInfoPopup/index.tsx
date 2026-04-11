@@ -1,6 +1,6 @@
 import { Space, Divider, Button, DialogPlugin, Avatar, MessagePlugin, Typography, Row } from "tdesign-react"
 import { useAuth } from "../../../../auth/context"
-import { getUserDisplayInitials, getUserDisplayName, hasDisplayNickname } from "../../../../utils/authDisplay"
+import { getUserDisplayInitials, getUserDisplayName } from "../../../../utils/authDisplay"
 import { useNavigate } from "react-router-dom"
 const { Text } = Typography
 import "./index.less"
@@ -55,7 +55,6 @@ const AccountInfoPopup: React.FC = () => {
   const navigate = useNavigate()
   const { user, logout, deleteAccount } = useAuth()
   const displayName = getUserDisplayName(user);
-  const loginAccount = user?.username ?? "";
 
   const handleActionBtnClick = async (data: ActionBtnValue) => {
     if (data === 'delete-account') {

@@ -5,6 +5,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { emitApiAlert } from '../../api/alertBus';
 import { useAuth } from '../../auth/context';
 import { getTeamAssetSnapshot } from '../../team/api';
+import { isCreateTeamEntryDisabled } from '../../team/createTeamEntry';
 import { useTeam } from '../../team/context';
 import type { TeamAssetItem, TeamAssetSnapshot, TeamDetail, TeamMember } from '../../team/types';
 import { fileToDataUrl, resolveTeamAvatar, resolveUserAvatar } from '../../utils/avatar';
@@ -101,6 +102,7 @@ const TeamsPage: React.FC = () => {
   const canManageMembers = (detail?.role ?? currentTeam?.role) === 'owner' || (detail?.role ?? currentTeam?.role) === 'admin';
 
   useEffect(() => {
+    if (isCreateTeamEntryDisabled) return;
     const params = new URLSearchParams(location.search);
     if (params.get('create') !== '1') return;
     setCreateVisible(true);
@@ -227,7 +229,13 @@ const TeamsPage: React.FC = () => {
         <div className="teams-page__empty-panel">
           <Empty description="你还没有可用团队，先创建一个团队吧" />
           <div className="teams-page__empty-actions">
-            <Button size="small" theme="primary" icon={<AddIcon />} onClick={() => setCreateVisible(true)}>
+            <Button
+              size="small"
+              theme="primary"
+              icon={<AddIcon />}
+              disabled={isCreateTeamEntryDisabled}
+              onClick={isCreateTeamEntryDisabled ? undefined : () => setCreateVisible(true)}
+            >
               创建团队
             </Button>
           </div>

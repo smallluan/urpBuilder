@@ -216,6 +216,26 @@ export function registerDataComponents(registry: ComponentRegistry): void {
     );
   });
 
+  registry.set('DynamicList', (ctx) => {
+    const {
+      data, onDropData, mergeStyle, handleActivateSelf, isNodeActive,
+    } = ctx;
+    const templateNode = (data?.children ?? []).find((child) => child.type === 'DynamicList.Item');
+
+    return (
+      <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf} nodeKey={data?.key} active={isNodeActive}>
+        <div style={{ ...mergeStyle(), border: '1px dashed var(--td-brand-color-3, #ccc)', borderRadius: 4, padding: 4 }}>
+          <DropArea
+            data={templateNode}
+            onDropData={onDropData}
+            emptyText="拖拽一个组件作为行模板"
+            compactWhenFilled
+          />
+        </div>
+      </ActivateWrapper>
+    );
+  });
+
   registry.set('Card', (ctx) => {
     const {
       data, onDropData, getStringProp, getBooleanProp, mergeStyle, handleActivateSelf, isNodeActive,

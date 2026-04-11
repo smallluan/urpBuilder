@@ -292,6 +292,30 @@ export const CODE_EDITOR_JS_GLOBAL_COMPLETIONS: Completion[] = [
     info: '可能是生命周期事件或上游 patch 事件。',
   },
   {
+    label: 'ctx.event.payload',
+    type: 'property',
+    detail: '事件载荷',
+    info: '生命周期触发时携带的 payload 对象，包含 nodeType 等字段。',
+  },
+  {
+    label: 'ctx.event.payload.item',
+    type: 'property',
+    detail: '动态列表当前行数据',
+    info: '当事件来源在 DynamicList 行模板内时，item 为当前行对应的数据对象。',
+  },
+  {
+    label: 'ctx.event.payload.index',
+    type: 'property',
+    detail: '动态列表当前行索引',
+    info: '当事件来源在 DynamicList 行模板内时，index 为当前行的下标（从 0 开始）。',
+  },
+  {
+    label: 'ctx.event.payload.rowKey',
+    type: 'property',
+    detail: '动态列表当前行唯一标识',
+    info: '当事件来源在 DynamicList 行模板内时，rowKey 为根据 rowKey 字段从行数据中取得的标识值。',
+  },
+  {
     label: 'ctx.response',
     type: 'property',
     detail: '网络请求响应数据',

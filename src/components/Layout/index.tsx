@@ -14,6 +14,7 @@ import {
   ImageIcon,
 } from 'tdesign-icons-react';
 import { useAuth } from '../../auth/context';
+import { isCreateTeamEntryDisabled } from '../../team/createTeamEntry';
 import { useTeam } from '../../team/context';
 import { resolveTeamAvatar, resolveUserAvatar } from '../../utils/avatar';
 import { getUserDisplayInitials, getUserDisplayName } from '../../utils/authDisplay';
@@ -215,7 +216,15 @@ const AppLayout: React.FC = () => {
           }) : <div className="space-switcher-popup__empty">暂无团队，先创建一个吧</div>}
         </div>
 
-        <Button block variant="outline" icon={<AddIcon />} onClick={handleOpenCreateTeam}>创建新团队</Button>
+        <Button
+          block
+          variant="outline"
+          icon={<AddIcon />}
+          disabled={isCreateTeamEntryDisabled}
+          onClick={isCreateTeamEntryDisabled ? undefined : handleOpenCreateTeam}
+        >
+          创建新团队
+        </Button>
       </div>
     );
   };

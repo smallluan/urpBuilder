@@ -72,6 +72,7 @@ const MENU_CONTAINER_TYPES = new Set(['Menu', 'HeadMenu', 'Menu.Submenu', 'antd.
 
 const ABSTRACT_NODE_TYPES = new Set([
   'List.Item',
+  'DynamicList.Item',
 ]);
 
 type NodeVisualKind = 'slot' | 'container' | 'leaf' | 'abstract';
@@ -335,6 +336,15 @@ const isListItemTemplateDroppable = (node: UiTreeNode, root: UiTreeNode) => {
   return Boolean((listAncestor.props?.customTemplateEnabled as { value?: unknown } | undefined)?.value);
 };
 
+const isDynamicListItemDroppable = (node: UiTreeNode, root: UiTreeNode) => {
+  if (node.type !== 'DynamicList.Item') {
+    return false;
+  }
+
+  const path = findNodePathByKey(root, node.key);
+  return !!path?.slice().reverse().find((item) => item.type === 'DynamicList');
+};
+
 const getCardPreferredSlotNode = (node: UiTreeNode) => {
   const slotChildren = (node.children ?? []).filter((child) => isSlotNode(child));
   const bodySlot = slotChildren.find((child) => getNodeSlotKey(child) === 'body');
@@ -378,6 +388,12 @@ const getTreeNodeDropTarget = (node: UiTreeNode, root: UiTreeNode): TreeNodeDrop
   }
 
   if (isListItemTemplateDroppable(node, root)) {
+    return {
+      parentKey: node.key,
+    };
+  }
+
+  if (isDynamicListItemDroppable(node, root)) {
     return {
       parentKey: node.key,
     };
@@ -773,6 +789,16 @@ const ComponentAsideLeft: React.FC = () => {
           ? String((parsedData as { type?: unknown }).type).trim()
           : '';
         if (!LIST_TEMPLATE_ALLOWED_TYPES.has(droppedType)) {
+          return;
+        }
+      }
+
+      if (currentNodeType === 'DynamicList') {
+        return;
+      }
+
+      if (currentNodeType === 'DynamicList.Item') {
+        if ((node.children ?? []).length > 0) {
           return;
         }
       }

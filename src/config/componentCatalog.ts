@@ -1498,6 +1498,68 @@ const tdesignComponentCatalog = [
     }
   },
   {
+    type: 'DynamicList',
+    name: '动态列表',
+    props: {
+      rowKey: {
+        name: '行唯一标识字段',
+        value: 'id',
+        editType: 'input',
+      },
+      layout: {
+        name: '排列方式',
+        value: 'vertical',
+        editType: 'select',
+        payload: {
+          options: ['vertical', 'horizontal', 'waterfall'],
+        },
+      },
+      gap: {
+        name: '间距(px)',
+        value: 8,
+        editType: 'inputNumber',
+        payload: {
+          min: 0,
+          max: 100,
+        },
+      },
+      columnCount: {
+        name: '列数（横向/瀑布）',
+        value: 2,
+        editType: 'inputNumber',
+        payload: {
+          min: 1,
+          max: 12,
+        },
+      },
+      dataSource: {
+        name: '列表数据',
+        value: [
+          { id: 'item-1', title: '项目A', description: '第一条数据' },
+          { id: 'item-2', title: '项目B', description: '第二条数据' },
+          { id: 'item-3', title: '项目C', description: '第三条数据' },
+        ],
+        editType: 'tableDataConfig',
+      },
+      dataSourceConfig: {
+        name: '数据源配置',
+        value: {
+          type: 'static',
+          responsePath: 'output',
+          page: 1,
+          pageSize: 20,
+        },
+        editType: 'dataSourceConfig',
+      },
+    },
+    lifetimes: ['onItemClick'],
+  },
+  {
+    type: 'DynamicList.Item',
+    name: '动态列表项模板',
+    props: {},
+  },
+  {
     type: 'Steps',
     name: '步骤条',
     props: {

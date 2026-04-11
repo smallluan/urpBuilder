@@ -90,6 +90,15 @@ const createListItemTemplateNode = (): UiTreeNode => ({
   children: [],
 });
 
+const createDynamicListItemTemplateNode = (): UiTreeNode => ({
+  key: uuidv4(),
+  label: '动态列表项模板',
+  type: 'DynamicList.Item',
+  props: {},
+  lifetimes: [],
+  children: [],
+});
+
 const createStepsItemNode = (index: number): UiTreeNode => ({
   key: uuidv4(),
   label: '步骤项',
@@ -269,6 +278,10 @@ const buildInitialChildren = (type: string, props?: Record<string, unknown>): Ui
 
   if (type === 'List') {
     return [createListItemTemplateNode()];
+  }
+
+  if (type === 'DynamicList') {
+    return [createDynamicListItemTemplateNode()];
   }
 
   if (type === 'Steps') {

@@ -46,6 +46,7 @@ import { CARD_SHELL_ALWAYS_ANTD_TYPES, resolveAntdPreviewTypeForCanonical } from
 import { BUILDER_CARD_BODY_STYLE } from '../../../utils/antdTdesignPropBridge';
 import { PreviewBrushSuppressLifecycleContext } from '../context/PreviewBrushSuppressLifecycleContext';
 import { PreviewPortalContainerContext } from '../context/PreviewPortalContainerContext';
+import { PreviewRepeaterRowContext, type RepeaterRowScope } from '../context/PreviewRepeaterRowContext';
 import { StickyBoundaryPreview } from '../../../builder/components/StickyBoundaryHost';
 
 const PreviewDataHubRefContext = React.createContext<React.RefObject<PreviewDataHub | null>>({ current: null });
@@ -1039,6 +1040,155 @@ const PreviewTableNode: React.FC<PreviewTableNodeProps> = ({ node, style, emitIn
   );
 };
 
+interface PreviewDynamicListNodeProps {
+  node: UiTreeNode;
+  style?: React.CSSProperties;
+  onLifecycle?: ComponentLifecycleHandler;
+  emitInteractionLifecycle: (lifetime: string, payload?: unknown) => void;
+}
+
+const DYNAMIC_LIST_FALLBACK_DATA: Array<Record<string, unknown>> = [
+  { id: 'item-1', title: '项目A', description: '第一条数据' },
+  { id: 'item-2', title: '项目B', description: '第二条数据' },
+  { id: 'item-3', title: '项目C', description: '第三条数据' },
+];
+
+type DynamicListLayout = 'vertical' | 'horizontal' | 'waterfall';
+
+const buildDynamicListContainerStyle = (
+  layout: DynamicListLayout,
+  gap: number,
+  columnCount: number,
+): React.CSSProperties => {
+  if (layout === 'horizontal') {
+    return {
+      display: 'grid',
+      gridTemplateColumns: `repeat(${columnCount}, 1fr)`,
+      gap,
+    };
+  }
+  if (layout === 'waterfall') {
+    return {
+      columnCount,
+      columnGap: gap,
+    };
+  }
+  return {
+    display: 'flex',
+    flexDirection: 'column',
+    gap,
+  };
+};
+
+const buildDynamicListItemStyle = (layout: DynamicListLayout): React.CSSProperties | undefined => {
+  if (layout === 'waterfall') {
+    return { breakInside: 'avoid', marginBottom: 0 };
+  }
+  return undefined;
+};
+
+const PreviewDynamicListNode: React.FC<PreviewDynamicListNodeProps> = ({
+  node,
+  style,
+  onLifecycle,
+  emitInteractionLifecycle,
+}) => {
+  const staticDataSource = React.useMemo(() => {
+    const value = getProp(node, 'dataSource');
+    if (Array.isArray(value)) {
+      const filtered = value.filter((item) => !!item && typeof item === 'object') as Array<Record<string, unknown>>;
+      return filtered.length > 0 ? filtered : DYNAMIC_LIST_FALLBACK_DATA;
+    }
+    return DYNAMIC_LIST_FALLBACK_DATA;
+  }, [node]);
+
+  const [dataSource, setDataSource] = React.useState<Array<Record<string, unknown>>>(staticDataSource);
+  const [resolveError, setResolveError] = React.useState('');
+
+  const dataSourceRevision = React.useMemo(
+    () => JSON.stringify({
+      dataSource: getProp(node, 'dataSource'),
+      dataSourceConfig: getProp(node, 'dataSourceConfig'),
+    }),
+    [node],
+  );
+
+  React.useEffect(() => {
+    let cancelled = false;
+    const config = normalizeDataSourceConfig(getProp(node, 'dataSourceConfig'));
+    setDataSource(staticDataSource);
+    setResolveError('');
+
+    if (config.type === 'static') {
+      return () => { cancelled = true; };
+    }
+
+    resolveDataBySourceConfig(config, staticDataSource)
+      .then((resolvedValue) => {
+        if (cancelled) return;
+        setDataSource(normalizeRowsFromUnknown(resolvedValue, staticDataSource));
+      })
+      .catch((error) => {
+        if (cancelled) return;
+        setResolveError((error as { message?: string })?.message ?? '数据源加载失败');
+      });
+
+    return () => { cancelled = true; };
+  }, [dataSourceRevision, staticDataSource, node]);
+
+  const templateNode = React.useMemo(
+    () => (node.children ?? []).find((child) => child.type === 'DynamicList.Item'),
+    [node.children],
+  );
+  const templateChildren = templateNode?.children ?? [];
+  const rowKeyField = getStringProp(node, 'rowKey') || 'id';
+  const layout = (getStringProp(node, 'layout') || 'vertical') as DynamicListLayout;
+  const gap = getFiniteNumberProp(node, 'gap') ?? 8;
+  const columnCount = Math.max(1, getFiniteNumberProp(node, 'columnCount') ?? 2);
+
+  const containerStyle = React.useMemo(
+    () => buildDynamicListContainerStyle(layout, gap, columnCount),
+    [layout, gap, columnCount],
+  );
+  const itemStyle = React.useMemo(() => buildDynamicListItemStyle(layout), [layout]);
+
+  return (
+    <>
+      {resolveError ? (
+        <div style={{ marginBottom: 8, color: '#d54941', fontSize: 12 }}>
+          数据源加载失败：{resolveError}
+        </div>
+      ) : null}
+      <div style={{ ...containerStyle, ...style }}>
+        {dataSource.map((item, index) => {
+          const itemRecord = (item && typeof item === 'object') ? item : {};
+          const resolvedRowKey = itemRecord[rowKeyField] ?? index;
+          const boundChildren = templateChildren.map((child) => applyListBindingToNode(child, itemRecord as ListRecord));
+          const rowScope: RepeaterRowScope = { item: itemRecord, index, rowKey: resolvedRowKey as string | number };
+
+          return (
+            <div
+              key={`${node.key}-dynrow-${resolvedRowKey}`}
+              style={itemStyle}
+              onClick={() => emitInteractionLifecycle('onItemClick', { item: itemRecord, index, rowKey: resolvedRowKey })}
+            >
+              <PreviewRepeaterRowContext.Provider value={rowScope}>
+                {boundChildren.map((child) => (
+                  <PreviewRenderer
+                    key={`${child.key}__row_${index}`}
+                    node={child}
+                    onLifecycle={onLifecycle}
+                  />
+                ))}
+              </PreviewRepeaterRowContext.Provider>
+            </div>
+          );
+        })}
+      </div>
+    </>
+  );
+};
+
 interface PreviewEChartNodeProps {
   node: UiTreeNode;
   style?: React.CSSProperties;
@@ -1609,6 +1759,7 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) 
   const scopedHubRef = React.useContext(PreviewDataHubRefContext);
   const previewUiLibrary = React.useContext(PreviewUiLibraryContext);
   const suppressBrushLifecycle = React.useContext(PreviewBrushSuppressLifecycleContext);
+  const repeaterRowScope = React.useContext(PreviewRepeaterRowContext);
   const getPortalContainerFromContext = React.useContext(PreviewPortalContainerContext);
   const portalAttach = React.useMemo(
     () => getPortalContainerFromContext ?? (() => document.body),
@@ -1747,10 +1898,11 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) 
 
       onLifecycle(node.key, lifetime, {
         nodeType: node.type,
+        ...(repeaterRowScope ? { __repeaterRow: repeaterRowScope, item: repeaterRowScope.item, index: repeaterRowScope.index, rowKey: repeaterRowScope.rowKey } : {}),
         ...(payload && typeof payload === 'object' ? payload : {}),
       });
     },
-    [hasLifetime, lifetimes.length, node.key, node.type, onLifecycle, type],
+    [hasLifetime, lifetimes.length, node.key, node.type, onLifecycle, repeaterRowScope, type],
   );
 
   React.useEffect(() => {
@@ -2751,6 +2903,15 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) 
         </List>
       );
       }
+    case 'DynamicList':
+      return (
+        <PreviewDynamicListNode
+          node={node}
+          style={mergeStyle()}
+          onLifecycle={onLifecycle}
+          emitInteractionLifecycle={emitInteractionLifecycle}
+        />
+      );
     case 'Layout':
       return (
         <Layout style={mergeStyle()}>

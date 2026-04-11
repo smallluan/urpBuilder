@@ -765,10 +765,13 @@ const ComponentConfigPanel: React.FC = () => {
 
   const activePath = activeNode?.key ? findNodePathByKey(uiPageData, activeNode.key) : null;
   const listItemAncestor = activePath?.slice().reverse().find((node: UiTreeNode) => node.type === 'List.Item');
+  const dynamicListItemAncestor = activePath?.slice().reverse().find((node: UiTreeNode) => node.type === 'DynamicList.Item');
+  const dynamicListAncestor = activePath?.slice().reverse().find((node: UiTreeNode) => node.type === 'DynamicList');
   const listAncestor = activePath?.slice().reverse().find((node: UiTreeNode) => node.type === 'List');
   const isListCustomTemplateEnabled = Boolean(
     (listAncestor?.props?.customTemplateEnabled as { value?: unknown } | undefined)?.value,
   );
+  const isInsideDynamicList = Boolean(dynamicListItemAncestor && dynamicListAncestor);
 
   const menuSubmenuSelectOptions = React.useMemo(() => {
     if (!activeNode || !isMenuContainerNodeType(activeNode.type)) {
@@ -891,12 +894,27 @@ const ComponentConfigPanel: React.FC = () => {
     return keys.map((key) => [key, map.get(key)!] as [string, Array<[string, ComponentPropSchema]>]);
   }, [activeNode?.type, mergedEditableProps]);
 
-  const isNodeInsideListTemplate = Boolean(listItemAncestor && activeNode && activeNode.type !== 'List.Item');
+  const isNodeInsideListTemplate = Boolean(
+    (listItemAncestor && activeNode && activeNode.type !== 'List.Item')
+    || (dynamicListItemAncestor && activeNode && activeNode.type !== 'DynamicList.Item'),
+  );
   const bindableProps = activeNode?.type ? (LIST_BINDABLE_PROP_OPTIONS[activeNode.type] ?? []) : [];
   const listBindingSchema = propsMap.__listBinding;
   const listBindingValue = (listBindingSchema?.value ?? {}) as { prop?: string; field?: string };
   const bindingPropValue = typeof listBindingValue.prop === 'string' ? listBindingValue.prop : '';
   const bindingFieldValue = typeof listBindingValue.field === 'string' ? listBindingValue.field : '';
+  const showBindingUI = (isListCustomTemplateEnabled && isNodeInsideListTemplate && bindableProps.length > 0)
+    || (isInsideDynamicList && isNodeInsideListTemplate && bindableProps.length > 0);
+
+  const dynamicListFieldOptions = React.useMemo<Array<{ label: string; value: string }>>(() => {
+    if (!dynamicListAncestor) return [];
+    const dsValue = (dynamicListAncestor.props?.dataSource as { value?: unknown } | undefined)?.value;
+    if (!Array.isArray(dsValue) || dsValue.length === 0) return [];
+    const firstRow = dsValue[0];
+    if (!firstRow || typeof firstRow !== 'object') return [];
+    return Object.keys(firstRow as Record<string, unknown>).map((key) => ({ label: key, value: key }));
+  }, [dynamicListAncestor]);
+
   const responsiveColSchema = propsMap.__responsiveCol;
   const simulatorWidth = resolveBuilderViewportWidth(screenSize, autoWidth);
   const simulatorBreakpoint = getBreakpointByWidth(simulatorWidth);
@@ -1757,7 +1775,7 @@ const ComponentConfigPanel: React.FC = () => {
           </div>
         ) : null}
 
-        {isListCustomTemplateEnabled && isNodeInsideListTemplate && bindableProps.length > 0 ? (
+        {showBindingUI ? (
           <>
             <div className="config-row">
               <span className="config-label">绑定属性</span>
@@ -1779,18 +1797,35 @@ const ComponentConfigPanel: React.FC = () => {
             <div className="config-row">
               <span className="config-label">数据字段</span>
               <div className="config-editor">
-                <Input
-                  clearable
-                  placeholder="例如：title 或 cover.url"
-                  value={bindingFieldValue}
-                  onChange={(value) => {
-                    const nextField = String(value ?? '');
-                    updateActiveNodeProp('__listBinding', {
-                      prop: bindingPropValue,
-                      field: nextField,
-                    });
-                  }}
-                />
+                {dynamicListFieldOptions.length > 0 ? (
+                  <Select
+                    options={dynamicListFieldOptions}
+                    value={bindingFieldValue || undefined}
+                    placeholder="选择数据字段"
+                    filterable
+                    creatable
+                    onChange={(value) => {
+                      const nextField = String(value ?? '');
+                      updateActiveNodeProp('__listBinding', {
+                        prop: bindingPropValue,
+                        field: nextField,
+                      });
+                    }}
+                  />
+                ) : (
+                  <Input
+                    clearable
+                    placeholder="例如：title 或 cover.url"
+                    value={bindingFieldValue}
+                    onChange={(value) => {
+                      const nextField = String(value ?? '');
+                      updateActiveNodeProp('__listBinding', {
+                        prop: bindingPropValue,
+                        field: nextField,
+                      });
+                    }}
+                  />
+                )}
               </div>
             </div>
           </>
