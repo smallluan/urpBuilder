@@ -754,10 +754,11 @@ export function registerAntdComponents(registry: ComponentRegistry): void {
   });
 
   registry.set('antd.Switch', (ctx) => {
-    const { getBooleanProp, mergeStyle, handleActivateSelf, data, isNodeActive } = ctx;
+    const { getStringProp, getBooleanProp, mergeStyle, handleActivateSelf, data, isNodeActive } = ctx;
+    const switchSize = getStringProp('size') === 'small' ? 'small' as const : undefined;
     return (
       <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf} nodeKey={data?.key} active={isNodeActive}>
-        <Switch checked={getBooleanProp('value') === true} />
+        <Switch size={switchSize} checked={getBooleanProp('value') === true} />
       </ActivateWrapper>
     );
   });

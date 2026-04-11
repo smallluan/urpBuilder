@@ -112,6 +112,30 @@ TDesign 内部 `useLengthLimit` 仅在配置了 **`maxlength` 或 `maxcharacter`
 
 ---
 
+## Switch（`Switch` / `antd.Switch`）
+
+### 现象与根因
+
+- **TDesign**：`Switch` 支持三档尺寸 `small`/`medium`/`large`，默认 `medium`（高约 22px）。`mergeStyle()` 落在 `ActivateWrapper` 上，不会直接约束 Switch 的 `<button>` 元素。
+- **Ant Design**：`Switch` 仅支持 `default` 与 `small` 两档。若将 `mergeStyle()`（含用户设置的 `__style`）直接放在 `<Switch style={...}>` 上，外部 `width`/`height` 等属性会扭曲开关形状（表现为变窄、变扁）。
+
+### 约定（请勿改回去）
+
+1. **antd 预览**（`previewAntdNodes.tsx` 的 `antd.Switch`）  
+   - `mergeStyle()` 放在 **外层 `<span>`** 上，**不要**传给 `<Switch style={...}>`，与搭建态 `ActivateWrapper` 的样式落点一致。  
+   - `size` 映射：TDesign `small` → antd `size="small"`；TDesign `medium`/`large` → antd 默认（不传 `size`）。  
+
+2. **antd 搭建**（`antdComponents.tsx` 的 `antd.Switch`）  
+   - `mergeStyle()` 仍在 `ActivateWrapper` 上（已有行为），Switch 本身不额外传 `style`。  
+   - `size` 同样映射。
+
+### 回归自检
+
+- 默认 `size: medium` 时，TDesign 预览与 antd 预览的开关高度应接近（均为 ~22px）；antd 稍有差异可接受，但不应出现明显变窄/变扁。
+- 若用户在样式面板设置了 `__style`（如 `margin`、`opacity`），antd Switch 的外壳应响应，但 Switch 控件本身不被拉伸或压缩。
+
+---
+
 ## 其他桥接（索引）
 
 以下逻辑以 `antdTdesignPropBridge.ts` 为准，此处仅作索引，便于搜到：
@@ -128,6 +152,7 @@ TDesign 内部 `useLengthLimit` 仅在配置了 **`maxlength` 或 `maxcharacter`
 | Drawer 尺寸 | `drawerWidthPxFromTdesignSize` |
 | Input / Textarea | `mapTdesignInputPropsToAntd`、`mapTdesignTextareaPropsToAntd`、`parseDslAutosizeValue`；TDesign 专用 `BuilderTdesignInputField` |
 | InputNumber | `mapTdesignInputNumberPropsToAntd` |
+| Switch | 尺寸映射（`small`→`small`，其余→默认）；`mergeStyle()` 放外层 `<span>`，不放 Switch `style` |
 | DSL 图标（Lucide） | `renderNamedIcon`、`resolveIconName`（`iconRegistry.ts`）；见 [icon-dsl.md](./icon-dsl.md) |
 
 ---

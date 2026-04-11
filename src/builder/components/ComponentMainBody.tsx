@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { Dialog, Divider, Input, Popup, Row, Select, Space, Typography } from 'tdesign-react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Dialog, Divider, Input, Pagination, Popup, Select, Table, Typography } from 'tdesign-react';
 import ComponentBody from '../renderer/ComponentBody';
 import SCREEN_SIZES from '../config/screenSizes';
 import { useBuilderAccess, useBuilderContext } from '../context/BuilderContext';
@@ -11,6 +11,29 @@ import { BuilderSidebarToggles, useBuilderWorkbenchLayoutHotkeys } from './Build
 import { useFullscreenControl } from '../hooks/useFullscreenControl';
 
 const { Text } = Typography;
+
+const BUILDER_SHORTCUT_ROWS: Array<{ id: string; desc: string; keys: string }> = [
+  { id: 'mode-ui', desc: '切换到搭建 UI：', keys: 'Ctrl/Cmd+Shift+U' },
+  { id: 'mode-flow', desc: '切换到搭建流程：', keys: 'Ctrl/Cmd+Shift+F' },
+  { id: 'theme', desc: '切换浅色 / 深色主题（D = Dark）：', keys: 'Ctrl/Cmd+Shift+D' },
+  { id: 'fullscreen', desc: '全屏 / 退出全屏（与工具栏「全屏」同步）：', keys: 'F11' },
+  { id: 'tree-sub', desc: '结构树仅展示子树（右键菜单）：', keys: '展示为根节点' },
+  { id: 'tree-root', desc: '结构树展示根 / 恢复整树：', keys: 'Ctrl/Cmd+Alt+R' },
+  { id: 'copy', desc: '复制节点：', keys: 'Ctrl/Cmd+C' },
+  { id: 'paste', desc: '粘贴节点：', keys: 'Ctrl/Cmd+V' },
+  { id: 'cut', desc: '剪切节点：', keys: 'Ctrl/Cmd+X' },
+  { id: 'del', desc: '删除节点：', keys: 'Ctrl/Cmd+Del' },
+  { id: 'clear-children', desc: '清空子节点：', keys: 'Ctrl/Cmd+Shift+C' },
+  { id: 'move-sibling', desc: '同级上移 / 下移：', keys: 'Ctrl/Cmd+↑ / ↓' },
+  { id: 'move-end', desc: '同级置顶 / 置底：', keys: 'Ctrl/Cmd+Shift+↑ / ↓' },
+  { id: 'undo', desc: '上一步：', keys: 'Ctrl/Cmd+Z' },
+  { id: 'esc', desc: '退出（全局对话框）：', keys: 'Esc' },
+  { id: 'sidebar-left', desc: '收起 / 展开左侧面板：', keys: 'Ctrl/Cmd+Shift+1' },
+  { id: 'sidebar-right', desc: '收起 / 展开右侧面板：', keys: 'Ctrl/Cmd+Shift+2' },
+  { id: 'topbar', desc: '收起 / 展开页面顶栏（保存/预览等）：', keys: 'Ctrl/Cmd+Shift+3' },
+];
+
+const SHORTCUT_TABLE_PAGE_SIZE = 8;
 
 const ComponentMainBody: React.FC<{
   toolbarExtra?: React.ReactNode;
@@ -35,6 +58,7 @@ const ComponentMainBody: React.FC<{
   const inputDisabled = screenSize !== 'auto';
   const [draftInputValue, setDraftInputValue] = useState<string>(String(autoWidth));
   const [shortcutDialogVisible, setShortcutDialogVisible] = useState(false);
+  const [shortcutTablePage, setShortcutTablePage] = useState(1);
   const [viewportPopupVisible, setViewportPopupVisible] = useState(false);
   const simulatorWidth = resolveBuilderViewportWidth(screenSize, autoWidth);
   const simulatorBreakpoint = getBreakpointByWidth(simulatorWidth);
@@ -43,6 +67,37 @@ const ComponentMainBody: React.FC<{
     const nextValue = screenSize === 'auto' ? String(autoWidth) : String(Number(screenSize));
     setDraftInputValue((prev) => (prev === nextValue ? prev : nextValue));
   }, [screenSize, autoWidth]);
+
+  useEffect(() => {
+    if (shortcutDialogVisible) {
+      setShortcutTablePage(1);
+    }
+  }, [shortcutDialogVisible]);
+
+  const shortcutTablePageData = useMemo(() => {
+    const start = (shortcutTablePage - 1) * SHORTCUT_TABLE_PAGE_SIZE;
+    return BUILDER_SHORTCUT_ROWS.slice(start, start + SHORTCUT_TABLE_PAGE_SIZE);
+  }, [shortcutTablePage]);
+
+  const shortcutTableColumns = useMemo(
+    () => [
+      {
+        colKey: 'desc',
+        title: '',
+        width: '58%',
+        ellipsis: true,
+        cell: ({ row }: { row: (typeof BUILDER_SHORTCUT_ROWS)[number] }) => row.desc,
+      },
+      {
+        colKey: 'keys',
+        title: '',
+        align: 'right' as const,
+        width: '42%',
+        cell: ({ row }: { row: (typeof BUILDER_SHORTCUT_ROWS)[number] }) => <Text code>{row.keys}</Text>,
+      },
+    ],
+    [],
+  );
 
   const handleSelectChange = (value: string | number) => {
     if (readOnly) {
@@ -227,85 +282,32 @@ const ComponentMainBody: React.FC<{
       <Dialog
         visible={shortcutDialogVisible}
         header="快捷键"
+        width="560px"
         confirmBtn="知道了（Esc）"
         cancelBtn={null}
         onConfirm={() => setShortcutDialogVisible(false)}
         onClose={() => setShortcutDialogVisible(false)}
       >
-        <Space size={4} style={{ width: '100%', height: '400px', overflow: 'auto' }} direction="vertical">
-          <Row justify="space-between" align="middle">
-            <div>切换到搭建 UI：</div>
-            <Text code>Ctrl/Cmd+Shift+U</Text>
-          </Row>
-          <Row justify="space-between" align="middle">
-            <div>切换到搭建流程：</div>
-            <Text code>Ctrl/Cmd+Shift+F</Text>
-          </Row>
-          <Row justify="space-between" align="middle">
-            <div>切换浅色 / 深色主题（D = Dark）：</div>
-            <Text code>Ctrl/Cmd+Shift+D</Text>
-          </Row>
-          <Row justify="space-between" align="middle">
-            <div>全屏 / 退出全屏（与工具栏「全屏」同步）：</div>
-            <Text code>F11</Text>
-          </Row>
-          <Row justify="space-between" align="middle">
-            <div>结构树仅展示子树（右键菜单）：</div>
-            <Text code>展示为根节点</Text>
-          </Row>
-          <Row justify="space-between" align="middle">
-            <div>结构树展示根 / 恢复整树：</div>
-            <Text code>Ctrl/Cmd+Alt+R</Text>
-          </Row>  
-          <Row justify="space-between" align="middle">
-            <div>复制节点：</div>
-            <Text code>Ctrl/Cmd+C</Text>
-          </Row>
-          <Row justify="space-between" align="middle">
-            <div>粘贴节点：</div>
-            <Text code>Ctrl/Cmd+V</Text>
-          </Row>
-          <Row justify="space-between" align="middle">
-            <div>剪切节点：</div>
-            <Text code>Ctrl/Cmd+X</Text>
-          </Row>
-          <Row justify="space-between" align="middle">
-            <div>删除节点：</div>
-            <Text code>Ctrl/Cmd+Del </Text>
-          </Row>
-          <Row justify="space-between" align="middle">
-            <div>清空子节点：</div>
-            <Text code>Ctrl/Cmd+Shift+C</Text>
-          </Row>
-          <Row justify="space-between" align="middle">
-            <div>同级上移 / 下移：</div>
-            <Text code>Ctrl/Cmd+↑ / ↓</Text>
-          </Row>
-          <Row justify="space-between" align="middle">
-            <div>同级置顶 / 置底：</div>
-            <Text code>Ctrl/Cmd+Shift+↑ / ↓</Text>
-          </Row>
-          <Row justify="space-between" align="middle">
-            <div>上一步：</div>
-            <Text code>Ctrl/Cmd+Z </Text>
-          </Row>
-          <Row justify="space-between" align="middle">
-            <div>退出（全局对话框）：</div>
-            <Text code>Esc </Text>
-          </Row>
-          <Row justify="space-between" align="middle">
-            <div>收起 / 展开左侧面板：</div>
-            <Text code>Ctrl/Cmd+Shift+1</Text>
-          </Row>
-          <Row justify="space-between" align="middle">
-            <div>收起 / 展开右侧面板：</div>
-            <Text code>Ctrl/Cmd+Shift+2</Text>
-          </Row>
-          <Row justify="space-between" align="middle">
-            <div>收起 / 展开页面顶栏（保存/预览等）：</div>
-            <Text code>Ctrl/Cmd+Shift+3</Text>
-          </Row>
-        </Space>
+        <div className="builder-shortcut-dialog">
+          <Table
+            size="small"
+            showHeader={false}
+            rowKey="id"
+            data={shortcutTablePageData}
+            columns={shortcutTableColumns}
+            bordered
+          />
+          <div className="builder-shortcut-dialog__pagination">
+            <Pagination
+              size="small"
+              total={BUILDER_SHORTCUT_ROWS.length}
+              current={shortcutTablePage}
+              pageSize={SHORTCUT_TABLE_PAGE_SIZE}
+              showJumper={false}
+              onCurrentChange={setShortcutTablePage}
+            />
+          </div>
+        </div>
       </Dialog>
     </main>
   );

@@ -693,16 +693,19 @@ export function tryRenderAntdPreview(ctx: AntdPreviewContext): React.ReactElemen
     case 'antd.Switch': {
       const controlled = getBooleanProp(node, 'controlled') !== false;
       const checked = getBooleanProp(node, 'value') === true;
+      const switchSize = getStringProp(node, 'size') === 'small' ? 'small' as const : undefined;
       return (
-        <Switch
-          checked={controlled ? checked : undefined}
-          defaultChecked={controlled ? undefined : checked}
-          style={mergeStyle()}
-          onChange={(c) => {
-            syncNodeValue(c);
-            emitInteractionLifecycle('onChange', { value: c });
-          }}
-        />
+        <span style={mergeStyle()}>
+          <Switch
+            size={switchSize}
+            checked={controlled ? checked : undefined}
+            defaultChecked={controlled ? undefined : checked}
+            onChange={(c) => {
+              syncNodeValue(c);
+              emitInteractionLifecycle('onChange', { value: c });
+            }}
+          />
+        </span>
       );
     }
     case 'antd.DatePicker': {
