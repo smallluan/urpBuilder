@@ -1,4 +1,5 @@
-import { Switch, ColorPicker, TimePicker, TimeRangePicker, Input, Textarea, InputNumber, Slider } from 'tdesign-react';
+import { Switch, ColorPicker, TimePicker, TimeRangePicker, Textarea, InputNumber, Slider } from 'tdesign-react';
+import { BuilderTdesignInputField } from '../tdesignInputField';
 import type { ComponentRegistry } from '../componentContext';
 import { ActivateWrapper } from '../componentHelpers';
 
@@ -107,26 +108,30 @@ export function registerFormComponents(registry: ComponentRegistry): void {
       handleActivateSelf, data, isNodeActive, setActiveNode, updateActiveNodeProp,
     } = ctx;
     const isControlled = getBooleanProp('controlled') !== false;
-    const inputValueProps = isControlled
-      ? { value: getStringProp('value') ?? '' }
-      : { defaultValue: getStringProp('defaultValue') || undefined };
+    const dslValueStr = isControlled
+      ? getStringProp('value') ?? ''
+      : getStringProp('defaultValue') ?? '';
 
     const handleInputChange = (nextValue: string) => {
       if (data?.key) {
         setActiveNode(data.key);
       }
-      updateActiveNodeProp('value', nextValue);
+      if (!isControlled) {
+        updateActiveNodeProp('value', nextValue);
+      }
     };
+    const mergedInputStyle = getBooleanProp('autoWidth')
+      ? { ...mergeStyle(), width: 'fit-content', maxWidth: '100%', display: 'inline-block' }
+      : mergeStyle();
 
     return (
       <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf} nodeKey={data?.key} active={isNodeActive}>
-        <Input
-          {...inputValueProps}
-          className={getStringProp('className') || undefined}
+        <BuilderTdesignInputField
+          dslControlled={isControlled}
+          dslValue={dslValueStr}
+          onDslChange={handleInputChange}
           align={getStringProp('align') as any}
-          allowInputOverMax={getBooleanProp('allowInputOverMax')}
           autoWidth={getBooleanProp('autoWidth')}
-          autocomplete={getStringProp('autocomplete') || undefined}
           autofocus={getBooleanProp('autofocus')}
           borderless={getBooleanProp('borderless')}
           placeholder={getStringProp('placeholder') || undefined}
@@ -140,11 +145,9 @@ export function registerFormComponents(registry: ComponentRegistry): void {
           name={getStringProp('name') || undefined}
           showClearIconOnEmpty={getBooleanProp('showClearIconOnEmpty')}
           showLimitNumber={getBooleanProp('showLimitNumber')}
-          spellCheck={getBooleanProp('spellCheck')}
           tips={getStringProp('tips') || undefined}
           type={getStringProp('type') as any}
-          onChange={(value) => handleInputChange(String(value ?? ''))}
-          style={mergeStyle()}
+          style={mergedInputStyle}
         />
       </ActivateWrapper>
     );
@@ -166,7 +169,9 @@ export function registerFormComponents(registry: ComponentRegistry): void {
       if (data?.key) {
         setActiveNode(data.key);
       }
-      updateActiveNodeProp('value', nextValue);
+      if (!isControlled) {
+        updateActiveNodeProp('value', nextValue);
+      }
     };
 
     return (

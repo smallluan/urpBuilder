@@ -28,6 +28,7 @@ import {
   Popover,
   Progress,
   Radio,
+  Tooltip,
   Row,
   Select,
   Slider,
@@ -61,6 +62,9 @@ import {
   tdesignTableColumnsToAntd,
   drawerWidthPxFromTdesignSize,
   antdImageStylesFromMergeStyle,
+  mapTdesignInputPropsToAntd,
+  mapTdesignTextareaPropsToAntd,
+  parseDslAutosizeValue,
 } from '../../../utils/antdTdesignPropBridge';
 import { collectDslStepRows, dslStepStatusToAntd } from '../../../builder/utils/stepsDsl';
 import {
@@ -467,36 +471,93 @@ export function tryRenderAntdPreview(ctx: AntdPreviewContext): React.ReactElemen
     }
     case 'antd.Input': {
       const controlled = getBooleanProp(node, 'controlled') !== false;
-      const val = getStringProp(node, 'value') ?? '';
-      return (
+      const valueControlled = getStringProp(node, 'value') ?? '';
+      const defaultUncontrolled = getStringProp(node, 'defaultValue') || undefined;
+      const mapped = mapTdesignInputPropsToAntd({
+        align: getStringProp(node, 'align'),
+        size: getStringProp(node, 'size'),
+        status: getStringProp(node, 'status'),
+        clearable: getBooleanProp(node, 'clearable'),
+        borderless: getBooleanProp(node, 'borderless'),
+        disabled: getBooleanProp(node, 'disabled'),
+        readOnly: getBooleanProp(node, 'readOnly') ?? getBooleanProp(node, 'readonly'),
+        maxlength: getFiniteNumberProp(node, 'maxlength'),
+        maxcharacter: getFiniteNumberProp(node, 'maxcharacter'),
+        showLimitNumber: getBooleanProp(node, 'showLimitNumber'),
+        autoWidth: getBooleanProp(node, 'autoWidth'),
+        autofocus: getBooleanProp(node, 'autofocus'),
+        name: getStringProp(node, 'name'),
+        type: getStringProp(node, 'type'),
+        tips: getStringProp(node, 'tips'),
+      });
+      const mergedStyle = { ...mergeStyle(), ...mapped.style };
+      const inputEl = (
         <Input
-          value={controlled ? val : undefined}
-          defaultValue={controlled ? undefined : val}
+          {...mapped.inputProps}
+          value={controlled ? valueControlled : undefined}
+          defaultValue={controlled ? undefined : defaultUncontrolled}
           placeholder={getStringProp(node, 'placeholder') || undefined}
-          style={mergeStyle()}
+          style={mergedStyle}
           onChange={(e) => {
-            syncNodeValue(e.target.value);
-            emitInteractionLifecycle('onChange', { value: e.target.value });
+            const v = e.target.value;
+            if (!controlled) {
+              syncNodeValue(v);
+            }
+            emitInteractionLifecycle('onChange', { value: v });
           }}
+          onBlur={(e) => emitInteractionLifecycle('onBlur', { value: e.target.value })}
+          onClear={() => emitInteractionLifecycle('onClear')}
           onPressEnter={(e) => emitInteractionLifecycle('onEnter', { value: (e.target as HTMLInputElement).value })}
         />
+      );
+      return mapped.tips ? (
+        <Tooltip title={mapped.tips}>{inputEl}</Tooltip>
+      ) : (
+        inputEl
       );
     }
     case 'antd.Textarea': {
       const controlled = getBooleanProp(node, 'controlled') !== false;
-      const val = getStringProp(node, 'value') ?? '';
-      return (
+      const valueControlled = getStringProp(node, 'value') ?? '';
+      const defaultUncontrolled = getStringProp(node, 'defaultValue') || undefined;
+      const autosize = parseDslAutosizeValue(getPropValue(node, 'autosize'));
+      const mapped = mapTdesignTextareaPropsToAntd({
+        status: getStringProp(node, 'status'),
+        disabled: getBooleanProp(node, 'disabled'),
+        readOnly: getBooleanProp(node, 'readOnly') ?? getBooleanProp(node, 'readonly'),
+        maxlength: getFiniteNumberProp(node, 'maxlength'),
+        maxcharacter: getFiniteNumberProp(node, 'maxcharacter'),
+        count: getBooleanProp(node, 'count'),
+        allowInputOverMax: getBooleanProp(node, 'allowInputOverMax'),
+        autofocus: getBooleanProp(node, 'autofocus'),
+        name: getStringProp(node, 'name'),
+        className: getStringProp(node, 'className'),
+        tips: getStringProp(node, 'tips'),
+        rows: getFiniteNumberProp(node, 'rows'),
+        autosize,
+      });
+      const mergedStyle = { ...mergeStyle(), ...mapped.style };
+      const taEl = (
         <Input.TextArea
-          rows={getFiniteNumberProp(node, 'rows') ?? 4}
-          value={controlled ? val : undefined}
-          defaultValue={controlled ? undefined : val}
+          {...mapped.textareaProps}
+          value={controlled ? valueControlled : undefined}
+          defaultValue={controlled ? undefined : defaultUncontrolled}
           placeholder={getStringProp(node, 'placeholder') || undefined}
-          style={mergeStyle()}
+          style={mergedStyle}
           onChange={(e) => {
-            syncNodeValue(e.target.value);
-            emitInteractionLifecycle('onChange', { value: e.target.value });
+            const v = e.target.value;
+            if (!controlled) {
+              syncNodeValue(v);
+            }
+            emitInteractionLifecycle('onChange', { value: v });
           }}
+          onBlur={(e) => emitInteractionLifecycle('onBlur', { value: e.target.value })}
         />
+      );
+      return mapped.tips ? (
+        <Tooltip title={mapped.tips}>{taEl}</Tooltip>
+      ) : (
+        taEl
       );
     }
     case 'antd.InputNumber': {

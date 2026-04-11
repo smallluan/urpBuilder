@@ -131,7 +131,7 @@ const Login: React.FC = () => {
         password: loginPassword,
       });
 
-      const nextPath = (location.state as LoginLocationState | null)?.from?.pathname || '/build-page';
+      const nextPath = (location.state as LoginLocationState | null)?.from?.pathname || '/';
       navigate(nextPath, { replace: true });
     } catch {
       // 全局提示由 request 拦截器统一处理
@@ -156,7 +156,7 @@ const Login: React.FC = () => {
         nickname: registerNickname.trim() || undefined,
       });
 
-      navigate('/build-page', { replace: true });
+      navigate('/', { replace: true });
     } catch {
       // 全局提示由 request 拦截器统一处理
     }

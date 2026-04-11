@@ -1,5 +1,6 @@
 import React from 'react';
-import { Avatar, Button, Card, Col, Dialog, Divider, Image, Row, Space, Switch, Swiper, Typography, Layout, Calendar, ColorPicker, TimePicker, TimeRangePicker, InputNumber, Slider, Steps, List, Link, Tabs, BackTop, Menu, Drawer, Popup, Progress, Upload, Input, Textarea, Table, Statistic, Collapse } from 'tdesign-react';
+import { Avatar, Button, Card, Col, Dialog, Divider, Image, Row, Space, Switch, Swiper, Typography, Layout, Calendar, ColorPicker, TimePicker, TimeRangePicker, InputNumber, Slider, Steps, List, Link, Tabs, BackTop, Menu, Drawer, Popup, Progress, Upload, Textarea, Table, Statistic, Collapse } from 'tdesign-react';
+import { BuilderTdesignInputField } from '../../../builder/renderer/tdesignInputField';
 import ReactECharts from 'echarts-for-react';
 import type { Edge, Node } from '@xyflow/react';
 import type { UiTreeNode } from '../../../builder/store/types';
@@ -2969,18 +2970,25 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) 
     case 'Input':
       {
       const isControlled = getBooleanProp(node, 'controlled') !== false;
-      const inputValueProps = isControlled
-        ? { value: getStringProp(node, 'value') ?? '' }
-        : { defaultValue: getStringProp(node, 'defaultValue') || undefined };
+      const dslValueStr = isControlled
+        ? getStringProp(node, 'value') ?? ''
+        : getStringProp(node, 'defaultValue') ?? '';
+      const mergedInputStyle = getBooleanProp(node, 'autoWidth')
+        ? { ...mergeStyle(), width: 'fit-content', maxWidth: '100%', display: 'inline-block' }
+        : mergeStyle();
 
       return (
-        <Input
-          {...inputValueProps}
-          className={getStringProp(node, 'className') || undefined}
+        <BuilderTdesignInputField
+          dslControlled={isControlled}
+          dslValue={dslValueStr}
+          onDslChange={(nextValue, context) => {
+            if (!isControlled) {
+              syncNodeValue(nextValue);
+            }
+            emitInteractionLifecycle('onChange', { value: nextValue, context });
+          }}
           align={getStringProp(node, 'align') as any}
-          allowInputOverMax={getBooleanProp(node, 'allowInputOverMax')}
           autoWidth={getBooleanProp(node, 'autoWidth')}
-          autocomplete={getStringProp(node, 'autocomplete') || undefined}
           autofocus={getBooleanProp(node, 'autofocus')}
           borderless={getBooleanProp(node, 'borderless')}
           placeholder={getStringProp(node, 'placeholder') || undefined}
@@ -2994,15 +3002,9 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) 
           name={getStringProp(node, 'name') || undefined}
           showClearIconOnEmpty={getBooleanProp(node, 'showClearIconOnEmpty')}
           showLimitNumber={getBooleanProp(node, 'showLimitNumber')}
-          spellCheck={getBooleanProp(node, 'spellCheck')}
           tips={getStringProp(node, 'tips') || undefined}
           type={getStringProp(node, 'type') as any}
           onBlur={(value, context) => emitInteractionLifecycle('onBlur', { value, context })}
-          onChange={(value, context) => {
-            const nextValue = String(value ?? '');
-            syncNodeValue(nextValue);
-            emitInteractionLifecycle('onChange', { value: nextValue, context });
-          }}
           onClear={(context) => emitInteractionLifecycle('onClear', context)}
           onClick={(context) => emitInteractionLifecycle('onClick', context)}
           onCompositionend={(value, context) => emitInteractionLifecycle('onCompositionend', { value, context })}
@@ -3017,7 +3019,7 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) 
           onPaste={(context) => emitInteractionLifecycle('onPaste', context)}
           onValidate={(context) => emitInteractionLifecycle('onValidate', context)}
           onWheel={(context) => emitInteractionLifecycle('onWheel', context)}
-          style={mergeStyle()}
+          style={mergedInputStyle}
         />
       );
       }
@@ -3138,7 +3140,9 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) 
           onBlur={(value, context) => emitInteractionLifecycle('onBlur', { value, context })}
           onChange={(value, context) => {
             const nextValue = String(value ?? '');
-            syncNodeValue(nextValue);
+            if (!isControlled) {
+              syncNodeValue(nextValue);
+            }
             emitInteractionLifecycle('onChange', { value: nextValue, context });
           }}
           onFocus={(value, context) => emitInteractionLifecycle('onFocus', { value, context })}

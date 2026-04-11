@@ -40,6 +40,7 @@ import {
   Table,
   Tag,
   Tabs as AntTabs,
+  Tooltip,
   Typography,
   TimePicker as AntTimePicker,
   Upload,
@@ -83,6 +84,8 @@ import {
   tdesignTableColumnsToAntd,
   drawerWidthPxFromTdesignSize,
   antdImageStylesFromMergeStyle,
+  mapTdesignInputPropsToAntd,
+  mapTdesignTextareaPropsToAntd,
 } from '../../../utils/antdTdesignPropBridge';
 
 const { Title, Paragraph, Text, Link } = Typography;
@@ -503,19 +506,123 @@ export function registerAntdComponents(registry: ComponentRegistry): void {
   });
 
   registry.set('antd.Input', (ctx) => {
-    const { getStringProp, mergeStyle, handleActivateSelf, data, isNodeActive } = ctx;
+    const {
+      getStringProp, getBooleanProp, getFiniteNumberProp, mergeStyle,
+      handleActivateSelf, data, isNodeActive, setActiveNode, updateActiveNodeProp,
+    } = ctx;
+    const isControlled = getBooleanProp('controlled') !== false;
+    const inputValueProps = isControlled
+      ? { value: getStringProp('value') ?? '' }
+      : { defaultValue: getStringProp('defaultValue') || undefined };
+
+    const handleInputChange: React.ChangeEventHandler<HTMLInputElement> = (e) => {
+      const nextValue = e.target.value;
+      if (data?.key) {
+        setActiveNode(data.key);
+      }
+      if (!isControlled) {
+        updateActiveNodeProp('value', nextValue);
+      }
+    };
+
+    const mapped = mapTdesignInputPropsToAntd({
+      align: getStringProp('align'),
+      size: getStringProp('size'),
+      status: getStringProp('status'),
+      clearable: getBooleanProp('clearable'),
+      borderless: getBooleanProp('borderless'),
+      disabled: getBooleanProp('disabled'),
+      readOnly: getBooleanProp('readOnly') ?? getBooleanProp('readonly'),
+      maxlength: getFiniteNumberProp('maxlength'),
+      maxcharacter: getFiniteNumberProp('maxcharacter'),
+      showLimitNumber: getBooleanProp('showLimitNumber'),
+      autoWidth: getBooleanProp('autoWidth'),
+      autofocus: getBooleanProp('autofocus'),
+      name: getStringProp('name'),
+      type: getStringProp('type'),
+      tips: getStringProp('tips'),
+    });
+
+    const mergedStyle = { ...mergeStyle(), ...mapped.style };
+    const inputNode = (
+      <Input
+        {...inputValueProps}
+        {...mapped.inputProps}
+        placeholder={getStringProp('placeholder') || undefined}
+        style={mergedStyle}
+        onChange={handleInputChange}
+      />
+    );
+
     return (
       <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf} nodeKey={data?.key} active={isNodeActive}>
-        <Input placeholder={getStringProp('placeholder') || undefined} defaultValue={getStringProp('value') || undefined} readOnly />
+        {mapped.tips ? (
+          <Tooltip title={mapped.tips}>{inputNode}</Tooltip>
+        ) : (
+          inputNode
+        )}
       </ActivateWrapper>
     );
   });
 
   registry.set('antd.Textarea', (ctx) => {
-    const { getStringProp, getFiniteNumberProp, mergeStyle, handleActivateSelf, data, isNodeActive } = ctx;
+    const {
+      getStringProp, getBooleanProp, getFiniteNumberProp, mergeStyle,
+      handleActivateSelf, data, isNodeActive, setActiveNode, updateActiveNodeProp,
+      getTextareaStyleProp, getTextareaAutosizeProp,
+    } = ctx;
+    const isControlled = getBooleanProp('controlled') !== false;
+    const textareaValueProps = isControlled
+      ? { value: getStringProp('value') ?? '' }
+      : { defaultValue: getStringProp('defaultValue') || undefined };
+
+    const handleTextareaChange: React.ChangeEventHandler<HTMLTextAreaElement> = (e) => {
+      const nextValue = e.target.value;
+      if (data?.key) {
+        setActiveNode(data.key);
+      }
+      if (!isControlled) {
+        updateActiveNodeProp('value', nextValue);
+      }
+    };
+
+    const textareaStyle = getTextareaStyleProp();
+    const mergedTextareaStyle = textareaStyle ? { ...mergeStyle(), ...textareaStyle } : mergeStyle();
+
+    const mapped = mapTdesignTextareaPropsToAntd({
+      status: getStringProp('status'),
+      disabled: getBooleanProp('disabled'),
+      readOnly: getBooleanProp('readOnly') ?? getBooleanProp('readonly'),
+      maxlength: getFiniteNumberProp('maxlength'),
+      maxcharacter: getFiniteNumberProp('maxcharacter'),
+      count: getBooleanProp('count'),
+      allowInputOverMax: getBooleanProp('allowInputOverMax'),
+      autofocus: getBooleanProp('autofocus'),
+      name: getStringProp('name'),
+      className: getStringProp('className'),
+      tips: getStringProp('tips'),
+      rows: getFiniteNumberProp('rows'),
+      autosize: getTextareaAutosizeProp(),
+    });
+
+    const mergedStyle = { ...mergedTextareaStyle, ...mapped.style };
+    const textareaNode = (
+      <Input.TextArea
+        {...textareaValueProps}
+        {...mapped.textareaProps}
+        placeholder={getStringProp('placeholder') || undefined}
+        style={mergedStyle}
+        onChange={handleTextareaChange}
+      />
+    );
+
     return (
       <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf} nodeKey={data?.key} active={isNodeActive}>
-        <Input.TextArea rows={getFiniteNumberProp('rows') ?? 4} placeholder={getStringProp('placeholder') || undefined} defaultValue={getStringProp('value') || undefined} readOnly />
+        {mapped.tips ? (
+          <Tooltip title={mapped.tips}>{textareaNode}</Tooltip>
+        ) : (
+          textareaNode
+        )}
       </ActivateWrapper>
     );
   });

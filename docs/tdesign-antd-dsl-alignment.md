@@ -7,6 +7,7 @@
 - `src/utils/antdTdesignPropBridge.ts`（映射与样式拆分）
 - `src/builder/renderer/registries/antdComponents.tsx`（搭建态 antd 注册）
 - `src/pages/PreviewEngine/components/previewAntdNodes.tsx`（预览态 antd 分支）
+- `src/builder/renderer/tdesignInputField.tsx`（TDesign `Input` 搭建/预览共用：字数统计与 DSL 对齐）
 
 修改上述行为时，请 **同步更新本文档** 与 `antdTdesignPropBridge.ts` 内注释，避免后续「只改一处」把对齐改回去。
 
@@ -52,6 +53,53 @@
 
 ---
 
+## Input / Textarea（`Input` / `antd.Input` / `Textarea` / `antd.Textarea`）
+
+### TDesign `Input`：「显示字数统计」为何不单独生效
+
+TDesign 内部 `useLengthLimit` 仅在配置了 **`maxlength` 或 `maxcharacter` 之一** 时才会算出非空的 `limitNumber` 字符串；仅打开 `showLimitNumber` 而未设上限时，`limitNumber` 为空，**不会渲染**内置计数节点（见 `tdesign-react` 的 `useLengthLimit.js` / `Input.js`）。
+
+为与 antd 侧「无上限也可显示当前长度」的体验对齐，项目在：
+
+- `src/builder/renderer/tdesignInputField.tsx` 的 `BuilderTdesignInputField`
+
+中约定：
+
+- 若 **`showLimitNumber` 且已设上限**（`maxlength > 0` 或 `maxcharacter > 0`）：交给 TDesign 原生 `showLimitNumber` + 上限逻辑。
+- 若 **`showLimitNumber` 且未设上限**：关闭原生 `showLimitNumber`，在 **`suffix`** 中显示当前字数（随输入更新）。
+
+搭建态（`formComponents.tsx`）与 TDesign 预览态（`PreviewRenderer.tsx` 的 `Input` 分支）均使用该组件。
+
+### Ant Design `Input`：DSL → antd props
+
+同一套 DSL 字段名仍以 TDesign 物料为准；antd 侧通过 `mapTdesignInputPropsToAntd`（`antdTdesignPropBridge.ts`）映射，例如：
+
+- `clearable` → `allowClear`
+- `borderless` → `variant="borderless"`
+- `align` → 通过 `styles` 落在输入层（避免只写在外层无效）
+- `status`：`error` / `warning` 走 antd；`success` 用绿色描边/阴影模拟
+- `autoWidth`：`fit-content` + `inline-flex` 等，避免外层仍占满一行
+- `showLimitNumber` + `maxlength`/`maxcharacter` → `showCount` / `maxLength`
+
+搭建：`antdComponents.tsx`；预览：`previewAntdNodes.tsx`。
+
+### 受控模式（两套库共通）
+
+当 DSL **`controlled` 为 true**（默认）：画布/预览中 **不再把输入结果写回** 节点的 `value`，输入框表现为「只展示当前 DSL 中的值」。需要改文案请在右侧属性面板编辑 **`value`**。非受控模式下输入仍会同步到 DSL。
+
+### 已从 `Input` 物料移除的属性（面板 + 渲染不再使用）
+
+以下字段已从 `componentCatalog` 的 `Input` 定义中移除，旧模板里若仍存在将被忽略：
+
+- `className`、`style`（组件级内联样式/类名）
+- `autocomplete`（自动填充）
+- `allowInputOverMax`（超长继续输入）
+- `spellCheck`（拼写检查）
+
+更完整的变更说明见：[输入框 DSL 与双库行为说明](./input-field-dsl.md)。
+
+---
+
 ## 其他桥接（索引）
 
 以下逻辑以 `antdTdesignPropBridge.ts` 为准，此处仅作索引，便于搜到：
@@ -66,6 +114,7 @@
 | Space | `antdSpaceSizeFromTdesign` |
 | Table | `tdesignTableColumnsToAntd`、`resolveAntdTableDataSource` |
 | Drawer 尺寸 | `drawerWidthPxFromTdesignSize` |
+| Input / Textarea | `mapTdesignInputPropsToAntd`、`mapTdesignTextareaPropsToAntd`、`parseDslAutosizeValue`；TDesign 专用 `BuilderTdesignInputField` |
 
 ---
 
@@ -73,3 +122,4 @@
 
 - [预览组件库总览](./preview-component-library.md)（分发、镜像表、预览壳）  
 - [画布 block/inline 布局](./builder-component-layout.md)（与 `ActivateWrapper`、`display: contents` 相关，勿与 Image 双写 `mergeStyle` 混为一谈）
+- [输入框 DSL 与双库行为说明](./input-field-dsl.md)（受控、字数统计、已移除属性、相关文件）

@@ -35,7 +35,7 @@ export const PublicOnlyRoute: React.FC<GuardProps> = ({ children }) => {
 	}
 
 	if (isAuthenticated) {
-		return <Navigate to="/build-page" replace />;
+		return <Navigate to="/" replace />;
 	}
 
 	return children ? <>{children}</> : <Outlet />;

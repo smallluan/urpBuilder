@@ -5,6 +5,7 @@ import { normalizeTabsList, normalizeTabsValue } from '../utils/tabs';
 import { renderNamedIcon } from '../../constants/iconRegistry';
 import { resolveSimulatorStyle } from '../utils/simulatorStyle';
 import { parseProgressColorValue } from '../utils/progressAntdBridge';
+import { parseDslAutosizeValue } from '../../utils/antdTdesignPropBridge';
 
 // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 export function createPropAccessors(data: UiTreeNode | undefined) {
@@ -391,34 +392,8 @@ export function createPropAccessors(data: UiTreeNode | undefined) {
     return undefined;
   };
 
-  const getTextareaAutosizeProp = (): boolean | { minRows?: number; maxRows?: number } | undefined => {
-    const value = getProp('autosize');
-    if (typeof value === 'boolean') return value;
-    if (value && typeof value === 'object' && !Array.isArray(value)) {
-      const record = value as Record<string, unknown>;
-      const minRows = typeof record.minRows === 'number' && Number.isFinite(record.minRows) ? record.minRows : undefined;
-      const maxRows = typeof record.maxRows === 'number' && Number.isFinite(record.maxRows) ? record.maxRows : undefined;
-      if (typeof minRows === 'number' || typeof maxRows === 'number') return { minRows, maxRows };
-      return undefined;
-    }
-    if (typeof value === 'string') {
-      const text = value.trim();
-      if (!text) return undefined;
-      if (text === 'true') return true;
-      if (text === 'false') return false;
-      try {
-        const parsed = JSON.parse(text);
-        if (typeof parsed === 'boolean') return parsed;
-        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
-          const record = parsed as Record<string, unknown>;
-          const minRows = typeof record.minRows === 'number' && Number.isFinite(record.minRows) ? record.minRows : undefined;
-          const maxRows = typeof record.maxRows === 'number' && Number.isFinite(record.maxRows) ? record.maxRows : undefined;
-          if (typeof minRows === 'number' || typeof maxRows === 'number') return { minRows, maxRows };
-        }
-      } catch { return undefined; }
-    }
-    return undefined;
-  };
+  const getTextareaAutosizeProp = (): boolean | { minRows?: number; maxRows?: number } | undefined =>
+    parseDslAutosizeValue(getProp('autosize'));
 
   const getSwiperImages = (): SwiperImageItem[] => {
     const value = getProp('images');

@@ -3,6 +3,8 @@
  * 维护说明与 Image 等易回归点：见 `docs/tdesign-antd-dsl-alignment.md`。
  */
 import type { CSSProperties } from 'react';
+import type { InputProps } from 'antd/es/input';
+import type { TextAreaProps } from 'antd/es/input/TextArea';
 import { normalizeBuilderTableColumns } from './tableColumnNormalize';
 
 /**
@@ -68,6 +70,214 @@ export type ButtonAntdMapping = {
   block: boolean;
   shape?: 'default' | 'round' | 'circle';
 };
+
+/**
+ * TDesign Input / Textarea DSL（与 `componentCatalog` 中 Input、Textarea 一致）→ antd Input / Input.TextArea 可识别 props。
+ * TDesign 专有项（如 align、autoWidth）通过 style 或近似行为对齐。
+ */
+export type TdesignInputDslForAntd = {
+  align?: string;
+  size?: string;
+  status?: string;
+  clearable?: boolean;
+  borderless?: boolean;
+  disabled?: boolean;
+  readOnly?: boolean;
+  maxlength?: number;
+  maxcharacter?: number;
+  showLimitNumber?: boolean;
+  autoWidth?: boolean;
+  autofocus?: boolean;
+  name?: string;
+  type?: string;
+  tips?: string;
+};
+
+export function mapTdesignInputPropsToAntd(dsl: TdesignInputDslForAntd): {
+  inputProps: Omit<Partial<InputProps>, 'value' | 'defaultValue' | 'onChange' | 'style'>;
+  style: CSSProperties;
+  tips?: string;
+} {
+  const sizeRaw = String(dsl.size ?? 'medium').trim();
+  const sizeMap: Record<string, NonNullable<InputProps['size']>> = {
+    large: 'large',
+    small: 'small',
+    medium: 'middle',
+    middle: 'middle',
+    normal: 'middle',
+  };
+  const size = sizeMap[sizeRaw] ?? 'middle';
+
+  const statusRaw = String(dsl.status ?? 'default').trim();
+  const status: InputProps['status'] =
+    statusRaw === 'error' ? 'error' : statusRaw === 'warning' ? 'warning' : undefined;
+
+  const variant: InputProps['variant'] = dsl.borderless === true ? 'borderless' : undefined;
+
+  const rawMax =
+    typeof dsl.maxlength === 'number' && dsl.maxlength > 0
+      ? dsl.maxlength
+      : typeof dsl.maxcharacter === 'number' && dsl.maxcharacter > 0
+        ? dsl.maxcharacter
+        : undefined;
+  const maxLength = rawMax;
+
+  let showCount: InputProps['showCount'];
+  if (dsl.showLimitNumber === true) {
+    if (rawMax != null && rawMax > 0) {
+      showCount = true;
+    } else {
+      showCount = { formatter: ({ value }: { value: string }) => `${value?.length ?? 0}` };
+    }
+  }
+
+  const textAlign =
+    dsl.align === 'center' || dsl.align === 'right' ? dsl.align : dsl.align === 'left' ? 'left' : undefined;
+  const style: CSSProperties = {
+    ...(dsl.autoWidth === true ? { width: 'fit-content', maxWidth: '100%', display: 'inline-flex' } : {}),
+  };
+
+  const tips = dsl.tips?.trim() || undefined;
+  const semanticStyles: InputProps['styles'] = {
+    root: {
+      ...(dsl.autoWidth === true ? { width: 'fit-content', maxWidth: '100%', display: 'inline-flex' } : {}),
+      ...(statusRaw === 'success'
+        ? {
+          borderColor: '#52c41a',
+          boxShadow: '0 0 0 2px rgba(82, 196, 26, 0.12)',
+        }
+        : {}),
+    },
+    input: textAlign ? { textAlign } : undefined,
+    count: textAlign ? { textAlign } : undefined,
+  };
+
+  const inputProps: Omit<Partial<InputProps>, 'value' | 'defaultValue' | 'onChange' | 'style'> = {
+    size,
+    status,
+    variant,
+    allowClear: dsl.clearable === true ? true : undefined,
+    disabled: dsl.disabled === true ? true : undefined,
+    readOnly: dsl.readOnly === true ? true : undefined,
+    maxLength,
+    showCount,
+    autoFocus: dsl.autofocus === true ? true : undefined,
+    name: dsl.name?.trim() || undefined,
+    type: (dsl.type?.trim() as InputProps['type']) || 'text',
+    styles: semanticStyles,
+  };
+
+  return { inputProps, style, tips };
+}
+
+/** 与 `propAccessors.getTextareaAutosizeProp` 对 DSL 原始 `autosize` 解析一致，供预览等场景复用。 */
+export function parseDslAutosizeValue(value: unknown): boolean | { minRows?: number; maxRows?: number } | undefined {
+  if (typeof value === 'boolean') {
+    return value;
+  }
+  if (value && typeof value === 'object' && !Array.isArray(value)) {
+    const record = value as Record<string, unknown>;
+    const minRows = typeof record.minRows === 'number' && Number.isFinite(record.minRows) ? record.minRows : undefined;
+    const maxRows = typeof record.maxRows === 'number' && Number.isFinite(record.maxRows) ? record.maxRows : undefined;
+    if (typeof minRows === 'number' || typeof maxRows === 'number') {
+      return { minRows, maxRows };
+    }
+    return undefined;
+  }
+  if (typeof value === 'string') {
+    const text = value.trim();
+    if (!text) {
+      return undefined;
+    }
+    if (text === 'true') {
+      return true;
+    }
+    if (text === 'false') {
+      return false;
+    }
+    try {
+      const parsed = JSON.parse(text) as unknown;
+      if (typeof parsed === 'boolean') {
+        return parsed;
+      }
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+        const record = parsed as Record<string, unknown>;
+        const minRows = typeof record.minRows === 'number' && Number.isFinite(record.minRows) ? record.minRows : undefined;
+        const maxRows = typeof record.maxRows === 'number' && Number.isFinite(record.maxRows) ? record.maxRows : undefined;
+        if (typeof minRows === 'number' || typeof maxRows === 'number') {
+          return { minRows, maxRows };
+        }
+      }
+    } catch {
+      return undefined;
+    }
+  }
+  return undefined;
+}
+
+export type TdesignTextareaDslForAntd = {
+  status?: string;
+  disabled?: boolean;
+  readOnly?: boolean;
+  maxlength?: number;
+  maxcharacter?: number;
+  /** TDesign Textarea「计数器」→ antd showCount */
+  count?: boolean;
+  allowInputOverMax?: boolean;
+  autofocus?: boolean;
+  name?: string;
+  className?: string;
+  tips?: string;
+  rows?: number;
+  autosize?: boolean | { minRows?: number; maxRows?: number };
+};
+
+export function mapTdesignTextareaPropsToAntd(dsl: TdesignTextareaDslForAntd): {
+  textareaProps: Omit<Partial<TextAreaProps>, 'value' | 'defaultValue' | 'onChange' | 'style'>;
+  style: CSSProperties;
+  tips?: string;
+} {
+  const statusRaw = String(dsl.status ?? 'default').trim();
+  const status: TextAreaProps['status'] =
+    statusRaw === 'error' ? 'error' : statusRaw === 'warning' ? 'warning' : undefined;
+
+  const rawMax =
+    typeof dsl.maxlength === 'number' && dsl.maxlength > 0
+      ? dsl.maxlength
+      : typeof dsl.maxcharacter === 'number' && dsl.maxcharacter > 0
+        ? dsl.maxcharacter
+        : undefined;
+  const maxLength = dsl.allowInputOverMax === true ? undefined : rawMax;
+
+  let showCount: TextAreaProps['showCount'];
+  if (dsl.count === true) {
+    if (rawMax != null && rawMax > 0) {
+      showCount = true;
+    } else {
+      showCount = { formatter: ({ value }: { value: string }) => `${value?.length ?? 0}` };
+    }
+  }
+
+  const rows = typeof dsl.rows === 'number' && dsl.rows > 0 ? Math.round(dsl.rows) : 4;
+  const autoSize = dsl.autosize === false ? false : dsl.autosize;
+
+  const tips = dsl.tips?.trim() || undefined;
+
+  const textareaProps: Omit<Partial<TextAreaProps>, 'value' | 'defaultValue' | 'onChange' | 'style'> = {
+    rows,
+    autoSize,
+    status,
+    disabled: dsl.disabled === true ? true : undefined,
+    readOnly: dsl.readOnly === true ? true : undefined,
+    maxLength,
+    showCount,
+    autoFocus: dsl.autofocus === true ? true : undefined,
+    name: dsl.name?.trim() || undefined,
+    className: dsl.className?.trim() || undefined,
+  };
+
+  return { textareaProps, style: {}, tips };
+}
 
 export function mapTdesignButtonToAntd(opts: {
   theme?: string;

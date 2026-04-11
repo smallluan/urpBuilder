@@ -2423,16 +2423,6 @@ const tdesignComponentCatalog = [
     type: 'Input',
     name: '输入框',
     props: {
-      className: {
-        name: '类名',
-        value: '',
-        editType: 'input'
-      },
-      style: {
-        name: '内联样式',
-        value: '',
-        editType: 'jsonCode'
-      },
       controlled: {
         name: '受控模式',
         value: true,
@@ -2446,20 +2436,10 @@ const tdesignComponentCatalog = [
           options: ['left', 'center', 'right']
         }
       },
-      allowInputOverMax: {
-        name: '超长继续输入',
-        value: false,
-        editType: 'switch'
-      },
       autoWidth: {
         name: '宽度自适应',
         value: false,
         editType: 'switch'
-      },
-      autocomplete: {
-        name: '自动填充',
-        value: '',
-        editType: 'input'
       },
       autofocus: {
         name: '自动聚焦',
@@ -2539,17 +2519,12 @@ const tdesignComponentCatalog = [
         editType: 'input'
       },
       showClearIconOnEmpty: {
-        name: '空值也显示清空按钮',
+        name: '清空常显示',
         value: false,
         editType: 'switch'
       },
       showLimitNumber: {
         name: '显示字数统计',
-        value: false,
-        editType: 'switch'
-      },
-      spellCheck: {
-        name: '拼写检查',
         value: false,
         editType: 'switch'
       },

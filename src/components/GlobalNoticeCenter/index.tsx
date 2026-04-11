@@ -101,6 +101,28 @@ const sortMessages = (items: MessageItem[]) => {
   });
 };
 
+/** 避免登录后同一会话内重复弹「未读提醒」（含并发/Strict Mode 双请求） */
+const welcomeUnreadToastShownUserIds = new Set<string>();
+let welcomeUnreadToastMutex: Promise<void> = Promise.resolve();
+
+const enqueueWelcomeUnreadToast = (userId: string, unreadCount: number) => {
+  welcomeUnreadToastMutex = welcomeUnreadToastMutex
+    .then(() => {
+      if (welcomeUnreadToastShownUserIds.has(userId)) {
+        return;
+      }
+      welcomeUnreadToastShownUserIds.add(userId);
+      MessagePlugin.info({
+        content: `你有 ${unreadCount} 条未读消息，点击右上角消息中心查看`,
+        duration: 4000,
+        closeBtn: true,
+      });
+    })
+    .catch(() => {
+      // 保持链可用，避免单次异常阻塞后续提醒
+    });
+};
+
 const GlobalNoticeCenter: React.FC = () => {
   const { user } = useAuth();
   const { getMyInvitations, getMySentInvitations, respondInvitation, refreshTeams } = useTeam();
@@ -176,16 +198,7 @@ const GlobalNoticeCenter: React.FC = () => {
     return nextCount;
   }, [readIdSet]);
 
-  const notifyDimensionSummary = useCallback((mine: TeamInvitation[], mineSent: TeamInvitation[], unreadCount: number) => {
-    const readCount = Math.max(mine.length - unreadCount, 0);
-    MessagePlugin.info({
-      content: `消息中心：未读 ${unreadCount} · 已读 ${readCount} · 已发 ${mineSent.length}`,
-      duration: 3500,
-      closeBtn: true,
-    });
-  }, []);
-
-  const loadMessages = useCallback(async (options?: { notifySummary?: boolean; notifyIncrease?: boolean }) => {
+  const loadMessages = useCallback(async (options?: { notifyWelcomeUnread?: boolean; notifyIncrease?: boolean }) => {
     setLoading(true);
     try {
       const [mine, mySent] = await Promise.all([
@@ -197,11 +210,11 @@ const GlobalNoticeCenter: React.FC = () => {
       const nextCount = syncUnreadCount(mine);
       const previousCount = notifiedCountRef.current;
 
-      if (options?.notifySummary) {
-        notifyDimensionSummary(mine, mySent, nextCount);
+      if (options?.notifyWelcomeUnread && nextCount > 0 && user?.id) {
+        enqueueWelcomeUnreadToast(user.id, nextCount);
       }
 
-      if (options?.notifyIncrease && nextCount > previousCount) {
+      if (options?.notifyIncrease && previousCount > 0 && nextCount > previousCount) {
         MessagePlugin.info({
           content: `你有新消息：当前未读 ${nextCount} 条，点击右上角消息中心查看`,
           duration: 3500,
@@ -213,14 +226,15 @@ const GlobalNoticeCenter: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [getMyInvitations, getMySentInvitations, notifyDimensionSummary, syncUnreadCount]);
+  }, [getMyInvitations, getMySentInvitations, syncUnreadCount, user?.id]);
 
   useEffect(() => {
     if (!user?.id) {
+      welcomeUnreadToastShownUserIds.clear();
       return undefined;
     }
 
-    loadMessages({ notifySummary: true }).catch(() => {
+    loadMessages({ notifyWelcomeUnread: true }).catch(() => {
       // noop
     });
 
@@ -237,7 +251,7 @@ const GlobalNoticeCenter: React.FC = () => {
 
   const openDrawer = async () => {
     setVisible(true);
-    await loadMessages({ notifySummary: false });
+    await loadMessages();
   };
 
   const updateReadState = (messageId: string, shouldRead: boolean) => {
@@ -349,7 +363,7 @@ const GlobalNoticeCenter: React.FC = () => {
               <div className="global-notice-center__drawer-title">消息中心</div>
               <div className="global-notice-center__drawer-subtitle">{pendingCount} 条未读</div>
             </div>
-            <Button variant="text" shape="circle" icon={<RefreshIcon />} loading={loading} onClick={() => { loadMessages({ notifySummary: false }); }} />
+            <Button variant="text" shape="circle" icon={<RefreshIcon />} loading={loading} onClick={() => { void loadMessages(); }} />
           </div>
         )}
         onClose={() => setVisible(false)}
