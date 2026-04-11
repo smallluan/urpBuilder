@@ -26,6 +26,7 @@ export function resolveDocumentTitle(pathname: string, _search: string): string 
     '/teams': '团队看板',
     '/user-admin': '用户管理',
     '/team-admin': '团队管理',
+    '/changelog': '更新日志',
     '/login': '登录',
     '/register': '注册',
     '/create-component': '新建组件',

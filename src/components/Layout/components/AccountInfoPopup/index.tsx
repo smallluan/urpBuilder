@@ -1,4 +1,4 @@
-import { Space, Divider, Button, DialogPlugin, Avatar, MessagePlugin, Typography, Row } from "tdesign-react"
+import { Space, Divider, Button, DialogPlugin, Avatar, MessagePlugin, Typography } from "tdesign-react"
 import { useAuth } from "../../../../auth/context"
 import { getUserDisplayInitials, getUserDisplayName } from "../../../../utils/authDisplay"
 import { useNavigate } from "react-router-dom"
@@ -56,6 +56,24 @@ const AccountInfoPopup: React.FC = () => {
   const { user, logout, deleteAccount } = useAuth()
   const displayName = getUserDisplayName(user);
 
+  const handleCellClick = (value: string) => {
+    if (value === 'changelog') {
+      navigate('/changelog')
+      return
+    }
+    if (value === 'userCenter') {
+      MessagePlugin.info('敬请期待')
+      return
+    }
+    if (value === 'help') {
+      MessagePlugin.info('敬请期待')
+      return
+    }
+    if (value === 'website') {
+      MessagePlugin.info('官网链接待配置')
+    }
+  }
+
   const handleActionBtnClick = async (data: ActionBtnValue) => {
     if (data === 'delete-account') {
       const dialog = DialogPlugin.alert({
@@ -101,7 +119,7 @@ const AccountInfoPopup: React.FC = () => {
       <Divider size={8}/>
       {
         cells.map(cell => (
-          <Row key={cell.value} className="cell-item" justify="space-between">
+          <div key={cell.value} className="cell-item" role="button" tabIndex={0} onClick={() => handleCellClick(cell.value)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleCellClick(cell.value) } }}>
             <div className="cell-item_left">
               <div className="icon">{cell.icon}</div>
               <div className="label">{cell.label}</div>
@@ -109,7 +127,7 @@ const AccountInfoPopup: React.FC = () => {
             {
               cell.arrow && <FontAwesomeIcon icon={faAngleRight} size="sm" />
             }
-          </Row>
+          </div>
         ))
       }
       <div className="action-btns">
