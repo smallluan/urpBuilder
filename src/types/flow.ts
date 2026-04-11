@@ -41,11 +41,21 @@ export interface EventFilterNodeData extends FlowNodeActionHandlers {
   selectedLifetimes?: string[];
 }
 
+/** 动态列表数据源：从粘贴样本或手填得到的行字段与数组路径（仅构建器映射与预览取数用） */
+export interface FlowCodeListOutputContract {
+  /** 列表项对象的可选字段名，用于映射下拉 */
+  fields: string[];
+  /** 当返回值为外层对象时，指向数组的点路径；空表示根即为数组 */
+  arrayPath?: string;
+}
+
 export interface CodeNodeData extends FlowNodeActionHandlers {
   label?: string;
   language?: string;
   note?: string;
   code?: string;
+  /** 作为动态列表上游代码节点时的输出形状说明 */
+  listOutputContract?: FlowCodeListOutputContract;
 }
 
 export interface NetworkRequestNodeData extends FlowNodeActionHandlers {

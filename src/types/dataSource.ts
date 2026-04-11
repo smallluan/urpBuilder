@@ -1,10 +1,12 @@
-export type ComponentDataSourceType = 'static' | 'constant' | 'dataTable' | 'cloudFunction';
+export type ComponentDataSourceType = 'static' | 'constant' | 'dataTable' | 'cloudFunction' | 'flowCode';
 
 export interface ComponentDataSourceConfig {
   type: ComponentDataSourceType;
   constantId?: string;
   tableId?: string;
   functionId?: string;
+  /** 流程图中作为列表数据源的代码节点 id（仅 type === 'flowCode'） */
+  flowCodeNodeId?: string;
   page?: number;
   pageSize?: number;
   responsePath?: string;
@@ -21,7 +23,7 @@ export const normalizeDataSourceConfig = (value: unknown): ComponentDataSourceCo
 
   const typeRaw = String(value.type ?? '').trim();
   const type: ComponentDataSourceType =
-    typeRaw === 'constant' || typeRaw === 'dataTable' || typeRaw === 'cloudFunction'
+    typeRaw === 'constant' || typeRaw === 'dataTable' || typeRaw === 'cloudFunction' || typeRaw === 'flowCode'
       ? typeRaw
       : 'static';
 
@@ -35,6 +37,7 @@ export const normalizeDataSourceConfig = (value: unknown): ComponentDataSourceCo
     constantId: typeof value.constantId === 'string' ? value.constantId.trim() : undefined,
     tableId: typeof value.tableId === 'string' ? value.tableId.trim() : undefined,
     functionId: typeof value.functionId === 'string' ? value.functionId.trim() : undefined,
+    flowCodeNodeId: typeof value.flowCodeNodeId === 'string' ? value.flowCodeNodeId.trim() : undefined,
     page,
     pageSize,
     responsePath: typeof value.responsePath === 'string' ? value.responsePath.trim() : undefined,

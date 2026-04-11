@@ -3,6 +3,8 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import type { Edge, Node } from '@xyflow/react';
 import cloneDeep from 'lodash/cloneDeep';
 import PreviewRenderer, { PreviewDataHubRefContext, PreviewUiLibraryContext } from './components/PreviewRenderer';
+import { PreviewFlowGraphContext } from './context/PreviewFlowGraphContext';
+import { PreviewRuntimeEpochContext } from './context/PreviewRuntimeEpochContext';
 import { deserializePreviewSnapshot, type PreviewSnapshot } from './utils/snapshot';
 import { createPreviewDataHub, type DataHubRouterState, type PreviewDataHub } from './runtime/dataHub';
 import { createPreviewFlowRuntime, type PreviewFlowRuntime } from './runtime/flowRuntime';
@@ -343,6 +345,7 @@ const PreviewEngine: React.FC = () => {
   const effectiveFlowEdges = matchedRouteSnapshot?.flowEdges ?? snapshot.flowEdges;
 
   const [renderTree, setRenderTree] = React.useState(effectiveUiTree);
+  const [previewRuntimeEpoch, setPreviewRuntimeEpoch] = React.useState(0);
   const runtimeRef = React.useRef<PreviewFlowRuntime | InstrumentedFlowRuntime | null>(null);
   const dataHubRef = React.useRef<PreviewDataHub | null>(null);
   const debugPanelOpen = useDebugStore((s) => s.panelOpen);
@@ -428,6 +431,7 @@ const PreviewEngine: React.FC = () => {
 
     runtimeRef.current = runtime;
     dataHubRef.current = hub;
+    setPreviewRuntimeEpoch((n) => n + 1);
     window.dataHub = hub;
 
     if (debugEnabled) {
@@ -441,6 +445,7 @@ const PreviewEngine: React.FC = () => {
       runtime.destroy();
       runtimeRef.current = null;
       dataHubRef.current = null;
+      setPreviewRuntimeEpoch((n) => n + 1);
       if (window.dataHub === hub) {
         delete window.dataHub;
       }
@@ -489,7 +494,13 @@ const PreviewEngine: React.FC = () => {
             <PreviewUiLibraryContext.Provider value={previewUiLibrary}>
               <AntdRuntimeRoot>
                 <PreviewDataHubRefContext.Provider value={dataHubRef}>
-                  <PreviewRenderer key={renderTree.key} node={renderTree} onLifecycle={handleLifecycle} />
+                  <PreviewRuntimeEpochContext.Provider value={previewRuntimeEpoch}>
+                    <PreviewFlowGraphContext.Provider
+                      value={{ flowNodes: effectiveFlowNodes, flowEdges: effectiveFlowEdges }}
+                    >
+                      <PreviewRenderer key={renderTree.key} node={renderTree} onLifecycle={handleLifecycle} />
+                    </PreviewFlowGraphContext.Provider>
+                  </PreviewRuntimeEpochContext.Provider>
                 </PreviewDataHubRefContext.Provider>
               </AntdRuntimeRoot>
             </PreviewUiLibraryContext.Provider>

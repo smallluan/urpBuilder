@@ -44,6 +44,9 @@ import { tryRenderAntdPreview } from './previewAntdNodes';
 import type { UiPreviewLibrary } from '../../../config/uiPreviewLibrary';
 import { CARD_SHELL_ALWAYS_ANTD_TYPES, resolveAntdPreviewTypeForCanonical } from '../../../config/uiPreviewLibrary';
 import { BUILDER_CARD_BODY_STYLE } from '../../../utils/antdTdesignPropBridge';
+import { PreviewFlowGraphContext } from '../context/PreviewFlowGraphContext';
+import { PreviewRuntimeEpochContext } from '../context/PreviewRuntimeEpochContext';
+import { evaluateFlowCodeNodeForList } from '../runtime/flowCodeListData';
 import { PreviewBrushSuppressLifecycleContext } from '../context/PreviewBrushSuppressLifecycleContext';
 import { PreviewPortalContainerContext } from '../context/PreviewPortalContainerContext';
 import { PreviewRepeaterRowContext, type RepeaterRowScope } from '../context/PreviewRepeaterRowContext';
@@ -1087,12 +1090,29 @@ const buildDynamicListItemStyle = (layout: DynamicListLayout): React.CSSProperti
   return undefined;
 };
 
+const getInitialDynamicListDataSource = (node: UiTreeNode): Array<Record<string, unknown>> => {
+  const cfg = normalizeDataSourceConfig(getProp(node, 'dataSourceConfig'));
+  if (cfg.type === 'flowCode') {
+    return [];
+  }
+  const value = getProp(node, 'dataSource');
+  if (Array.isArray(value)) {
+    const filtered = value.filter((item) => !!item && typeof item === 'object') as Array<Record<string, unknown>>;
+    return filtered.length > 0 ? filtered : DYNAMIC_LIST_FALLBACK_DATA;
+  }
+  return DYNAMIC_LIST_FALLBACK_DATA;
+};
+
 const PreviewDynamicListNode: React.FC<PreviewDynamicListNodeProps> = ({
   node,
   style,
   onLifecycle,
   emitInteractionLifecycle,
 }) => {
+  const flowGraph = React.useContext(PreviewFlowGraphContext);
+  const dataHubRef = React.useContext(PreviewDataHubRefContext);
+  const previewRuntimeEpoch = React.useContext(PreviewRuntimeEpochContext);
+
   const staticDataSource = React.useMemo(() => {
     const value = getProp(node, 'dataSource');
     if (Array.isArray(value)) {
@@ -1102,7 +1122,7 @@ const PreviewDynamicListNode: React.FC<PreviewDynamicListNodeProps> = ({
     return DYNAMIC_LIST_FALLBACK_DATA;
   }, [node]);
 
-  const [dataSource, setDataSource] = React.useState<Array<Record<string, unknown>>>(staticDataSource);
+  const [dataSource, setDataSource] = React.useState<Array<Record<string, unknown>>>(() => getInitialDynamicListDataSource(node));
   const [resolveError, setResolveError] = React.useState('');
 
   const dataSourceRevision = React.useMemo(
@@ -1116,10 +1136,40 @@ const PreviewDynamicListNode: React.FC<PreviewDynamicListNodeProps> = ({
   React.useEffect(() => {
     let cancelled = false;
     const config = normalizeDataSourceConfig(getProp(node, 'dataSourceConfig'));
-    setDataSource(staticDataSource);
     setResolveError('');
+    if (config.type === 'flowCode') {
+      setDataSource([]);
+    } else {
+      setDataSource(staticDataSource);
+    }
 
     if (config.type === 'static') {
+      return () => { cancelled = true; };
+    }
+
+    if (config.type === 'flowCode') {
+      const hub = dataHubRef?.current;
+      if (!flowGraph) {
+        setResolveError('流程代码数据源需要当前预览包含流程图（请在页面预览中使用）');
+        return () => { cancelled = true; };
+      }
+      if (!hub) {
+        return () => { cancelled = true; };
+      }
+      void evaluateFlowCodeNodeForList({
+        flowNodes: flowGraph.flowNodes,
+        config,
+        dataHub: hub,
+      })
+        .then((resolvedValue) => {
+          if (cancelled) return;
+          setDataSource(normalizeRowsFromUnknown(resolvedValue, staticDataSource));
+        })
+        .catch((error) => {
+          if (cancelled) return;
+          setDataSource([]);
+          setResolveError((error as { message?: string })?.message ?? '数据源加载失败');
+        });
       return () => { cancelled = true; };
     }
 
@@ -1134,7 +1184,7 @@ const PreviewDynamicListNode: React.FC<PreviewDynamicListNodeProps> = ({
       });
 
     return () => { cancelled = true; };
-  }, [dataSourceRevision, staticDataSource, node]);
+  }, [dataSourceRevision, staticDataSource, node, flowGraph, dataHubRef, previewRuntimeEpoch]);
 
   const templateNode = React.useMemo(
     () => (node.children ?? []).find((child) => child.type === 'DynamicList.Item'),

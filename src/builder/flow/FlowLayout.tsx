@@ -34,12 +34,15 @@ import {
 } from '../components/codeEditor/flowCodeNodeSource';
 import { buildDynamicCompletionContextFromUiTree } from '../components/codeEditor/dynamicCompletions';
 import type {
+  CodeNodeData,
   EventFilterFormState,
   LifecycleExposeNodeFormState,
   NetworkRequestFormState,
   PropExposeNodeFormState,
   TimerNodeFormState,
 } from '../../types/flow';
+import CodeNodeListContractDialog from './components/CodeNodeListContractDialog';
+import { isFlowCodeNodeReferencedByDynamicList } from './flowDynamicListUpstream';
 
 interface CodeNodeFormState extends CodeEditorValue {}
 
@@ -112,10 +115,30 @@ const FlowLayout: React.FC = () => {
   const [lifecycleAliasDrawerVisible, setLifecycleAliasDrawerVisible] = useState(false);
   const [rightPanelMode, setRightPanelMode] = useState<RightPanelMode>('library');
   const [pendingWorkbenchSessionId, setPendingWorkbenchSessionId] = useState('');
+  const [listContractDialogVisible, setListContractDialogVisible] = useState(false);
 
   const dynamicCompletionContext = useMemo(() => {
     return buildDynamicCompletionContextFromUiTree(uiPageData, 'root');
   }, [uiPageData]);
+
+  const codeNodeReferencedAsListSource = useMemo(() => {
+    if (!activeFlowNode || activeFlowNode.type !== 'codeNode') {
+      return false;
+    }
+    return isFlowCodeNodeReferencedByDynamicList(uiPageData, activeFlowNode.id);
+  }, [activeFlowNode, uiPageData]);
+
+  const codeNodeListContractMissing = useMemo(() => {
+    if (!activeFlowNode || activeFlowNode.type !== 'codeNode') {
+      return true;
+    }
+    const fields = (activeFlowNode.data as CodeNodeData | undefined)?.listOutputContract?.fields;
+    return !fields?.length;
+  }, [activeFlowNode]);
+
+  useEffect(() => {
+    setListContractDialogVisible(false);
+  }, [activeFlowNode?.id]);
 
   const builtinNodes = [
     {
@@ -1004,6 +1027,25 @@ const FlowLayout: React.FC = () => {
                     <span className="config-value">{codeDraft.code.length} chars</span>
                   </div>
 
+                  {codeNodeReferencedAsListSource ? (
+                    <div className="flow-config-field">
+                      <div className="flow-config-field__label">动态列表输出契约</div>
+                      <div style={{ fontSize: 12, color: 'var(--td-text-color-secondary)', lineHeight: 1.5, marginBottom: 8 }}>
+                        当前节点被动态列表选为「流程代码」数据源时，需声明列表项字段供行内映射使用。
+                        {codeNodeListContractMissing ? ' 尚未配置。' : ''}
+                      </div>
+                      <Button
+                        size="small"
+                        theme={codeNodeListContractMissing ? 'primary' : 'default'}
+                        variant="outline"
+                        disabled={readOnly}
+                        onClick={() => setListContractDialogVisible(true)}
+                      >
+                        {codeNodeListContractMissing ? '配置列表契约' : '编辑列表契约'}
+                      </Button>
+                    </div>
+                  ) : null}
+
                   <div className="flow-config-panel__actions">
                     <Button
                       size="small"
@@ -1561,6 +1603,29 @@ const FlowLayout: React.FC = () => {
         </Drawer>
 
       </aside>
+
+      <CodeNodeListContractDialog
+        visible={listContractDialogVisible && activeFlowNode?.type === 'codeNode'}
+        initialContract={
+          activeFlowNode?.type === 'codeNode'
+            ? ((activeFlowNode.data as CodeNodeData)?.listOutputContract ?? null)
+            : null
+        }
+        onClose={() => setListContractDialogVisible(false)}
+        onConfirm={(next) => {
+          if (!activeFlowNode || activeFlowNode.type !== 'codeNode') {
+            return;
+          }
+          updateFlowNodeData(
+            activeFlowNode.id,
+            (current) => ({
+              ...current,
+              listOutputContract: next,
+            }),
+            '配置代码节点列表输出契约',
+          );
+        }}
+      />
     </div>
   );
 };

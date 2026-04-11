@@ -383,7 +383,7 @@ const DataConstance: React.FC = () => {
       colKey: 'ops',
       title: '操作',
       width: 220,
-      fixed: 'right',
+      fixed: 'right' as const,
       cell: ({ row }: { row: DataConstantRecord }) => (
         <Space size="small">
           <Button

@@ -8,6 +8,8 @@ import PreviewRenderer, {
 } from '../../pages/PreviewEngine/components/PreviewRenderer';
 import { createPreviewDataHub, type DataHubRouterState, type PreviewDataHub } from '../../pages/PreviewEngine/runtime/dataHub';
 import { createPreviewFlowRuntime, type PreviewFlowRuntime } from '../../pages/PreviewEngine/runtime/flowRuntime';
+import { PreviewFlowGraphContext } from '../../pages/PreviewEngine/context/PreviewFlowGraphContext';
+import { PreviewRuntimeEpochContext } from '../../pages/PreviewEngine/context/PreviewRuntimeEpochContext';
 import { useBuilderContext } from '../context/BuilderContext';
 import { buildPreviewSnapshot, normalizeRoutePath } from '../utils/buildPreviewSnapshot';
 import type { PreviewSnapshot } from '../../pages/PreviewEngine/utils/snapshot';
@@ -183,6 +185,7 @@ const BuilderEmbeddedPreview: React.FC<BuilderEmbeddedPreviewProps> = ({
   const effectiveFlowEdges = matchedRouteSnapshot?.flowEdges ?? snapshot.flowEdges;
 
   const [renderTree, setRenderTree] = useState(effectiveUiTree);
+  const [previewRuntimeEpoch, setPreviewRuntimeEpoch] = useState(0);
   const runtimeRef = React.useRef<PreviewFlowRuntime | null>(null);
   const dataHubRef = React.useRef<PreviewDataHub | null>(null);
   const routeSubscribersRef = React.useRef(new Set<(state: DataHubRouterState) => void>());
@@ -233,6 +236,7 @@ const BuilderEmbeddedPreview: React.FC<BuilderEmbeddedPreviewProps> = ({
 
     runtimeRef.current = runtime;
     dataHubRef.current = hub;
+    setPreviewRuntimeEpoch((n) => n + 1);
     window.dataHub = hub;
 
     return () => {
@@ -240,6 +244,7 @@ const BuilderEmbeddedPreview: React.FC<BuilderEmbeddedPreviewProps> = ({
       runtime.destroy();
       runtimeRef.current = null;
       dataHubRef.current = null;
+      setPreviewRuntimeEpoch((n) => n + 1);
       if (window.dataHub === hub) {
         delete window.dataHub;
       }
@@ -296,13 +301,19 @@ const BuilderEmbeddedPreview: React.FC<BuilderEmbeddedPreviewProps> = ({
             {(lib) => (
               <PreviewUiLibraryContext.Provider value={lib}>
                 <AntdRuntimeRoot>
-                  <PreviewDataHubRefContext.Provider value={dataHubRef}>
-                    <PreviewRenderer
-                      key={`${renderTree.key}-${lib}-${refreshTick}`}
-                      node={renderTree}
-                      onLifecycle={handleLifecycle}
-                    />
-                  </PreviewDataHubRefContext.Provider>
+                  <PreviewFlowGraphContext.Provider
+                    value={{ flowNodes: effectiveFlowNodes, flowEdges: effectiveFlowEdges }}
+                  >
+                    <PreviewRuntimeEpochContext.Provider value={previewRuntimeEpoch}>
+                      <PreviewDataHubRefContext.Provider value={dataHubRef}>
+                        <PreviewRenderer
+                          key={`${renderTree.key}-${lib}-${refreshTick}`}
+                          node={renderTree}
+                          onLifecycle={handleLifecycle}
+                        />
+                      </PreviewDataHubRefContext.Provider>
+                    </PreviewRuntimeEpochContext.Provider>
+                  </PreviewFlowGraphContext.Provider>
                 </AntdRuntimeRoot>
               </PreviewUiLibraryContext.Provider>
             )}

@@ -29,8 +29,10 @@ import { useTeam } from '../../team/context';
 import { getDataConstantList, type DataConstantRecord } from '../../api/dataConstant';
 import { getDataTableList, type DataTableRecord } from '../../api/dataTable';
 import { getCloudFunctionList, type CloudFunctionRecord } from '../../api/cloudFunction';
+import type { CodeNodeData } from '../../types/flow';
 import type { ComponentDataSourceType } from '../../types/dataSource';
 import { normalizeDataSourceConfig } from '../../types/dataSource';
+import { findComponentFlowNodeIdsForUiKey, listUpstreamCodeNodesForComponentFlow } from '../flow/flowDynamicListUpstream';
 import { getMediaAssetUrlFromDrop } from '../../utils/mediaAssetDrag';
 import {
   clearCodeWorkbenchResult,
@@ -126,6 +128,7 @@ interface DataSourceConfigDraft {
   constantId: string;
   tableId: string;
   functionId: string;
+  flowCodeNodeId: string;
   page: number;
   pageSize: number;
   responsePath: string;
@@ -350,6 +353,7 @@ const normalizeDataSourceConfigDraft = (value: unknown): DataSourceConfigDraft =
     constantId: config.constantId ?? '',
     tableId: config.tableId ?? '',
     functionId: config.functionId ?? '',
+    flowCodeNodeId: config.flowCodeNodeId ?? '',
     page: config.page ?? 1,
     pageSize: config.pageSize ?? 20,
     responsePath: config.responsePath ?? 'output',
@@ -679,6 +683,8 @@ const ComponentConfigPanel: React.FC = () => {
   const activeNode = useStore((state) => state.activeNode);
   const activeNodeKey = useStore((state) => state.activeNodeKey);
   const uiPageData = useStore((state) => state.uiPageData);
+  const flowNodes = useStore((state) => state.flowNodes);
+  const flowEdges = useStore((state) => state.flowEdges);
   const updateActiveNodeLabel = useStore((state) => state.updateActiveNodeLabel);
   const updateActiveNodeKey = useStore((state) => state.updateActiveNodeKey);
   const updateActiveNodeProp = useStore((state) => state.updateActiveNodeProp);
@@ -942,14 +948,59 @@ const ComponentConfigPanel: React.FC = () => {
     [dataConstantOptions, dynamicListDataSourceConfig.constantId],
   );
 
+  const flowUpstreamCodeSelectOptions = React.useMemo(() => {
+    if (!dynamicListAncestor?.key) {
+      return [] as Array<{ label: string; value: string }>;
+    }
+    const compIds = findComponentFlowNodeIdsForUiKey(flowNodes, dynamicListAncestor.key);
+    const dedup = new Map<string, string>();
+    compIds.forEach((cid) => {
+      listUpstreamCodeNodesForComponentFlow(flowEdges, flowNodes, cid).forEach((item) => {
+        if (!dedup.has(item.id)) {
+          dedup.set(item.id, item.label);
+        }
+      });
+    });
+    return Array.from(dedup.entries()).map(([value, label]) => ({ value, label }));
+  }, [dynamicListAncestor?.key, flowNodes, flowEdges]);
+
+  const dynamicListFlowCodeLabel = React.useMemo(() => {
+    if (dynamicListDataSourceConfig.type !== 'flowCode' || !dynamicListDataSourceConfig.flowCodeNodeId) {
+      return '';
+    }
+    const n = flowNodes.find((x) => x.id === dynamicListDataSourceConfig.flowCodeNodeId);
+    const d = (n?.data ?? {}) as CodeNodeData;
+    return String(d.label ?? '代码节点');
+  }, [flowNodes, dynamicListDataSourceConfig.flowCodeNodeId, dynamicListDataSourceConfig.type]);
+
   const dynamicListFieldMeta = React.useMemo(() => {
     if (!isInsideDynamicList) {
       return { options: [] as Array<{ label: string; value: string }>, error: '' };
     }
+    if (dynamicListDataSourceConfig.type === 'flowCode') {
+      if (!dynamicListDataSourceConfig.flowCodeNodeId) {
+        return {
+          options: [] as Array<{ label: string; value: string }>,
+          error: '请在数据源中选择流程代码节点（需从代码节点连到本组件的流程节点）。',
+        };
+      }
+      const codeNode = flowNodes.find((n) => n.id === dynamicListDataSourceConfig.flowCodeNodeId);
+      const fields = (codeNode?.data as CodeNodeData | undefined)?.listOutputContract?.fields;
+      if (!fields?.length) {
+        return {
+          options: [] as Array<{ label: string; value: string }>,
+          error: '请先在代码节点上配置「列表输出契约」（点击画布上的警告图标）。',
+        };
+      }
+      return {
+        options: fields.map((key) => ({ label: key, value: key })),
+        error: '',
+      };
+    }
     if (dynamicListDataSourceConfig.type !== 'constant') {
       return {
         options: [] as Array<{ label: string; value: string }>,
-        error: '当前仅支持绑定到「常量管理」中的 Array<Object> 数据源。',
+        error: '当前仅支持「常量管理」或「流程代码节点」数据源。',
       };
     }
     if (!dynamicListDataSourceConfig.constantId) {
@@ -1002,7 +1053,7 @@ const ComponentConfigPanel: React.FC = () => {
       options: firstKeys.map((key) => ({ label: key, value: key })),
       error: '',
     };
-  }, [dataSourceLoading, dynamicListConstantRecord, dynamicListDataSourceConfig, isInsideDynamicList]);
+  }, [dataSourceLoading, dynamicListConstantRecord, dynamicListDataSourceConfig, flowNodes, isInsideDynamicList]);
 
   const dynamicListFieldOptions = dynamicListFieldMeta.options;
   const dynamicListFieldError = dynamicListFieldMeta.error;
@@ -1695,9 +1746,27 @@ const ComponentConfigPanel: React.FC = () => {
     setTableColumnsTargetPropKey(null);
   };
 
+  const dataSourceTypeSelectOptions = React.useMemo(() => {
+    const base: Array<{ label: string; value: ComponentDataSourceType }> = [
+      { label: '静态数据', value: 'static' },
+      { label: '常量管理', value: 'constant' },
+      { label: '数据表记录', value: 'dataTable' },
+      { label: '云函数调用', value: 'cloudFunction' },
+    ];
+    if (activeNode?.type === 'DynamicList') {
+      base.push({ label: '流程代码节点', value: 'flowCode' });
+    }
+    return base;
+  }, [activeNode?.type]);
+
   const openDataSourceConfigDialog = (propKey: string, currentValue: unknown) => {
     setDataSourceTargetPropKey(propKey);
-    setDataSourceDraft(normalizeDataSourceConfigDraft(currentValue));
+    const draft = normalizeDataSourceConfigDraft(currentValue);
+    if (activeNode?.type !== 'DynamicList' && draft.type === 'flowCode') {
+      setDataSourceDraft({ ...draft, type: 'static', flowCodeNodeId: '' });
+    } else {
+      setDataSourceDraft(draft);
+    }
     setDataSourceDialogVisible(true);
     void loadDataSourceResources();
   };
@@ -1746,6 +1815,7 @@ const ComponentConfigPanel: React.FC = () => {
       constantId: dataSourceDraft.constantId || undefined,
       tableId: dataSourceDraft.tableId || undefined,
       functionId: dataSourceDraft.functionId || undefined,
+      flowCodeNodeId: dataSourceDraft.flowCodeNodeId || undefined,
       page: Math.max(1, Math.round(Number(dataSourceDraft.page) || 1)),
       pageSize: Math.max(1, Math.round(Number(dataSourceDraft.pageSize) || 20)),
       responsePath: dataSourceDraft.responsePath.trim() || 'output',
@@ -2522,7 +2592,11 @@ const ComponentConfigPanel: React.FC = () => {
 
           {isInsideDynamicList ? (
             <div style={{ fontSize: 12, color: dynamicListFieldError ? 'var(--td-error-color, #d54941)' : 'var(--td-text-color-secondary)' }}>
-              {dynamicListFieldError || `数据字段来源：常量「${dynamicListConstantRecord?.name ?? '-'}」`}
+              {dynamicListFieldError || (
+                dynamicListDataSourceConfig.type === 'flowCode'
+                  ? `数据字段来源：流程代码节点「${dynamicListFlowCodeLabel || '-'}」`
+                  : `数据字段来源：常量「${dynamicListConstantRecord?.name ?? '-'}」`
+              )}
             </div>
           ) : (
             <div style={{ fontSize: 12, color: 'var(--td-text-color-secondary)' }}>
@@ -2618,18 +2692,16 @@ const ComponentConfigPanel: React.FC = () => {
             <div className="config-editor">
               <Select
                 value={dataSourceDraft.type}
-                options={[
-                  { label: '静态数据', value: 'static' },
-                  { label: '常量管理', value: 'constant' },
-                  { label: '数据表记录', value: 'dataTable' },
-                  { label: '云函数调用', value: 'cloudFunction' },
-                ]}
-                onChange={(value) =>
+                options={dataSourceTypeSelectOptions}
+                onChange={(value) => {
+                  const nextType = String(value ?? 'static') as ComponentDataSourceType;
                   setDataSourceDraft((previous) => ({
                     ...previous,
-                    type: String(value ?? 'static') as ComponentDataSourceType,
-                  }))
-                }
+                    type: nextType,
+                    ...(nextType !== 'constant' ? { constantId: '' } : {}),
+                    ...(nextType !== 'flowCode' ? { flowCodeNodeId: '' } : {}),
+                  }));
+                }}
               />
             </div>
           </div>
@@ -2650,6 +2722,29 @@ const ComponentConfigPanel: React.FC = () => {
                     setDataSourceDraft((previous) => ({
                       ...previous,
                       constantId: String(value ?? ''),
+                    }))
+                  }
+                />
+              </div>
+            </div>
+          ) : null}
+
+          {dataSourceDraft.type === 'flowCode' ? (
+            <div className="config-row">
+              <span className="config-label">代码节点</span>
+              <div className="config-editor">
+                <Select
+                  value={dataSourceDraft.flowCodeNodeId || undefined}
+                  options={flowUpstreamCodeSelectOptions}
+                  placeholder={
+                    flowUpstreamCodeSelectOptions.length === 0
+                      ? '请先在流程图中从代码节点连到本组件节点'
+                      : '请选择上游代码节点'
+                  }
+                  onChange={(value) =>
+                    setDataSourceDraft((previous) => ({
+                      ...previous,
+                      flowCodeNodeId: String(value ?? ''),
                     }))
                   }
                 />
