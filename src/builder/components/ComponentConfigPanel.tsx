@@ -1191,7 +1191,7 @@ const ComponentConfigPanel: React.FC = () => {
     };
   }, [applyWorkbenchResult, pendingWorkbenchSessionId]);
 
-  /** 必须在任意 early return 之前声明：否则 activeNode 为空时少跑 hooks，触发 React #310 */
+  /** 必须在任意 early return 之前声明（含下方 `dataSourceTypeSelectOptions` 等）：否则 activeNode 为空时少跑 hooks，触发 React #310 */
   const loadDataSourceResources = useCallback(async () => {
     if (!canQueryWorkspaceResource) {
       setDataConstantOptions([]);
@@ -1246,6 +1246,20 @@ const ComponentConfigPanel: React.FC = () => {
     loadDataSourceResources,
     showBindingUI,
   ]);
+
+  /** 必须在任意 early return 之前：activeNode 为空时若跳过会少跑 hooks（React #310） */
+  const dataSourceTypeSelectOptions = React.useMemo(() => {
+    const base: Array<{ label: string; value: ComponentDataSourceType }> = [
+      { label: '静态数据', value: 'static' },
+      { label: '常量管理', value: 'constant' },
+      { label: '数据表记录', value: 'dataTable' },
+      { label: '云函数调用', value: 'cloudFunction' },
+    ];
+    if (activeNode?.type === 'DynamicList') {
+      base.push({ label: '流程代码节点', value: 'flowCode' });
+    }
+    return base;
+  }, [activeNode?.type]);
 
   if (!activeNode) {
     return (
@@ -1745,19 +1759,6 @@ const ComponentConfigPanel: React.FC = () => {
     setTableColumnsDialogVisible(false);
     setTableColumnsTargetPropKey(null);
   };
-
-  const dataSourceTypeSelectOptions = React.useMemo(() => {
-    const base: Array<{ label: string; value: ComponentDataSourceType }> = [
-      { label: '静态数据', value: 'static' },
-      { label: '常量管理', value: 'constant' },
-      { label: '数据表记录', value: 'dataTable' },
-      { label: '云函数调用', value: 'cloudFunction' },
-    ];
-    if (activeNode?.type === 'DynamicList') {
-      base.push({ label: '流程代码节点', value: 'flowCode' });
-    }
-    return base;
-  }, [activeNode?.type]);
 
   const openDataSourceConfigDialog = (propKey: string, currentValue: unknown) => {
     setDataSourceTargetPropKey(propKey);

@@ -50,12 +50,14 @@
 
 3. **TDesign 搭建态 `Image`**（`displayComponents.tsx`）  
    - **不要**再包一层 `div` 且对 **外壳与 `Image` 各写一遍** `mergeStyle()`。  
-   - 仅通过 **`ActivateWrapper` 的 `style={mergeStyle()}`** 合并到 **单个** `Image` 子节点，拖拽事件绑在 `Image` 上，避免「壳 50% × 内层再 50%」。
+   - 仅通过 **`ActivateWrapper` 的 `style={mergeStyle()}`** 合并到 **单个** `Image` 子节点，拖拽事件绑在 `Image` 上，避免「壳 50% × 内层再 50%」。  
+   - **中间不能多一层仅用于拖拽的 `div`**：`ActivateWrapper` 只会把样式 `cloneElement` 到**唯一子节点**；若子节点是 `div`，则 `height`/`width` 等会落在 `div` 上，而 TDesign 的 `.t-image__wrapper` 收不到尺寸，会出现「外层选区有高度、内部图片仍按固有比例缩在上方」；`Image` 会把多余 DOM 属性透传到自身外壳，拖拽可绑在 `Image` 上。
 
 ### 回归自检（改代码后建议看一眼）
 
 - DSL：`__style.width: '50%'` 时，TDesign / antd 下**整块图片区域**是否均为父宽度的约一半（而非「壳满宽、图仅一半」）。  
-- 无 `width` 仅 `height` 的 Banner 场景：仍应铺满父级可用宽度（历史问题曾通过「只给 img 设宽」与「根节点 inline-block」导致铺不满，见 `styles.root` 与语义 API 方案）。
+- 无 `width` 仅 `height` 的 Banner 场景：仍应铺满父级可用宽度（历史问题曾通过「只给 img 设宽」与「根节点 inline-block」导致铺不满，见 `styles.root` 与语义 API 方案）。  
+- 搭建态给 `Image` 设 **`height: 200px`（或任意固定高）**：TDesign 下**图片内容**应随 `fit` 填满该矩形区域（外壳与内容同高），不应仅外层选区变高、图仍贴在顶部一小块。
 
 ---
 
