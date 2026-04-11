@@ -58,21 +58,26 @@ const BuilderEmbeddedPreview: React.FC<BuilderEmbeddedPreviewProps> = ({
   const previewUiLibrary = useStore((s) => s.previewUiLibrary);
   const [previewPath, setPreviewPath] = useState(() => normalizeRoutePath(pageRoutePath ?? '/'));
   const simulatorScrollRef = useRef<HTMLDivElement | null>(null);
-  const [embeddedSimulatorScrollEl, setEmbeddedSimulatorScrollEl] = useState<HTMLDivElement | null>(null);
+  const simulatorOverlayRef = useRef<HTMLDivElement | null>(null);
+  const [embeddedSimulatorOverlayEl, setEmbeddedSimulatorOverlayEl] = useState<HTMLDivElement | null>(null);
 
   const bindEmbeddedSimulatorScrollRef = useCallback((node: HTMLDivElement | null) => {
     simulatorScrollRef.current = node;
-    setEmbeddedSimulatorScrollEl(node);
+  }, []);
+
+  const bindEmbeddedSimulatorOverlayRef = useCallback((node: HTMLDivElement | null) => {
+    simulatorOverlayRef.current = node;
+    setEmbeddedSimulatorOverlayEl(node);
   }, []);
 
   const embeddedPreviewPortalMount = useCallback((): HTMLElement => {
     return (
-      embeddedSimulatorScrollEl
-      ?? simulatorScrollRef.current
-      ?? (document.querySelector('[data-urpbuilder-simulator-scroll="embedded"]') as HTMLElement | null)
+      embeddedSimulatorOverlayEl
+      ?? simulatorOverlayRef.current
+      ?? (document.querySelector('[data-builder-overlay-container="embedded"]') as HTMLElement | null)
       ?? document.body
     );
-  }, [embeddedSimulatorScrollEl]);
+  }, [embeddedSimulatorOverlayEl]);
 
   useEffect(() => {
     return useStore.subscribe(() => {
@@ -326,6 +331,11 @@ const BuilderEmbeddedPreview: React.FC<BuilderEmbeddedPreviewProps> = ({
           {previewBody}
         </div>
       </div>
+      <div
+        ref={bindEmbeddedSimulatorOverlayRef}
+        className="simulator-overlay-root"
+        data-builder-overlay-container="embedded"
+      />
       {showDeviceChrome && chromeFloating ? (
         <SimulatorDeviceChrome variant={simulatorChromeStyle} />
       ) : null}

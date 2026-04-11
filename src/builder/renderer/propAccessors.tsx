@@ -263,7 +263,9 @@ export function createPropAccessors(data: UiTreeNode | undefined) {
   };
 
   const getBuilderDrawerAttach = () =>
-    () => (document.querySelector('[data-builder-scroll-container="true"]') as HTMLElement | null) ?? document.body;
+    () => (document.querySelector('[data-builder-overlay-container]') as HTMLElement | null)
+      ?? (document.querySelector('[data-builder-scroll-container="true"]') as HTMLElement | null)
+      ?? document.body;
 
   const getDrawerHeaderProp = (): string | boolean => {
     const showHeader = getBooleanProp('showHeader') !== false;

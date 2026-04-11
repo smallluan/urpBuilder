@@ -16,6 +16,9 @@ const ComponentAsideRight: React.FC = () => {
 	useEffect(() => {
 		if (activeNodeKey) {
 			setMode('config');
+		} else {
+			// 删除节点后无选中项时，避免停留在空的配置面板，回到组件库
+			setMode('library');
 		}
 	}, [activeNodeKey]);
 

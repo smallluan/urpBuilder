@@ -7,7 +7,7 @@ import { Button, Divider, Input, Row, Space, Tree, Typography, MessagePlugin } f
 const { Text } = Typography;
 import type { TreeInstanceFunctions } from 'tdesign-react';
 import { Icon, SearchIcon } from 'tdesign-icons-react';
-import { FolderTree, GripHorizontal, LayoutGrid, Minus, PlusSquare } from 'lucide-react';
+import { FolderTree, GripHorizontal, LayoutGrid, LocateFixed, Minus, PlusSquare } from 'lucide-react';
 import { useBuilderAccess, useBuilderContext } from '../context/BuilderContext';
 import type { UiTreeInstance, UiTreeNode } from '../store/types';
 import { getNodeSlotKey, isSlotNode } from '../utils/slot';
@@ -443,6 +443,7 @@ const ComponentAsideLeft: React.FC = () => {
   const setTreeInstance = useStore((state) => state.setTreeInstance);
   const uiStructureTreeScrollRequest = useStore((state) => state.uiStructureTreeScrollRequest);
   const clearUiStructureTreeScrollRequest = useStore((state) => state.clearUiStructureTreeScrollRequest);
+  const requestUiStructureTreeScrollToKey = useStore((state) => state.requestUiStructureTreeScrollToKey);
   const activeNodeKey = useStore((state) => state.activeNodeKey);
   const setActiveNode = useStore((state) => state.setActiveNode);
   const toggleActiveNode = useStore((state) => state.toggleActiveNode);
@@ -970,7 +971,8 @@ const ComponentAsideLeft: React.FC = () => {
     return () => setTreeInstance(null);
   }, [setTreeInstance]);
 
-  useEffect(() => {
+  /** 先于 scroll 的 layout 阶段展开，避免虚拟列表尚未挂载时 scrollTo 无效 */
+  useLayoutEffect(() => {
     if (!uiStructureTreeScrollRequest) {
       return;
     }
@@ -1011,7 +1013,7 @@ const ComponentAsideLeft: React.FC = () => {
     uiStructureTreeScrollRequest,
   ]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const allKeys = collectTreeKeys(uiPageData);
     const allKeySet = new Set(allKeys);
     setExpandedKeys((previous) => {
@@ -1032,42 +1034,11 @@ const ComponentAsideLeft: React.FC = () => {
     });
   }, [activeNodeKey, uiPageData]);
 
-  useLayoutEffect(() => {
-    if (!activeNodeKey) {
-      return;
+  const handleLocateActiveNode = useCallback(() => {
+    if (activeNodeKey) {
+      requestUiStructureTreeScrollToKey(activeNodeKey);
     }
-
-    const viewport = structureTreeViewportRef.current;
-    if (!viewport) {
-      return;
-    }
-
-    const activeNodeElement = Array.from(
-      viewport.querySelectorAll<HTMLElement>('[data-tree-node-key]'),
-    ).find((element) => element.dataset.treeNodeKey === activeNodeKey);
-
-    if (!activeNodeElement) {
-      return;
-    }
-
-    const rafId = window.requestAnimationFrame(() => {
-      const viewportRect = viewport.getBoundingClientRect();
-      const nodeRect = activeNodeElement.getBoundingClientRect();
-      const targetTop =
-        viewport.scrollTop + (nodeRect.top - viewportRect.top) - (viewport.clientHeight - nodeRect.height) / 2;
-      const targetLeft =
-        viewport.scrollLeft + (nodeRect.left - viewportRect.left) - (viewport.clientWidth - nodeRect.width) / 2;
-      viewport.scrollTo({
-        top: Math.max(0, targetTop),
-        left: Math.max(0, targetLeft),
-        behavior: 'smooth',
-      });
-    });
-
-    return () => {
-      window.cancelAnimationFrame(rafId);
-    };
-  }, [activeNodeKey, expandedKeys, treeData]);
+  }, [activeNodeKey, requestUiStructureTreeScrollToKey]);
 
   useEffect(() => {
     if (!contextMenuState.visible) {
@@ -1214,6 +1185,15 @@ const ComponentAsideLeft: React.FC = () => {
         <div className="structure-panel">
           <div className="search-row">
             <Input placeholder="搜索组件（示例）" clearable suffix={<SearchIcon />} />
+            <button
+              type="button"
+              className={`structure-locate-btn${activeNodeKey ? '' : ' structure-locate-btn--disabled'}`}
+              title="定位到激活节点"
+              disabled={!activeNodeKey}
+              onClick={handleLocateActiveNode}
+            >
+              <LocateFixed size={16} strokeWidth={1.8} />
+            </button>
           </div>
 
           <StructureVirtualRootBanner

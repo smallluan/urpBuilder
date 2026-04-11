@@ -334,6 +334,36 @@
         }
       }
 
+      .structure-locate-btn {
+        flex-shrink: 0;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 28px;
+        height: 28px;
+        padding: 0;
+        border: none;
+        border-radius: 6px;
+        background: transparent;
+        color: var(--builder-text-muted);
+        cursor: pointer;
+        transition: color 0.15s, background 0.15s;
+
+        &:hover:not(:disabled) {
+          color: var(--builder-icon-hover-color);
+          background: var(--builder-icon-hover-bg);
+        }
+
+        &:active:not(:disabled) {
+          background: var(--builder-icon-active-bg, rgba(0, 0, 0, 0.08));
+        }
+
+        &--disabled {
+          opacity: 0.35;
+          cursor: default;
+        }
+      }
+
       .structure-virtual-root-banner {
         display: flex;
         align-items: center;
@@ -386,8 +416,12 @@
         min-height: 0;
         min-width: 0;
         padding: 2px;
-        font-size: 13px;
+        font-size: 12px;
         color: var(--builder-text-tree);
+        /* 与 builderStructureTreeScroll.ts 中 BUILDER_STRUCTURE_TREE_ROW_HEIGHT 一致 */
+        --builder-structure-tree-row-height: 30px;
+        /* 默认约 24px/级，略收紧以减少深树横向滚动 */
+        --builder-structure-tree-indent-unit: 16px;
 
         /* 鏍硅妭鐐归檺鍒跺湪渚ф爮鍐咃紝妯悜婧㈠嚭鐣欏湪鏈妭鐐规粴鍔紙鍕跨敤 fit-content 鎾戠牬鐖剁骇 overflow:hidden锛?*/
         .t-tree {
@@ -396,6 +430,24 @@
           min-width: 0;
           width: 100%;
           max-width: 100%;
+          --td-comp-margin-xxl: var(--builder-structure-tree-indent-unit);
+        }
+
+        .t-tree__item::before {
+          height: var(--builder-structure-tree-row-height);
+        }
+
+        .t-tree__line {
+          height: var(--builder-structure-tree-row-height);
+          --space: var(--builder-structure-tree-indent-unit);
+        }
+
+        .t-tree__line::before {
+          height: var(--builder-structure-tree-row-height);
+        }
+
+        .t-tree__item .t-icon {
+          font-size: 14px;
         }
 
         /* 铏氭嫙鍒楄〃鍐呭眰瑕侀殢鏈€瀹借鎾戝紑锛屽惁鍒?TDesign 榛樿 label 鐪佺暐鍙蜂笉浼氫骇鐢熸í鍚?scrollWidth */
@@ -452,8 +504,8 @@
           width: max-content;
           min-width: 100%;
           user-select: none;
-          padding: 6px 8px;
-          border-radius: 6px;
+          padding: 4px 6px;
+          border-radius: 4px;
           transition: background-color 0.18s ease;
         }
 
@@ -465,14 +517,14 @@
           display: flex;
           align-items: center;
           justify-content: flex-start;
-          gap: 8px;
+          gap: 6px;
         }
 
         .tree-node-item__left {
           min-width: min-content;
           display: inline-flex;
           align-items: center;
-          gap: 6px;
+          gap: 4px;
           flex: 1 1 auto;
         }
 
@@ -522,8 +574,8 @@
           flex: 0 0 auto;
           min-width: max-content;
           color: var(--builder-tree-title-color);
-          font-size: 13px;
-          line-height: 18px;
+          font-size: 12px;
+          line-height: 16px;
           white-space: nowrap;
         }
 
@@ -1034,6 +1086,31 @@
         &::-webkit-scrollbar {
           width: 0;
           height: 0;
+        }
+      }
+
+      /*
+       * Drawer / Dialog / Popup 的 portal 挂载层。
+       * 作为 .simulator-scroll 的兄弟节点定位在 .simulator-container 内，
+       * 不随页面内容滚动，遮罩可阻断下方滚动事件传递。
+       */
+      .simulator-overlay-root {
+        position: absolute;
+        inset: 0;
+        z-index: 50;
+        overflow: hidden;
+        pointer-events: none;
+        /*
+         * contain: layout → position: fixed 子节点以本元素为包含块（而非 viewport）
+         * contain: paint  → 裁剪溢出，同时为 abs 后代建立包含块
+         * contain: style  → 计数器/引号不泄漏
+         * 与 .simulator-scroll 保持一致，让 Drawer/Dialog/Popup 的 fixed 遮罩被限制在模拟器内。
+         */
+        contain: layout paint style;
+
+        /* portal 进来的实际 UI（mask / drawer / dialog）需要接收交互 */
+        > * {
+          pointer-events: auto;
         }
       }
 

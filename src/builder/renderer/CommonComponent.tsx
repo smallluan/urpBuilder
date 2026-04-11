@@ -23,7 +23,7 @@ import {
 import { CARD_SHELL_ALWAYS_ANTD_TYPES, resolveAntdPreviewTypeForCanonical } from '../../config/uiPreviewLibrary';
 import { findNodePathByKey } from '../utils/tree';
 import { SimulatorPreviewLibraryOverrideContext } from '../context/SimulatorPreviewLibraryOverrideContext';
-import { SimulatorScrollContainerContext } from '../context/SimulatorScrollContainerContext';
+import { SimulatorOverlayContainerContext } from '../context/SimulatorOverlayContainerContext';
 import { ComponentLayoutContext, getComponentLayoutType } from './componentLayoutType';
 
 /**
@@ -165,20 +165,20 @@ export default function CommonComponent(properties: CommonComponentProps) {
 
   const accessors = createPropAccessors(data);
   const { getStyleProp, getStringProp, getBooleanProp, getProp } = accessors;
-  const resolveSimulatorScrollMount = React.useContext(SimulatorScrollContainerContext);
-  const getSimulatorMountEl = React.useCallback((): HTMLElement => {
-    if (resolveSimulatorScrollMount) {
-      const el = resolveSimulatorScrollMount();
+  const resolveSimulatorOverlayMount = React.useContext(SimulatorOverlayContainerContext);
+  const getSimulatorOverlayEl = React.useCallback((): HTMLElement => {
+    if (resolveSimulatorOverlayMount) {
+      const el = resolveSimulatorOverlayMount();
       if (el instanceof HTMLElement) {
         return el;
       }
     }
-    const mainSim = document.querySelector('[data-urpbuilder-simulator-scroll="main"]') as HTMLElement | null;
-    if (mainSim) {
-      return mainSim;
+    const overlayEl = document.querySelector('[data-builder-overlay-container]') as HTMLElement | null;
+    if (overlayEl) {
+      return overlayEl;
     }
     return (document.querySelector('[data-builder-scroll-container="true"]') as HTMLElement | null) ?? document.body;
-  }, [resolveSimulatorScrollMount]);
+  }, [resolveSimulatorOverlayMount]);
 
   const renderBuilderMenuNodes = React.useMemo(
     () => buildMenuNodesRenderer(setActiveNode),
@@ -336,7 +336,7 @@ export default function CommonComponent(properties: CommonComponentProps) {
     data,
     onDropData,
     ...accessors,
-    getBuilderDrawerAttach: () => () => getSimulatorMountEl(),
+    getBuilderDrawerAttach: () => () => getSimulatorOverlayEl(),
     renderBuilderMenuNodes,
     mergeStyle,
     handleActivateSelf,

@@ -13,6 +13,7 @@ import { findNodePathByKey } from '../utils/tree';
 import SimulatorDeviceChrome from '../components/SimulatorDeviceChrome';
 import SimulatorLibraryBrushOverlay from '../components/SimulatorLibraryBrushOverlay';
 import { SimulatorScrollContainerContext } from '../context/SimulatorScrollContainerContext';
+import { SimulatorOverlayContainerContext } from '../context/SimulatorOverlayContainerContext';
 import SimulatorSelectionOverlay from '../components/SimulatorSelectionOverlay';
 import componentCatalog from '../../config/componentCatalog';
 import { getNodeSlotKey, isSlotNode } from '../utils/slot';
@@ -28,6 +29,7 @@ import { resolveSimulatorStyle } from '../utils/simulatorStyle';
 import { SIMULATOR_CHROME_FLOATING_PAD_PX } from '../constants/simulatorChromeStyle';
 import { isHandheldSimulatorScreenSize } from '../utils/simulatorViewport';
 import { getEffectiveBoundingRect, getScrollTargetForBuilderNode } from '../utils/builderNodeDomRect';
+import { shouldSkipSimulatorScrollOnTreeActivation } from '../utils/simulatorTreeActivationScroll';
 
 const { Text } = Typography;
 
@@ -365,10 +367,17 @@ const ComponentBody: React.FC = () => {
   const simulatorContainerRef = useRef<HTMLDivElement | null>(null);
   const simulatorScrollRef = useRef<HTMLDivElement | null>(null);
   const [mainSimulatorScrollEl, setMainSimulatorScrollEl] = useState<HTMLDivElement | null>(null);
+  const simulatorOverlayRef = useRef<HTMLDivElement | null>(null);
+  const [mainSimulatorOverlayEl, setMainSimulatorOverlayEl] = useState<HTMLDivElement | null>(null);
 
   const bindSimulatorScrollRef = useCallback((node: HTMLDivElement | null) => {
     simulatorScrollRef.current = node;
     setMainSimulatorScrollEl(node);
+  }, []);
+
+  const bindSimulatorOverlayRef = useCallback((node: HTMLDivElement | null) => {
+    simulatorOverlayRef.current = node;
+    setMainSimulatorOverlayEl(node);
   }, []);
 
   const simulatorScrollMountFn = useCallback((): HTMLElement => {
@@ -379,6 +388,15 @@ const ComponentBody: React.FC = () => {
       ?? document.body
     );
   }, [mainSimulatorScrollEl]);
+
+  const simulatorOverlayMountFn = useCallback((): HTMLElement => {
+    return (
+      mainSimulatorOverlayEl
+      ?? simulatorOverlayRef.current
+      ?? (document.querySelector('[data-builder-overlay-container="main"]') as HTMLElement | null)
+      ?? document.body
+    );
+  }, [mainSimulatorOverlayEl]);
   const [contextMenuState, setContextMenuState] = useState<{
     visible: boolean;
     nodeKey: string | null;
@@ -555,6 +573,10 @@ const ComponentBody: React.FC = () => {
 
     hiddenHintKeyRef.current = null;
 
+    if (shouldSkipSimulatorScrollOnTreeActivation(activeNode)) {
+      return;
+    }
+
     const safeKey = typeof CSS !== 'undefined' && typeof CSS.escape === 'function'
       ? CSS.escape(activeNodeKey)
       : activeNodeKey.replace(/"/g, '\\"');
@@ -582,7 +604,7 @@ const ComponentBody: React.FC = () => {
     if (outsideViewport) {
       scrollTarget.scrollIntoView({ block: 'center', inline: 'center', behavior: 'smooth' });
     }
-  }, [activeNodeKey]);
+  }, [activeNodeKey, uiPageData]);
 
   const contextMenuNode = useMemo(() => {
     if (!contextMenuState.nodeKey) {
@@ -1128,29 +1150,36 @@ const ComponentBody: React.FC = () => {
       {showDeviceChrome && !chromeFloating ? (
         <SimulatorDeviceChrome variant={simulatorChromeStyle} />
       ) : null}
-      <div
-        ref={bindSimulatorScrollRef}
-        className={['simulator-scroll', chromeFloating ? 'simulator-scroll--chrome-inset' : ''].filter(Boolean).join(' ')}
-        data-builder-scroll-container="true"
-        data-urpbuilder-simulator-scroll="main"
-      >
-        <SimulatorScrollContainerContext.Provider value={simulatorScrollMountFn}>
-          <SimulatorLibraryBrushOverlay activeLibrary={previewUiLibrary} variant="main">
-            {() => (
-              <>
-                <DropArea
-                  className="drop-area-root"
-                  style={resolveSimulatorStyle({ minHeight: '100%', height: 'auto', flex: '1 0 auto' })}
-                  data={uiPageData}
-                  onDropData={handleDropData}
-                  selectable={false}
-                />
-                <SimulatorSelectionOverlay scrollContainerRef={simulatorScrollRef} />
-              </>
-            )}
-          </SimulatorLibraryBrushOverlay>
-        </SimulatorScrollContainerContext.Provider>
-      </div>
+      <SimulatorOverlayContainerContext.Provider value={simulatorOverlayMountFn}>
+        <div
+          ref={bindSimulatorScrollRef}
+          className={['simulator-scroll', chromeFloating ? 'simulator-scroll--chrome-inset' : ''].filter(Boolean).join(' ')}
+          data-builder-scroll-container="true"
+          data-urpbuilder-simulator-scroll="main"
+        >
+          <SimulatorScrollContainerContext.Provider value={simulatorScrollMountFn}>
+            <SimulatorLibraryBrushOverlay activeLibrary={previewUiLibrary} variant="main">
+              {() => (
+                <>
+                  <DropArea
+                    className="drop-area-root"
+                    style={resolveSimulatorStyle({ minHeight: '100%', height: 'auto', flex: '1 0 auto' })}
+                    data={uiPageData}
+                    onDropData={handleDropData}
+                    selectable={false}
+                  />
+                  <SimulatorSelectionOverlay scrollContainerRef={simulatorScrollRef} />
+                </>
+              )}
+            </SimulatorLibraryBrushOverlay>
+          </SimulatorScrollContainerContext.Provider>
+        </div>
+        <div
+          ref={bindSimulatorOverlayRef}
+          className="simulator-overlay-root"
+          data-builder-overlay-container="main"
+        />
+      </SimulatorOverlayContainerContext.Provider>
       {showDeviceChrome && chromeFloating ? (
         <SimulatorDeviceChrome variant={simulatorChromeStyle} />
       ) : null}

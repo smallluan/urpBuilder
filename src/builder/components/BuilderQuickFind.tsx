@@ -107,7 +107,6 @@ const BuilderQuickFind: React.FC<{ mode: Mode }> = ({ mode }) => {
   const setActiveNode = useStore((state) => state.setActiveNode);
   const switchPageRoute = useStore((state) => state.switchPageRoute);
   const requestFlowViewportFocus = useStore((state) => state.requestFlowViewportFocus);
-  const requestUiStructureTreeScrollToKey = useStore((state) => state.requestUiStructureTreeScrollToKey);
   const flowStructureTreeInstance = useStore((state) => state.flowStructureTreeInstance);
 
   const acRef = useRef<AutoCompleteRef>(null);
@@ -171,7 +170,6 @@ const BuilderQuickFind: React.FC<{ mode: Mode }> = ({ mode }) => {
       }
       if (match.kind === 'ui') {
         setActiveNode(match.key);
-        requestUiStructureTreeScrollToKey(match.key);
         return;
       }
       requestFlowViewportFocus(match.id);
@@ -179,13 +177,7 @@ const BuilderQuickFind: React.FC<{ mode: Mode }> = ({ mode }) => {
         flowStructureTreeInstance?.scrollTo?.({ key: match.structureKey });
       }
     },
-    [
-      flowStructureTreeInstance,
-      requestFlowViewportFocus,
-      requestUiStructureTreeScrollToKey,
-      setActiveNode,
-      switchPageRoute,
-    ],
+    [flowStructureTreeInstance, requestFlowViewportFocus, setActiveNode, switchPageRoute],
   );
 
   const closeAndReset = useCallback(() => {
