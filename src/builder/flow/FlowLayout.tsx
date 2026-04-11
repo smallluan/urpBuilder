@@ -266,8 +266,9 @@ const FlowLayout: React.FC = () => {
       ? (nodeData.selectedMappings as Array<Record<string, unknown>>).map((m) => ({
           sourcePropKey: String(m?.sourcePropKey ?? ''),
           alias: typeof m?.alias === 'string' ? String(m?.alias) : undefined,
+          displayName: typeof m?.displayName === 'string' ? String(m?.displayName) : undefined,
         })).filter((m) => Boolean(m.sourcePropKey))
-      : selectedPropKeys.map((k) => ({ sourcePropKey: k, alias: undefined }));
+      : selectedPropKeys.map((k) => ({ sourcePropKey: k, alias: undefined, displayName: undefined }));
 
     setPropExposeDraft({
       label: String(nodeData.label ?? '属性暴露节点'),
@@ -1453,7 +1454,9 @@ const FlowLayout: React.FC = () => {
         >
           {propExposeDraft ? (
             <div className="flow-config-drawer-form">
-              <div className="flow-config-drawer-subtitle">在此选择要暴露的属性，并为每项配置对外别名。</div>
+              <div className="flow-config-drawer-subtitle">
+              选择要暴露的属性；「对外标识」为实例上的属性 key（建议英文），「面板展示名」为右侧配置区显示的中文标题（不填则沿用内部属性名）。
+            </div>
 
               <div className="flow-config-field">
                 <div className="flow-config-field__label">选择属性</div>
@@ -1476,7 +1479,7 @@ const FlowLayout: React.FC = () => {
                             selectedPropKeys: nextValues,
                             selectedMappings: nextValues.map((k) => {
                               const exists = previous.selectedMappings?.find((m) => m.sourcePropKey === k);
-                              return exists ? { ...exists } : { sourcePropKey: k, alias: undefined };
+                              return exists ? { ...exists } : { sourcePropKey: k, alias: undefined, displayName: undefined };
                             }),
                           }
                         : previous,
@@ -1486,7 +1489,7 @@ const FlowLayout: React.FC = () => {
               </div>
 
               <div className="flow-config-field">
-                <div className="flow-config-field__label">别名（可选）</div>
+                <div className="flow-config-field__label">对外标识与展示名</div>
                 <div className="flow-config-expose-mappings">
                   {propExposeDraft.selectedMappings && propExposeDraft.selectedMappings.length > 0 ? (
                     propExposeDraft.selectedMappings.map((m, idx) => (
@@ -1494,13 +1497,30 @@ const FlowLayout: React.FC = () => {
                         <div className="flow-config-expose-mapping-name">{m.sourcePropKey}</div>
                         <Input
                           size="small"
-                          placeholder="对外名称（不填则使用来源名称）"
+                          placeholder="对外标识（唯一，如 btnColor；不填则用来源 key）"
                           value={m.alias ?? ''}
                           onChange={(value) => {
                             setPropExposeDraft((previous) => {
                               if (!previous) return previous;
                               const next = (previous.selectedMappings ?? []).map((item) =>
                                 item.sourcePropKey === m.sourcePropKey ? { ...item, alias: String(value ?? '') || undefined } : item,
+                              );
+                              return { ...previous, selectedMappings: next };
+                            });
+                          }}
+                        />
+                        <Input
+                          size="small"
+                          style={{ marginTop: 6 }}
+                          placeholder="面板展示名（如：块级元素；不填则用内部属性名）"
+                          value={m.displayName ?? ''}
+                          onChange={(value) => {
+                            setPropExposeDraft((previous) => {
+                              if (!previous) return previous;
+                              const next = (previous.selectedMappings ?? []).map((item) =>
+                                item.sourcePropKey === m.sourcePropKey
+                                  ? { ...item, displayName: String(value ?? '') || undefined }
+                                  : item,
                               );
                               return { ...previous, selectedMappings: next };
                             });

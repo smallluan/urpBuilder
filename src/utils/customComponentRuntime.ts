@@ -10,6 +10,7 @@ interface ComponentContract {
     sourceKey?: string;
     sourceRef?: string;
     key?: string;
+    displayName?: string;
   }>;
   exposedLifecycles?: Array<string | {
     lifetime?: string;
@@ -30,6 +31,7 @@ interface ExposedPropSchemaItem {
 interface ExposedPropRefItem {
   propKey: string;
   key?: string;
+  displayName?: string;
   sourceKey?: string;
   sourceRef?: string;
 }
@@ -120,12 +122,14 @@ const resolveFlowNodeExposedProps = (detail: ComponentDetail | null): ExposedPro
           }
 
           const alias = typeof mapping.alias === 'string' ? String(mapping.alias).trim() : '';
+          const displayName = typeof mapping.displayName === 'string' ? String(mapping.displayName).trim() : '';
           return {
             sourcePropKey,
             alias,
+            displayName,
           };
         })
-        .filter((item): item is { sourcePropKey: string; alias: string } => !!item)
+        .filter((item): item is { sourcePropKey: string; alias: string; displayName: string } => item !== null)
       : [];
 
     if (selectedMappings.length > 0) {
@@ -133,6 +137,7 @@ const resolveFlowNodeExposedProps = (detail: ComponentDetail | null): ExposedPro
         result.push({
           propKey: item.sourcePropKey,
           key: item.alias || item.sourcePropKey,
+          displayName: item.displayName || undefined,
           sourceKey,
           sourceRef,
         });
@@ -397,9 +402,15 @@ export const resolveExposedPropSchemas = (detail: ComponentDetail | null): Expos
           editType: 'input',
         };
 
-    if (exposePropKey !== sourcePropKey) {
-      nextSchema.name = exposePropKey;
-    }
+    const explicitDisplayName =
+      typeof item === 'object' && item !== null && 'displayName' in item
+        ? String((item as { displayName?: unknown }).displayName ?? '').trim()
+        : '';
+    const innerPanelName =
+      typeof nextSchema.name === 'string' && String(nextSchema.name).trim()
+        ? String(nextSchema.name).trim()
+        : sourcePropKey;
+    nextSchema.name = explicitDisplayName || innerPanelName;
 
     map.set(exposePropKey, {
       propKey: exposePropKey,

@@ -5,8 +5,10 @@ import type { LifecycleExposeNodeData, PropExposeNodeData } from '../../types/fl
 export interface ComponentExposedProp {
   // propKey: 来源节点内部属性名（target node 中的属性 key）
   propKey: string;
-  // key: 对外暴露的名称（alias）。为兼容历史数据，propKey 也可能同时作为对外名称。
+  // key: 对外唯一标识（实例 props 上的 key / alias）。为兼容历史数据，propKey 也可能同时作为对外名称。
   key?: string;
+  /** 属性面板展示名（如「块级元素」）；不填则沿用内部属性 schema 的 name */
+  displayName?: string;
   sourceKey: string;
   sourceRef?: string;
   sourceLabel?: string;
@@ -121,7 +123,7 @@ export const buildComponentContract = (
         : [];
 
       const selectedMappings = Array.isArray((data as any).selectedMappings)
-        ? (data as any).selectedMappings as Array<{ sourcePropKey?: string; alias?: string }>
+        ? (data as any).selectedMappings as Array<{ sourcePropKey?: string; alias?: string; displayName?: string }>
         : [];
 
       if (!sourceKey || selectedPropKeys.length === 0) {
@@ -131,9 +133,13 @@ export const buildComponentContract = (
       return selectedPropKeys.map((propKey) => {
         const mapping = selectedMappings.find((m) => String(m?.sourcePropKey ?? '').trim() === propKey);
         const externalKey = mapping && typeof mapping.alias === 'string' && mapping.alias.trim() ? mapping.alias.trim() : propKey;
+        const displayName = mapping && typeof mapping.displayName === 'string' && mapping.displayName.trim()
+          ? mapping.displayName.trim()
+          : undefined;
         return {
           propKey,
           key: externalKey,
+          displayName,
           sourceKey,
           sourceRef: sourceRef || undefined,
           sourceLabel: sourceLabel || undefined,
