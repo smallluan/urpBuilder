@@ -402,32 +402,47 @@ const BREAKPOINT_DEVICE_MAP: Record<GridBreakpoint, string> = {
 const clampSpan = (value: number) => Math.max(0, Math.min(12, Math.round(value)));
 const clampOffset = (value: number) => Math.max(0, Math.min(11, Math.round(value)));
 
-const LIST_BINDABLE_PROP_OPTIONS: Record<string, Array<{ label: string; value: string }>> = {
-  Image: [
-    { label: 'src', value: 'src' },
-    { label: 'alt', value: 'alt' },
-  ],
-  Avatar: [
-    { label: 'image', value: 'image' },
-    { label: 'content', value: 'content' },
-    { label: 'alt', value: 'alt' },
-  ],
-  Button: [
-    { label: 'content', value: 'content' },
-  ],
-  Link: [
-    { label: 'content', value: 'content' },
-    { label: 'href', value: 'href' },
-  ],
-  'Typography.Title': [
-    { label: 'content', value: 'content' },
-  ],
-  'Typography.Paragraph': [
-    { label: 'content', value: 'content' },
-  ],
-  'Typography.Text': [
-    { label: 'content', value: 'content' },
-  ],
+interface ListBindingMapping {
+  prop: string;
+  field: string;
+}
+
+interface ListBindingDraftRow extends ListBindingMapping {
+  id: string;
+}
+
+const createListBindingDraftRow = (seed?: Partial<ListBindingMapping>): ListBindingDraftRow => ({
+  id: `list-binding-${Date.now()}-${Math.round(Math.random() * 10000)}`,
+  prop: String(seed?.prop ?? ''),
+  field: String(seed?.field ?? ''),
+});
+
+const normalizeListBindingMappings = (value: unknown): ListBindingMapping[] => {
+  if (!value || typeof value !== 'object') {
+    return [];
+  }
+
+  const raw = value as {
+    prop?: unknown;
+    field?: unknown;
+    mappings?: Array<{ prop?: unknown; field?: unknown }>;
+  };
+
+  if (Array.isArray(raw.mappings)) {
+    return raw.mappings
+      .map((item) => ({
+        prop: String(item?.prop ?? '').trim(),
+        field: String(item?.field ?? '').trim(),
+      }))
+      .filter((item) => item.prop && item.field);
+  }
+
+  const prop = String(raw.prop ?? '').trim();
+  const field = String(raw.field ?? '').trim();
+  if (!prop || !field) {
+    return [];
+  }
+  return [{ prop, field }];
 };
 
 const LIST_META_PROP_KEYS = new Set([
@@ -699,6 +714,8 @@ const ComponentConfigPanel: React.FC = () => {
   const [iconPickerPropKey, setIconPickerPropKey] = useState<string | null>(null);
   const [customComponentFallbackProps, setCustomComponentFallbackProps] = useState<Array<[string, ComponentPropSchema]>>([]);
   const [configMainTab, setConfigMainTab] = useState<'props' | 'style'>('props');
+  const [listBindingDialogVisible, setListBindingDialogVisible] = useState(false);
+  const [listBindingDraft, setListBindingDraft] = useState<ListBindingDraftRow[]>([]);
 
   const openJsonCodeWorkbench = useCallback((propKey: string, title: string, code: string) => {
     const sessionId = createCodeWorkbenchSessionId();
@@ -898,22 +915,97 @@ const ComponentConfigPanel: React.FC = () => {
     (listItemAncestor && activeNode && activeNode.type !== 'List.Item')
     || (dynamicListItemAncestor && activeNode && activeNode.type !== 'DynamicList.Item'),
   );
-  const bindableProps = activeNode?.type ? (LIST_BINDABLE_PROP_OPTIONS[activeNode.type] ?? []) : [];
+  const bindableProps = React.useMemo(
+    () => mergedEditableProps
+      .filter(([propKey]) => !propKey.startsWith('__'))
+      .map(([propKey, schema]) => ({
+        label: String(schema.name ?? propKey),
+        value: propKey,
+      })),
+    [mergedEditableProps],
+  );
   const listBindingSchema = propsMap.__listBinding;
-  const listBindingValue = (listBindingSchema?.value ?? {}) as { prop?: string; field?: string };
-  const bindingPropValue = typeof listBindingValue.prop === 'string' ? listBindingValue.prop : '';
-  const bindingFieldValue = typeof listBindingValue.field === 'string' ? listBindingValue.field : '';
+  const listBindingMappings = React.useMemo(
+    () => normalizeListBindingMappings(listBindingSchema?.value),
+    [listBindingSchema?.value],
+  );
   const showBindingUI = (isListCustomTemplateEnabled && isNodeInsideListTemplate && bindableProps.length > 0)
     || (isInsideDynamicList && isNodeInsideListTemplate && bindableProps.length > 0);
 
-  const dynamicListFieldOptions = React.useMemo<Array<{ label: string; value: string }>>(() => {
-    if (!dynamicListAncestor) return [];
-    const dsValue = (dynamicListAncestor.props?.dataSource as { value?: unknown } | undefined)?.value;
-    if (!Array.isArray(dsValue) || dsValue.length === 0) return [];
-    const firstRow = dsValue[0];
-    if (!firstRow || typeof firstRow !== 'object') return [];
-    return Object.keys(firstRow as Record<string, unknown>).map((key) => ({ label: key, value: key }));
-  }, [dynamicListAncestor]);
+  const dynamicListDataSourceConfig = React.useMemo(
+    () => normalizeDataSourceConfig((dynamicListAncestor?.props?.dataSourceConfig as { value?: unknown } | undefined)?.value),
+    [dynamicListAncestor?.props?.dataSourceConfig],
+  );
+
+  const dynamicListConstantRecord = React.useMemo(
+    () => dataConstantOptions.find((item) => item.id === dynamicListDataSourceConfig.constantId) ?? null,
+    [dataConstantOptions, dynamicListDataSourceConfig.constantId],
+  );
+
+  const dynamicListFieldMeta = React.useMemo(() => {
+    if (!isInsideDynamicList) {
+      return { options: [] as Array<{ label: string; value: string }>, error: '' };
+    }
+    if (dynamicListDataSourceConfig.type !== 'constant') {
+      return {
+        options: [] as Array<{ label: string; value: string }>,
+        error: '当前仅支持绑定到「常量管理」中的 Array<Object> 数据源。',
+      };
+    }
+    if (!dynamicListDataSourceConfig.constantId) {
+      return {
+        options: [] as Array<{ label: string; value: string }>,
+        error: '请先给动态列表配置常量数据源。',
+      };
+    }
+    if (!dynamicListConstantRecord) {
+      return {
+        options: [] as Array<{ label: string; value: string }>,
+        error: dataSourceLoading ? '正在加载常量数据源...' : '未找到对应常量，请检查常量是否存在。',
+      };
+    }
+    if (dynamicListConstantRecord.valueType !== 'array' || !Array.isArray(dynamicListConstantRecord.value)) {
+      return {
+        options: [] as Array<{ label: string; value: string }>,
+        error: '常量数据源格式错误：必须是 Array 类型。',
+      };
+    }
+    const rows = dynamicListConstantRecord.value;
+    if (rows.length === 0) {
+      return {
+        options: [] as Array<{ label: string; value: string }>,
+        error: '常量数组为空，无法推断可绑定字段。',
+      };
+    }
+    const firstRow = rows[0];
+    if (!firstRow || typeof firstRow !== 'object' || Array.isArray(firstRow)) {
+      return {
+        options: [] as Array<{ label: string; value: string }>,
+        error: '常量数据源格式错误：数组元素必须全部是对象。',
+      };
+    }
+    const firstKeys = Object.keys(firstRow as Record<string, unknown>);
+    const sameShape = rows.every((row) => {
+      if (!row || typeof row !== 'object' || Array.isArray(row)) {
+        return false;
+      }
+      const keys = Object.keys(row as Record<string, unknown>);
+      return keys.length === firstKeys.length && keys.every((key) => firstKeys.includes(key));
+    });
+    if (!sameShape) {
+      return {
+        options: [] as Array<{ label: string; value: string }>,
+        error: '常量数据源格式错误：数组内每个对象的字段必须完全一致。',
+      };
+    }
+    return {
+      options: firstKeys.map((key) => ({ label: key, value: key })),
+      error: '',
+    };
+  }, [dataSourceLoading, dynamicListConstantRecord, dynamicListDataSourceConfig, isInsideDynamicList]);
+
+  const dynamicListFieldOptions = dynamicListFieldMeta.options;
+  const dynamicListFieldError = dynamicListFieldMeta.error;
 
   const responsiveColSchema = propsMap.__responsiveCol;
   const simulatorWidth = resolveBuilderViewportWidth(screenSize, autoWidth);
@@ -1047,6 +1139,62 @@ const ComponentConfigPanel: React.FC = () => {
       window.removeEventListener('storage', onStorage);
     };
   }, [applyWorkbenchResult, pendingWorkbenchSessionId]);
+
+  /** 必须在任意 early return 之前声明：否则 activeNode 为空时少跑 hooks，触发 React #310 */
+  const loadDataSourceResources = useCallback(async () => {
+    if (!canQueryWorkspaceResource) {
+      setDataConstantOptions([]);
+      setDataTableOptions([]);
+      setCloudFunctionOptions([]);
+      return;
+    }
+
+    setDataSourceLoading(true);
+    try {
+      const [constantsResult, tablesResult, functionsResult] = await Promise.all([
+        getDataConstantList({
+          ...accessContext,
+          page: 1,
+          pageSize: 200,
+        }),
+        getDataTableList({
+          ...accessContext,
+          page: 1,
+          pageSize: 200,
+        }),
+        getCloudFunctionList({
+          ...accessContext,
+          page: 1,
+          pageSize: 200,
+        }),
+      ]);
+      setDataConstantOptions(Array.isArray(constantsResult.list) ? constantsResult.list : []);
+      setDataTableOptions(Array.isArray(tablesResult.list) ? tablesResult.list : []);
+      setCloudFunctionOptions(Array.isArray(functionsResult.list) ? functionsResult.list : []);
+    } finally {
+      setDataSourceLoading(false);
+    }
+  }, [accessContext, canQueryWorkspaceResource]);
+
+  useEffect(() => {
+    if (!showBindingUI || !isInsideDynamicList) {
+      return;
+    }
+    if (dynamicListDataSourceConfig.type !== 'constant') {
+      return;
+    }
+    if (dataConstantOptions.length > 0 || dataSourceLoading) {
+      return;
+    }
+    void loadDataSourceResources();
+  }, [
+    dataConstantOptions.length,
+    dataSourceLoading,
+    dynamicListDataSourceConfig.type,
+    isInsideDynamicList,
+    loadDataSourceResources,
+    showBindingUI,
+  ]);
 
   if (!activeNode) {
     return (
@@ -1547,46 +1695,34 @@ const ComponentConfigPanel: React.FC = () => {
     setTableColumnsTargetPropKey(null);
   };
 
-  const loadDataSourceResources = async () => {
-    if (!canQueryWorkspaceResource) {
-      setDataConstantOptions([]);
-      setDataTableOptions([]);
-      setCloudFunctionOptions([]);
-      return;
-    }
-
-    setDataSourceLoading(true);
-    try {
-      const [constantsResult, tablesResult, functionsResult] = await Promise.all([
-        getDataConstantList({
-          ...accessContext,
-          page: 1,
-          pageSize: 200,
-        }),
-        getDataTableList({
-          ...accessContext,
-          page: 1,
-          pageSize: 200,
-        }),
-        getCloudFunctionList({
-          ...accessContext,
-          page: 1,
-          pageSize: 200,
-        }),
-      ]);
-      setDataConstantOptions(Array.isArray(constantsResult.list) ? constantsResult.list : []);
-      setDataTableOptions(Array.isArray(tablesResult.list) ? tablesResult.list : []);
-      setCloudFunctionOptions(Array.isArray(functionsResult.list) ? functionsResult.list : []);
-    } finally {
-      setDataSourceLoading(false);
-    }
-  };
-
   const openDataSourceConfigDialog = (propKey: string, currentValue: unknown) => {
     setDataSourceTargetPropKey(propKey);
     setDataSourceDraft(normalizeDataSourceConfigDraft(currentValue));
     setDataSourceDialogVisible(true);
     void loadDataSourceResources();
+  };
+
+  const openListBindingDialog = () => {
+    setListBindingDraft(
+      listBindingMappings.length > 0
+        ? listBindingMappings.map((item) => createListBindingDraftRow(item))
+        : [createListBindingDraftRow()],
+    );
+    setListBindingDialogVisible(true);
+    if (isInsideDynamicList && dynamicListDataSourceConfig.type === 'constant' && dataConstantOptions.length === 0) {
+      void loadDataSourceResources();
+    }
+  };
+
+  const applyListBindingDraft = () => {
+    const normalized = listBindingDraft
+      .map((item) => ({
+        prop: String(item.prop ?? '').trim(),
+        field: String(item.field ?? '').trim(),
+      }))
+      .filter((item) => item.prop && item.field);
+    updateActiveNodeProp('__listBinding', { mappings: normalized });
+    setListBindingDialogVisible(false);
   };
 
   const applyDataSourceConfigDraft = () => {
@@ -1776,59 +1912,31 @@ const ComponentConfigPanel: React.FC = () => {
         ) : null}
 
         {showBindingUI ? (
-          <>
-            <div className="config-row">
-              <span className="config-label">绑定属性</span>
-              <div className="config-editor">
-                <Select
-                  options={bindableProps}
-                  value={bindingPropValue || undefined}
-                  placeholder="选择组件属性"
-                  onChange={(value) => {
-                    const nextProp = String(value ?? '');
-                    updateActiveNodeProp('__listBinding', {
-                      prop: nextProp,
-                      field: bindingFieldValue,
-                    });
-                  }}
-                />
-              </div>
+          <div className="config-row">
+            <span className="config-label">动态绑定</span>
+            <div className="config-editor">
+              <Space direction="vertical" style={{ width: '100%' }} size={6}>
+                <Button
+                  size="small"
+                  variant="outline"
+                  disabled={readOnly}
+                  onClick={openListBindingDialog}
+                >
+                  配置字段映射
+                </Button>
+                <div style={{ fontSize: 12, color: 'var(--td-text-color-secondary)' }}>
+                  {listBindingMappings.length > 0
+                    ? `已配置 ${listBindingMappings.length} 组映射`
+                    : '尚未配置字段映射'}
+                </div>
+                {isInsideDynamicList ? (
+                  <div style={{ fontSize: 12, color: dynamicListFieldError ? 'var(--td-error-color, #d54941)' : 'var(--td-text-color-secondary)' }}>
+                    {dynamicListFieldError || `可用数据字段：${dynamicListFieldOptions.map((item) => item.value).join('、') || '无'}`}
+                  </div>
+                ) : null}
+              </Space>
             </div>
-            <div className="config-row">
-              <span className="config-label">数据字段</span>
-              <div className="config-editor">
-                {dynamicListFieldOptions.length > 0 ? (
-                  <Select
-                    options={dynamicListFieldOptions}
-                    value={bindingFieldValue || undefined}
-                    placeholder="选择数据字段"
-                    filterable
-                    creatable
-                    onChange={(value) => {
-                      const nextField = String(value ?? '');
-                      updateActiveNodeProp('__listBinding', {
-                        prop: bindingPropValue,
-                        field: nextField,
-                      });
-                    }}
-                  />
-                ) : (
-                  <Input
-                    clearable
-                    placeholder="例如：title 或 cover.url"
-                    value={bindingFieldValue}
-                    onChange={(value) => {
-                      const nextField = String(value ?? '');
-                      updateActiveNodeProp('__listBinding', {
-                        prop: bindingPropValue,
-                        field: nextField,
-                      });
-                    }}
-                  />
-                )}
-              </div>
-            </div>
-          </>
+          </div>
         ) : null}
       </div>
         </Tabs.TabPanel>
@@ -2392,6 +2500,103 @@ const ComponentConfigPanel: React.FC = () => {
             },
           ]}
         />
+      </Dialog>
+
+      <Dialog
+        visible={listBindingDialogVisible}
+        width="720px"
+        header="配置动态字段映射"
+        closeOnOverlayClick={false}
+        confirmBtn={{
+          content: '应用映射',
+          disabled: Boolean(isInsideDynamicList && dynamicListFieldError),
+        }}
+        cancelBtn="取消"
+        onConfirm={applyListBindingDraft}
+        onClose={() => setListBindingDialogVisible(false)}
+      >
+        <Space direction="vertical" style={{ width: '100%' }} size={12}>
+          <div style={{ fontSize: 12, color: 'var(--td-text-color-secondary)' }}>
+            将动态列表当前数据项的字段映射到当前组件的可配置属性。一个组件可配置多组映射。
+          </div>
+
+          {isInsideDynamicList ? (
+            <div style={{ fontSize: 12, color: dynamicListFieldError ? 'var(--td-error-color, #d54941)' : 'var(--td-text-color-secondary)' }}>
+              {dynamicListFieldError || `数据字段来源：常量「${dynamicListConstantRecord?.name ?? '-'}」`}
+            </div>
+          ) : (
+            <div style={{ fontSize: 12, color: 'var(--td-text-color-secondary)' }}>
+              当前使用的是普通列表模板绑定。
+            </div>
+          )}
+
+          <Space direction="vertical" style={{ width: '100%' }} size={8}>
+            {listBindingDraft.map((row) => (
+              <div
+                key={row.id}
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: '1fr 1fr auto',
+                  gap: 8,
+                  alignItems: 'start',
+                }}
+              >
+                <Select
+                  options={bindableProps}
+                  value={row.prop || undefined}
+                  placeholder="选择目标组件属性"
+                  onChange={(value) => {
+                    const nextValue = String(value ?? '');
+                    setListBindingDraft((previous) => previous.map((item) => (
+                      item.id === row.id ? { ...item, prop: nextValue } : item
+                    )));
+                  }}
+                />
+                <Select
+                  options={dynamicListFieldOptions}
+                  value={row.field || undefined}
+                  placeholder={
+                    isInsideDynamicList
+                      ? (dynamicListFieldError ? '当前数据源不可绑定' : '选择数据字段')
+                      : '输入或选择数据字段'
+                  }
+                  disabled={Boolean(isInsideDynamicList && dynamicListFieldError)}
+                  filterable
+                  creatable={!isInsideDynamicList}
+                  onChange={(value) => {
+                    const nextValue = String(value ?? '');
+                    setListBindingDraft((previous) => previous.map((item) => (
+                      item.id === row.id ? { ...item, field: nextValue } : item
+                    )));
+                  }}
+                />
+                <Button
+                  variant="text"
+                  theme="danger"
+                  disabled={listBindingDraft.length <= 1}
+                  onClick={() => {
+                    setListBindingDraft((previous) => previous.filter((item) => item.id !== row.id));
+                  }}
+                >
+                  删除
+                </Button>
+              </div>
+            ))}
+          </Space>
+
+          <div>
+            <Button
+              size="small"
+              variant="outline"
+              disabled={Boolean(dynamicListFieldError)}
+              onClick={() => {
+                setListBindingDraft((previous) => [...previous, createListBindingDraftRow()]);
+              }}
+            >
+              新增映射
+            </Button>
+          </div>
+        </Space>
       </Dialog>
 
       <Dialog

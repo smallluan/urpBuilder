@@ -1,13 +1,16 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Button, Card, Drawer, Form, Input, InputNumber, MessagePlugin, Pagination, Radio, Select, Space, Table, Tag, Textarea } from 'tdesign-react';
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { Button, Card, Dialog, DialogPlugin, Drawer, Input, InputNumber, MessagePlugin, Pagination, Radio, Select, Space, Table, Tag, Textarea } from 'tdesign-react';
 import { AddIcon, SearchIcon } from 'tdesign-icons-react';
 import CodeMirrorEditor from '../../builder/components/codeEditor/CodeMirrorEditor';
 import { buildCodeMirrorExtensions } from '../../builder/components/codeEditor/buildCodeMirrorExtensions';
 import { useTeam } from '../../team/context';
 import WorkspaceModePanel from '../../components/WorkspaceModePanel';
 import {
+  coerceApiDataConstantRecord,
   createDataConstant,
+  deleteDataConstant,
   getDataConstantList,
+  updateDataConstant,
   type CreateDataConstantPayload,
   type DataConstantRecord,
   type DataConstantValueType,
@@ -74,6 +77,48 @@ const stringifyValuePreview = (record: DataConstantRecord) => {
   }
 };
 
+/** 弹窗内完整展示（Object/Array 带缩进） */
+const formatFullValuePreview = (record: DataConstantRecord) => {
+  const { value, valueType } = record;
+  if (valueType === 'string') {
+    return typeof value === 'string' ? value : String(value ?? '');
+  }
+  if (valueType === 'number') {
+    return typeof value === 'number' ? String(value) : String(Number(value) || 0);
+  }
+  if (valueType === 'boolean') {
+    return value ? 'true' : 'false';
+  }
+  try {
+    return JSON.stringify(value, null, 2);
+  } catch {
+    return '[无法序列化]';
+  }
+};
+
+const recordToDraft = (record: DataConstantRecord): DrawerDraftState => {
+  const base = createInitialDraft();
+  base.name = String(record.name ?? '');
+  base.description = record.description != null ? String(record.description) : '';
+  base.valueType = record.valueType;
+  const v = record.value;
+  if (record.valueType === 'string') {
+    return { ...base, stringValue: typeof v === 'string' ? v : String(v ?? '') };
+  }
+  if (record.valueType === 'number') {
+    return { ...base, numberValue: typeof v === 'number' && Number.isFinite(v) ? v : 0 };
+  }
+  if (record.valueType === 'boolean') {
+    return { ...base, booleanValue: Boolean(v) };
+  }
+  try {
+    const fallback = record.valueType === 'array' ? [] : {};
+    return { ...base, jsonValue: JSON.stringify(v ?? fallback, null, 2) };
+  } catch {
+    return { ...base, jsonValue: record.valueType === 'array' ? '[\n]' : '{\n}' };
+  }
+};
+
 const DataConstance: React.FC = () => {
   const { workspaceMode, currentTeamId } = useTeam();
   const [loading, setLoading] = useState(false);
@@ -86,6 +131,12 @@ const DataConstance: React.FC = () => {
   const [total, setTotal] = useState(0);
   const [records, setRecords] = useState<DataConstantRecord[]>([]);
   const [draft, setDraft] = useState<DrawerDraftState>(createInitialDraft());
+  const [drawerMode, setDrawerMode] = useState<'create' | 'edit'>('create');
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [previewVisible, setPreviewVisible] = useState(false);
+  const [previewRecord, setPreviewRecord] = useState<DataConstantRecord | null>(null);
+  const [drawerFormKey, setDrawerFormKey] = useState(0);
+  const hydratedEditSessionRef = useRef<string | null>(null);
 
   const ownerType = workspaceMode === 'team' ? 'team' : 'user';
   const canQuery = ownerType === 'user' || Boolean(currentTeamId);
@@ -121,6 +172,26 @@ const DataConstance: React.FC = () => {
     void loadData();
   }, [loadData]);
 
+  /** 抽屉内表单在部分环境下首帧拿不到 batch 后的 draft；打开编辑时再从列表强制灌入一层 */
+  useLayoutEffect(() => {
+    if (!drawerVisible) {
+      hydratedEditSessionRef.current = null;
+      return;
+    }
+    if (drawerMode !== 'edit' || !editingId) {
+      return;
+    }
+    if (hydratedEditSessionRef.current === editingId) {
+      return;
+    }
+    const row = records.find((r) => r.id === editingId);
+    if (!row) {
+      return;
+    }
+    hydratedEditSessionRef.current = editingId;
+    setDraft(recordToDraft(coerceApiDataConstantRecord(row)));
+  }, [drawerVisible, drawerMode, editingId, records]);
+
   const buildPayload = (): CreateDataConstantPayload | null => {
     const name = draft.name.trim();
     if (!name) {
@@ -153,12 +224,14 @@ const DataConstance: React.FC = () => {
           }
         }
         if (draft.valueType === 'array' && !Array.isArray(parsed)) {
-          MessagePlugin.warning('Array 类型请输入 JSON 数组');
+          MessagePlugin.warning('Array 类型最外层须为 JSON 数组，例如 [] 或 [{"a":1}]');
           return null;
         }
         value = parsed;
       } catch {
-        MessagePlugin.warning('JSON 格式不正确，请先修正');
+        MessagePlugin.warning(
+          '不是合法 JSON。此处使用 JSON.parse，须为标准 JSON：键和字符串都用英文双引号，例如 [{"name":"耳机","prise":300}]；不能写 name: 或 \'单引号\'（那是 JS 对象写法）。',
+        );
         return null;
       }
     }
@@ -173,9 +246,9 @@ const DataConstance: React.FC = () => {
     };
   };
 
-  const handleCreate = async () => {
+  const handleSave = async () => {
     if (ownerType === 'team' && !currentTeamId) {
-      MessagePlugin.warning('当前未选择团队，无法新增团队常量');
+      MessagePlugin.warning('当前未选择团队，无法保存团队常量');
       return;
     }
 
@@ -186,18 +259,77 @@ const DataConstance: React.FC = () => {
 
     setCreating(true);
     try {
-      await createDataConstant(payload);
-      MessagePlugin.success('常量新增成功');
-      setDrawerVisible(false);
-      setDraft(createInitialDraft());
-      if (page !== 1) {
-        setPage(1);
+      if (drawerMode === 'edit' && editingId) {
+        await updateDataConstant(
+          editingId,
+          {
+            name: payload.name,
+            description: payload.description,
+            valueType: payload.valueType,
+            value: payload.value,
+          },
+          {
+            ownerType,
+            ownerTeamId: ownerType === 'team' ? currentTeamId || undefined : undefined,
+          },
+        );
+        MessagePlugin.success('常量已保存');
+        setDrawerVisible(false);
+        setDraft(createInitialDraft());
+        setDrawerMode('create');
+        setEditingId(null);
+        void loadData(page, pageSize);
+      } else {
+        await createDataConstant(payload);
+        MessagePlugin.success('常量新增成功');
+        setDrawerVisible(false);
+        setDraft(createInitialDraft());
+        setDrawerMode('create');
+        setEditingId(null);
+        if (page !== 1) {
+          setPage(1);
+        }
+        void loadData(1, pageSize);
       }
-      void loadData(1, pageSize);
     } finally {
       setCreating(false);
     }
   };
+
+  const handleDelete = useCallback(
+    (row: DataConstantRecord) => {
+      if (ownerType === 'team' && !currentTeamId) {
+        MessagePlugin.warning('当前未选择团队，无法删除团队常量');
+        return;
+      }
+      const record = coerceApiDataConstantRecord(row);
+      const dialog = DialogPlugin.confirm({
+        header: '删除常量',
+        body: `确定删除常量「${record.name || record.id}」吗？删除后不可恢复。`,
+        confirmBtn: { content: '删除', theme: 'danger' },
+        cancelBtn: '取消',
+        onConfirm: () => {
+          dialog.hide();
+          void (async () => {
+            try {
+              await deleteDataConstant(record.id, {
+                ownerType,
+                ownerTeamId: ownerType === 'team' ? currentTeamId || undefined : undefined,
+              });
+              MessagePlugin.success('已删除');
+              void loadData(page, pageSize);
+            } catch {
+              /* 错误已由 request 拦截器提示 */
+            }
+          })();
+        },
+        onClose: () => {
+          dialog.hide();
+        },
+      });
+    },
+    [ownerType, currentTeamId, page, pageSize, loadData],
+  );
 
   const columns = useMemo(() => ([
     {
@@ -247,7 +379,47 @@ const DataConstance: React.FC = () => {
       width: 180,
       cell: ({ row }: { row: DataConstantRecord }) => formatDateTime(row.updatedAt || row.createdAt),
     },
-  ]), []);
+    {
+      colKey: 'ops',
+      title: '操作',
+      width: 220,
+      fixed: 'right',
+      cell: ({ row }: { row: DataConstantRecord }) => (
+        <Space size="small">
+          <Button
+            variant="text"
+            size="small"
+            theme="primary"
+            onClick={() => {
+              setPreviewRecord(coerceApiDataConstantRecord(row));
+              setPreviewVisible(true);
+            }}
+          >
+            预览
+          </Button>
+          <Button
+            variant="text"
+            size="small"
+            onClick={() => {
+              const full = records.find((r) => r.id === row.id);
+              const record = coerceApiDataConstantRecord(full ?? row);
+              hydratedEditSessionRef.current = null;
+              setDrawerMode('edit');
+              setEditingId(record.id);
+              setDraft(recordToDraft(record));
+              setDrawerFormKey((k) => k + 1);
+              setDrawerVisible(true);
+            }}
+          >
+            编辑
+          </Button>
+          <Button variant="text" size="small" theme="danger" onClick={() => handleDelete(row)}>
+            删除
+          </Button>
+        </Space>
+      ),
+    },
+  ]), [handleDelete, records]);
 
   if (workspaceMode === 'team' && !currentTeamId) {
     return (
@@ -300,7 +472,11 @@ const DataConstance: React.FC = () => {
                   theme="primary"
                   icon={<AddIcon />}
                   onClick={() => {
+                    hydratedEditSessionRef.current = null;
+                    setDrawerMode('create');
+                    setEditingId(null);
                     setDraft(createInitialDraft());
+                    setDrawerFormKey((k) => k + 1);
                     setDrawerVisible(true);
                   }}
                 >
@@ -348,92 +524,187 @@ const DataConstance: React.FC = () => {
       <Drawer
         visible={drawerVisible}
         size="600px"
-        header="新增常量"
+        header={drawerMode === 'edit' ? '编辑常量' : '新增常量'}
         destroyOnClose
         closeOnOverlayClick={false}
-        onClose={() => setDrawerVisible(false)}
+        onClose={() => {
+          setDrawerVisible(false);
+          setDrawerMode('create');
+          setEditingId(null);
+          setDraft(createInitialDraft());
+        }}
         footer={
           <Space>
-            <Button variant="outline" onClick={() => setDrawerVisible(false)}>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setDrawerVisible(false);
+                setDrawerMode('create');
+                setEditingId(null);
+                setDraft(createInitialDraft());
+              }}
+            >
               取消
             </Button>
-            <Button theme="primary" loading={creating} onClick={handleCreate}>
+            <Button theme="primary" loading={creating} onClick={handleSave}>
               保存
             </Button>
           </Space>
         }
       >
-        <Form labelWidth={96} className="data-constance-page__drawer-form">
-          <Form.FormItem label="常量名称" requiredMark>
-            <Input
-              value={draft.name}
-              placeholder="例如：table_mock_users"
-              onChange={(value) => setDraft((previous) => ({ ...previous, name: String(value ?? '') }))}
-            />
-          </Form.FormItem>
-          <Form.FormItem label="描述">
-            <Textarea
-              autosize={{ minRows: 2, maxRows: 4 }}
-              value={draft.description}
-              placeholder="描述常量用途（选填）"
-              onChange={(value) => setDraft((previous) => ({ ...previous, description: String(value ?? '') }))}
-            />
-          </Form.FormItem>
-          <Form.FormItem label="常量类型" requiredMark>
-            <Select
-              value={draft.valueType}
-              options={VALUE_TYPE_OPTIONS}
-              onChange={(value) => setDraft((previous) => ({ ...previous, valueType: String(value || 'string') as DataConstantValueType }))}
-            />
-          </Form.FormItem>
+        {/*
+          勿使用 TDesign Form.FormItem 包裹受控 Input/Select：未设置 name 时 FormItem 仍会用内部 formValue
+          覆盖子组件的 value（见 FormItem.js cloneElement），导致编辑时名称/类型不回显，而 CodeMirror 不受影响。
+        */}
+        <div key={drawerFormKey} className="data-constance-page__drawer-form">
+          <div className="data-constance-page__field">
+            <div className="data-constance-page__field-label">
+              <span className="data-constance-page__field-required">*</span>
+              常量名称
+            </div>
+            <div className="data-constance-page__field-body">
+              <Input
+                value={draft.name}
+                placeholder="例如：table_mock_users"
+                onChange={(value) => setDraft((previous) => ({ ...previous, name: String(value ?? '') }))}
+              />
+            </div>
+          </div>
+          <div className="data-constance-page__field">
+            <div className="data-constance-page__field-label">描述</div>
+            <div className="data-constance-page__field-body">
+              <Textarea
+                autosize={{ minRows: 2, maxRows: 4 }}
+                value={draft.description}
+                placeholder="描述常量用途（选填）"
+                onChange={(value) => setDraft((previous) => ({ ...previous, description: String(value ?? '') }))}
+              />
+            </div>
+          </div>
+          <div className="data-constance-page__field">
+            <div className="data-constance-page__field-label">
+              <span className="data-constance-page__field-required">*</span>
+              常量类型
+            </div>
+            <div className="data-constance-page__field-body">
+              <Select
+                value={draft.valueType}
+                options={VALUE_TYPE_OPTIONS}
+                popupProps={{ overlayInnerStyle: { zIndex: 6000 } }}
+                onChange={(value) => {
+                  const vt = String(value || 'string') as DataConstantValueType;
+                  setDraft((previous) => {
+                    let jsonValue = previous.jsonValue;
+                    if (vt === 'array' && previous.valueType !== 'array') {
+                      jsonValue = '[\n  \n]';
+                    } else if (vt === 'object' && previous.valueType !== 'object') {
+                      jsonValue = '{\n  \n}';
+                    }
+                    return { ...previous, valueType: vt, jsonValue };
+                  });
+                }}
+              />
+            </div>
+          </div>
 
           {draft.valueType === 'string' ? (
-            <Form.FormItem label="字符串值" requiredMark>
-              <Textarea
-                autosize={{ minRows: 4, maxRows: 8 }}
-                value={draft.stringValue}
-                placeholder="请输入字符串"
-                onChange={(value) => setDraft((previous) => ({ ...previous, stringValue: String(value ?? '') }))}
-              />
-            </Form.FormItem>
+            <div className="data-constance-page__field">
+              <div className="data-constance-page__field-label">
+                <span className="data-constance-page__field-required">*</span>
+                字符串值
+              </div>
+              <div className="data-constance-page__field-body">
+                <Textarea
+                  autosize={{ minRows: 4, maxRows: 8 }}
+                  value={draft.stringValue}
+                  placeholder="请输入字符串"
+                  onChange={(value) => setDraft((previous) => ({ ...previous, stringValue: String(value ?? '') }))}
+                />
+              </div>
+            </div>
           ) : null}
 
           {draft.valueType === 'number' ? (
-            <Form.FormItem label="数字值" requiredMark>
-              <InputNumber
-                value={draft.numberValue ?? undefined}
-                onChange={(value) => setDraft((previous) => ({ ...previous, numberValue: typeof value === 'number' ? value : null }))}
-              />
-            </Form.FormItem>
+            <div className="data-constance-page__field">
+              <div className="data-constance-page__field-label">
+                <span className="data-constance-page__field-required">*</span>
+                数字值
+              </div>
+              <div className="data-constance-page__field-body">
+                <InputNumber
+                  value={draft.numberValue ?? undefined}
+                  onChange={(value) => setDraft((previous) => ({ ...previous, numberValue: typeof value === 'number' ? value : null }))}
+                />
+              </div>
+            </div>
           ) : null}
 
           {draft.valueType === 'boolean' ? (
-            <Form.FormItem label="布尔值" requiredMark>
-              <Radio.Group
-                value={draft.booleanValue ? 'true' : 'false'}
-                onChange={(value) => setDraft((previous) => ({ ...previous, booleanValue: value === 'true' }))}
-              >
-                <Radio value="true">true</Radio>
-                <Radio value="false">false</Radio>
-              </Radio.Group>
-            </Form.FormItem>
+            <div className="data-constance-page__field">
+              <div className="data-constance-page__field-label">
+                <span className="data-constance-page__field-required">*</span>
+                布尔值
+              </div>
+              <div className="data-constance-page__field-body">
+                <Radio.Group
+                  value={draft.booleanValue ? 'true' : 'false'}
+                  onChange={(value) => setDraft((previous) => ({ ...previous, booleanValue: value === 'true' }))}
+                >
+                  <Radio value="true">true</Radio>
+                  <Radio value="false">false</Radio>
+                </Radio.Group>
+              </div>
+            </div>
           ) : null}
 
           {draft.valueType === 'object' || draft.valueType === 'array' ? (
-            <Form.FormItem label="JSON 值" requiredMark>
-              <div className="data-constance-page__json-editor">
-                <CodeMirrorEditor
-                  value={draft.jsonValue}
-                  height="260px"
-                  editorTheme="vscode-light"
-                  extensions={jsonEditorExtensions}
-                  onChange={(value) => setDraft((previous) => ({ ...previous, jsonValue: value }))}
-                />
+            <div className="data-constance-page__field">
+              <div className="data-constance-page__field-label">
+                <span className="data-constance-page__field-required">*</span>
+                JSON 值
               </div>
-            </Form.FormItem>
+              <div className="data-constance-page__field-body">
+                <div className="data-constance-page__json-editor">
+                  <CodeMirrorEditor
+                    key={`json-${drawerFormKey}-${editingId ?? 'new'}`}
+                    value={draft.jsonValue}
+                    height="260px"
+                    editorTheme="vscode-light"
+                    extensions={jsonEditorExtensions}
+                    onChange={(value) => setDraft((previous) => ({ ...previous, jsonValue: value }))}
+                  />
+                </div>
+              </div>
+            </div>
           ) : null}
-        </Form>
+        </div>
       </Drawer>
+
+      <Dialog
+        visible={previewVisible}
+        header={previewRecord ? `常量值预览 · ${previewRecord.name}` : '常量值预览'}
+        width={720}
+        destroyOnClose
+        footer={(
+          <Button
+            theme="primary"
+            onClick={() => {
+              setPreviewVisible(false);
+              setPreviewRecord(null);
+            }}
+          >
+            关闭
+          </Button>
+        )}
+        onClose={() => {
+          setPreviewVisible(false);
+          setPreviewRecord(null);
+        }}
+      >
+        <pre className="data-constance-page__preview-pre">
+          {previewRecord ? formatFullValuePreview(previewRecord) : ''}
+        </pre>
+      </Dialog>
     </div>
   );
 };

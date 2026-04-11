@@ -11,6 +11,10 @@ export const LIST_TEMPLATE_ALLOWED_TYPES = new Set([
   'Typography.Text',
 ]);
 
+/** 动态列表必须保留的唯一行模板壳，禁止单独删除/剪切；应删除整个 DynamicList 或编辑行模板内子组件 */
+export const isDynamicListItemNode = (node: { type?: string } | null | undefined): boolean =>
+  node?.type === 'DynamicList.Item';
+
 /**
  * 预览/画布中「根节点或组件暴露」的**核心生命周期**名称（与交互类 onClick/onChange 等区分）。
  *

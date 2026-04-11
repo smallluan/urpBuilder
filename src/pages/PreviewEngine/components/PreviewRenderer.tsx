@@ -1355,6 +1355,31 @@ const getListFieldRawValue = (record: ListRecord, fieldPath?: string): unknown =
   }, record);
 };
 
+const normalizeListBindingMappings = (value: unknown): Array<{ prop: string; field: string }> => {
+  if (!value || typeof value !== 'object') {
+    return [];
+  }
+
+  const raw = value as {
+    prop?: unknown;
+    field?: unknown;
+    mappings?: Array<{ prop?: unknown; field?: unknown }>;
+  };
+
+  if (Array.isArray(raw.mappings)) {
+    return raw.mappings
+      .map((item) => ({
+        prop: String(item?.prop ?? '').trim(),
+        field: String(item?.field ?? '').trim(),
+      }))
+      .filter((item) => item.prop && item.field);
+  }
+
+  const prop = String(raw.prop ?? '').trim();
+  const field = String(raw.field ?? '').trim();
+  return prop && field ? [{ prop, field }] : [];
+};
+
 const applyListBindingToNode = (node: UiTreeNode, item: ListRecord): UiTreeNode => {
   const nextNode: UiTreeNode = {
     ...node,
@@ -1364,29 +1389,27 @@ const applyListBindingToNode = (node: UiTreeNode, item: ListRecord): UiTreeNode 
     children: (node.children ?? []).map((child) => applyListBindingToNode(child, item)),
   };
 
-  const binding = (node.props?.__listBinding as { value?: unknown } | undefined)?.value as
-    | { prop?: string; field?: string }
-    | undefined;
-
-  const bindProp = typeof binding?.prop === 'string' ? binding.prop.trim() : '';
-  const bindField = typeof binding?.field === 'string' ? binding.field.trim() : '';
-  if (!bindProp || !bindField) {
+  const bindingValue = (node.props?.__listBinding as { value?: unknown } | undefined)?.value;
+  const mappings = normalizeListBindingMappings(bindingValue);
+  if (mappings.length === 0) {
     return nextNode;
   }
 
-  const rawBoundValue = getListFieldRawValue(item, bindField);
-  if (typeof rawBoundValue === 'undefined') {
-    return nextNode;
-  }
+  mappings.forEach(({ prop, field }) => {
+    const rawBoundValue = getListFieldRawValue(item, field);
+    if (typeof rawBoundValue === 'undefined') {
+      return;
+    }
 
-  const targetProp = (nextNode.props?.[bindProp] ?? {}) as Record<string, unknown>;
-  nextNode.props = {
-    ...(nextNode.props ?? {}),
-    [bindProp]: {
-      ...targetProp,
-      value: rawBoundValue,
-    },
-  };
+    const targetProp = (nextNode.props?.[prop] ?? {}) as Record<string, unknown>;
+    nextNode.props = {
+      ...(nextNode.props ?? {}),
+      [prop]: {
+        ...targetProp,
+        value: rawBoundValue,
+      },
+    };
+  });
 
   return nextNode;
 };

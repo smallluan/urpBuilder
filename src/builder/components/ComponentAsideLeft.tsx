@@ -12,7 +12,7 @@ import { useBuilderAccess, useBuilderContext } from '../context/BuilderContext';
 import type { UiTreeInstance, UiTreeNode } from '../store/types';
 import { getNodeSlotKey, isSlotNode } from '../utils/slot';
 import componentCatalog from '../../config/componentCatalog';
-import { LIST_TEMPLATE_ALLOWED_TYPES } from '../../constants/componentBuilder';
+import { isDynamicListItemNode, LIST_TEMPLATE_ALLOWED_TYPES } from '../../constants/componentBuilder';
 import { findNodePathByKey } from '../utils/tree';
 import StructureVirtualRootBanner from './StructureVirtualRootBanner';
 import {
@@ -558,6 +558,14 @@ const ComponentAsideLeft: React.FC = () => {
       return;
     }
 
+    const path = findNodePathByKey(uiPageData, nodeKey);
+    const target = path?.[path.length - 1];
+    if (target && isDynamicListItemNode(target)) {
+      MessagePlugin.warning('动态列表项不可单独删除，请删除整个「动态列表」或编辑行模板内的子组件');
+      closeContextMenu();
+      return;
+    }
+
     removeFromUiPageData(nodeKey);
     closeContextMenu();
   };
@@ -576,9 +584,17 @@ const ComponentAsideLeft: React.FC = () => {
       return;
     }
 
-    const childKeys = children.map((child) => child.key);
-    childKeys.forEach((childKey) => {
-      removeFromUiPageData(childKey);
+    const removable = children.filter((child) => !isDynamicListItemNode(child));
+    if (removable.length === 0) {
+      MessagePlugin.warning('动态列表必须保留「列表项」结构，无法清空。可删除行模板内的子组件。');
+      if (closeMenu) {
+        closeContextMenu();
+      }
+      return;
+    }
+
+    removable.forEach((child) => {
+      removeFromUiPageData(child.key);
     });
 
     setActiveNode(targetNode.key);
@@ -628,6 +644,13 @@ const ComponentAsideLeft: React.FC = () => {
 
   const handleCutNode = (targetNode: UiTreeNode | null, closeMenu = true) => {
     if (!targetNode) {
+      return;
+    }
+    if (isDynamicListItemNode(targetNode)) {
+      MessagePlugin.warning('动态列表项不可剪切，请删除整个「动态列表」或编辑行模板内的子组件');
+      if (closeMenu) {
+        closeContextMenu();
+      }
       return;
     }
     const copied = copyNodeToClipboard(targetNode, 'cut');
@@ -943,9 +966,9 @@ const ComponentAsideLeft: React.FC = () => {
   }, [contextMenuNode, uiPageData]);
 
   const canCopyContextMenuNode = canOperateNode(contextMenuNode);
-  const canCutContextMenuNode = canOperateNode(contextMenuNode);
+  const canCutContextMenuNode = canOperateNode(contextMenuNode) && !isDynamicListItemNode(contextMenuNode);
   const canPasteToContextMenuNode = Boolean(contextMenuNode && treeClipboard && resolvePasteTarget(contextMenuNode));
-  const canDeleteContextMenuNode = canOperateNode(contextMenuNode);
+  const canDeleteContextMenuNode = canOperateNode(contextMenuNode) && !isDynamicListItemNode(contextMenuNode);
   const canClearContextMenuNodeChildren = Boolean((contextMenuNode?.children ?? []).length > 0);
   const canWrapWithPopup = Boolean(
     contextMenuNode

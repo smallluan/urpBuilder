@@ -8,7 +8,7 @@ import type { Edge, Node as FlowNode } from '@xyflow/react';
 import { v4 as uuidv4 } from 'uuid';
 import { useBuilderAccess, useBuilderContext } from '../context/BuilderContext';
 import DropArea from '../../components/DropArea';
-import { LIST_TEMPLATE_ALLOWED_TYPES } from '../../constants/componentBuilder';
+import { isDynamicListItemNode, LIST_TEMPLATE_ALLOWED_TYPES } from '../../constants/componentBuilder';
 import { findNodePathByKey } from '../utils/tree';
 import SimulatorDeviceChrome from '../components/SimulatorDeviceChrome';
 import SimulatorLibraryBrushOverlay from '../components/SimulatorLibraryBrushOverlay';
@@ -697,6 +697,12 @@ const ComponentBody: React.FC = () => {
       return;
     }
 
+    if (isDynamicListItemNode(targetNode)) {
+      MessagePlugin.warning('动态列表项不可剪切，请删除整个「动态列表」或编辑行模板内的子组件');
+      closeContextMenu();
+      return;
+    }
+
     if (!copyNodeToClipboard(targetNode, 'cut')) {
       closeContextMenu();
       return;
@@ -766,7 +772,16 @@ const ComponentBody: React.FC = () => {
       return;
     }
 
-    children.forEach((child: any) => {
+    const removable = children.filter((child: any) => !isDynamicListItemNode(child));
+    if (removable.length === 0) {
+      MessagePlugin.warning('动态列表必须保留「列表项」结构，无法清空。可删除行模板内的子组件。');
+      if (closeMenu) {
+        closeContextMenu();
+      }
+      return;
+    }
+
+    removable.forEach((child: any) => {
       removeFromUiPageData(child.key);
     });
 
@@ -784,6 +799,12 @@ const ComponentBody: React.FC = () => {
     }
 
     if (!nodeKey || nodeKey === uiPageData.key || !contextMenuNode || isSlotNode(contextMenuNode)) {
+      closeContextMenu();
+      return;
+    }
+
+    if (isDynamicListItemNode(contextMenuNode)) {
+      MessagePlugin.warning('动态列表项不可单独删除，请删除整个「动态列表」或编辑行模板内的子组件');
       closeContextMenu();
       return;
     }
@@ -932,8 +953,8 @@ const ComponentBody: React.FC = () => {
   }, []);
 
   const canCopyContextMenuNode = canOperateNode(contextMenuNode);
-  const canCutContextMenuNode = canOperateNode(contextMenuNode);
-  const canDeleteContextMenuNode = canOperateNode(contextMenuNode);
+  const canCutContextMenuNode = canOperateNode(contextMenuNode) && !isDynamicListItemNode(contextMenuNode);
+  const canDeleteContextMenuNode = canOperateNode(contextMenuNode) && !isDynamicListItemNode(contextMenuNode);
   const canPasteToContextMenuNode = Boolean(contextMenuNode && treeClipboard && resolvePasteTarget(contextMenuNode));
   const canClearContextMenuNodeChildren = Boolean((contextMenuNode?.children ?? []).length > 0);
   const canWrapWithPopup = Boolean(
@@ -1022,6 +1043,10 @@ const ComponentBody: React.FC = () => {
   const runDeleteActiveNode = () => {
     if (!activeNode || !canOperateNode(activeNode)) {
       MessagePlugin.info('请先选中可删除组件');
+      return;
+    }
+    if (isDynamicListItemNode(activeNode)) {
+      MessagePlugin.warning('动态列表项不可单独删除，请删除整个「动态列表」或编辑行模板内的子组件');
       return;
     }
     removeFromUiPageData(activeNode.key);

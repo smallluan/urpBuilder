@@ -227,6 +227,9 @@
   gap: 12px;
   overflow: auto;
   padding: 4px 2px;
+  // 父级为纵向 flex 时网格容器会被拉高；默认 align-content/align-items 为 stretch，单行会占满整列高度导致卡片被纵向拉满
+  align-content: start;
+  align-items: start;
 }
 
 .data-assets-grid--mixed {
