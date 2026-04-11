@@ -1348,11 +1348,32 @@ export function registerAntdComponents(registry: ComponentRegistry): void {
   });
 
   registry.set('antd.Carousel', (ctx) => {
-    const { data, onDropData, mergeStyle, handleActivateSelf, isNodeActive } = ctx;
+    const { getNumberProp, getSwiperImages, mergeStyle, handleActivateSelf, data, isNodeActive } = ctx;
+    const imageList = getSwiperImages();
+    const height = getNumberProp('height') ?? 240;
+    if (imageList.length === 0) {
+      return null;
+    }
     return (
       <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf} nodeKey={data?.key} active={isNodeActive}>
-        <Carousel dots>
-          <DropArea data={data} onDropData={onDropData} emptyText="拖拽轮播项" />
+        <Carousel autoplay dots>
+          {imageList.map((imageItem, index) => (
+            <div key={`${data?.key ?? 'antd-carousel'}-${index}`}>
+              <div style={{ width: '100%', height }}>
+                <Image
+                  src={imageItem.src}
+                  fallback={imageItem.fallback || undefined}
+                  preview={false}
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    objectFit: imageItem.objectFit as React.CSSProperties['objectFit'],
+                    objectPosition: imageItem.objectPosition,
+                  }}
+                />
+              </div>
+            </div>
+          ))}
         </Carousel>
       </ActivateWrapper>
     );

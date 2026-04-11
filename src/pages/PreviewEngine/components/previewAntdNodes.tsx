@@ -46,7 +46,7 @@ import { ArrowDownOutlined, ArrowUpOutlined } from '@ant-design/icons';
 import type { MenuProps } from 'antd';
 import dayjs, { type Dayjs } from 'dayjs';
 import type { UiTreeNode } from '../../../builder/store/types';
-import type { ComponentLifecycleHandler } from '../../../types/component';
+import type { ComponentLifecycleHandler, SwiperImageItem } from '../../../types/component';
 import { getNodeSlotKey, isSlotNode } from '../../../builder/utils/slot';
 import { renderNamedIcon } from '../../../constants/iconRegistry';
 import {
@@ -151,6 +151,26 @@ function parseJsonRecordArray(raw: string | undefined): Array<Record<string, unk
   } catch {
     return [];
   }
+}
+
+function getSwiperImages(node: UiTreeNode): SwiperImageItem[] {
+  const value = getProp(node, 'images');
+  if (Array.isArray(value)) {
+    return value
+      .filter((item) => !!item && typeof item === 'object')
+      .map((item) => {
+        const record = item as Partial<SwiperImageItem>;
+        return {
+          src: String(record.src ?? '').trim(),
+          fallback: String(record.fallback ?? '').trim(),
+          lazy: typeof record.lazy === 'boolean' ? record.lazy : true,
+          objectFit: String(record.objectFit ?? 'cover'),
+          objectPosition: String(record.objectPosition ?? 'center'),
+        };
+      })
+      .filter((item) => !!item.src);
+  }
+  return [];
 }
 
 function getMenuSingleValue(node: UiTreeNode, propName: string): string | number | undefined {
@@ -994,12 +1014,34 @@ export function tryRenderAntdPreview(ctx: AntdPreviewContext): React.ReactElemen
           emitInteractionLifecycle={emitInteractionLifecycle}
         />
       );
-    case 'antd.Carousel':
+    case 'antd.Carousel': {
+      const imageList = getSwiperImages(node);
+      const height = getFiniteNumberProp(node, 'height') ?? 240;
+      if (imageList.length === 0) {
+        return null;
+      }
       return (
-        <Carousel style={mergeStyle()} dots>
-          {renderChildList(node.children ?? [])}
+        <Carousel autoplay style={mergeStyle()} dots>
+          {imageList.map((imageItem, index) => (
+            <div key={`${node.key}-antd-carousel-${index}`}>
+              <div style={{ width: '100%', height }}>
+                <Image
+                  src={imageItem.src}
+                  fallback={imageItem.fallback || undefined}
+                  preview={false}
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    objectFit: imageItem.objectFit as React.CSSProperties['objectFit'],
+                    objectPosition: imageItem.objectPosition,
+                  }}
+                />
+              </div>
+            </div>
+          ))}
         </Carousel>
       );
+    }
     case 'antd.Menu': {
       const collapsed = getBooleanProp(node, 'collapsed') === true;
       const widthRaw = getStringProp(node, 'width')?.trim();
