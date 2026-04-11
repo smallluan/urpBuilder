@@ -4,6 +4,22 @@
   width: 100%;
   display: flex;
   overflow: hidden;
+
+  &--gate {
+    align-items: center;
+    justify-content: center;
+    min-height: 360px;
+
+    .data-assets-page__inner {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      text-align: center;
+      max-width: 420px;
+    }
+  }
 }
 
 // 带树的布局（左树右栏）
@@ -161,6 +177,24 @@
   flex: 1;
   min-height: 0;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
+
+  > .t-loading__parent {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
+}
+
+.data-assets-main__empty {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 16px;
 }
 
 .data-assets-main__header {

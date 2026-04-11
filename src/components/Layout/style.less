@@ -137,6 +137,11 @@
     overflow: hidden;
     display: flex;
     flex-direction: column;
+
+    /* 工作台首页：内容以装饰背景为主，收紧主区内边距，减轻与光晕交界处的「硬框」感 */
+    &--home {
+      padding: 16px;
+    }
   }
 
   .layout-outlet {
@@ -228,6 +233,12 @@
       padding: 0 10px;
       &.is-active {
         font-weight: 550;
+      }
+
+      &--disabled,
+      &:disabled {
+        cursor: not-allowed;
+        opacity: 0.45;
       }
     }
 

@@ -1,5 +1,6 @@
 import { Space, Divider, Button, DialogPlugin, Avatar, MessagePlugin, Typography, Row } from "tdesign-react"
 import { useAuth } from "../../../../auth/context"
+import { getUserDisplayInitials, getUserDisplayName, hasDisplayNickname } from "../../../../utils/authDisplay"
 import { useNavigate } from "react-router-dom"
 const { Text } = Typography
 import "./index.less"
@@ -53,7 +54,8 @@ const cells = [
 const AccountInfoPopup: React.FC = () => {
   const navigate = useNavigate()
   const { user, logout, deleteAccount } = useAuth()
-  const displayName = user?.nickname || user?.username || '未登录';
+  const displayName = getUserDisplayName(user);
+  const loginAccount = user?.username ?? "";
 
   const handleActionBtnClick = async (data: ActionBtnValue) => {
     if (data === 'delete-account') {
@@ -91,9 +93,11 @@ const AccountInfoPopup: React.FC = () => {
 
   return (
     <div className="account-info">
-      <Space size={16} align="center">
-        <Avatar size="36px" shape="circle">{displayName.slice(0, 2)}</Avatar>
-        <Text strong>{displayName}</Text>
+      <Space size={16} align="start">
+        <Avatar size="36px" shape="circle">{getUserDisplayInitials(user)}</Avatar>
+        <div className="account-info__titles">
+          <Text strong>{displayName}</Text>
+        </div>
       </Space>
       <Divider size={8}/>
       {

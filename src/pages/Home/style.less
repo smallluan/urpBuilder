@@ -1,0 +1,167 @@
+.home-page {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  overflow: auto;
+}
+
+.home-page__backdrop {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  border-radius: inherit;
+}
+
+/* 与登录页类似的网格 + 光晕，体量略轻，避免抢主内容 */
+.home-page__mesh {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(color-mix(in srgb, var(--td-component-border) 50%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in srgb, var(--td-component-border) 50%, transparent) 1px, transparent 1px);
+  background-size: 40px 40px;
+  opacity: 0.4;
+  mask-image: radial-gradient(ellipse 85% 65% at 50% 18%, #000 0%, transparent 72%);
+}
+
+.home-page__glow {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(88px);
+  opacity: 0.28;
+  pointer-events: none;
+}
+
+/* 光晕放在可视区域内，避免贴边被裁切后与内容区形成明显「画框」线 */
+.home-page__glow--a {
+  width: min(360px, 50vw);
+  height: min(260px, 34vh);
+  left: 6%;
+  top: 4%;
+  background: color-mix(in srgb, var(--td-brand-color) 38%, transparent);
+}
+
+.home-page__glow--b {
+  width: min(320px, 46vw);
+  height: min(240px, 32vh);
+  right: 8%;
+  bottom: 12%;
+  left: auto;
+  background: color-mix(in srgb, var(--td-brand-color-5) 34%, transparent);
+}
+
+:root[theme-mode='dark'] {
+  .home-page__glow--a {
+    opacity: 0.22;
+  }
+
+  .home-page__glow--b {
+    opacity: 0.2;
+  }
+}
+
+.home-page__shell {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  margin: 0 auto;
+  padding: clamp(12px, 2.2vw, 22px) clamp(12px, 2vw, 20px) clamp(20px, 3vw, 28px);
+  gap: 20px;
+  /* 与页面底对齐，弱化与背景装饰层的分界 */
+  background: transparent;
+}
+
+.home-page__hero {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.home-page__eyebrow {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  color: color-mix(in srgb, var(--td-brand-color-8) 72%, var(--td-text-color-primary));
+  opacity: 0.85;
+}
+
+.home-page__title {
+  font-size: clamp(22px, 2.4vw, 28px);
+  line-height: 1.25;
+}
+
+.home-page__lead {
+  margin: 0;
+  max-width: 52ch;
+}
+
+.home-page__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 14px;
+}
+
+.home-page__card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 16px 16px 18px;
+  margin: 0;
+  border: 1px solid var(--td-component-border);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--td-bg-color-container) 92%, transparent);
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.04);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color 0.18s ease,
+    box-shadow 0.18s ease,
+    transform 0.18s ease;
+}
+
+.home-page__card:hover {
+  border-color: color-mix(in srgb, var(--td-brand-color) 45%, var(--td-component-border));
+  box-shadow:
+    0 8px 28px color-mix(in srgb, var(--td-brand-color) 12%, transparent),
+    0 1px 0 rgba(0, 0, 0, 0.04);
+  transform: translateY(-1px);
+}
+
+.home-page__card:focus-visible {
+  outline: 2px solid var(--td-brand-color);
+  outline-offset: 2px;
+}
+
+.home-page__card-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--td-brand-color-1) 88%, var(--td-bg-color-container));
+  color: var(--td-brand-color-8);
+}
+
+:root[theme-mode='dark'] .home-page__card-icon {
+  background: color-mix(in srgb, var(--td-brand-color-1) 55%, transparent);
+  color: var(--td-brand-color-9);
+}
+
+.home-page__card-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--td-text-color-primary);
+}
+
+.home-page__card-desc {
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--td-text-color-secondary);
+}

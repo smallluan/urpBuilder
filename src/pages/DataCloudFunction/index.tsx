@@ -9,7 +9,6 @@ import {
   InputNumber,
   MessagePlugin,
   Pagination,
-  Row,
   Select,
   Space,
   Switch,
@@ -18,7 +17,7 @@ import {
   Tag,
   Textarea,
 } from 'tdesign-react';
-import { AddIcon, DeleteIcon, EditIcon, RefreshIcon, SearchIcon } from 'tdesign-icons-react';
+import { AddIcon, DeleteIcon, EditIcon, RefreshIcon } from 'tdesign-icons-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useTeam } from '../../team/context';
 import WorkspaceModePanel from '../../components/WorkspaceModePanel';
@@ -1060,32 +1059,31 @@ const DataCloudFunction: React.FC = () => {
             <aside className="console-sider">
               <div className="console-sider__toolbar app-shell-page__query">
                 <div className="app-shell-page__query-inner app-shell-page__query-inner--stack">
-                  <Row justify='space-between' align='end'>
-                    <Space size={8}>
-                      <Button size='small' theme="primary" icon={<AddIcon />} onClick={openCreateTableDrawer}/>
-                      <Button size='small' variant="outline" icon={<RefreshIcon />} onClick={() => void loadTables()}/>
-                    </Space>
-                  </Row>
-                  <Row justify="space-between">
-                    <Input
-                      style={{ flex: 1, }}
-                      size="small"
-                      clearable
-                      value={tableKeyword}
-                      placeholder="搜索数据表"
-                      onChange={(value) => setTableKeyword(String(value ?? ''))}
-                      onEnter={() => {
-                        setTablePage(1);
-                        void loadTables(1, tablePageSize);
-                      }}
-                    />
-                    <div style={{ width: 16 }}></div>
-                    <Button size="small" variant="outline" icon={<SearchIcon />} onClick={() => void loadTables()}>搜索</Button>
-                  </Row>
+                  <Input
+                    size="small"
+                    clearable
+                    value={tableKeyword}
+                    placeholder="搜索数据表"
+                    onChange={(value) => setTableKeyword(String(value ?? ''))}
+                    onEnter={() => {
+                      setTablePage(1);
+                      void loadTables(1, tablePageSize);
+                    }}
+                  />
+                  <Space size={8}>
+                    <Button size="small" variant="outline" icon={<RefreshIcon />} onClick={() => void loadTables()}>
+                      刷新
+                    </Button>
+                    <Button size="small" theme="primary" icon={<AddIcon />} onClick={openCreateTableDrawer}>
+                      新建数据表
+                    </Button>
+                  </Space>
                 </div>
               </div>
 
-              <div className="console-sider__list">
+              <div
+                className={`console-sider__list${!tableLoading && !tables.length ? ' console-sider__list--empty' : ''}`}
+              >
                 {!tableLoading && !tables.length ? <Empty description="当前空间暂无数据表" /> : null}
                 {tables.map((item) => (
                   <div
@@ -1127,7 +1125,9 @@ const DataCloudFunction: React.FC = () => {
 
             <section className="console-main">
               {!activeTableDetail ? (
-                <Empty description="请先在左侧选择一个数据表，或新建数据表" />
+                <div className="console-main__empty">
+                  <Empty description="请先在左侧选择一个数据表，或新建数据表" />
+                </div>
               ) : (
                 <>
                   <div className="console-main__header">
@@ -1231,7 +1231,9 @@ const DataCloudFunction: React.FC = () => {
                 </div>
               </div>
 
-              <div className="console-sider__list">
+              <div
+                className={`console-sider__list${!functionLoading && !functions.length ? ' console-sider__list--empty' : ''}`}
+              >
                 {!functionLoading && !functions.length ? <Empty description="当前空间暂无云函数" /> : null}
                 {functions.map((item) => (
                   <button
@@ -1274,7 +1276,9 @@ const DataCloudFunction: React.FC = () => {
 
             <section className="console-main">
               {!activeFunctionId || !activeFunctionDetail || !functionDraft ? (
-                <Empty description="请选择一个云函数，或点击“新建函数”" />
+                <div className="console-main__empty">
+                  <Empty description="请选择一个云函数，或点击“新建函数”" />
+                </div>
               ) : (
                 <>
                   <div className="console-main__header">

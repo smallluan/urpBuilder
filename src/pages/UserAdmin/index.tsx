@@ -376,7 +376,7 @@ const UserAdminPage: React.FC = () => {
         <div className="app-shell-page__query-inner">
         <Input
           size="small"
-          placeholder="按用户名、昵称、邮箱搜索"
+          placeholder="按登录账号、昵称、邮箱搜索"
           value={query}
           onChange={(value) => setQuery(String(value ?? ''))}
           suffix={<SearchIcon />}

@@ -26,7 +26,7 @@
     min-height: 0;
     display: grid;
     grid-template-columns: 340px minmax(0, 1fr);
-    gap: 12px;
+    gap: 0;
     padding-top: 8px;
   }
 
@@ -37,14 +37,17 @@
     // background: #fff;
     // border: 1px solid #e6e9ef;
     border-radius: 10px;
-    overflow: hidden;
+    border-right: 1px solid var(--td-component-border, #e7e7e7);
+    /* 勿 hidden：会裁切侧栏搜索区下拉与按钮焦点环；列表区自行滚动 */
+    overflow: visible;
 
     &__toolbar {
       flex-shrink: 0;
       display: flex;
       flex-direction: column;
       gap: 8px;
-      padding: 0;
+      padding: 8px 8px 4px;
+      box-sizing: border-box;
 
       &.app-shell-page__query {
         gap: 0;
@@ -63,6 +66,11 @@
       display: flex;
       flex-direction: column;
       gap: 8px;
+
+      &--empty {
+        justify-content: center;
+        align-items: center;
+      }
     }
 
     &__pagination {
@@ -184,6 +192,15 @@
       flex-shrink: 0;
       display: flex;
       justify-content: flex-end;
+    }
+
+    &__empty {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px 16px;
     }
 
     &__code-panel {

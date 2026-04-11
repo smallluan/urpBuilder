@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Button, Card, Drawer, Form, Input, InputNumber, MessagePlugin, Pagination, Radio, Select, Space, Table, Tag, Textarea } from 'tdesign-react';
+import { AddIcon, SearchIcon } from 'tdesign-icons-react';
 import CodeMirrorEditor from '../../builder/components/codeEditor/CodeMirrorEditor';
 import { buildCodeMirrorExtensions } from '../../builder/components/codeEditor/buildCodeMirrorExtensions';
 import { useTeam } from '../../team/context';
@@ -12,8 +13,6 @@ import {
   type DataConstantValueType,
 } from '../../api/dataConstant';
 import './style.less';
-
-type ConstantScope = 'personal' | 'team';
 
 interface DrawerDraftState {
   name: string;
@@ -43,7 +42,7 @@ const createInitialDraft = (): DrawerDraftState => ({
   jsonValue: '{\n  \n}',
 });
 
-const resolveScope = (ownerType: DataConstantRecord['ownerType']): ConstantScope => (ownerType === 'team' ? 'team' : 'personal');
+const resolveScope = (ownerType: DataConstantRecord['ownerType']) => (ownerType === 'team' ? 'team' : 'personal');
 
 const formatDateTime = (value?: string) => {
   if (!value) {
@@ -76,7 +75,7 @@ const stringifyValuePreview = (record: DataConstantRecord) => {
 };
 
 const DataConstance: React.FC = () => {
-  const { workspaceMode, currentTeamId, currentTeam } = useTeam();
+  const { workspaceMode, currentTeamId } = useTeam();
   const [loading, setLoading] = useState(false);
   const [creating, setCreating] = useState(false);
   const [drawerVisible, setDrawerVisible] = useState(false);
@@ -89,7 +88,6 @@ const DataConstance: React.FC = () => {
   const [draft, setDraft] = useState<DrawerDraftState>(createInitialDraft());
 
   const ownerType = workspaceMode === 'team' ? 'team' : 'user';
-  const scopeLabel = workspaceMode === 'team' ? `团队空间（${currentTeam?.name || currentTeamId}）` : '个人空间';
   const canQuery = ownerType === 'user' || Boolean(currentTeamId);
   const jsonEditorExtensions = useMemo(() => buildCodeMirrorExtensions({ language: 'json' }), []);
 
@@ -122,8 +120,6 @@ const DataConstance: React.FC = () => {
   useEffect(() => {
     void loadData();
   }, [loadData]);
-
-  const currentScope = useMemo<ConstantScope>(() => (workspaceMode === 'team' ? 'team' : 'personal'), [workspaceMode]);
 
   const buildPayload = (): CreateDataConstantPayload | null => {
     const name = draft.name.trim();
@@ -264,54 +260,54 @@ const DataConstance: React.FC = () => {
 
   return (
     <div className="data-constance-page app-shell-page">
-      <Card className="data-constance-page__card" title="常量管理" bordered={false}>
-        <div className="data-constance-page__toolbar app-shell-page__query">
-          <div className="app-shell-page__query-inner data-constance-page__toolbar-inner">
-            <Space size={8}>
-              <Tag theme={currentScope === 'team' ? 'success' : 'primary'} variant="light-outline">
-                {scopeLabel}
-              </Tag>
-            </Space>
-
-            <Space size={8}>
-              <Input
-                size="small"
-                style={{ width: 240 }}
-                clearable
-                value={keyword}
-                placeholder="按名称或描述搜索"
-                onChange={(value) => setKeyword(String(value ?? ''))}
-              />
-              <Select
-                size="small"
-                style={{ width: 160 }}
-                clearable
-                placeholder="类型筛选"
-                value={valueTypeFilter || undefined}
-                options={VALUE_TYPE_OPTIONS}
-                onChange={(value) => setValueTypeFilter((value ? String(value) : '') as DataConstantValueType | '')}
-              />
-              <Button
-                size="small"
-                variant="outline"
-                onClick={() => {
-                  setPage(1);
-                  void loadData(1, pageSize);
-                }}
-              >
-                查询
-              </Button>
-              <Button
-                size="small"
-                theme="primary"
-                onClick={() => {
-                  setDraft(createInitialDraft());
-                  setDrawerVisible(true);
-                }}
-              >
-                新增常量
-              </Button>
-            </Space>
+      <Card className="data-constance-page__card" bordered={false}>
+        <div className="data-constance-page__toolbar toolbar app-shell-page__query">
+          <div className="app-shell-page__query-inner app-shell-page__query-inner--stack">
+            <div className="toolbar-row toolbar-row--primary">
+              <Space align="center">
+                <Input
+                  style={{ width: 260 }}
+                  clearable
+                  value={keyword}
+                  placeholder="按名称或描述搜索"
+                  suffix={<SearchIcon />}
+                  onChange={(value) => setKeyword(String(value ?? ''))}
+                  onEnter={() => {
+                    setPage(1);
+                    void loadData(1, pageSize);
+                  }}
+                />
+                <Select
+                  style={{ width: 160 }}
+                  clearable
+                  placeholder="类型筛选"
+                  value={valueTypeFilter || undefined}
+                  options={VALUE_TYPE_OPTIONS}
+                  onChange={(value) => setValueTypeFilter((value ? String(value) : '') as DataConstantValueType | '')}
+                />
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setPage(1);
+                    void loadData(1, pageSize);
+                  }}
+                >
+                  查询
+                </Button>
+              </Space>
+              <div className="primary-actions">
+                <Button
+                  theme="primary"
+                  icon={<AddIcon />}
+                  onClick={() => {
+                    setDraft(createInitialDraft());
+                    setDrawerVisible(true);
+                  }}
+                >
+                  新增常量
+                </Button>
+              </div>
+            </div>
           </div>
         </div>
 

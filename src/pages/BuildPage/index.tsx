@@ -524,59 +524,56 @@ const BuildPage: React.FC = () => {
     <div className="build-page app-shell-page">
       <div className="toolbar app-shell-page__query">
         <div className="app-shell-page__query-inner app-shell-page__query-inner--stack">
-        <div className="toolbar-row toolbar-row--primary">
-          <div className="search-area">
-            <Input
-              size="small"
-              placeholder="搜索页面名称"
-              value={query}
-              onChange={(val) => setBuildPageFilters({ query: String(val ?? '') })}
-              suffix={<SearchIcon />}
-              clearable
-              onEnter={handleSearch}
-            />
-          </div>
-          <div className="primary-actions">
-            <Button size="small" theme="primary" onClick={handleCreate} icon={<AddIcon />}>
-              创建新页面
-            </Button>
-          </div>
-        </div>
+          <div className="toolbar-row toolbar-row--primary">
+            <Space align="center">
+              <Input
+                placeholder="搜索页面名称"
+                value={query}
+                onChange={(val) => setBuildPageFilters({ query: String(val ?? '') })}
+                suffix={<SearchIcon />}
+                clearable
+                onEnter={handleSearch}
+              />
+              <Select
+                value={statusFilter}
+                options={[
+                  { label: '全部状态', value: 'all' },
+                  { label: '草稿', value: 'draft' },
+                  { label: '已发布', value: 'published' },
+                ]}
+                style={{ width: 120 }}
+                onChange={(value) => {
+                  const nextStatus = value === 'published' ? 'published' : value === 'draft' ? 'draft' : 'all';
+                  setPage(1);
+                  setBuildPageFilters({ statusFilter: nextStatus });
+                }}
+              />
+              <Select
+                value={visibilityFilter}
+                options={[
+                  { label: '全部可见性', value: 'all' },
+                  { label: '私有', value: 'private' },
+                  { label: '公开', value: 'public' },
+                ]}
+                style={{ width: 140 }}
+                onChange={(value) => {
+                  const nextVisibility = value === 'public' ? 'public' : value === 'private' ? 'private' : 'all';
+                  setPage(1);
+                  setBuildPageFilters({ visibilityFilter: nextVisibility });
+                }}
+              />
+            </Space>
 
-        <div className="toolbar-row toolbar-row--filters">
-          <div className="filter-area">
-          <Select
-            size="small"
-            value={statusFilter}
-            options={[
-              { label: '全部状态', value: 'all' },
-              { label: '草稿', value: 'draft' },
-              { label: '已发布', value: 'published' },
-            ]}
-            style={{ width: 120 }}
-            onChange={(value) => {
-              const nextStatus = value === 'published' ? 'published' : value === 'draft' ? 'draft' : 'all';
-              setPage(1);
-              setBuildPageFilters({ statusFilter: nextStatus });
-            }}
-          />
-          <Select
-            size="small"
-            value={visibilityFilter}
-            options={[
-              { label: '全部可见性', value: 'all' },
-              { label: '私有', value: 'private' },
-              { label: '公开', value: 'public' },
-            ]}
-            style={{ width: 140 }}
-            onChange={(value) => {
-              const nextVisibility = value === 'public' ? 'public' : value === 'private' ? 'private' : 'all';
-              setPage(1);
-              setBuildPageFilters({ visibilityFilter: nextVisibility });
-            }}
-          />
+            <div className="primary-actions">
+              <Button theme="primary" onClick={handleCreate} icon={<AddIcon />}>
+                创建新页面
+              </Button>
+            </div>
           </div>
-        </div>
+
+          <div className="toolbar-row toolbar-row--filters">
+            <div className="filter-area" />
+          </div>
         </div>
       </div>
 

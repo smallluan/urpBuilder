@@ -7,6 +7,7 @@ import {
   endSimulatorLibraryTransitionRun,
   startSimulatorLibraryTransitionRun,
 } from '../utils/simulatorViewTransition';
+import BetaSparkleBadge from './BetaSparkleBadge';
 
 /**
  * 搭建画布工具栏右侧：预览组件库下拉（DSL 仍为 TDesign；扩展库时在 PREVIEW_UI_LIBRARY_OPTIONS 追加）。
@@ -24,7 +25,10 @@ const PreviewUiLibraryToolbarSelect: React.FC = () => {
 
   return (
     <div className="preview-ui-library-toolbar-select">
-      <span className="preview-ui-library-toolbar-select__label">组件库</span>
+      <span className="preview-ui-library-toolbar-select__label">
+        组件库
+        <BetaSparkleBadge />
+      </span>
       <Select
         size="small"
         className="preview-ui-library-toolbar-select__control"

@@ -6,26 +6,39 @@
     min-height: 0;
     display: flex;
     flex-direction: column;
-    border-radius: 12px;
-    border: 1px solid var(--app-border-subtle);
-    overflow: hidden;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+    /* 勿对整块 card 做 overflow:hidden，会裁掉搜索区下拉、焦点环等；滚动仅交给表格区域 */
+    overflow: visible;
 
     .t-card__body {
       flex: 1;
       min-height: 0;
       display: flex;
       flex-direction: column;
-      overflow: hidden;
+      overflow: visible;
     }
   }
 
-  .data-constance-page__toolbar-inner {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    width: 100%;
+  .toolbar {
+    margin-bottom: 0;
+    flex-shrink: 0;
+
+    .toolbar-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .toolbar-row--primary {
+      .primary-actions {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+    }
   }
 
   .data-constance-page__table-panel {

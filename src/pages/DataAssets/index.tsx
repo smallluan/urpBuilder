@@ -349,9 +349,12 @@ const DataAssets: React.FC = () => {
 
   if (teamLocked) {
     return (
-      <div className="data-assets-page">
+      <div className="data-assets-page data-assets-page--gate">
         <div className="data-assets-page__inner">
-          <Empty description="当前为团队素材视图，请先在侧栏空间切换器中选择团队。" style={{ marginTop: 48 }} />
+          <Empty
+            title="请先选择团队"
+            description="当前为团队素材视图，请在侧栏空间切换器中切换到团队后再管理素材。"
+          />
         </div>
       </div>
     );
@@ -465,9 +468,18 @@ const DataAssets: React.FC = () => {
 
         {/* 内容网格 */}
         <div className="data-assets-main__body">
-          <Loading loading={loading} showOverlay style={{ minHeight: 200, height: '100%' }}>
+          <Loading
+            loading={loading}
+            showOverlay
+            style={{ flex: 1, minHeight: 0, width: '100%', display: 'flex', flexDirection: 'column' }}
+          >
             {list.length === 0 && !loading ? (
-              <Empty description="暂无内容，新建文件夹或上传素材" />
+              <div className="data-assets-main__empty">
+                <Empty
+                  title="当前文件夹为空"
+                  description="使用上方「新建文件夹」整理目录，或「上传素材」添加图片与文件。"
+                />
+              </div>
             ) : (
               <div className="data-assets-grid data-assets-grid--mixed">
                 {list.map((node) => (

@@ -16,6 +16,7 @@ import {
 import { useAuth } from '../../auth/context';
 import { useTeam } from '../../team/context';
 import { resolveTeamAvatar, resolveUserAvatar } from '../../utils/avatar';
+import { getUserDisplayInitials, getUserDisplayName } from '../../utils/authDisplay';
 import GlobalNoticeCenter from '../GlobalNoticeCenter';
 import AccountInfoPopup from './components/AccountInfoPopup';
 import { ThemeModeAnimatedToggle } from '../ThemeModeAnimatedToggle';
@@ -24,9 +25,17 @@ import './style.less';
 
 const { Header, Aside, Content } = Layout;
 
+type FlatMenuItem = {
+  key: string;
+  icon: React.ReactElement;
+  title: string;
+  /** 未开放等功能：侧栏展示但不可点 */
+  disabled?: boolean;
+};
+
 type FlatMenuSection = {
   title: string;
-  items: Array<{ key: string; icon: React.ReactElement; title: string }>;
+  items: FlatMenuItem[];
 };
 
 const AppLayout: React.FC = () => {
@@ -42,7 +51,7 @@ const AppLayout: React.FC = () => {
     setWorkspaceMode,
   } = useTeam();
 
-  const displayName = user?.nickname || user?.username || '未登录';
+  const displayName = getUserDisplayName(user);
   const userAvatar = resolveUserAvatar({
     id: user?.id,
     username: user?.username,
@@ -51,6 +60,7 @@ const AppLayout: React.FC = () => {
   });
   const roleSet = new Set((user?.roles ?? []).map((item) => String(item).toLowerCase()));
   const isPlatformAdmin = roleSet.has('admin') || roleSet.has('super_admin') || roleSet.has('platform_admin') || roleSet.has('root');
+  const isHomeRoute = location.pathname === '/';
 
   const menuSections = React.useMemo<FlatMenuSection[]>(() => {
     const baseSections: FlatMenuSection[] = [
@@ -91,6 +101,7 @@ const AppLayout: React.FC = () => {
             key: '/data-api',
             icon: <ApiIcon />,
             title: 'API管理',
+            disabled: true,
           },
           {
             key: '/data-cloud-function',
@@ -141,7 +152,10 @@ const AppLayout: React.FC = () => {
 
   const currentSpaceLabel = workspaceMode === 'team' ? (currentTeam?.name || '团队空间') : '个人空间';
 
-  const handleMenuClick = (value: any) => {
+  const handleMenuClick = (value: string, disabled?: boolean) => {
+    if (disabled) {
+      return;
+    }
     navigate(value);
   };
 
@@ -163,7 +177,9 @@ const AppLayout: React.FC = () => {
       <div className="space-switcher-popup">
         <div className="space-switcher-popup__section-title">个人空间</div>
         <div className={`space-item${workspaceMode === 'personal' ? ' is-active' : ''}`} onClick={handleSwitchPersonalSpace}>
-          <Avatar size="30px" className="space-item__avatar" image={userAvatar}>{displayName.slice(0, 1)}</Avatar>
+          <Avatar size="30px" className="space-item__avatar" image={userAvatar}>
+            {getUserDisplayName(user).slice(0, 1)}
+          </Avatar>
           <div className="space-item__meta">
             <span className="space-item__name">个人空间</span>
             <span className="space-item__sub">{displayName}</span>
@@ -241,15 +257,19 @@ const AppLayout: React.FC = () => {
               <div className="sidebar-section__title">{section.title}</div>
               <div className="sidebar-section__items">
                 {section.items.map((item) => {
-                  const active = location.pathname === item.key || location.pathname.startsWith(`${item.key}/`);
+                  const active =
+                    !item.disabled
+                    && (location.pathname === item.key || location.pathname.startsWith(`${item.key}/`));
                   return (
                     <Button
                       key={item.key}
                       variant={active ? 'base' : 'text'}
                       theme='default'
-                      className={`sidebar-menu-button${active ? ' is-active' : ''}`}
+                      disabled={item.disabled}
+                      title={item.disabled ? '即将开放' : undefined}
+                      className={`sidebar-menu-button${active ? ' is-active' : ''}${item.disabled ? ' sidebar-menu-button--disabled' : ''}`}
                       icon={item.icon}
-                      onClick={() => handleMenuClick(item.key)}
+                      onClick={() => handleMenuClick(item.key, item.disabled)}
                     >
                       {item.title}
                     </Button>
@@ -273,12 +293,14 @@ const AppLayout: React.FC = () => {
               trigger="click"
               content={<AccountInfoPopup/>}
             >
-              <Avatar className='user-avatar' size="36px" shape="circle">{displayName.slice(0, 2)}</Avatar>
+              <Avatar className="user-avatar" size="36px" shape="circle">
+                {getUserDisplayInitials(user)}
+              </Avatar>
             </Popup>
           </Row>
         </Header>
 
-        <Content className="layout-content">
+        <Content className={`layout-content${isHomeRoute ? ' layout-content--home' : ''}`}>
           <div className="layout-outlet">
             <Outlet />
           </div>

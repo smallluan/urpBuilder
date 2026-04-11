@@ -817,9 +817,79 @@
     }
 
     .preview-ui-library-toolbar-select__label {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
       font-size: 12px;
       color: var(--builder-text-soft);
       white-space: nowrap;
+    }
+
+    /* 搭建器专用 Beta 角标（非 TDesign Tag），见 BetaSparkleBadge.tsx */
+    .beta-sparkle-badge {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      padding: 2px;
+      border-radius: 999px;
+      isolation: isolate;
+      vertical-align: middle;
+    }
+
+    /* 横向流动渐变（不旋转整块背景），形成「颜色在边上流动」的观感 */
+    .beta-sparkle-badge__aurora {
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      background: linear-gradient(
+        105deg,
+        var(--td-brand-color-5) 0%,
+        var(--td-brand-color) 18%,
+        #e879f9 38%,
+        #22d3ee 58%,
+        var(--td-brand-color-6) 78%,
+        var(--td-brand-color-5) 100%
+      );
+      background-size: 260% 100%;
+      background-position: 0% 50%;
+      animation: beta-sparkle-flow 3.6s ease-in-out infinite;
+      z-index: 0;
+    }
+
+    .beta-sparkle-badge__text {
+      position: relative;
+      z-index: 1;
+      padding: 2px 7px;
+      border-radius: inherit;
+      font-size: 9px;
+      font-weight: 800;
+      letter-spacing: 0.09em;
+      line-height: 1.15;
+      color: var(--td-brand-color-8);
+      background: var(--td-bg-color-container);
+      background-clip: padding-box;
+      text-shadow: 0 0 14px color-mix(in srgb, var(--td-brand-color) 28%, transparent);
+    }
+
+    :root[theme-mode='dark'] .beta-sparkle-badge__text {
+      color: var(--td-brand-color-9);
+      text-shadow: 0 0 18px color-mix(in srgb, var(--td-brand-color) 38%, transparent);
+    }
+
+    @keyframes beta-sparkle-flow {
+      0% {
+        background-position: 0% 50%;
+      }
+
+      50% {
+        background-position: 100% 50%;
+      }
+
+      100% {
+        background-position: 0% 50%;
+      }
     }
 
     .preview-ui-library-toolbar-select__control {

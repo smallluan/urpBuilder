@@ -89,20 +89,19 @@ const Login: React.FC = () => {
 
   const panelMeta = useMemo(() => {
     if (visibleMode === 'register') {
-      return {
-        modeLabel: 'NEW WORKSPACE ACCESS',
-        title: '注册账号',
-        desc: '创建你的企业低代码协作工作台',
-        primaryText: '注册并进入平台',
-        toggleText: '已有账号，去登录',
-        toggleMode: 'login' as AuthMode,
-      };
+    return {
+      modeLabel: 'NEW WORKSPACE ACCESS',
+      title: '注册账号',
+      primaryText: '注册并进入平台',
+      toggleText: '已有账号，去登录',
+      toggleMode: 'login' as AuthMode,
+    };
     }
 
     return {
       modeLabel: 'WORKSPACE SIGN IN',
       title: '欢迎登录',
-      desc: '使用账号密码进入低代码工作台',
+      desc: '请使用注册时的登录账号与密码进入工作台。',
       primaryText: '登录',
       toggleText: '没有账号？去注册',
       toggleMode: 'register' as AuthMode,
@@ -184,7 +183,7 @@ const Login: React.FC = () => {
                   size="large"
                   value={loginUsername}
                   onChange={(value) => setLoginUsername(String(value))}
-                  placeholder="用户名"
+                  placeholder="登录账号"
                   prefixIcon={<UserIcon />}
                   clearable
                   onEnter={handleLoginSubmit}
@@ -223,7 +222,7 @@ const Login: React.FC = () => {
                   size="large"
                   value={registerUsername}
                   onChange={(value) => setRegisterUsername(String(value))}
-                  placeholder="用户名"
+                  placeholder="登录账号"
                   prefixIcon={<UserIcon />}
                   clearable
                   onEnter={handleRegisterSubmit}
@@ -232,7 +231,7 @@ const Login: React.FC = () => {
                   size="large"
                   value={registerNickname}
                   onChange={(value) => setRegisterNickname(String(value))}
-                  placeholder="昵称（可选）"
+                  placeholder="昵称"
                   clearable
                   onEnter={handleRegisterSubmit}
                 />
