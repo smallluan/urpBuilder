@@ -1,6 +1,6 @@
-# 输入框（Input）DSL 与 TDesign / Ant Design 行为说明
+# 单行输入（Input）与数字输入（InputNumber）DSL：TDesign / Ant Design 行为说明
 
-本文记录搭建器与预览里 **`Input` / `antd.Input`** 的 DSL 语义、双库映射、受控行为，以及近期对物料与实现的调整，便于排查「属性不生效」类问题。
+本文记录搭建器与预览里 **`Input` / `antd.Input`**、**`InputNumber` / `antd.InputNumber`** 的 DSL 语义、双库映射、受控行为，以及近期对物料与实现的调整，便于排查「属性不生效」类问题。
 
 ---
 
@@ -76,16 +76,46 @@ TDesign `Input` 内部通过 `useLengthLimit` 计算 `limitNumber`：
 
 ---
 
-## 5. 相关文件一览
+## 5. 数字输入框（`InputNumber` / `antd.InputNumber`）
+
+### 受控与非受控
+
+与单行输入相同：**`controlled === true`** 时，画布/预览 **不把** `onChange` 结果写回 DSL 的 `value`；仅在 **非受控** 时同步（`formComponents.tsx`、`PreviewRenderer.tsx`、`antdComponents.tsx`、`previewAntdNodes.tsx` 已对齐）。
+
+### 已从 `InputNumber` 物料移除的属性
+
+以下项已从 **`componentCatalog.ts`** 的 `InputNumber` 定义中删除，渲染侧不再读取：
+
+| 属性 | 说明 |
+|------|------|
+| `allowInputOverLimit` | 允许超限输入 |
+| `autoWidth` | 自动宽度 |
+| `largeNumber` | 大数模式 |
+
+### Ant Design 映射（`mapTdesignInputNumberPropsToAntd`）
+
+实现见 `src/utils/antdTdesignPropBridge.ts`：
+
+- `decimalPlaces` → `precision`
+- `size`：`medium` → `middle` 等
+- `status`：`error` / `warning` 走 antd；`success` 用 `styles.root` 绿色描边模拟
+- `align` → `styles.input.textAlign`
+- `theme`：`normal`（无步进按钮）→ `controls={false}`；`row` / `column` 使用 antd 默认步进控制
+- `min` / `max` / `step` / `placeholder` / `disabled` / `readOnly` 直接透传
+- `styles.root` 与搭建/预览的 `mergeStyle()`（`__style`）合并，避免丢外层样式
+
+---
+
+## 6. 相关文件一览
 
 | 文件 | 作用 |
 |------|------|
 | `src/builder/renderer/tdesignInputField.tsx` | TDesign `Input` 字数统计与 DSL 对齐 |
-| `src/builder/renderer/registries/formComponents.tsx` | 搭建 TDesign `Input` |
-| `src/pages/PreviewEngine/components/PreviewRenderer.tsx` | 预览 TDesign `Input` |
-| `src/utils/antdTdesignPropBridge.ts` | antd 映射与 `parseDslAutosizeValue` 等 |
-| `src/builder/renderer/registries/antdComponents.tsx` | 搭建 `antd.Input` / `antd.Textarea` |
+| `src/builder/renderer/registries/formComponents.tsx` | 搭建 TDesign `Input` / `InputNumber` |
+| `src/pages/PreviewEngine/components/PreviewRenderer.tsx` | 预览 TDesign `Input` / `InputNumber` |
+| `src/utils/antdTdesignPropBridge.ts` | antd 映射（含 `mapTdesignInputNumberPropsToAntd`）与 `parseDslAutosizeValue` 等 |
+| `src/builder/renderer/registries/antdComponents.tsx` | 搭建 `antd.Input` / `antd.Textarea` / `antd.InputNumber` |
 | `src/pages/PreviewEngine/components/previewAntdNodes.tsx` | 预览 antd 节点 |
-| `src/config/componentCatalog.ts` | `Input` 可配置项定义 |
+| `src/config/componentCatalog.ts` | `Input` / `InputNumber` 可配置项定义 |
 
 更宏观的双库约定见 [TDesign / Ant Design：同一套 DSL 下的对齐约定](./tdesign-antd-dsl-alignment.md)。

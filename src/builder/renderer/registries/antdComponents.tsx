@@ -86,6 +86,7 @@ import {
   antdImageStylesFromMergeStyle,
   mapTdesignInputPropsToAntd,
   mapTdesignTextareaPropsToAntd,
+  mapTdesignInputNumberPropsToAntd,
 } from '../../../utils/antdTdesignPropBridge';
 
 const { Title, Paragraph, Text, Link } = Typography;
@@ -628,10 +629,53 @@ export function registerAntdComponents(registry: ComponentRegistry): void {
   });
 
   registry.set('antd.InputNumber', (ctx) => {
-    const { getFiniteNumberProp, mergeStyle, handleActivateSelf, data, isNodeActive } = ctx;
+    const {
+      getStringProp, getBooleanProp, getFiniteNumberProp, mergeStyle,
+      handleActivateSelf, data, isNodeActive, setActiveNode, updateActiveNodeProp,
+      getInputNumberValueProp,
+    } = ctx;
+    const isControlled = getBooleanProp('controlled') !== false;
+
+    const mapped = mapTdesignInputNumberPropsToAntd({
+      size: getStringProp('size'),
+      status: getStringProp('status'),
+      align: getStringProp('align'),
+      theme: getStringProp('theme'),
+      decimalPlaces: getFiniteNumberProp('decimalPlaces'),
+    });
+    const { styles: semanticStyles, ...antdMapped } = mapped;
+    const stylesMerged: React.ComponentProps<typeof InputNumber>['styles'] = {
+      root: { ...(mergeStyle() ?? {}), ...(semanticStyles?.root ?? {}) },
+      ...(semanticStyles?.input ? { input: semanticStyles.input } : {}),
+    };
+
+    const handleChange = (next: number | string | null) => {
+      if (data?.key) {
+        setActiveNode(data.key);
+      }
+      if (!isControlled) {
+        updateActiveNodeProp('value', next === null || typeof next === 'undefined' ? '' : next);
+      }
+    };
+
+    const valueProps = isControlled
+      ? { value: getInputNumberValueProp('value') as number | string | null | undefined }
+      : { defaultValue: getInputNumberValueProp('defaultValue') as number | string | null | undefined };
+
     return (
       <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf} nodeKey={data?.key} active={isNodeActive}>
-        <InputNumber min={getFiniteNumberProp('min')} max={getFiniteNumberProp('max')} defaultValue={getFiniteNumberProp('value')} readOnly />
+        <InputNumber
+          {...antdMapped}
+          {...valueProps}
+          min={getFiniteNumberProp('min')}
+          max={getFiniteNumberProp('max')}
+          step={getFiniteNumberProp('step')}
+          placeholder={getStringProp('placeholder') || undefined}
+          disabled={getBooleanProp('disabled') === true}
+          readOnly={getBooleanProp('readOnly') === true}
+          styles={stylesMerged}
+          onChange={handleChange}
+        />
       </ActivateWrapper>
     );
   });

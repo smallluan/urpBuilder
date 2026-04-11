@@ -209,7 +209,9 @@ export function registerFormComponents(registry: ComponentRegistry): void {
       if (data?.key) {
         setActiveNode(data.key);
       }
-      updateActiveNodeProp('value', typeof nextValue === 'undefined' ? '' : nextValue);
+      if (!isControlled) {
+        updateActiveNodeProp('value', typeof nextValue === 'undefined' ? '' : nextValue);
+      }
     };
 
     return (
@@ -226,11 +228,8 @@ export function registerFormComponents(registry: ComponentRegistry): void {
           status={getStringProp('status') as any}
           align={getStringProp('align') as any}
           theme={getStringProp('theme') as any}
-          allowInputOverLimit={getBooleanProp('allowInputOverLimit')}
-          autoWidth={getBooleanProp('autoWidth')}
           disabled={getBooleanProp('disabled')}
           readOnly={getBooleanProp('readOnly')}
-          largeNumber={getBooleanProp('largeNumber')}
           onChange={(value) => handleInputNumberChange(value as string | number | undefined)}
           style={mergeStyle()}
         />

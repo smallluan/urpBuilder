@@ -5,6 +5,7 @@
 import type { CSSProperties } from 'react';
 import type { InputProps } from 'antd/es/input';
 import type { TextAreaProps } from 'antd/es/input/TextArea';
+import type { InputNumberProps } from 'antd/es/input-number';
 import { normalizeBuilderTableColumns } from './tableColumnNormalize';
 
 /**
@@ -277,6 +278,67 @@ export function mapTdesignTextareaPropsToAntd(dsl: TdesignTextareaDslForAntd): {
   };
 
   return { textareaProps, style: {}, tips };
+}
+
+/**
+ * TDesign `InputNumber` DSL → antd `InputNumber`。
+ * - `theme: normal`：无步进按钮 → antd `controls={false}`；`row` / `column` 使用默认 `controls`。
+ * - `decimalPlaces` → `precision`。
+ * - `align` → `styles.input.textAlign`。
+ * - `status: success`：antd 无对应项，用 `styles.root` 模拟绿色描边。
+ */
+export function mapTdesignInputNumberPropsToAntd(dsl: {
+  size?: string;
+  status?: string;
+  align?: string;
+  theme?: string;
+  decimalPlaces?: number;
+}): Pick<InputNumberProps, 'size' | 'status' | 'precision' | 'controls' | 'styles'> {
+  const sizeRaw = String(dsl.size ?? 'medium').trim();
+  const sizeMap: Record<string, NonNullable<InputNumberProps['size']>> = {
+    large: 'large',
+    small: 'small',
+    medium: 'middle',
+    middle: 'middle',
+    normal: 'middle',
+  };
+  const size = sizeMap[sizeRaw] ?? 'middle';
+
+  const statusRaw = String(dsl.status ?? 'default').trim();
+  const status: InputNumberProps['status'] =
+    statusRaw === 'error' ? 'error' : statusRaw === 'warning' ? 'warning' : undefined;
+
+  const themeStr = String(dsl.theme ?? 'row').trim();
+  const controls: InputNumberProps['controls'] = themeStr === 'normal' ? false : undefined;
+
+  const dp = dsl.decimalPlaces;
+  const precision: InputNumberProps['precision'] =
+    typeof dp === 'number' && Number.isFinite(dp) && dp >= 0 && dp <= 20 ? Math.round(dp) : undefined;
+
+  const textAlign =
+    dsl.align === 'center' || dsl.align === 'right' ? dsl.align : dsl.align === 'left' ? 'left' : undefined;
+
+  const styles: InputNumberProps['styles'] = {
+    ...(textAlign ? { input: { textAlign } } : {}),
+    ...(statusRaw === 'success'
+      ? {
+          root: {
+            borderColor: '#52c41a',
+            boxShadow: '0 0 0 2px rgba(82, 196, 26, 0.12)',
+          },
+        }
+      : {}),
+  };
+
+  const hasStyles = Boolean(styles.input || styles.root);
+
+  return {
+    size,
+    status,
+    ...(typeof precision === 'number' ? { precision } : {}),
+    ...(controls === false ? { controls: false } : {}),
+    ...(hasStyles ? { styles } : {}),
+  };
 }
 
 export function mapTdesignButtonToAntd(opts: {

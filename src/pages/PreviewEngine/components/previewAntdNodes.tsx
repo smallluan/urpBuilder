@@ -64,6 +64,7 @@ import {
   antdImageStylesFromMergeStyle,
   mapTdesignInputPropsToAntd,
   mapTdesignTextareaPropsToAntd,
+  mapTdesignInputNumberPropsToAntd,
   parseDslAutosizeValue,
 } from '../../../utils/antdTdesignPropBridge';
 import { collectDslStepRows, dslStepStatusToAntd } from '../../../builder/utils/stepsDsl';
@@ -108,6 +109,18 @@ function getFiniteNumberProp(node: UiTreeNode, propName: string) {
   if (typeof v === 'string' && v.trim()) {
     const n = Number(v);
     return Number.isFinite(n) ? n : undefined;
+  }
+  return undefined;
+}
+
+function getInputNumberValueProp(node: UiTreeNode, propName: string) {
+  const value = getProp(node, propName);
+  if (typeof value === 'number') {
+    return Number.isNaN(value) ? undefined : value;
+  }
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    return trimmed === '' ? undefined : trimmed;
   }
   return undefined;
 }
@@ -562,16 +575,36 @@ export function tryRenderAntdPreview(ctx: AntdPreviewContext): React.ReactElemen
     }
     case 'antd.InputNumber': {
       const controlled = getBooleanProp(node, 'controlled') !== false;
-      const v = getFiniteNumberProp(node, 'value');
+      const mapped = mapTdesignInputNumberPropsToAntd({
+        size: getStringProp(node, 'size'),
+        status: getStringProp(node, 'status'),
+        align: getStringProp(node, 'align'),
+        theme: getStringProp(node, 'theme'),
+        decimalPlaces: getFiniteNumberProp(node, 'decimalPlaces'),
+      });
+      const { styles: semanticStyles, ...antdMapped } = mapped;
+      const stylesMerged: React.ComponentProps<typeof InputNumber>['styles'] = {
+        root: { ...(mergeStyle() ?? {}), ...(semanticStyles?.root ?? {}) },
+        ...(semanticStyles?.input ? { input: semanticStyles.input } : {}),
+      };
+      const val = getInputNumberValueProp(node, 'value');
+      const defVal = getInputNumberValueProp(node, 'defaultValue');
       return (
         <InputNumber
+          {...antdMapped}
+          value={controlled ? val : undefined}
+          defaultValue={controlled ? undefined : defVal}
           min={getFiniteNumberProp(node, 'min')}
           max={getFiniteNumberProp(node, 'max')}
-          value={controlled ? v : undefined}
-          defaultValue={controlled ? undefined : v}
-          style={mergeStyle()}
+          step={getFiniteNumberProp(node, 'step')}
+          placeholder={getStringProp(node, 'placeholder') || undefined}
+          disabled={getBooleanProp(node, 'disabled') === true}
+          readOnly={getBooleanProp(node, 'readOnly') === true}
+          styles={stylesMerged}
           onChange={(next) => {
-            syncNodeValue(next);
+            if (!controlled) {
+              syncNodeValue(next);
+            }
             emitInteractionLifecycle('onChange', { value: next });
           }}
         />

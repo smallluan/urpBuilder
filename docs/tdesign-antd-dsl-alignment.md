@@ -98,6 +98,12 @@ TDesign 内部 `useLengthLimit` 仅在配置了 **`maxlength` 或 `maxcharacter`
 
 更完整的变更说明见：[输入框 DSL 与双库行为说明](./input-field-dsl.md)。
 
+### `InputNumber`（数字输入框）
+
+- **受控**：与 `Input` 相同，`controlled === true` 时不把修改写回 DSL `value`（搭建与 TDesign/antd 预览均已对齐）。
+- **已从物料移除**：`allowInputOverLimit`、`autoWidth`、`largeNumber`（见 `componentCatalog`）。
+- **antd 映射**：`mapTdesignInputNumberPropsToAntd`（`decimalPlaces`→`precision`、`theme: normal`→`controls: false`、`align`/`status: success` 等），详见 [input-field-dsl.md](./input-field-dsl.md)。
+
 ---
 
 ## 其他桥接（索引）
@@ -115,6 +121,7 @@ TDesign 内部 `useLengthLimit` 仅在配置了 **`maxlength` 或 `maxcharacter`
 | Table | `tdesignTableColumnsToAntd`、`resolveAntdTableDataSource` |
 | Drawer 尺寸 | `drawerWidthPxFromTdesignSize` |
 | Input / Textarea | `mapTdesignInputPropsToAntd`、`mapTdesignTextareaPropsToAntd`、`parseDslAutosizeValue`；TDesign 专用 `BuilderTdesignInputField` |
+| InputNumber | `mapTdesignInputNumberPropsToAntd` |
 
 ---
 

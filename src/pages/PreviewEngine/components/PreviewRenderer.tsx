@@ -3170,14 +3170,13 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) 
           status={getStringProp(node, 'status') as any}
           align={getStringProp(node, 'align') as any}
           theme={getStringProp(node, 'theme') as any}
-          allowInputOverLimit={getBooleanProp(node, 'allowInputOverLimit')}
-          autoWidth={getBooleanProp(node, 'autoWidth')}
           disabled={getBooleanProp(node, 'disabled')}
           readOnly={getBooleanProp(node, 'readOnly')}
-          largeNumber={getBooleanProp(node, 'largeNumber')}
           onBlur={(value, context) => emitInteractionLifecycle('onBlur', { value, context })}
           onChange={(value, context) => {
-            syncNodeValue(value);
+            if (!isControlled) {
+              syncNodeValue(value);
+            }
             emitInteractionLifecycle('onChange', { value, context });
           }}
           onEnter={(value, context) => emitInteractionLifecycle('onEnter', { value, context })}

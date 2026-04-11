@@ -2738,16 +2738,6 @@ const tdesignComponentCatalog = [
           options: ['column', 'row', 'normal']
         }
       },
-      allowInputOverLimit: {
-        name: '允许超限输入',
-        value: true,
-        editType: 'switch'
-      },
-      autoWidth: {
-        name: '自动宽度',
-        value: false,
-        editType: 'switch'
-      },
       disabled: {
         name: '禁用',
         value: false,
@@ -2755,11 +2745,6 @@ const tdesignComponentCatalog = [
       },
       readOnly: {
         name: '只读',
-        value: false,
-        editType: 'switch'
-      },
-      largeNumber: {
-        name: '大数模式',
         value: false,
         editType: 'switch'
       }
