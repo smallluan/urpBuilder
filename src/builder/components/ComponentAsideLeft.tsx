@@ -28,6 +28,7 @@ import {
   type TreeClipboardPayload,
 } from '../utils/treeClipboard';
 import { BUILDER_STRUCTURE_TREE_SCROLL } from '../config/builderStructureTreeScroll';
+import { isTdesignTreeExpandIconClick } from '../utils/treeExpandIconClick';
 import { applyBuilderDragPreview } from '../utils/dragPreview';
 
 interface RenderUiTreeNode extends Omit<UiTreeNode, 'label' | 'children'> {
@@ -964,6 +965,9 @@ const ComponentAsideLeft: React.FC = () => {
     if (typeof key !== 'string') {
       return;
     }
+    if (isTdesignTreeExpandIconClick(context?.e)) {
+      return;
+    }
     toggleActiveNode(key);
   };
 
@@ -1203,21 +1207,23 @@ const ComponentAsideLeft: React.FC = () => {
           />
 
           <div ref={structureTreeViewportRef} className="structure-tree" role="tree">
-            <Tree
-              keys={{ value: 'key' }}
-              ref={bindTreeRef}
-              activable
-              expanded={expandedKeys}
-              line
-              scroll={BUILDER_STRUCTURE_TREE_SCROLL}
-              data={treeData}
-              actived={activeNodeKey ? [activeNodeKey] : []}
-              onClick={handleTreeClick}
-              onExpand={(nextExpanded) => {
-                setExpandedKeys(Array.isArray(nextExpanded) ? nextExpanded.map((item) => String(item)) : []);
-              }}
-              onDragLeave={() => setDragOverNodeKey(null)}
-            />
+            <div className="structure-tree__zoom">
+              <Tree
+                keys={{ value: 'key' }}
+                ref={bindTreeRef}
+                activable
+                expanded={expandedKeys}
+                line
+                scroll={BUILDER_STRUCTURE_TREE_SCROLL}
+                data={treeData}
+                actived={activeNodeKey ? [activeNodeKey] : []}
+                onClick={handleTreeClick}
+                onExpand={(nextExpanded) => {
+                  setExpandedKeys(Array.isArray(nextExpanded) ? nextExpanded.map((item) => String(item)) : []);
+                }}
+                onDragLeave={() => setDragOverNodeKey(null)}
+              />
+            </div>
           </div>
 
           {contextMenuState.visible && contextMenuNode ? (

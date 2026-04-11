@@ -1,10 +1,10 @@
 import type { TScroll } from 'tdesign-react/es/common';
 
 /**
- * 与 `builder/style.less` 中 `.structure-tree` 行高一致；虚拟列表行高必须与实际 DOM 接近，否则滚动会错位。
- * TDesign Tree 无 `size` API，紧凑度由样式与缩进 token 控制。
+ * 与 TDesign Tree 默认行高一致：`calc(var(--td-comp-size-m) + 2px)` → 32 + 2 = 34px。
+ * 结构树不再覆盖 `.t-tree__item` / 连线高度，避免与组件库内部几何错位；紧凑度由 `.structure-tree__zoom` 的 zoom 控制。
  */
-export const BUILDER_STRUCTURE_TREE_ROW_HEIGHT = 30;
+export const BUILDER_STRUCTURE_TREE_ROW_HEIGHT = 34;
 
 /**
  * 搭建页 / 流程页左侧结构树共用：TDesign Tree 虚拟滚动。

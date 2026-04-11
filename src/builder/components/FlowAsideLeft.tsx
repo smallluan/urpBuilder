@@ -11,6 +11,7 @@ import type { UiTreeInstance, UiTreeNode } from '../store/types';
 import { isSlotNode } from '../utils/slot';
 import type { FlowComponentDragPayload } from '../../types/flow';
 import { BUILDER_STRUCTURE_TREE_SCROLL } from '../config/builderStructureTreeScroll';
+import { isTdesignTreeExpandIconClick } from '../utils/treeExpandIconClick';
 import { findFirstFlowNodeIdBySourceKey, getFlowNodeStructureSourceKey } from '../utils/flowNodeSourceKey';
 import { findNodePathByKey } from '../utils/tree';
 import StructureVirtualRootBanner from './StructureVirtualRootBanner';
@@ -194,6 +195,9 @@ const FlowAsideLeft: React.FC = () => {
     if (typeof key !== 'string') {
       return;
     }
+    if (isTdesignTreeExpandIconClick(context?.e)) {
+      return;
+    }
 
     const flowNodeId = findFirstFlowNodeIdBySourceKey(useStore.getState().flowNodes, key);
     if (!flowNodeId) {
@@ -326,17 +330,19 @@ const FlowAsideLeft: React.FC = () => {
           />
 
           <div className="structure-tree" role="tree">
-            <Tree
-              keys={{ value: 'key' }}
-              ref={treeRef}
-              activable
-              expandAll
-              line
-              scroll={BUILDER_STRUCTURE_TREE_SCROLL}
-              data={flowTreeData}
-              actived={flowTreeActivedKeys}
-              onClick={handleTreeClick}
-            />
+            <div className="structure-tree__zoom">
+              <Tree
+                keys={{ value: 'key' }}
+                ref={treeRef}
+                activable
+                expandAll
+                line
+                scroll={BUILDER_STRUCTURE_TREE_SCROLL}
+                data={flowTreeData}
+                actived={flowTreeActivedKeys}
+                onClick={handleTreeClick}
+              />
+            </div>
           </div>
 
           {contextMenuState.visible && contextMenuNode ? (

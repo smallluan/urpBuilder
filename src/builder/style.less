@@ -418,36 +418,28 @@
         padding: 2px;
         font-size: 12px;
         color: var(--builder-text-tree);
-        /* 与 builderStructureTreeScroll.ts 中 BUILDER_STRUCTURE_TREE_ROW_HEIGHT 一致 */
-        --builder-structure-tree-row-height: 30px;
-        /* 默认约 24px/级，略收紧以减少深树横向滚动 */
-        --builder-structure-tree-indent-unit: 16px;
+        /*
+         * 紧凑度只调 zoom，不覆盖 TDesign 的缩进/连线（--td-comp-margin-xxl、.t-tree__line 等），
+         * 避免与组件库内部几何计算错位。需要更紧/更松时改此变量即可（Chromium / Edge 有效）。
+         */
+        --builder-structure-tree-zoom: 0.92;
 
-        /* 鏍硅妭鐐归檺鍒跺湪渚ф爮鍐咃紝妯悜婧㈠嚭鐣欏湪鏈妭鐐规粴鍔紙鍕跨敤 fit-content 鎾戠牬鐖剁骇 overflow:hidden锛?*/
-        .t-tree {
+        .structure-tree__zoom {
+          flex: 1 1 auto;
+          min-height: 0;
+          min-width: 0;
+          display: flex;
+          flex-direction: column;
+          overflow: hidden;
+          zoom: var(--builder-structure-tree-zoom);
+        }
+
+        .structure-tree__zoom > .t-tree {
           flex: 1 1 auto;
           min-height: 0;
           min-width: 0;
           width: 100%;
           max-width: 100%;
-          --td-comp-margin-xxl: var(--builder-structure-tree-indent-unit);
-        }
-
-        .t-tree__item::before {
-          height: var(--builder-structure-tree-row-height);
-        }
-
-        .t-tree__line {
-          height: var(--builder-structure-tree-row-height);
-          --space: var(--builder-structure-tree-indent-unit);
-        }
-
-        .t-tree__line::before {
-          height: var(--builder-structure-tree-row-height);
-        }
-
-        .t-tree__item .t-icon {
-          font-size: 14px;
         }
 
         /* 铏氭嫙鍒楄〃鍐呭眰瑕侀殢鏈€瀹借鎾戝紑锛屽惁鍒?TDesign 榛樿 label 鐪佺暐鍙蜂笉浼氫骇鐢熸í鍚?scrollWidth */
