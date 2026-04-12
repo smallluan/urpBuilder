@@ -138,6 +138,22 @@ TDesign 内部 `useLengthLimit` 仅在配置了 **`maxlength` 或 `maxcharacter`
 
 ---
 
+## Button（`Button` / `antd.Button`）
+
+Ant Design 6 以 **`color` + `variant`** 为语义主路径（旧 `type` 仍兼容，但无法表达「主色 + 描边」等组合）。`mapTdesignButtonToAntd` 将 DSL 映射为：
+
+| DSL | antd |
+|-----|------|
+| `theme` `primary` / `success` / `warning` / `error` / `default` | `color` `primary` / `green` / `orange` / `danger` / `default` |
+| `variant` `base` / `outline` / `dashed` / `text` | `variant` `solid` / `outlined` / `dashed` / `text` |
+| `danger: true` 或 `theme: error` | `color: danger` |
+
+搭建与预览（`antdComponents.tsx`、`previewAntdNodes.tsx`）对 `antd.Button` 传入上述 `color`、`variant`，不再仅用旧版 `type`/`danger` 近似。
+
+**统一语义色（不开放任意 theme 色值）**：`antdTdesignPropBridge.ts` 中 `tdesignSemanticThemeToAntdButtonColor` 为上述主映射；`Typography.Text` / `Link` 使用 `tdesignTextThemeToAntdTypographyType`、`tdesignLinkThemeToAntdTypographyType`（antd Typography `type`）；`Tag` 使用 `tdesignSemanticTokenToAntdTagColor`（预设 status 色）；`Tabs` 的 DSL `theme`：`normal`→`line`、`card`→`card`；`Statistic` 的 `statisticColorStyle` 增加与语义名一致的别名（如 `primary`/`success`）。
+
+---
+
 ## 其他桥接（索引）
 
 以下逻辑以 `antdTdesignPropBridge.ts` 为准，此处仅作索引，便于搜到：
@@ -148,7 +164,10 @@ TDesign 内部 `useLengthLimit` 仅在配置了 **`maxlength` 或 `maxcharacter`
 | Statistic | `antStatisticRootStyleMerge`、`statisticColorStyle`：根节点与颜色 token。 |
 | Divider | `dividerOrientationFromAlign` |
 | Typography.Title | `antTitleLevelFromTdesign` |
-| Button | `mapTdesignButtonToAntd` |
+| Button | `mapTdesignButtonToAntd`、`tdesignSemanticThemeToAntdButtonColor` |
+| Typography.Text / Link | `tdesignTextThemeToAntdTypographyType`、`tdesignLinkThemeToAntdTypographyType` |
+| Tag | `tdesignSemanticTokenToAntdTagColor` |
+| Tabs | DSL `theme` `normal`/`card` → antd `type` `line`/`card` |
 | Space | `antdSpaceSizeFromTdesign` |
 | Table | `tdesignTableColumnsToAntd`、`resolveAntdTableDataSource` |
 | Drawer 尺寸 | `drawerWidthPxFromTdesignSize` |

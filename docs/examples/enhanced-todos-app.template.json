@@ -1,0 +1,466 @@
+{
+  "base": {
+    "pageName": "智能待办助手",
+    "pageId": "enhanced_todos_app",
+    "description": "功能完整的待办应用：全部/待办/已完成三视图，支持任务增删改查和优先级设置"
+  },
+  "template": {
+    "uiTree": {
+      "key": "__root__",
+      "type": "root",
+      "label": "该页面",
+      "props": {},
+      "lifetimes": [
+        "onInit",
+        "onBeforeMount",
+        "onMounted",
+        "onBeforeUpdate",
+        "onUpdated",
+        "onBeforeUnmount",
+        "onUnmounted"
+      ],
+      "children": []
+    },
+    "flowNodes": [
+      {
+        "id": "annotation-todos",
+        "type": "annotationNode",
+        "position": { "x": 80, "y": 60 },
+        "connectable": false,
+        "data": {
+          "text": "智能待办助手：支持多视图切换、任务优先级设置和统计功能"
+        }
+      }
+    ],
+    "flowEdges": [],
+    "routes": [
+      {
+        "routeId": "route-all",
+        "routeConfig": {
+          "routePath": "/",
+          "routeName": "all",
+          "pageTitle": "待办 · 全部任务",
+          "menuTitle": "全部任务",
+          "useLayout": true
+        },
+        "selectedLayoutTemplateId": null,
+        "flowNodes": [],
+        "flowEdges": [],
+        "uiTree": {
+          "key": "root-route-all",
+          "type": "root",
+          "label": "该页面",
+          "props": {},
+          "lifetimes": [
+            "onInit",
+            "onBeforeMount",
+            "onMounted",
+            "onBeforeUpdate",
+            "onUpdated",
+            "onBeforeUnmount",
+            "onUnmounted"
+          ],
+          "children": [
+            {
+              "key": "outlet-main",
+              "type": "RouteOutlet",
+              "label": "路由出口",
+              "props": {
+                "minHeight": { "value": 320 }
+              },
+              "children": [
+                {
+                  "key": "card-all",
+                  "type": "Card",
+                  "label": "全部任务",
+                  "props": {
+                    "title": { "value": "全部任务" },
+                    "bordered": { "value": true },
+                    "size": { "value": "medium" }
+                  },
+                  "children": [
+                    {
+                      "key": "stack-all",
+                      "type": "Stack",
+                      "label": "内容区",
+                      "props": {
+                        "gap": { "value": 16 },
+                        "justify": { "value": "flex-start" },
+                        "align": { "value": "stretch" }
+                      },
+                      "children": [
+                        {
+                          "key": "row-add",
+                          "type": "Inline",
+                          "label": "添加任务",
+                          "props": {
+                            "gap": { "value": 8 },
+                            "wrap": { "value": true },
+                            "align": { "value": "center" }
+                          },
+                          "children": [
+                            {
+                              "key": "inp-new",
+                              "type": "Input",
+                              "label": "任务输入框",
+                              "props": {
+                                "placeholder": { "value": "请输入新任务…" },
+                                "clearable": { "value": true }
+                              }
+                            },
+                            {
+                              "key": "select-priority",
+                              "type": "Select",
+                              "label": "优先级选择",
+                              "props": {
+                                "placeholder": { "value": "选择优先级" },
+                                "options": { "value": [
+                                  { "label": "低优先级", "value": "low" },
+                                  { "label": "中优先级", "value": "medium" },
+                                  { "label": "高优先级", "value": "high" }
+                                ]},
+                                "size": { "value": "medium" }
+                              }
+                            },
+                            {
+                              "key": "btn-add",
+                              "type": "Button",
+                              "label": "添加按钮",
+                              "props": {
+                                "content": { "value": "添加任务" },
+                                "theme": { "value": "primary" },
+                                "size": { "value": "medium" }
+                              }
+                            }
+                          ]
+                        },
+                        {
+                          "key": "task-list",
+                          "type": "Stack",
+                          "label": "任务列表",
+                          "props": {
+                            "gap": { "value": 12 },
+                            "justify": { "value": "flex-start" },
+                            "align": { "value": "stretch" }
+                          },
+                          "children": [
+                            {
+                              "key": "task-1",
+                              "type": "Card",
+                              "label": "任务1",
+                              "props": {
+                                "bordered": { "value": true },
+                                "size": { "value": "small" },
+                                "hoverShadow": { "value": true }
+                              },
+                              "children": [
+                                {
+                                  "key": "task-1-content",
+                                  "type": "Inline",
+                                  "label": "任务内容",
+                                  "props": {
+                                    "gap": { "value": 12 },
+                                    "align": { "value": "center" },
+                                    "justify": { "value": "space-between" }
+                                  },
+                                  "children": [
+                                    {
+                                      "key": "task-1-left",
+                                      "type": "Inline",
+                                      "label": "左侧内容",
+                                      "props": {
+                                        "gap": { "value": 8 },
+                                        "align": { "value": "center" }
+                                      },
+                                      "children": [
+                                        {
+                                          "key": "task-1-checkbox",
+                                          "type": "Checkbox",
+                                          "label": "完成状态",
+                                          "props": {
+                                            "checked": { "value": false }
+                                          }
+                                        },
+                                        {
+                                          "key": "task-1-text",
+                                          "type": "Typography.Text",
+                                          "label": "任务文本",
+                                          "props": {
+                                            "content": { "value": "完成项目文档编写" },
+                                            "__style": { "value": { "fontWeight": 500 } }
+                                          }
+                                        },
+                                        {
+                                          "key": "task-1-priority",
+                                          "type": "Tag",
+                                          "label": "优先级标签",
+                                          "props": {
+                                            "content": { "value": "高优先级" },
+                                            "theme": { "value": "danger" },
+                                            "size": { "value": "small" }
+                                          }
+                                        }
+                                      ]
+                                    },
+                                    {
+                                      "key": "task-1-actions",
+                                      "type": "Inline",
+                                      "label": "操作按钮",
+                                      "props": {
+                                        "gap": { "value": 4 },
+                                        "align": { "value": "center" }
+                                      },
+                                      "children": [
+                                        {
+                                          "key": "task-1-edit",
+                                          "type": "Button",
+                                          "label": "编辑按钮",
+                                          "props": {
+                                            "content": { "value": "编辑" },
+                                            "variant": { "value": "text" },
+                                            "size": { "value": "small" }
+                                          }
+                                        },
+                                        {
+                                          "key": "task-1-delete",
+                                          "type": "Button",
+                                          "label": "删除按钮",
+                                          "props": {
+                                            "content": { "value": "删除" },
+                                            "variant": { "value": "text" },
+                                            "theme": { "value": "danger" },
+                                            "size": { "value": "small" }
+                                          }
+                                        }
+                                      ]
+                                    }
+                                  ]
+                                }
+                              ]
+                            },
+                            {
+                              "key": "task-2",
+                              "type": "Card",
+                              "label": "任务2",
+                              "props": {
+                                "bordered": { "value": true },
+                                "size": { "value": "small" },
+                                "hoverShadow": { "value": true }
+                              },
+                              "children": [
+                                {
+                                  "key": "task-2-content",
+                                  "type": "Inline",
+                                  "label": "任务内容",
+                                  "props": {
+                                    "gap": { "value": 12 },
+                                    "align": { "value": "center" },
+                                    "justify": { "value": "space-between" }
+                                  },
+                                  "children": [
+                                    {
+                                      "key": "task-2-left",
+                                      "type": "Inline",
+                                      "label": "左侧内容",
+                                      "props": {
+                                        "gap": { "value": 8 },
+                                        "align": { "value": "center" }
+                                      },
+                                      "children": [
+                                        {
+                                          "key": "task-2-checkbox",
+                                          "type": "Checkbox",
+                                          "label": "完成状态",
+                                          "props": {
+                                            "checked": { "value": true }
+                                          }
+                                        },
+                                        {
+                                          "key": "task-2-text",
+                                          "type": "Typography.Text",
+                                          "label": "任务文本",
+                                          "props": {
+                                            "content": { "value": "学习React新特性" },
+                                            "__style": { "value": { "fontWeight": 500, "textDecoration": "line-through", "color": "#94a3b8" } }
+                                          }
+                                        },
+                                        {
+                                          "key": "task-2-priority",
+                                          "type": "Tag",
+                                          "label": "优先级标签",
+                                          "props": {
+                                            "content": { "value": "中优先级" },
+                                            "theme": { "value": "warning" },
+                                            "size": { "value": "small" }
+                                          }
+                                        }
+                                      ]
+                                    },
+                                    {
+                                      "key": "task-2-actions",
+                                      "type": "Inline",
+                                      "label": "操作按钮",
+                                      "props": {
+                                        "gap": { "value": 4 },
+                                        "align": { "value": "center" }
+                                      },
+                                      "children": [
+                                        {
+                                          "key": "task-2-edit",
+                                          "type": "Button",
+                                          "label": "编辑按钮",
+                                          "props": {
+                                            "content": { "value": "编辑" },
+                                            "variant": { "value": "text" },
+                                            "size": { "value": "small" }
+                                          }
+                                        },
+                                        {
+                                          "key": "task-2-delete",
+                                          "type": "Button",
+                                          "label": "删除按钮",
+                                          "props": {
+                                            "content": { "value": "删除" },
+                                            "variant": { "value": "text" },
+                                            "theme": { "value": "danger" },
+                                            "size": { "value": "small" }
+                                          }
+                                        }
+                                      ]
+                                    }
+                                  ]
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "routeId": "route-pending",
+        "routeConfig": {
+          "routePath": "/pending",
+          "routeName": "pending",
+          "pageTitle": "待办 · 待处理",
+          "menuTitle": "待处理",
+          "useLayout": true
+        },
+        "selectedLayoutTemplateId": null,
+        "flowNodes": [],
+        "flowEdges": [],
+        "uiTree": {
+          "key": "root-route-pending",
+          "type": "root",
+          "label": "该页面",
+          "props": {},
+          "lifetimes": [
+            "onInit",
+            "onBeforeMount",
+            "onMounted",
+            "onBeforeUpdate",
+            "onUpdated",
+            "onBeforeUnmount",
+            "onUnmounted"
+          ],
+          "children": [
+            {
+              "key": "outlet-main",
+              "type": "RouteOutlet",
+              "label": "路由出口",
+              "props": {
+                "minHeight": { "value": 280 }
+              },
+              "children": [
+                {
+                  "key": "card-pending",
+                  "type": "Card",
+                  "label": "待处理任务",
+                  "props": {
+                    "title": { "value": "待处理任务" },
+                    "bordered": { "value": true }
+                  },
+                  "children": [
+                    {
+                      "key": "txt-pending-hint",
+                      "type": "Typography.Paragraph",
+                      "label": "说明文字",
+                      "props": {
+                        "content": { "value": "这里展示所有未完成的任务。点击复选框可标记任务为已完成。" }
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "routeId": "route-completed",
+        "routeConfig": {
+          "routePath": "/completed",
+          "routeName": "completed",
+          "pageTitle": "待办 · 已完成",
+          "menuTitle": "已完成",
+          "useLayout": true
+        },
+        "selectedLayoutTemplateId": null,
+        "flowNodes": [],
+        "flowEdges": [],
+        "uiTree": {
+          "key": "root-route-completed",
+          "type": "root",
+          "label": "该页面",
+          "props": {},
+          "lifetimes": [
+            "onInit",
+            "onBeforeMount",
+            "onMounted",
+            "onBeforeUpdate",
+            "onUpdated",
+            "onBeforeUnmount",
+            "onUnmounted"
+          ],
+          "children": [
+            {
+              "key": "outlet-main",
+              "type": "RouteOutlet",
+              "label": "路由出口",
+              "props": {
+                "minHeight": { "value": 280 }
+              },
+              "children": [
+                {
+                  "key": "card-completed",
+                  "type": "Card",
+                  "label": "已完成任务",
+                  "props": {
+                    "title": { "value": "已完成任务" },
+                    "bordered": { "value": true }
+                  },
+                  "children": [
+                    {
+                      "key": "txt-completed-hint",
+                      "type": "Typography.Paragraph",
+                      "label": "说明文字",
+                      "props": {
+                        "content": { "value": "这里展示所有已完成的任务。已完成的任务会显示删除线效果。" }
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      }
+    ]
+  }
+}

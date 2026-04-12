@@ -622,7 +622,8 @@
   min-height: 220px;
 }
 
-/* GitHub 风格编辑活跃度格子（品牌色） */
+/* GitHub 风格编辑活跃度格子（品牌色）：必须挂在 .home-page 下，避免作为全局选择器影响 TDesign/搭建器 */
+.home-page {
 .edit-activity-grid {
   --edit-activity-cell: 12px;
   /* 每月块固定高度，避免 4～6 周导致高低不一 */
@@ -917,4 +918,5 @@
 .edit-activity-grid__tip {
   font-size: 12px;
   line-height: 1.45;
+}
 }

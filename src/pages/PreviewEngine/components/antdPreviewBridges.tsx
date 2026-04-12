@@ -69,6 +69,7 @@ export function AntdTabsPreviewBridge(props: {
     <AntTabs
       activeKey={activeKey}
       items={items}
+      type={getStringProp(node, 'theme') === 'card' ? 'card' : 'line'}
       size={getStringProp(node, 'size') === 'large' ? 'large' : getStringProp(node, 'size') === 'small' ? 'small' : 'middle'}
       tabPosition={tabPosition as 'top' | 'left' | 'right' | 'bottom'}
       style={mergeStyle()}

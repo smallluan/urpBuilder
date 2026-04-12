@@ -87,6 +87,9 @@ import {
   mapTdesignInputPropsToAntd,
   mapTdesignTextareaPropsToAntd,
   mapTdesignInputNumberPropsToAntd,
+  tdesignTextThemeToAntdTypographyType,
+  tdesignLinkThemeToAntdTypographyType,
+  tdesignSemanticTokenToAntdTagColor,
 } from '../../../utils/antdTdesignPropBridge';
 
 const { Title, Paragraph, Text, Link } = Typography;
@@ -287,7 +290,12 @@ export function registerAntdComponents(registry: ComponentRegistry): void {
     const { getStringProp, getBooleanProp, mergeStyle, handleActivateSelf, data, isNodeActive } = ctx;
     return (
       <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf} nodeKey={data?.key} active={isNodeActive}>
-        <Text strong={getBooleanProp('strong') === true}>{getStringProp('content') || ''}</Text>
+        <Text
+          strong={getBooleanProp('strong') === true}
+          type={tdesignTextThemeToAntdTypographyType(getStringProp('theme'))}
+        >
+          {getStringProp('content') || ''}
+        </Text>
       </ActivateWrapper>
     );
   });
@@ -303,6 +311,7 @@ export function registerAntdComponents(registry: ComponentRegistry): void {
           href={getStringProp('href') || undefined}
           target={getStringProp('target') as '_self' | '_blank' | undefined}
           disabled={getBooleanProp('disabled') === true}
+          type={tdesignLinkThemeToAntdTypographyType(getStringProp('theme'))}
         >
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
             {prefixIcon}
@@ -316,10 +325,10 @@ export function registerAntdComponents(registry: ComponentRegistry): void {
 
   registry.set('antd.Tag', (ctx) => {
     const { getStringProp, mergeStyle, handleActivateSelf, data, isNodeActive } = ctx;
-    const color = getStringProp('color')?.trim();
+    const color = tdesignSemanticTokenToAntdTagColor(getStringProp('color'));
     return (
       <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf} nodeKey={data?.key} active={isNodeActive}>
-        <Tag color={color || undefined}>{getStringProp('content') || '标签'}</Tag>
+        <Tag color={color}>{getStringProp('content') || '标签'}</Tag>
       </ActivateWrapper>
     );
   });
@@ -368,9 +377,9 @@ export function registerAntdComponents(registry: ComponentRegistry): void {
     return (
       <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf} nodeKey={data?.key} active={isNodeActive}>
         <Button
-          type={mapped.type}
+          color={mapped.color}
+          variant={mapped.variant}
           size={mapped.size}
-          danger={mapped.danger}
           block={mapped.block}
           shape={mapped.shape}
           icon={prefixIcon ? (prefixIcon as React.ReactNode) : undefined}
@@ -529,10 +538,18 @@ export function registerAntdComponents(registry: ComponentRegistry): void {
       key: String(it.key ?? i),
       label: String(it.label ?? it.key ?? i),
     })) as MenuProps['items'];
+    const dm = mapTdesignButtonToAntd({
+      theme: 'default',
+      variant: 'base',
+      size: 'medium',
+      shape: 'rect',
+    });
     return (
       <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf} nodeKey={data?.key} active={isNodeActive}>
         <Dropdown menu={{ items }} trigger={[(getStringProp('trigger') as 'click' | 'hover') || 'hover']}>
-          <Button>{getStringProp('content') || '菜单'}</Button>
+          <Button color={dm.color} variant={dm.variant} size={dm.size} shape={dm.shape}>
+            {getStringProp('content') || '菜单'}
+          </Button>
         </Dropdown>
       </ActivateWrapper>
     );
@@ -1462,6 +1479,7 @@ export function registerAntdComponents(registry: ComponentRegistry): void {
         <AntTabs
           activeKey={String(activeTabValue ?? '')}
           items={items}
+          type={getStringProp('theme') === 'card' ? 'card' : 'line'}
           tabPosition={tabPosition as 'top' | 'left' | 'right' | 'bottom'}
           size={getStringProp('size') === 'large' ? 'large' : getStringProp('size') === 'small' ? 'small' : 'middle'}
           onChange={(k) => setTabsInnerValue(k)}

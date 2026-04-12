@@ -66,6 +66,9 @@ import {
   mapTdesignTextareaPropsToAntd,
   mapTdesignInputNumberPropsToAntd,
   parseDslAutosizeValue,
+  tdesignTextThemeToAntdTypographyType,
+  tdesignLinkThemeToAntdTypographyType,
+  tdesignSemanticTokenToAntdTagColor,
 } from '../../../utils/antdTdesignPropBridge';
 import { collectDslStepRows, dslStepStatusToAntd } from '../../../builder/utils/stepsDsl';
 import {
@@ -330,7 +333,11 @@ export function tryRenderAntdPreview(ctx: AntdPreviewContext): React.ReactElemen
       return <Paragraph style={mergeStyle()}>{getStringProp(node, 'content') || ''}</Paragraph>;
     case 'antd.Typography.Text':
       return (
-        <Text strong={getBooleanProp(node, 'strong') === true} style={mergeStyle()}>
+        <Text
+          strong={getBooleanProp(node, 'strong') === true}
+          type={tdesignTextThemeToAntdTypographyType(getStringProp(node, 'theme'))}
+          style={mergeStyle()}
+        >
           {getStringProp(node, 'content') || ''}
         </Text>
       );
@@ -345,6 +352,7 @@ export function tryRenderAntdPreview(ctx: AntdPreviewContext): React.ReactElemen
           target={getStringProp(node, 'target') as '_self' | '_blank' | undefined}
           style={mergeStyle()}
           disabled={getBooleanProp(node, 'disabled') === true}
+          type={tdesignLinkThemeToAntdTypographyType(getStringProp(node, 'theme'))}
           onClick={(e) => {
             e.preventDefault();
             emitInteractionLifecycle('onClick');
@@ -363,7 +371,7 @@ export function tryRenderAntdPreview(ctx: AntdPreviewContext): React.ReactElemen
     }
     case 'antd.Tag':
       return (
-        <Tag color={getStringProp(node, 'color')?.trim() || undefined} style={mergeStyle()}>
+        <Tag color={tdesignSemanticTokenToAntdTagColor(getStringProp(node, 'color'))} style={mergeStyle()}>
           {getStringProp(node, 'content') || '标签'}
         </Tag>
       );
@@ -474,9 +482,9 @@ export function tryRenderAntdPreview(ctx: AntdPreviewContext): React.ReactElemen
       );
       return (
         <Button
-          type={mapped.type}
+          color={mapped.color}
+          variant={mapped.variant}
           size={mapped.size}
-          danger={mapped.danger}
           block={mapped.block}
           shape={mapped.shape}
           style={mergeStyle()}
@@ -493,10 +501,18 @@ export function tryRenderAntdPreview(ctx: AntdPreviewContext): React.ReactElemen
         label: String(it.label ?? it.key ?? i),
       })) as MenuProps['items'];
       const trigger = (getStringProp(node, 'trigger') as 'click' | 'hover') || 'hover';
+      const dm = mapTdesignButtonToAntd({
+        theme: 'default',
+        variant: 'base',
+        size: 'medium',
+        shape: 'rect',
+      });
       return (
         <span style={mergeStyle()}>
           <Dropdown menu={{ items }} trigger={[trigger]}>
-            <Button>{getStringProp(node, 'content') || '菜单'}</Button>
+            <Button color={dm.color} variant={dm.variant} size={dm.size} shape={dm.shape}>
+              {getStringProp(node, 'content') || '菜单'}
+            </Button>
           </Dropdown>
         </span>
       );

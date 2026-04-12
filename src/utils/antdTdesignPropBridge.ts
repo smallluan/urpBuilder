@@ -3,6 +3,7 @@
  * 维护说明与 Image 等易回归点：见 `docs/tdesign-antd-dsl-alignment.md`。
  */
 import type { CSSProperties } from 'react';
+import type { ButtonProps } from 'antd/es/button';
 import type { InputProps } from 'antd/es/input';
 import type { TextAreaProps } from 'antd/es/input/TextArea';
 import type { InputNumberProps } from 'antd/es/input-number';
@@ -31,14 +32,21 @@ export function antStatisticRootStyleMerge(user?: CSSProperties): CSSProperties 
 
 /** TDesign Statistic.color -> Ant Statistic valueStyle */
 export function statisticColorStyle(color: string | undefined): CSSProperties | undefined {
+  const key = String(color ?? '').trim().toLowerCase();
   const map: Record<string, string> = {
     black: 'rgba(0,0,0,0.88)',
     blue: '#1677ff',
     red: '#ff4d4f',
     orange: '#fa8c16',
     green: '#52c41a',
+    primary: '#1677ff',
+    success: '#52c41a',
+    warning: '#fa8c16',
+    error: '#ff4d4f',
+    danger: '#ff4d4f',
+    default: 'rgba(0,0,0,0.88)',
   };
-  const c = color && map[color];
+  const c = key && map[key];
   return c ? { color: c } : undefined;
 }
 
@@ -64,13 +72,107 @@ export function antTitleLevelFromTdesign(levelRaw: string | undefined): 1 | 2 | 
   return 4;
 }
 
+/** Ant Design 6+：`color` + `variant` 为语义主路径（见 antd `Button` 内部 `ButtonTypeMap` 兼容逻辑）。 */
 export type ButtonAntdMapping = {
-  type: 'primary' | 'default' | 'dashed' | 'link' | 'text';
+  color: NonNullable<ButtonProps['color']>;
+  variant: NonNullable<ButtonProps['variant']>;
   size: 'large' | 'middle' | 'small';
-  danger: boolean;
   block: boolean;
-  shape?: 'default' | 'round' | 'circle';
+  shape: 'default' | 'round' | 'circle';
 };
+
+/**
+ * TDesign DSL 语义主题（与 catalog 中 Button、Link、Text 等选项对齐）→ antd Button `color`。
+ * 不开放任意色值，仅白名单语义键；未知键按 `default`。
+ */
+const SEMANTIC_THEME_TO_ANTD_BUTTON_COLOR: Record<string, NonNullable<ButtonProps['color']>> = {
+  primary: 'primary',
+  success: 'green',
+  warning: 'orange',
+  error: 'danger',
+  danger: 'danger',
+  default: 'default',
+};
+
+export function tdesignSemanticThemeToAntdButtonColor(
+  theme: string | undefined,
+  opts?: { danger?: boolean },
+): NonNullable<ButtonProps['color']> {
+  const t = String(theme ?? 'default').trim().toLowerCase();
+  let color: NonNullable<ButtonProps['color']> = SEMANTIC_THEME_TO_ANTD_BUTTON_COLOR[t] ?? 'default';
+  if (opts?.danger === true || t === 'error') {
+    color = 'danger';
+  }
+  return color;
+}
+
+/** Typography.Text：`theme` → antd Text/Link `type`（无 primary 枚举，主色为默认字色）。 */
+export function tdesignTextThemeToAntdTypographyType(
+  theme: string | undefined,
+): 'secondary' | 'success' | 'warning' | 'danger' | undefined {
+  const t = String(theme ?? 'primary').trim().toLowerCase();
+  if (t === 'primary') {
+    return undefined;
+  }
+  if (t === 'secondary') {
+    return 'secondary';
+  }
+  if (t === 'success') {
+    return 'success';
+  }
+  if (t === 'warning') {
+    return 'warning';
+  }
+  if (t === 'error' || t === 'danger') {
+    return 'danger';
+  }
+  return undefined;
+}
+
+/** Link：`theme` default/primary 为默认链接色，其余走语义 type。 */
+export function tdesignLinkThemeToAntdTypographyType(
+  theme: string | undefined,
+): 'secondary' | 'success' | 'warning' | 'danger' | undefined {
+  const t = String(theme ?? 'default').trim().toLowerCase();
+  if (t === 'default' || t === 'primary') {
+    return undefined;
+  }
+  if (t === 'success') {
+    return 'success';
+  }
+  if (t === 'warning') {
+    return 'warning';
+  }
+  if (t === 'danger' || t === 'error') {
+    return 'danger';
+  }
+  return undefined;
+}
+
+/**
+ * Tag `color`：仅允许语义名映射到 antd 预设色，或保留 `#` 十六进制（旧数据）；其它字符串忽略。
+ */
+export function tdesignSemanticTokenToAntdTagColor(raw: string | undefined): string | undefined {
+  const t = String(raw ?? '').trim().toLowerCase();
+  if (!t) {
+    return undefined;
+  }
+  const preset: Record<string, string> = {
+    primary: 'processing',
+    success: 'success',
+    warning: 'warning',
+    error: 'error',
+    danger: 'error',
+    default: 'default',
+  };
+  if (preset[t]) {
+    return preset[t];
+  }
+  if (/^#[0-9a-f]{3,8}$/i.test(t)) {
+    return t;
+  }
+  return undefined;
+}
 
 /**
  * TDesign Input / Textarea DSL（与 `componentCatalog` 中 Input、Textarea 一致）→ antd Input / Input.TextArea 可识别 props。
@@ -349,10 +451,9 @@ export function mapTdesignButtonToAntd(opts: {
   danger?: boolean;
   block?: boolean;
 }): ButtonAntdMapping {
-  const theme = String(opts.theme ?? 'default');
-  const variant = String(opts.variant ?? 'base');
-  const shape = String(opts.shape ?? 'rect');
-  const sizeRaw = String(opts.size ?? 'medium');
+  const variantRaw = String(opts.variant ?? 'base').trim().toLowerCase();
+  const shape = String(opts.shape ?? 'rect').trim().toLowerCase();
+  const sizeRaw = String(opts.size ?? 'normal').trim().toLowerCase();
 
   const sizeMap: Record<string, 'large' | 'middle' | 'small'> = {
     large: 'large',
@@ -362,22 +463,22 @@ export function mapTdesignButtonToAntd(opts: {
   };
   const size = sizeMap[sizeRaw] ?? 'middle';
 
-  let type: ButtonAntdMapping['type'] = 'default';
-  if (variant === 'dashed') {
-    type = 'dashed';
-  } else if (variant === 'text') {
-    type = 'text';
-  } else if (variant === 'outline') {
-    type = 'default';
-  } else if (theme === 'primary') {
-    type = 'primary';
-  }
+  const variantToAntd: Record<string, NonNullable<ButtonProps['variant']>> = {
+    base: 'solid',
+    outline: 'outlined',
+    dashed: 'dashed',
+    text: 'text',
+  };
 
-  const danger = theme === 'error' || opts.danger === true;
+  const color = tdesignSemanticThemeToAntdButtonColor(opts.theme, { danger: opts.danger });
+
+  const variant: NonNullable<ButtonProps['variant']> = variantToAntd[variantRaw] ?? 'solid';
+
   const block = opts.block === true;
-  const shapeAnt: 'default' | 'round' | 'circle' = shape === 'round' ? 'round' : 'default';
+  const shapeAnt: 'default' | 'round' | 'circle' =
+    shape === 'round' ? 'round' : shape === 'circle' ? 'circle' : 'default';
 
-  return { type, size, danger, block, shape: shapeAnt };
+  return { color, variant, size, block, shape: shapeAnt };
 }
 
 /** TDesign Space.size 为 number，Ant Space 为 small|middle|large|number */
