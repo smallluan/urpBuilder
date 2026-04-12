@@ -98,6 +98,60 @@ export const getCloudFunctionList = async (params: CloudFunctionListParams): Pro
   return normalizeListResult(response.data.data);
 };
 
+export interface CloudFunctionInvocationDailyPoint {
+  date: string;
+  successCount: number;
+  failureCount: number;
+  /** success + failure */
+  count: number;
+}
+
+export interface CloudFunctionInvocationStats {
+  daily: CloudFunctionInvocationDailyPoint[];
+  totalCount: number;
+  successTotal: number;
+  failureTotal: number;
+  rangeDays: number;
+}
+
+export const getCloudFunctionInvocationStats = async (
+  params: CloudFunctionListParams & { rangeDays?: number },
+): Promise<CloudFunctionInvocationStats> => {
+  const response = await requestClient.get<ApiResponse<CloudFunctionInvocationStats>>('/cloud-functions/stats/invocations', {
+    params: {
+      ownerType: params.ownerType,
+      ...(params.ownerTeamId ? { ownerTeamId: params.ownerTeamId } : {}),
+      ...(typeof params.rangeDays === 'number' ? { rangeDays: params.rangeDays } : { rangeDays: 365 }),
+    },
+    skipGlobalLoading: true,
+    skipErrorToast: true,
+  });
+  const data = response.data.data;
+  const rawDaily: unknown[] = Array.isArray(data?.daily) ? data.daily : [];
+  const daily: CloudFunctionInvocationDailyPoint[] = rawDaily.map((row: unknown) => {
+    const rec = row as Record<string, unknown>;
+    const date = String(rec.date ?? '').slice(0, 10);
+    const successCount = typeof rec.successCount === 'number' ? rec.successCount : 0;
+    const failureCount = typeof rec.failureCount === 'number' ? rec.failureCount : 0;
+    const legacy = typeof rec.count === 'number' ? rec.count : 0;
+    const ok = successCount + failureCount > 0 ? successCount : legacy;
+    const fail = successCount + failureCount > 0 ? failureCount : 0;
+    return {
+      date,
+      successCount: ok,
+      failureCount: fail,
+      count: ok + fail,
+    };
+  });
+  return {
+    daily,
+    totalCount: typeof data?.totalCount === 'number' ? data.totalCount : daily.reduce((s, x) => s + x.count, 0),
+    successTotal: typeof data?.successTotal === 'number' ? data.successTotal : daily.reduce((s, x) => s + x.successCount, 0),
+    failureTotal: typeof data?.failureTotal === 'number' ? data.failureTotal : daily.reduce((s, x) => s + x.failureCount, 0),
+    rangeDays: typeof data?.rangeDays === 'number' ? data.rangeDays : 365,
+  };
+};
+
 export const getCloudFunctionDetail = async (
   functionId: string,
   accessContext: CloudFunctionAccessContext,

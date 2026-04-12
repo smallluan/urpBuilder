@@ -6,6 +6,7 @@ import type {
   PageDetail,
   PageTemplateListParams,
   PublishPagePayload,
+  ResourceOwnerType,
   SavePageDraftPayload,
   UpdateTemplateVisibilityPayload,
   UpdatePageDraftPayload,
@@ -137,3 +138,52 @@ export const getPageTemplateBaseList = async (params?: PageTemplateListParams) =
 };
 
 export const getPageBaseList = getPageTemplateBaseList;
+
+export type WorkspaceDailyEditPoint = {
+  date: string;
+  newCount: number;
+  saveCount: number;
+  total: number;
+};
+
+export type WorkspaceDailyEditStats = {
+  daily: WorkspaceDailyEditPoint[];
+  totalNew: number;
+  totalSave: number;
+  rangeDays: number;
+  /** 与 rangeDays 对应的起止（YYYY-MM-DD），按区间查询时由后端返回 */
+  fromDate?: string;
+  toDate?: string;
+};
+
+export const getWorkspaceDailyEditStats = async (params: {
+  ownerType: ResourceOwnerType;
+  ownerTeamId?: string;
+  rangeDays?: number;
+  /** 与 toDate 同时传入时优先按闭区间统计，例如本年年初至今 */
+  fromDate?: string;
+  toDate?: string;
+}): Promise<WorkspaceDailyEditStats> => {
+  const response = await requestClient.get<ApiResponse<WorkspaceDailyEditStats>>('/page-base/stats/daily-edits', {
+    params: {
+      ownerType: params.ownerType,
+      ...(params.ownerTeamId ? { ownerTeamId: params.ownerTeamId } : {}),
+      ...(typeof params.fromDate === 'string' && typeof params.toDate === 'string'
+        ? { fromDate: params.fromDate, toDate: params.toDate }
+        : typeof params.rangeDays === 'number'
+          ? { rangeDays: params.rangeDays }
+          : { rangeDays: 365 }),
+    },
+    skipGlobalLoading: true,
+    skipErrorToast: true,
+  });
+  const data = response.data.data;
+  return {
+    daily: Array.isArray(data?.daily) ? data.daily : [],
+    totalNew: typeof data?.totalNew === 'number' ? data.totalNew : 0,
+    totalSave: typeof data?.totalSave === 'number' ? data.totalSave : 0,
+    rangeDays: typeof data?.rangeDays === 'number' ? data.rangeDays : 365,
+    fromDate: typeof data?.fromDate === 'string' ? data.fromDate.slice(0, 10) : undefined,
+    toDate: typeof data?.toDate === 'string' ? data.toDate.slice(0, 10) : undefined,
+  };
+};

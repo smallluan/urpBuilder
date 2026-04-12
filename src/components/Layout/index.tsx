@@ -87,7 +87,7 @@ const AppLayout: React.FC = () => {
           {
             key: '/build-page',
             icon: <FileIcon />,
-            title: '构建页面',
+            title: '构建应用',
           },
         ],
       },

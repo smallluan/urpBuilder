@@ -269,7 +269,7 @@ const TeamsPage: React.FC = () => {
             </div>
             <div className="tile-stats__item">
               <div className="tile-stats__value">{assetStats.pages}</div>
-              <div className="tile-stats__label">页面</div>
+              <div className="tile-stats__label">应用</div>
             </div>
             <div className="tile-stats__item">
               <div className="tile-stats__value">{assetStats.components}</div>
@@ -288,7 +288,7 @@ const TeamsPage: React.FC = () => {
               </div>
               <div>
                 <Button size="small" variant="outline" onClick={() => window.open(`${window.location.origin}/build-page`, '_blank')}>
-                  页面
+                  应用
                 </Button>
                 <Button size="small" variant="outline" onClick={() => window.open(`${window.location.origin}/build-component`, '_blank')} style={{ marginLeft: 8 }}>
                   组件
@@ -297,7 +297,7 @@ const TeamsPage: React.FC = () => {
             </div>
 
             <Tabs size="medium" value={assetTab} onChange={(value) => setAssetTab(String(value) as 'page' | 'component' | 'document' | 'api')}>
-              <TabPanel value="page" label={`页面 ${assetStats.pages}`} />
+              <TabPanel value="page" label={`应用 ${assetStats.pages}`} />
               <TabPanel value="component" label={`组件 ${assetStats.components}`} />
               <TabPanel value="api" label={`接口 ${assetStats.apis}`} />
             </Tabs>

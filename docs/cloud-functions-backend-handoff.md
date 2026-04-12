@@ -165,6 +165,69 @@ Query 参数：
 | page | `number` | 否 | 页码，默认 1 |
 | pageSize | `number` | 否 | 每页条数，默认 12 |
 
+### 5.1.1 调用量按日统计（首页图表）
+
+- **Method**: `GET`
+- **Path**: `/cloud-functions/stats/invocations`
+- **说明**：基于 `cloud_function_logs` 与 `cloud_functions` 关联，按**日历日**聚合当前空间下全部云函数的调用次数（成功与失败均计入）。团队空间会校验成员身份。
+
+Query 参数：
+
+| 参数 | 类型 | 必填 | 说明 |
+|---|---|---|---|
+| ownerType | `user \| team` | 是 | 空间类型 |
+| ownerTeamId | `string` | 团队必填 | 团队 ID |
+| rangeDays | `number` | 否 | 回溯天数，默认 `365`，最大 `400` |
+
+返回 `data`：
+
+```json
+{
+  "daily": [
+    {
+      "date": "2026-04-01",
+      "successCount": 10,
+      "failureCount": 2,
+      "count": 12
+    }
+  ],
+  "totalCount": 480,
+  "successTotal": 400,
+  "failureTotal": 80,
+  "rangeDays": 365
+}
+```
+
+- `successCount` / `failureCount`：按 `cloud_function_logs.status` 区分（`success` 与其余状态）。
+- `count`：当日合计，等于成功 + 失败。
+
+### 5.1.2 编辑活跃度按日统计（首页热力图）
+
+- **Method**: `GET`
+- **Path**: `/page-base/stats/daily-edits`
+- **说明**：基于 `page_templates`，统计当前空间下 **页面 + 组件** 的「新建」与「保存」：
+  - **新建**：按 `created_at` 日历日聚合；
+  - **保存**：`updated_at > created_at` 的记录按 `updated_at` 日历日聚合（表示后续保存，不含首次创建瞬间）。
+
+Query 参数：
+
+| 参数 | 类型 | 必填 | 说明 |
+|---|---|---|---|
+| ownerType | `user \| team` | 是 | 空间类型 |
+| ownerTeamId | `string` | 团队必填 | 团队 ID |
+| rangeDays | `number` | 否 | 回溯天数，默认 `365`，最大 `400` |
+
+返回 `data`：
+
+```json
+{
+  "daily": [{ "date": "2026-04-01", "newCount": 1, "saveCount": 3, "total": 4 }],
+  "totalNew": 12,
+  "totalSave": 40,
+  "rangeDays": 365
+}
+```
+
 ## 5.2 查询云函数详情
 
 - **Method**: `GET`

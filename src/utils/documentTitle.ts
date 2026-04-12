@@ -18,7 +18,7 @@ export function resolveDocumentTitle(pathname: string, _search: string): string 
   const exact: Record<string, string> = {
     '/': '首页',
     '/build-component': '构建组件',
-    '/build-page': '构建页面',
+    '/build-page': '构建应用',
     '/data-api': 'API 管理',
     '/data-constance': '常量管理',
     '/data-cloud-function': '云函数',
@@ -30,7 +30,7 @@ export function resolveDocumentTitle(pathname: string, _search: string): string 
     '/login': '登录',
     '/register': '注册',
     '/create-component': '新建组件',
-    '/create-page': '新建页面',
+    '/create-page': '新建应用',
     '/component-version-catalog': '组件版本',
     '/code-workbench': '代码工作台',
   };
