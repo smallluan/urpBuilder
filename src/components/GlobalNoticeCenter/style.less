@@ -23,28 +23,43 @@
   }
 
   &__drawer {
+    &.t-drawer .t-drawer__content-wrapper {
+      height: 100vh;
+      max-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .t-drawer__header {
+      padding: 12px 10px 12px 10px;
+      border-bottom: 1px solid var(--app-border-subtle);
+      background: var(--app-notice-drawer-bg);
+      flex-shrink: 0;
+    }
+
     .t-drawer__body {
-      padding: 12px 16px 16px;
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      padding: 0 12px 10px;
       background: var(--app-notice-drawer-bg);
     }
   }
 
   &__drawer-header {
     display: flex;
-    justify-content: space-between;
+    flex-direction: row;
     align-items: center;
+    gap: 10px;
+    width: 100%;
+    min-width: 0;
+  }
 
-    .t-button {
-      width: 34px;
-      height: 34px;
-      border-radius: 999px;
-      color: var(--app-text-secondary);
-
-      &:hover {
-        background: var(--app-sidebar-hover);
-        color: var(--app-text-primary);
-      }
-    }
+  &__header-mail-icon {
+    flex-shrink: 0;
+    display: block;
+    filter: drop-shadow(0 1px 2px rgba(0, 52, 168, 0.2));
   }
 
   &__drawer-title {
@@ -52,13 +67,21 @@
     line-height: 1.2;
     font-weight: 600;
     color: var(--app-text-primary);
+    letter-spacing: -0.02em;
   }
 
-  &__drawer-subtitle {
-    margin-top: 4px;
-    font-size: 12px;
-    line-height: 1;
-    color: var(--app-text-muted);
+  &__drawer-refresh {
+    flex-shrink: 0;
+    width: 34px;
+    height: 34px;
+    margin-left: 2px;
+    border-radius: 8px;
+    color: var(--app-text-secondary);
+
+    &:hover {
+      background: var(--app-sidebar-hover);
+      color: var(--app-text-primary);
+    }
   }
 
   &__inline-user {
@@ -67,87 +90,118 @@
     gap: 6px;
   }
 
-  &__tabs {
-    .t-tabs__nav-wrap {
-      margin-bottom: 14px;
+  /* theme="card" 仅用 TDesign 默认样式；此处只负责 Tab + Panel 撑满抽屉剩余高度 */
+  &__tabs.t-tabs {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    margin-top: 8px;
+
+    .t-tabs__header {
+      flex-shrink: 0;
     }
 
-    .t-tabs__nav-item {
-      min-width: 84px;
+    .t-tabs__content {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .t-tab-panel {
+      flex: 1;
+      min-height: 0;
+      overflow: auto;
     }
   }
 
   &__list {
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    margin-top: 4px;
   }
 
   &__empty {
-    padding: 56px 0;
+    padding: 32px 0;
     text-align: center;
     font-size: 13px;
     color: var(--app-text-muted);
   }
 
-  &__card {
-    padding: 12px 14px;
-    border: 1px solid var(--app-notice-card-border);
-    border-radius: 12px;
-    background: var(--app-notice-card-bg);
-    box-shadow: none;
+  /* 列表：仅分割线，无卡片框 */
+  &__item {
+    padding: 10px 2px 12px;
+    border-bottom: 1px solid color-mix(in srgb, var(--app-border-subtle) 92%, transparent);
+    background: transparent;
+    border-radius: 0;
+
+    &:last-child {
+      border-bottom: none;
+    }
 
     &.is-unread {
-      border-color: var(--app-notice-card-unread-border);
-      background: var(--app-notice-card-unread-bg);
+      box-shadow: inset 3px 0 0 var(--td-brand-color, #0052d9);
+      padding-left: 10px;
     }
   }
 
-  &__card--platform_broadcast {
-    border-color: color-mix(in srgb, var(--td-brand-color) 24%, var(--app-notice-card-border));
-  }
-
-  &__card-head {
+  &__item-toolbar {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 12px;
-    margin-bottom: 10px;
+    gap: 8px;
+    margin-bottom: 4px;
+    min-width: 0;
   }
 
-  &__card-flags {
+  &__item-flags {
     display: flex;
     align-items: center;
-    gap: 8px;
+    flex-wrap: wrap;
+    gap: 4px;
+    min-width: 0;
   }
 
-  &__card-dot {
+  &__item-time {
+    flex: none;
+    font-size: 11px;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.2;
+    color: var(--app-text-muted);
+    white-space: nowrap;
+  }
+
+  &__item-dot {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
-    font-size: 12px;
+    gap: 4px;
+    font-size: 11px;
+    font-weight: 500;
     color: var(--td-brand-color, #0052d9);
 
     &::before {
       content: '';
-      width: 8px;
-      height: 8px;
+      width: 6px;
+      height: 6px;
       border-radius: 999px;
       background: var(--td-brand-color, #0052d9);
     }
   }
 
-  &__card-title {
-    font-size: 15px;
-    line-height: 1.4;
+  &__item-title {
+    font-size: 14px;
+    line-height: 1.35;
     font-weight: 600;
+    letter-spacing: -0.01em;
     color: var(--app-text-primary);
   }
 
-  &__card-desc {
-    margin-top: 8px;
-    font-size: 13px;
-    line-height: 1.5;
+  &__item-desc {
+    margin-top: 3px;
+    font-size: 12px;
+    line-height: 1.45;
     color: var(--app-text-secondary);
     display: -webkit-box;
     -webkit-line-clamp: 2;
@@ -155,21 +209,40 @@
     overflow: hidden;
   }
 
-  &__card-meta-line {
-    margin-top: 8px;
-    display: inline-flex;
-    align-items: center;
-    gap: 12px;
-    font-size: 12px;
-    color: var(--app-text-muted);
-  }
-
-  &__card-footer {
-    margin-top: 10px;
+  &__item-bottom {
+    margin-top: 6px;
     display: flex;
     align-items: center;
-    justify-content: flex-end;
-    gap: 12px;
+    justify-content: space-between;
+    gap: 8px;
+    min-width: 0;
+  }
+
+  &__item-sender {
+    flex: 1;
+    min-width: 0;
+    font-size: 11px;
+    line-height: 1.3;
+    color: var(--app-text-muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &__item-actions {
+    flex: none;
+
+    .t-button--variant-text {
+      padding: 0 4px;
+      height: 24px;
+      font-size: 12px;
+    }
+
+    .t-button:not(.t-button--variant-text) {
+      height: 26px;
+      padding: 0 8px;
+      font-size: 12px;
+    }
   }
 
   &__detail {
@@ -203,8 +276,14 @@
       grid-template-columns: 1fr;
     }
 
-    &__card-footer {
-      justify-content: flex-start;
+    &__item-bottom {
+      flex-wrap: wrap;
+      align-items: flex-start;
+    }
+
+    &__item-actions {
+      width: 100%;
+      justify-content: flex-end;
     }
   }
 }

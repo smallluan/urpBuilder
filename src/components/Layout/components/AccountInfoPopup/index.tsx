@@ -1,9 +1,8 @@
-import { Space, Divider, Button, DialogPlugin, Avatar, MessagePlugin, Typography } from "tdesign-react"
-import { useAuth } from "../../../../auth/context"
-import { getUserDisplayInitials, getUserDisplayName } from "../../../../utils/authDisplay"
-import { useNavigate } from "react-router-dom"
-const { Text } = Typography
-import "./index.less"
+import { Divider, Button, DialogPlugin, Avatar, MessagePlugin } from 'tdesign-react';
+import { useAuth } from '../../../../auth/context';
+import { getUserDisplayInitials, getUserDisplayName } from '../../../../utils/authDisplay';
+import { useNavigate } from 'react-router-dom';
+import './index.less';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faUser, faHistory, faQuestionCircle, faLink, faAngleRight } from '@fortawesome/free-solid-svg-icons'
 
@@ -112,13 +111,15 @@ const AccountInfoPopup: React.FC = () => {
 
   return (
     <div className="account-info">
-      <Space size={16} align="start">
-        <Avatar size="36px" shape="circle">{getUserDisplayInitials(user)}</Avatar>
-        <div className="account-info__titles">
-          <Text strong>{displayName}</Text>
-        </div>
-      </Space>
-      <Divider size={8}/>
+      <div className="account-info__user-row">
+        <Avatar size="36px" shape="circle">
+          {getUserDisplayInitials(user)}
+        </Avatar>
+        <span className="account-info__name" title={displayName}>
+          {displayName}
+        </span>
+      </div>
+      <Divider size={8} />
       {
         cells.map(cell => (
           <div key={cell.value} className="cell-item" role="button" tabIndex={0} onClick={() => handleCellClick(cell.value)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleCellClick(cell.value) } }}>

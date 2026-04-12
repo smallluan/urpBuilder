@@ -1,23 +1,25 @@
 import React from 'react';
 import { Avatar, Button, Layout, Popup, Space, Row } from 'tdesign-react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
+import { AddIcon, ChevronDownIcon } from 'tdesign-icons-react';
 import {
-  AddIcon,
-  ChevronDownIcon,
-  HomeIcon,
-  AppIcon,
-  CodeIcon,
-  FileIcon,
-  ApiIcon,
-  SettingIcon,
-  UserIcon,
-  ImageIcon,
-  MailIcon,
-} from 'tdesign-icons-react';
+  SidebarIconApi,
+  SidebarIconAssets,
+  SidebarIconBroadcast,
+  SidebarIconBuildApp,
+  SidebarIconBuildComponent,
+  SidebarIconCloudFunction,
+  SidebarIconConstants,
+  SidebarIconHome,
+  SidebarIconTeamAdmin,
+  SidebarIconTeamBoard,
+  SidebarIconUserAdmin,
+} from '../icons/sidebar';
 import { useAuth } from '../../auth/context';
 import { isCreateTeamEntryDisabled } from '../../team/createTeamEntry';
 import { useTeam } from '../../team/context';
-import { resolveTeamAvatar, resolveUserAvatar } from '../../utils/avatar';
+import { resolveTeamAvatar } from '../../utils/avatar';
+import UrpBuilderLogo from '../UrpBuilderLogo/UrpBuilderLogo';
 import { getUserDisplayInitials, getUserDisplayName } from '../../utils/authDisplay';
 import GlobalNoticeCenter from '../GlobalNoticeCenter';
 import AccountInfoPopup from './components/AccountInfoPopup';
@@ -54,12 +56,8 @@ const AppLayout: React.FC = () => {
   } = useTeam();
 
   const displayName = getUserDisplayName(user);
-  const userAvatar = resolveUserAvatar({
-    id: user?.id,
-    username: user?.username,
-    nickname: user?.nickname,
-    avatar: user?.avatar,
-  });
+  /** 仅在有上传头像时使用图片；否则用 Avatar 文字（与顶部账号一致），避免 Dicebear 的「GitHub 块」占位 */
+  const userPhotoUrl = user?.avatar && String(user.avatar).trim() ? String(user.avatar).trim() : undefined;
   const roleSet = new Set((user?.roles ?? []).map((item) => String(item).toLowerCase()));
   const isPlatformAdmin = roleSet.has('admin') || roleSet.has('super_admin') || roleSet.has('platform_admin') || roleSet.has('root');
   const isHomeRoute = location.pathname === '/';
@@ -71,7 +69,7 @@ const AppLayout: React.FC = () => {
         items: [
           {
             key: '/',
-            icon: <HomeIcon />,
+            icon: <SidebarIconHome />,
             title: '首页',
           },
         ],
@@ -81,12 +79,12 @@ const AppLayout: React.FC = () => {
         items: [
           {
             key: '/build-component',
-            icon: <CodeIcon />,
+            icon: <SidebarIconBuildComponent />,
             title: '构建组件',
           },
           {
             key: '/build-page',
-            icon: <FileIcon />,
+            icon: <SidebarIconBuildApp />,
             title: '构建应用',
           },
         ],
@@ -96,23 +94,23 @@ const AppLayout: React.FC = () => {
         items: [
           {
             key: '/data-constance',
-            icon: <SettingIcon />,
+            icon: <SidebarIconConstants />,
             title: '常量管理',
           },
           {
             key: '/data-api',
-            icon: <ApiIcon />,
+            icon: <SidebarIconApi />,
             title: 'API管理',
             disabled: true,
           },
           {
             key: '/data-cloud-function',
-            icon: <CodeIcon />,
+            icon: <SidebarIconCloudFunction />,
             title: '云函数',
           },
           {
             key: '/data-assets',
-            icon: <ImageIcon />,
+            icon: <SidebarIconAssets />,
             title: '素材管理',
           },
         ],
@@ -123,7 +121,7 @@ const AppLayout: React.FC = () => {
           ? [
             {
               key: '/teams',
-              icon: <AppIcon />,
+              icon: <SidebarIconTeamBoard />,
               title: '团队看板',
             },
           ]
@@ -137,17 +135,17 @@ const AppLayout: React.FC = () => {
         items: [
           {
             key: '/user-admin',
-            icon: <UserIcon />,
+            icon: <SidebarIconUserAdmin />,
             title: '用户管理',
           },
           {
             key: '/team-admin',
-            icon: <SettingIcon />,
+            icon: <SidebarIconTeamAdmin />,
             title: '团队管理',
           },
           {
             key: '/admin-broadcasts',
-            icon: <MailIcon />,
+            icon: <SidebarIconBroadcast />,
             title: '系统广播',
           },
         ],
@@ -184,8 +182,8 @@ const AppLayout: React.FC = () => {
       <div className="space-switcher-popup">
         <div className="space-switcher-popup__section-title">个人空间</div>
         <div className={`space-item${workspaceMode === 'personal' ? ' is-active' : ''}`} onClick={handleSwitchPersonalSpace}>
-          <Avatar size="30px" className="space-item__avatar" image={userAvatar}>
-            {getUserDisplayName(user).slice(0, 1)}
+          <Avatar size="30px" className="space-item__avatar" image={userPhotoUrl}>
+            {getUserDisplayInitials(user)}
           </Avatar>
           <div className="space-item__meta">
             <span className="space-item__name">个人空间</span>
@@ -248,16 +246,20 @@ const AppLayout: React.FC = () => {
                 <Avatar
                   size="30px"
                   className="sidebar-space-switcher__avatar"
-                  image={workspaceMode === 'team'
-                    ? resolveTeamAvatar({
-                      id: currentTeam?.id,
-                      name: currentTeam?.name,
-                      code: currentTeam?.code,
-                      avatar: currentTeam?.avatar,
-                    })
-                    : userAvatar}
+                  image={
+                    workspaceMode === 'team'
+                      ? resolveTeamAvatar({
+                          id: currentTeam?.id,
+                          name: currentTeam?.name,
+                          code: currentTeam?.code,
+                          avatar: currentTeam?.avatar,
+                        })
+                      : userPhotoUrl
+                  }
                 >
-                  {currentSpaceLabel.slice(0, 1)}
+                  {workspaceMode === 'team'
+                    ? (currentTeam?.name || '团').slice(0, 1)
+                    : getUserDisplayInitials(user)}
                 </Avatar>
                 <span className="sidebar-space-switcher__label">{currentSpaceLabel}</span>
                 <ChevronDownIcon size="16" />
@@ -299,7 +301,7 @@ const AppLayout: React.FC = () => {
       <Layout className="layout-main">
         <Header className="layout-header">
           <div className="header-left">
-            <img src="/urpBuilder.png" alt="URP" className="header-logo" />
+            <UrpBuilderLogo className="header-logo" variant="header" />
           </div>
           <Row className="header-right" style={{alignItems: 'center', gap: 24}}>
             <ThemeModeAnimatedToggle className="app-layout-theme-toggle" />

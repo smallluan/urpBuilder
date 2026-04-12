@@ -1,0 +1,82 @@
+/* 与平台主色 #0052d9 一致，随 :root theme-mode 切换明暗 */
+.urp-logo {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+  user-select: none;
+  vertical-align: middle;
+}
+
+.urp-logo__mark-scene {
+  perspective: 520px;
+  flex: 0 0 auto;
+}
+
+.urp-logo__mark {
+  display: block;
+  transform-style: preserve-3d;
+  animation: urp-logo-tilt 5.5s ease-in-out infinite;
+  will-change: transform;
+  filter: drop-shadow(0 2px 6px color-mix(in srgb, var(--urp-logo-shadow) 35%, transparent));
+}
+
+@keyframes urp-logo-tilt {
+  0%,
+  100% {
+    transform: rotateY(-10deg) rotateX(4deg);
+  }
+  50% {
+    transform: rotateY(10deg) rotateX(-3deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .urp-logo__mark {
+    animation: none;
+    transform: rotateY(-4deg);
+  }
+}
+
+.urp-logo--header {
+  gap: 8px;
+}
+
+.urp-logo__wordmark {
+  display: inline-flex;
+  align-items: baseline;
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1;
+  font-family:
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    Roboto,
+    'PingFang SC',
+    'Microsoft YaHei',
+    sans-serif;
+}
+
+.urp-logo__urp {
+  color: var(--urp-logo-text-urp);
+}
+
+.urp-logo__builder {
+  color: var(--urp-logo-text-builder);
+}
+
+:root[theme-mode='light'],
+:root:not([theme-mode]) {
+  --urp-logo-text-urp: #141b2f;
+  --urp-logo-text-builder: #0052d9;
+  --urp-logo-shadow: #0034a8;
+}
+
+:root[theme-mode='dark'] {
+  --urp-logo-text-urp: #e8eaf2;
+  --urp-logo-text-builder: #7eb6ff;
+  --urp-logo-shadow: #000;
+}

@@ -4,21 +4,34 @@
   border-radius: 4px;
   box-sizing: border-box;
 
-  .account-info__titles {
+  /* 头像 + 昵称：原生 flex，避免 Space/Typography 嵌套带来的宽度/换行问题 */
+  .account-info__user-row {
     display: flex;
-    flex-direction: column;
-    gap: 2px;
+    flex-direction: row;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
     min-width: 0;
+    box-sizing: border-box;
+    padding: 0 2px 0 8px;
+  }
+
+  .account-info__name {
+    flex: 1;
+    min-width: 0;
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 1.35;
+    color: var(--td-text-color-primary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .account-info__login-account {
     color: var(--app-text-muted);
     font-size: 12px;
     line-height: 1.35;
-  }
-
-  .t-space-item {
-    width: 100%
   }
 
   .cell-item {

@@ -3,15 +3,13 @@ import React, { useId } from 'react';
 const svgStyle: React.CSSProperties = {
   display: 'block',
   flexShrink: 0,
-  width: 34,
-  height: 34,
 };
 
-/** 组件：立体积木块（两块错落的等距立方体） */
+/** 首页「我的资产」统计：立体积木块（两块错落的等距立方体） */
 export function HomeAssetStatIconComponents() {
   const id = useId().replace(/:/g, '');
   return (
-    <svg viewBox="0 0 40 40" style={svgStyle} aria-hidden className="home-page__asset-stat-icon">
+    <svg viewBox="0 0 40 40" style={svgStyle} aria-hidden className="urp-asset-style-icon">
       <defs>
         <linearGradient id={`${id}-a`} x1="0%" y1="0%" x2="100%" y2="100%">
           <stop offset="0%" stopColor="#8eb9ff" />
@@ -50,11 +48,11 @@ export function HomeAssetStatIconComponents() {
   );
 }
 
-/** 应用：立体「窗口」叠层 */
+/** 首页「我的资产」统计：立体「窗口」叠层 */
 export function HomeAssetStatIconApps() {
   const id = useId().replace(/:/g, '');
   return (
-    <svg viewBox="0 0 40 40" style={svgStyle} aria-hidden className="home-page__asset-stat-icon">
+    <svg viewBox="0 0 40 40" style={svgStyle} aria-hidden className="urp-asset-style-icon">
       <defs>
         <linearGradient id={`${id}-t`} x1="0%" y1="0%" x2="0%" y2="100%">
           <stop offset="0%" stopColor="#7dcea0" />
@@ -74,10 +72,8 @@ export function HomeAssetStatIconApps() {
         </linearGradient>
       </defs>
       <ellipse cx="18" cy="33" rx="11" ry="2.5" fill="rgba(0,0,0,0.1)" />
-      {/* back panel */}
       <path d="M8 12 L26 12 L26 28 L8 28 Z" fill={`url(#${id}-r)`} opacity={0.85} />
       <path d="M10 14 L24 14 L24 22 L10 22 Z" fill="rgba(0,40,20,0.25)" />
-      {/* front panel offset */}
       <path d="M12 16 L30 16 L30 30 L12 30 Z" fill={`url(#${id}-l)`} />
       <path d="M14 18 L28 18 L28 26 L14 26 Z" fill={`url(#${id}-t)`} />
       <path d="M14 18 L28 18 L28 20 L14 20 Z" fill={`url(#${id}-s)`} />
@@ -86,11 +82,11 @@ export function HomeAssetStatIconApps() {
   );
 }
 
-/** 常量：立体滑块 / 三档调节 */
+/** 首页「我的资产」统计：立体滑块 / 三档调节 */
 export function HomeAssetStatIconConstants() {
   const id = useId().replace(/:/g, '');
   return (
-    <svg viewBox="0 0 40 40" style={svgStyle} aria-hidden className="home-page__asset-stat-icon">
+    <svg viewBox="0 0 40 40" style={svgStyle} aria-hidden className="urp-asset-style-icon">
       <defs>
         <linearGradient id={`${id}-1`} x1="0%" y1="0%" x2="0%" y2="100%">
           <stop offset="0%" stopColor="#ffd89b" />
@@ -106,15 +102,12 @@ export function HomeAssetStatIconConstants() {
         </linearGradient>
       </defs>
       <ellipse cx="20" cy="33" rx="12" ry="2.5" fill="rgba(0,0,0,0.08)" />
-      {/* bar 1 short */}
       <path d="M8 26 L12 26 L12 28 L14 28 L14 30 L8 30 Z" fill={`url(#${id}-1)`} />
       <rect x="8" y="18" width="6" height="8" rx="1" fill={`url(#${id}-2)`} />
       <rect x="9" y="16" width="4" height="3" rx="0.5" fill="#fff5e6" />
-      {/* bar 2 mid */}
       <path d="M16 22 L20 22 L20 24 L22 24 L22 30 L16 30 Z" fill={`url(#${id}-2)`} />
       <rect x="16" y="12" width="6" height="10" rx="1" fill={`url(#${id}-3)`} />
       <rect x="17" y="10" width="4" height="3" rx="0.5" fill="#fff8f0" />
-      {/* bar 3 tall */}
       <path d="M24 18 L28 18 L28 20 L30 20 L30 30 L24 30 Z" fill={`url(#${id}-3)`} />
       <rect x="24" y="6" width="6" height="12" rx="1" fill={`url(#${id}-1)`} />
       <rect x="25" y="4" width="4" height="3" rx="0.5" fill="#fff5e6" />
@@ -122,11 +115,11 @@ export function HomeAssetStatIconConstants() {
   );
 }
 
-/** 云函数：立体云 + 闪电 */
+/** 首页「我的资产」统计：立体云 + 闪电 */
 export function HomeAssetStatIconFunctions() {
   const id = useId().replace(/:/g, '');
   return (
-    <svg viewBox="0 0 40 40" style={svgStyle} aria-hidden className="home-page__asset-stat-icon">
+    <svg viewBox="0 0 40 40" style={svgStyle} aria-hidden className="urp-asset-style-icon">
       <defs>
         <linearGradient id={`${id}-cl`} x1="0%" y1="0%" x2="0%" y2="100%">
           <stop offset="0%" stopColor="#ffb4b4" />
@@ -161,11 +154,11 @@ export function HomeAssetStatIconFunctions() {
   );
 }
 
-/** 素材：立体相框 + 风景剪影 */
+/** 首页「我的资产」统计：立体相框 + 风景剪影 */
 export function HomeAssetStatIconAssets() {
   const id = useId().replace(/:/g, '');
   return (
-    <svg viewBox="0 0 40 40" style={svgStyle} aria-hidden className="home-page__asset-stat-icon">
+    <svg viewBox="0 0 40 40" style={svgStyle} aria-hidden className="urp-asset-style-icon">
       <defs>
         <linearGradient id={`${id}-fr`} x1="0%" y1="0%" x2="100%" y2="100%">
           <stop offset="0%" stopColor="#dfe6e9" />

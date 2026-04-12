@@ -15,6 +15,37 @@ import './style.less';
 const { TabPanel } = Tabs;
 const READ_STORAGE_PREFIX = 'urp-builder-message-read';
 
+/** 抽屉标题：邮箱造型 + 信封（品牌渐变） */
+const MessageCenterMailboxIcon: React.FC = () => {
+  const uid = React.useId().replace(/:/g, '');
+  return (
+    <svg
+      className="global-notice-center__header-mail-icon"
+      width="28"
+      height="28"
+      viewBox="0 0 32 32"
+      aria-hidden
+    >
+      <defs>
+        <linearGradient id={`${uid}-m`} x1="4" y1="5" x2="28" y2="27" gradientUnits="userSpaceOnUse">
+          <stop stopColor="#0034a8" />
+          <stop offset="0.5" stopColor="#0052d9" />
+          <stop offset="1" stopColor="#5d9eff" />
+        </linearGradient>
+      </defs>
+      <path fill={`url(#${uid}-m)`} d="M4 14 L16 5 L28 14 V27 H4 Z" opacity={0.96} />
+      <rect x="7" y="15" width="18" height="11" rx="1.2" fill="#fff" opacity={0.98} />
+      <path
+        fill="none"
+        stroke="#0052d9"
+        strokeWidth="1.05"
+        strokeLinejoin="round"
+        d="M7 15 L16 21 L25 15"
+      />
+    </svg>
+  );
+};
+
 type TeamInvitationMessage = {
   category: 'team_invitation';
   id: string;
@@ -363,74 +394,85 @@ const GlobalNoticeCenter: React.FC = () => {
     );
   };
 
-  const renderMessageCard = (message: MessageItem, mode: 'unread' | 'read' | 'sent') => {
+  const renderMessageItem = (message: MessageItem, mode: 'unread' | 'read' | 'sent') => {
     const isUnread = mode === 'unread';
     const actionLoading = respondingId === message.id;
 
     if (message.category === 'platform_broadcast') {
       return (
-        <article
+        <div
           key={`${mode}-pb-${message.id}`}
-          className={`global-notice-center__card global-notice-center__card--platform_broadcast ${isUnread ? 'is-unread' : 'is-read'}`}
+          className={`global-notice-center__item global-notice-center__item--platform ${isUnread ? 'is-unread' : ''}`}
         >
-          <div className="global-notice-center__card-head">
-            <div className="global-notice-center__card-flags">
-              <Tag size="small" theme="primary" variant="light-outline">系统通知</Tag>
-              {isUnread ? <span className="global-notice-center__card-dot">未读</span> : null}
+          <div className="global-notice-center__item-toolbar">
+            <div className="global-notice-center__item-flags">
+              <Tag size="small" theme="primary" variant="light-outline">
+                系统通知
+              </Tag>
+              <Tag size="small" theme="default" variant="light-outline">
+                广播
+              </Tag>
+              {isUnread ? <span className="global-notice-center__item-dot">未读</span> : null}
             </div>
-            <Tag size="small" theme="default" variant="light-outline">广播</Tag>
+            <time className="global-notice-center__item-time" dateTime={message.createdAt}>
+              {formatTime(message.createdAt)}
+            </time>
           </div>
-          <div className="global-notice-center__card-title">{message.title}</div>
-          <div className="global-notice-center__card-desc">{message.description}</div>
-          <div className="global-notice-center__card-meta-line">
-            <span>{message.senderName || '管理员'}</span>
-            <span>{formatTime(message.createdAt)}</span>
-          </div>
-          <div className="global-notice-center__card-footer">
-            <Space size={8}>
+          <div className="global-notice-center__item-title">{message.title}</div>
+          <div className="global-notice-center__item-desc">{message.description}</div>
+          <div className="global-notice-center__item-bottom">
+            <span className="global-notice-center__item-sender">{message.senderName || '管理员'}</span>
+            <Space size={4} className="global-notice-center__item-actions" align="center">
               <Button variant="text" size="small" onClick={() => setDetailMessage(message)}>
-                查看详情
+                详情
               </Button>
               {mode === 'unread' ? (
                 <Button
                   variant="text"
                   size="small"
-                  onClick={() => { void handleMarkPlatformRead(message.id); }}
+                  onClick={() => {
+                    void handleMarkPlatformRead(message.id);
+                  }}
                 >
-                  标为已读
+                  已读
                 </Button>
               ) : null}
             </Space>
           </div>
-        </article>
+        </div>
       );
     }
 
     return (
-      <article key={`${mode}-${message.id}`} className={`global-notice-center__card global-notice-center__card--${message.category} ${isUnread ? 'is-unread' : 'is-read'}`}>
-        <div className="global-notice-center__card-head">
-          <div className="global-notice-center__card-flags">
-            <Tag size="small" theme="default" variant="light-outline">团队邀请</Tag>
-            {isUnread ? <span className="global-notice-center__card-dot">未读</span> : null}
+      <div
+        key={`${mode}-${message.id}`}
+        className={`global-notice-center__item global-notice-center__item--invite ${isUnread ? 'is-unread' : ''}`}
+      >
+        <div className="global-notice-center__item-toolbar">
+          <div className="global-notice-center__item-flags">
+            <Tag size="small" theme="default" variant="light-outline">
+              团队邀请
+            </Tag>
+            <Tag size="small" theme={statusThemeMap[message.status]} variant="light-outline">
+              {statusTextMap[message.status]}
+            </Tag>
+            {isUnread ? <span className="global-notice-center__item-dot">未读</span> : null}
           </div>
-          <Tag size="small" theme={statusThemeMap[message.status]} variant="light-outline">
-            {statusTextMap[message.status]}
-          </Tag>
+          <time className="global-notice-center__item-time" dateTime={message.createdAt}>
+            {formatTime(message.createdAt)}
+          </time>
         </div>
-        <div className="global-notice-center__card-title">{message.title}</div>
-        <div className="global-notice-center__card-desc">{message.description}</div>
-        <div className="global-notice-center__card-meta-line">
-          <span>{message.teamName}</span>
-          <span>{formatTime(message.createdAt)}</span>
-        </div>
-        <div className="global-notice-center__card-footer">
-          <Space size={8}>
+        <div className="global-notice-center__item-title">{message.title}</div>
+        <div className="global-notice-center__item-desc">{message.description}</div>
+        <div className="global-notice-center__item-bottom">
+          <span className="global-notice-center__item-sender">{message.teamName}</span>
+          <Space size={4} className="global-notice-center__item-actions" align="center">
             <Button variant="text" size="small" onClick={() => setDetailMessage(message)}>
-              查看详情
+              详情
             </Button>
             {mode !== 'sent' ? (
               <Button variant="text" size="small" onClick={() => updateTeamReadState(message.id, mode === 'unread')}>
-                {mode === 'unread' ? '标为已读' : '标为未读'}
+                {mode === 'unread' ? '标已读' : '标未读'}
               </Button>
             ) : null}
             {message.category === 'team_invitation' && mode !== 'sent' && message.status === 'pending' ? (
@@ -445,7 +487,7 @@ const GlobalNoticeCenter: React.FC = () => {
             ) : null}
           </Space>
         </div>
-      </article>
+      </div>
     );
   };
 
@@ -458,7 +500,7 @@ const GlobalNoticeCenter: React.FC = () => {
       return <div className="global-notice-center__empty">暂无消息</div>;
     }
 
-    return <div className="global-notice-center__list">{items.map((item) => renderMessageCard(item, mode))}</div>;
+    return <div className="global-notice-center__list">{items.map((item) => renderMessageItem(item, mode))}</div>;
   };
 
   return (
@@ -469,21 +511,34 @@ const GlobalNoticeCenter: React.FC = () => {
       <Drawer
         visible={visible}
         placement="right"
-        size="540px"
+        size="400px"
         header={(
           <div className="global-notice-center__drawer-header">
-            <div>
-              <div className="global-notice-center__drawer-title">消息中心</div>
-              <div className="global-notice-center__drawer-subtitle">{unreadTotal} 条未读</div>
-            </div>
-            <Button variant="text" shape="circle" icon={<RefreshIcon />} loading={loading} onClick={() => { void loadMessages(); }} />
+            <MessageCenterMailboxIcon />
+            <span className="global-notice-center__drawer-title">消息中心</span>
+            <Button
+              variant="text"
+              shape="square"
+              className="global-notice-center__drawer-refresh"
+              icon={<RefreshIcon />}
+              loading={loading}
+              onClick={() => {
+                void loadMessages();
+              }}
+            />
           </div>
         )}
         onClose={() => setVisible(false)}
         footer={false}
         className="global-notice-center__drawer"
       >
-        <Tabs value={activeTab} onChange={(value) => setActiveTab(String(value) as 'unread' | 'read' | 'sent')} size="medium" className="global-notice-center__tabs">
+        <Tabs
+          value={activeTab}
+          onChange={(value) => setActiveTab(String(value) as 'unread' | 'read' | 'sent')}
+          size="medium"
+          theme="card"
+          className="global-notice-center__tabs"
+        >
           <TabPanel value="unread" label={`未读 ${unreadMessages.length}`}>
             {renderMessageList(unreadMessages, 'unread')}
           </TabPanel>

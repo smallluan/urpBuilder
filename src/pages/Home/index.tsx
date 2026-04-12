@@ -31,7 +31,7 @@ import {
   HomeAssetStatIconComponents,
   HomeAssetStatIconConstants,
   HomeAssetStatIconFunctions,
-} from './homeAssetStatIcons';
+} from '../../components/icons/homeAssetStatIcons';
 import { RecentEditsTicker, type RecentEditItem } from './RecentEditsTicker';
 import { openEditorInNewTab } from './openEditorInNewTab';
 import './style.less';

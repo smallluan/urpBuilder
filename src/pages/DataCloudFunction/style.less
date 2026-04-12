@@ -75,36 +75,36 @@
 
     &__pagination {
       flex-shrink: 0;
-      border-top: 1px solid #edf1f6;
+      border-top: 1px solid var(--td-component-border);
       padding: 10px 8px;
       display: flex;
       justify-content: flex-end;
-      background: #fff;
+      background: var(--td-bg-color-container);
     }
   }
 
   .console-list-item {
-    // border: 1px solid #e8edf5;
     border-radius: 4px;
-    background: #fff;
+    border: 1px solid transparent;
+    background: var(--td-bg-color-container);
     padding: 10px;
     text-align: left;
     cursor: pointer;
     transition: border-color 0.2s ease, box-shadow 0.2s ease;
 
     &:hover {
-      border-color: #c8d7ff;
-      box-shadow: 0 2px 8px rgba(61, 108, 255, 0.09);
+      border-color: var(--td-brand-color-3);
+      box-shadow: 0 2px 8px color-mix(in srgb, var(--td-brand-color) 12%, transparent);
     }
 
     &.is-active {
-      border-color: #3f7bff;
-      background: #f4f8ff;
-      box-shadow: 0 0 0 1px rgba(63, 123, 255, 0.2);
+      border-color: var(--td-brand-color);
+      background: var(--td-brand-color-1);
+      box-shadow: 0 0 0 1px color-mix(in srgb, var(--td-brand-color) 28%, transparent);
     }
 
     &__title {
-      color: #111827;
+      color: var(--td-text-color-primary);
       font-size: 14px;
       font-weight: 600;
       margin-bottom: 8px;
@@ -114,7 +114,7 @@
     }
 
     &__meta {
-      color: #64748b;
+      color: var(--td-text-color-secondary);
       font-size: 12px;
       display: flex;
       align-items: center;
@@ -125,7 +125,7 @@
 
   .console-main {
     min-height: 0;
-    background: #fff;
+    background: var(--td-bg-color-page);
     display: flex;
     flex-direction: column;
     padding: 12px;
@@ -141,7 +141,7 @@
 
       h3 {
         margin: 0;
-        color: #0f172a;
+        color: var(--td-text-color-primary);
         font-size: 18px;
       }
     }
@@ -151,16 +151,16 @@
       display: flex;
       align-items: center;
       gap: 8px;
-      color: #64748b;
+      color: var(--td-text-color-secondary);
       font-size: 12px;
       flex-wrap: wrap;
     }
 
     &__meta {
       flex-shrink: 0;
-      border: 1px solid #edf1f6;
+      border: 1px solid var(--td-component-border);
       border-radius: 8px;
-      background: #fbfcff;
+      background: var(--td-brand-color-1);
       padding: 10px;
       overflow-x: auto;
     }
@@ -174,7 +174,7 @@
       h4 {
         margin: 0;
         font-size: 14px;
-        color: #1f2937;
+        color: var(--td-text-color-primary);
       }
     }
 
@@ -182,10 +182,10 @@
       flex: 1;
       min-height: 0;
       overflow: auto;
-      border: 1px solid #edf1f6;
+      border: 1px solid var(--td-component-border);
       border-radius: 8px;
       padding: 8px 8px 4px;
-      background: #fff;
+      background: var(--td-bg-color-container);
     }
 
     &__pager {
@@ -204,10 +204,10 @@
     }
 
     &__code-panel {
-      border: 1px solid #d9e4fb;
+      border: 1px solid var(--td-component-border);
       border-radius: 8px;
       padding: 10px 12px;
-      background: #f8fbff;
+      background: var(--td-brand-color-1);
       display: flex;
       flex-direction: column;
       gap: 10px;
@@ -219,12 +219,12 @@
       justify-content: space-between;
       gap: 8px;
       font-size: 14px;
-      color: #0f172a;
+      color: var(--td-text-color-primary);
       font-weight: 600;
     }
 
     &__code-panel-meta {
-      color: #475569;
+      color: var(--td-text-color-secondary);
       font-size: 13px;
       display: flex;
       flex-direction: column;
@@ -239,14 +239,14 @@
   }
 
   .create-table-fields {
-    border: 1px solid #edf1f6;
+    border: 1px solid var(--td-component-border);
     border-radius: 8px;
     overflow: hidden;
 
     &__toolbar {
       padding: 8px;
-      border-bottom: 1px solid #edf1f6;
-      background: #f8fbff;
+      border-bottom: 1px solid var(--td-component-border);
+      background: var(--td-brand-color-1);
     }
   }
 
@@ -256,14 +256,14 @@
     }
 
     &__code-brief {
-      border: 1px dashed #c8d4ef;
+      border: 1px dashed var(--td-component-border);
       border-radius: 8px;
       padding: 10px;
       display: flex;
       align-items: center;
       justify-content: space-between;
       gap: 8px;
-      color: #475569;
+      color: var(--td-text-color-secondary);
       font-size: 13px;
     }
   }
