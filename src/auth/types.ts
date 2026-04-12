@@ -36,15 +36,26 @@ export interface AdminUserDisablePayload {
 export interface LoginPayload {
   username: string;
   password: string;
+  captchaId: string;
+  captchaCode: string;
 }
 
 export interface RegisterPayload {
   username: string;
   password: string;
+  captchaId: string;
+  captchaCode: string;
   nickname?: string;
   avatar?: string;
   avatarSource?: 'preset' | 'upload';
   avatarSeed?: string;
+}
+
+/** GET /auth/captcha */
+export interface AuthCaptcha {
+  captchaId: string;
+  /** SVG 字符串，前端使用 data:image/svg+xml;charset=utf-8 展示 */
+  image: string;
 }
 
 export interface UpdateProfilePayload {

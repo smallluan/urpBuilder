@@ -4,6 +4,7 @@ import type {
   AdminUserDisablePayload,
   AdminUserListParams,
   AdminUserListResult,
+  AuthCaptcha,
   AuthSession,
   AuthUser,
   ChangePasswordPayload,
@@ -13,13 +14,22 @@ import type {
   UpdateProfilePayload,
 } from './types';
 
+export const fetchAuthCaptcha = async (): Promise<AuthCaptcha> => {
+  const response = await requestClient.get<ApiResponse<AuthCaptcha>>('/auth/captcha');
+  return response.data.data;
+};
+
 export const loginByPassword = async (payload: LoginPayload) => {
-  const response = await requestClient.post<ApiResponse<AuthSession>>('/auth/login', payload);
+  const response = await requestClient.post<ApiResponse<AuthSession>>('/auth/login', payload, {
+    skipErrorToast: true,
+  });
   return response.data.data;
 };
 
 export const registerByPassword = async (payload: RegisterPayload) => {
-  const response = await requestClient.post<ApiResponse<AuthSession>>('/auth/register', payload);
+  const response = await requestClient.post<ApiResponse<AuthSession>>('/auth/register', payload, {
+    skipErrorToast: true,
+  });
   return response.data.data;
 };
 

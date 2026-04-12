@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { Button, Drawer } from 'tdesign-react';
 import BoxModelStyleEditor from './BoxModelStyleEditor';
 import BoxShadowStyleEditor from './BoxShadowStyleEditor';
@@ -62,6 +62,8 @@ const StyleTabShell: React.FC<StyleTabShellProps> = ({
   computedHints,
 }) => {
   const [panel, setPanel] = useState<StyleDrawerPanel>(null);
+  /** 将盒模型内嵌 Popup 挂到抽屉内容区，避免挂到 body 时焦点无法进入输入框 */
+  const styleDrawerBodyRef = useRef<HTMLDivElement>(null);
 
   const handlePatch = useCallback(
     (patch: Record<string, string | undefined>) => {
@@ -148,7 +150,7 @@ const StyleTabShell: React.FC<StyleTabShellProps> = ({
         visible={panel !== null}
         header={drawerHeader}
         placement="right"
-        size="min(720px, 92vw)"
+        size="min(520px, 82vw)"
         zIndex={5600}
         footer={false}
         showOverlay
@@ -158,7 +160,7 @@ const StyleTabShell: React.FC<StyleTabShellProps> = ({
         destroyOnClose={false}
         onClose={() => setPanel(null)}
       >
-        <div className="style-tab-drawer-body">
+        <div ref={styleDrawerBodyRef} className="style-tab-drawer-body">
           {panel === 'box' && (
             <BoxModelStyleEditor
               key={editorKey}
@@ -166,6 +168,7 @@ const StyleTabShell: React.FC<StyleTabShellProps> = ({
               onPatch={handlePatch}
               readOnly={readOnly}
               computedHints={computedHints}
+              popupAttachRef={styleDrawerBodyRef}
             />
           )}
           {panel === 'display' && (

@@ -61,11 +61,23 @@
 }
 
 .style-tab-drawer-body {
+  position: relative;
   padding: 8px 8px 20px;
   min-height: 160px;
   max-height: min(88vh, 960px);
   overflow: auto;
   box-sizing: border-box;
+}
+
+/* TDesign Portal 挂到 body 内时 absolute+100% 宽易挡住下方；放行指针，仅弹层接收点击 */
+.style-tab-drawer-body .t-portal-wrapper {
+  pointer-events: none;
+}
+
+.style-tab-drawer-body .t-portal-wrapper .t-popup,
+.style-tab-drawer-body .t-portal-wrapper .t-select__dropdown,
+.style-tab-drawer-body .t-portal-wrapper .t-color-picker__panel {
+  pointer-events: auto;
 }
 
 .style-tab-drawer-body .box-model-editor,

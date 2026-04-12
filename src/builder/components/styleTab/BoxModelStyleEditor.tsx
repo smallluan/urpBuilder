@@ -1,7 +1,6 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Button, Input, Popup, Select } from 'tdesign-react';
-import type { PopupRef } from 'tdesign-react/es/popup/Popup';
-import { ArrowLeft, ArrowRight, ArrowUp, ArrowDown, Link2, Unlink2, Menu } from 'lucide-react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
+import { Alert, Button, ColorPicker, Input, Select } from 'tdesign-react';
+import { ArrowLeft, ArrowRight, ArrowUp, ArrowDown, Link2, Unlink2 } from 'lucide-react';
 import { hasShorthandSpacing, normalizeStyleValue } from '../../utils/nodeStyleCodec';
 import { getEffectiveStyleString } from '../../utils/styleEffectiveValue';
 import './BoxModelStyleEditor.less';
@@ -22,9 +21,22 @@ export interface BoxModelStyleEditorProps {
   onPatch: (patch: Record<string, string | undefined>) => void;
   readOnly?: boolean;
   computedHints?: Record<string, string>;
+  /** 将四边编辑 Popup 挂到该容器内（如样式抽屉 body），避免挂到 document.body 时与 Drawer 焦点隔离导致无法聚焦输入框 */
+  popupAttachRef?: React.RefObject<HTMLElement | null>;
 }
 
 const gv = (style: Record<string, unknown>, key: string): string => normalizeStyleValue(style)[key] ?? '';
+
+const isVarColor = (c: string) => /^\s*var\s*\(/.test(String(c ?? ''));
+
+const BORDER_STYLE_OPTIONS = [
+  { label: 'solid', value: 'solid' },
+  { label: 'dashed', value: 'dashed' },
+  { label: 'dotted', value: 'dotted' },
+  { label: 'none', value: 'none' },
+] as const;
+
+const SIDE_SHORT: Record<Side, string> = { Top: 'T', Right: 'R', Bottom: 'B', Left: 'L' };
 
 const BORDER_BLOCK_KEYS = [
   'border', 'borderTop', 'borderRight', 'borderBottom', 'borderLeft', 'borderWidth',
@@ -32,31 +44,6 @@ const BORDER_BLOCK_KEYS = [
 
 const hasBorderShorthand = (style: Record<string, unknown>): boolean =>
   BORDER_BLOCK_KEYS.some((k) => String(gv(style, k)).trim().length > 0);
-
-const displayPx = (raw: string): string => {
-  const t = String(raw ?? '').trim();
-  if (!t) return '0px';
-  if (/^\d+(\.\d+)?$/.test(t)) return `${t}px`;
-  return t;
-};
-
-type EdgeVisual = { type: 'numeric'; num: string } | { type: 'text'; text: string };
-
-const parseEdgeVisual = (raw: string): EdgeVisual => {
-  const t = String(raw ?? '').trim();
-  if (!t) return { type: 'numeric', num: '0' };
-  const m = t.match(/^(\d+(?:\.\d+)?)px$/i);
-  if (m) return { type: 'numeric', num: m[1] };
-  if (/^\d+(?:\.\d+)?$/.test(t)) return { type: 'numeric', num: t };
-  return { type: 'text', text: displayPx(t) };
-};
-
-const filterNonNegDecimalDraft = (raw: string): string => {
-  let s = String(raw ?? '').replace(/[^\d.]/g, '');
-  const dot = s.indexOf('.');
-  if (dot !== -1) s = `${s.slice(0, dot + 1)}${s.slice(dot + 1).replace(/\./g, '')}`;
-  return s.length > 16 ? s.slice(0, 16) : s;
-};
 
 const normalizePxInput = (raw: string): string => {
   const t = String(raw ?? '').trim();
@@ -66,12 +53,32 @@ const normalizePxInput = (raw: string): string => {
   return `${n}px`;
 };
 
-const topStripText = (vals: Record<Side, string>): string => {
-  const list = SIDES.map((s) => vals[s].trim());
-  if (list.every((x) => !x)) return '0px';
-  const first = list[0];
-  if (list.every((x) => x === first)) return displayPx(first);
-  return '···';
+const normalizeSpacingToken = (raw: string): string => {
+  const t = String(raw ?? '').trim();
+  if (!t) return '';
+  if (/^\d+(\.\d+)?$/.test(t)) return `${t}px`;
+  return t;
+};
+
+const parseSpacingShorthand = (raw: string): Record<Side, string> | null => {
+  const t = String(raw ?? '').trim();
+  if (!t) return null;
+  const tokens = t.split(/\s+/).filter(Boolean);
+  if (tokens.length < 1 || tokens.length > 4) return null;
+  const one = normalizeSpacingToken(tokens[0] ?? '');
+  const two = normalizeSpacingToken(tokens[1] ?? tokens[0] ?? '');
+  const three = normalizeSpacingToken(tokens[2] ?? tokens[0] ?? '');
+  const four = normalizeSpacingToken(tokens[3] ?? tokens[1] ?? tokens[0] ?? '');
+  if (tokens.length === 1) {
+    return { Top: one, Right: one, Bottom: one, Left: one };
+  }
+  if (tokens.length === 2) {
+    return { Top: one, Right: two, Bottom: one, Left: two };
+  }
+  if (tokens.length === 3) {
+    return { Top: one, Right: two, Bottom: three, Left: two };
+  }
+  return { Top: one, Right: two, Bottom: three, Left: four };
 };
 
 const LAYER_TITLES: Record<LayerId, string> = { margin: '外边距', border: '边框', padding: '内边距' };
@@ -82,73 +89,6 @@ const clearBorderShorthandPatch = (): Record<string, string | undefined> => ({
 });
 
 /* ── Small Sub-Components ───────────────────────────────── */
-
-const EdgeSideLR: React.FC<{ raw: string }> = ({ raw }) => {
-  const v = parseEdgeVisual(raw);
-  const tip = displayPx(raw);
-  if (v.type === 'numeric') {
-    return (
-      <span className="box-model-editor__edge-label box-model-editor__edge-vstack" title={tip}>
-        <span className="box-model-editor__edge-vstack__num">{v.num}</span>
-        <span className="box-model-editor__edge-vstack__unit">px</span>
-      </span>
-    );
-  }
-  return (
-    <span className="box-model-editor__edge-label box-model-editor__edge-text-full" title={tip}>
-      {v.text}
-    </span>
-  );
-};
-
-const EdgeBottom: React.FC<{ raw: string }> = ({ raw }) => {
-  const v = parseEdgeVisual(raw);
-  const tip = displayPx(raw);
-  if (v.type === 'numeric') {
-    return (
-      <span className="box-model-editor__edge-label box-model-editor__edge-bottom" title={tip}>
-        <span className="box-model-editor__edge-bottom__num">{v.num}</span>
-        <span className="box-model-editor__edge-bottom__unit">px</span>
-      </span>
-    );
-  }
-  return (
-    <span className="box-model-editor__edge-label box-model-editor__edge-bottom-text" title={tip}>
-      {v.text}
-    </span>
-  );
-};
-
-const SideGrid: React.FC<{
-  prefix: string;
-  suffix: string;
-  vals: Record<Side, string>;
-  disabled: boolean;
-  onDraft: (side: Side, raw: string) => void;
-  onCommit: (side: Side, raw: string) => void;
-}> = ({ prefix, suffix, vals, disabled, onDraft, onCommit }) => (
-  <div className="box-model-editor__side-grid">
-    {SIDES.map((side) => {
-      const label = { Top: '上', Right: '右', Bottom: '下', Left: '左' }[side];
-      const key = `${prefix}${side}${suffix}`;
-      return (
-        <React.Fragment key={key}>
-          <span className="box-model-editor__side-label">{label}</span>
-          <Input
-            size="small"
-            align="center"
-            disabled={disabled}
-            placeholder="0"
-            value={vals[side]}
-            onChange={(v) => onDraft(side, filterNonNegDecimalDraft(String(v ?? '')))}
-            onBlur={(v) => onCommit(side, String(v ?? ''))}
-            onEnter={(v) => onCommit(side, String(v ?? ''))}
-          />
-        </React.Fragment>
-      );
-    })}
-  </div>
-);
 
 /* ── Ring Layer ──────────────────────────────────────────── */
 
@@ -166,87 +106,17 @@ const RingLayer: React.FC<{
   variant: LayerId;
   vals: Record<Side, string>;
   disabled: boolean;
-  detail: React.ReactNode;
   readOnly: boolean;
-  editing: boolean;
-  draft: string;
-  setDraft: (s: string) => void;
-  onBeginEdit: () => void;
-  onUniformCommit: (raw: string) => void;
-  onFinishEdit: () => void;
+  onSideDraft: (side: Side, raw: string) => void;
+  onSideCommit: (side: Side, raw: string) => void;
   children: React.ReactNode;
   glowActive: boolean;
   onLayerMouseEnter: () => void;
   onLayerMouseLeave: (e: React.MouseEvent<HTMLDivElement>) => void;
 }> = ({
-  variant, vals, disabled, detail, readOnly, editing, draft, setDraft,
-  onBeginEdit, onUniformCommit, onFinishEdit, children, glowActive,
+  variant, vals, disabled, readOnly, onSideDraft, onSideCommit, children, glowActive,
   onLayerMouseEnter, onLayerMouseLeave,
 }) => {
-  const inputWrapRef = useRef<HTMLDivElement>(null);
-  const detailPopupRef = useRef<PopupRef>(null);
-  const [detailVisible, setDetailVisible] = useState(false);
-
-  useEffect(() => {
-    if (!editing) return;
-    const el = inputWrapRef.current?.querySelector('input');
-    el?.focus();
-    el?.select?.();
-  }, [editing]);
-
-  useEffect(() => {
-    if (!editing) setDetailVisible(false);
-  }, [editing]);
-
-  const handleDetailVisibleChange = useCallback((next: boolean, ctx: { trigger?: string; e?: unknown }) => {
-    if (!next && ctx.trigger === 'document' && ctx.e && typeof ctx.e === 'object' && ctx.e !== null && 'target' in ctx.e) {
-      const target = (ctx.e as { target: unknown }).target;
-      if (target instanceof Node) {
-        const popupRoot = detailPopupRef.current?.getPopupElement?.() ?? null;
-        if (popupRoot?.contains(target)) return;
-        if (target instanceof Element) {
-          if (target.closest('.box-model-editor__popup-body')) return;
-          if (target.closest('.t-select__dropdown')) return;
-        }
-      }
-    }
-    setDetailVisible(next);
-  }, []);
-
-  const topShown = topStripText(vals);
-
-  const menuSuffix = (
-    <Popup
-      ref={detailPopupRef}
-      trigger="click"
-      placement="left-top"
-      showArrow={false}
-      visible={detailVisible}
-      onVisibleChange={handleDetailVisibleChange}
-      overlayInnerClassName="box-model-editor__popup-inner"
-      overlayStyle={{ overflow: 'visible' }}
-      overlayInnerStyle={{ overflow: 'visible' }}
-      disabled={readOnly || disabled}
-      content={detail}
-    >
-      <span
-        className="box-model-editor__suffix-menu"
-        role="button"
-        tabIndex={-1}
-        title="详细"
-        aria-label="详细设置"
-        onMouseDown={(e) => e.preventDefault()}
-      >
-        <Menu size={12} strokeWidth={2} />
-      </span>
-    </Popup>
-  );
-
-  const commitFromInput = (raw: string) => {
-    onUniformCommit(String(raw ?? ''));
-    onFinishEdit();
-  };
-
   const layerTitle = LAYER_TITLES[variant];
 
   return (
@@ -256,61 +126,78 @@ const RingLayer: React.FC<{
       onMouseEnter={onLayerMouseEnter}
       onMouseLeave={onLayerMouseLeave}
     >
-      <div className={`box-model-editor__ring-bar${editing ? ' box-model-editor__ring-bar--editing' : ''}`}>
-        {!editing && (
-          <div className="box-model-editor__ring-bar-side box-model-editor__ring-bar-side--start">
-            <span className="box-model-editor__ring-layer-title">{layerTitle}</span>
-          </div>
-        )}
+      <div className="box-model-editor__ring-bar">
+        <div className="box-model-editor__ring-bar-side box-model-editor__ring-bar-side--start">
+          <span className="box-model-editor__ring-layer-title">{layerTitle}</span>
+        </div>
         <div className="box-model-editor__ring-bar-center">
           <div className="box-model-editor__ring-top-slot">
-            {!editing ? (
-              <button
-                type="button"
-                className="box-model-editor__edge-label box-model-editor__top-text"
+            <div className="box-model-editor__top-input-wrap">
+              <Input
+                size="small"
+                borderless
+                align="center"
+                className="box-model-editor__top-input"
                 disabled={readOnly || disabled}
-                onClick={onBeginEdit}
-              >
-                {topShown}
-              </button>
-            ) : (
-              <div ref={inputWrapRef} className="box-model-editor__top-input-wrap">
-                <Input
-                  size="small"
-                  borderless
-                  align="center"
-                  className="box-model-editor__top-input"
-                  disabled={readOnly || disabled}
-                  placeholder="0"
-                  value={draft}
-                  suffix={menuSuffix}
-                  onChange={(v) => setDraft(filterNonNegDecimalDraft(String(v ?? '')))}
-                  onBlur={(v) => commitFromInput(String(v ?? ''))}
-                  onEnter={(v) => commitFromInput(String(v ?? ''))}
-                />
-              </div>
-            )}
+                placeholder="0"
+                value={vals.Top}
+                onChange={(v) => onSideDraft('Top', String(v ?? ''))}
+                onBlur={(v) => onSideCommit('Top', String(v ?? ''))}
+                onEnter={(v) => onSideCommit('Top', String(v ?? ''))}
+              />
+            </div>
           </div>
         </div>
-        {!editing && (
-          <div className="box-model-editor__ring-bar-side box-model-editor__ring-bar-side--end" aria-hidden="true">
-            <span className="box-model-editor__ring-layer-title">{layerTitle}</span>
-          </div>
-        )}
+        <div className="box-model-editor__ring-bar-side box-model-editor__ring-bar-side--end" aria-hidden="true">
+          <span className="box-model-editor__ring-layer-title">{layerTitle}</span>
+        </div>
       </div>
 
       <div className="box-model-editor__ring-mid">
         <div className="box-model-editor__ring-side box-model-editor__ring-side--left">
-          <EdgeSideLR raw={vals.Left} />
+          <Input
+            size="small"
+            borderless
+            align="center"
+            className="box-model-editor__edge-input box-model-editor__edge-input--v"
+            disabled={readOnly || disabled}
+            placeholder="0"
+            value={vals.Left}
+            onChange={(v) => onSideDraft('Left', String(v ?? ''))}
+            onBlur={(v) => onSideCommit('Left', String(v ?? ''))}
+            onEnter={(v) => onSideCommit('Left', String(v ?? ''))}
+          />
         </div>
         <div className="box-model-editor__ring-core">{children}</div>
         <div className="box-model-editor__ring-side box-model-editor__ring-side--right">
-          <EdgeSideLR raw={vals.Right} />
+          <Input
+            size="small"
+            borderless
+            align="center"
+            className="box-model-editor__edge-input box-model-editor__edge-input--v"
+            disabled={readOnly || disabled}
+            placeholder="0"
+            value={vals.Right}
+            onChange={(v) => onSideDraft('Right', String(v ?? ''))}
+            onBlur={(v) => onSideCommit('Right', String(v ?? ''))}
+            onEnter={(v) => onSideCommit('Right', String(v ?? ''))}
+          />
         </div>
       </div>
 
       <div className="box-model-editor__ring-bottom">
-        <EdgeBottom raw={vals.Bottom} />
+        <Input
+          size="small"
+          borderless
+          align="center"
+          className="box-model-editor__edge-input"
+          disabled={readOnly || disabled}
+          placeholder="0"
+          value={vals.Bottom}
+          onChange={(v) => onSideDraft('Bottom', String(v ?? ''))}
+          onBlur={(v) => onSideCommit('Bottom', String(v ?? ''))}
+          onEnter={(v) => onSideCommit('Bottom', String(v ?? ''))}
+        />
       </div>
     </div>
   );
@@ -323,6 +210,7 @@ const BoxModelStyleEditor: React.FC<BoxModelStyleEditorProps> = ({
   onPatch,
   readOnly,
   computedHints,
+  popupAttachRef,
 }) => {
   const style = value ?? {};
   const sh = hasShorthandSpacing(style);
@@ -340,9 +228,9 @@ const BoxModelStyleEditor: React.FC<BoxModelStyleEditorProps> = ({
   const marginBlockHints = sh.margin && marginHasLonghand;
   const paddingBlockHints = sh.padding && paddingHasLonghand;
   const borderBlockHints = borderBlocked && borderHasLonghand;
+  const marginFromShorthand = useMemo(() => parseSpacingShorthand(gv(style, 'margin')), [style]);
+  const paddingFromShorthand = useMemo(() => parseSpacingShorthand(gv(style, 'padding')), [style]);
 
-  const [editing, setEditing] = useState<LayerId | null>(null);
-  const [draft, setDraft] = useState('');
   const diagramRef = useRef<HTMLDivElement>(null);
   const [glowLayer, setGlowLayer] = useState<LayerId | null>(null);
 
@@ -357,6 +245,9 @@ const BoxModelStyleEditor: React.FC<BoxModelStyleEditorProps> = ({
   // ── Border Radius ──
   const [radiusLinked, setRadiusLinked] = useState(true);
   const [radiusDrafts, setRadiusDrafts] = useState<Record<string, string | null>>({});
+
+  /** 边框样式/颜色：与圆角一致，统一 ↔ 四边 */
+  const [borderAppearanceLinked, setBorderAppearanceLinked] = useState(true);
 
   const radiusVals = useMemo(() => {
     const out: Record<string, string> = {};
@@ -388,15 +279,15 @@ const BoxModelStyleEditor: React.FC<BoxModelStyleEditorProps> = ({
 
   const marginVals = useMemo(
     () => Object.fromEntries(
-      SIDES.map((s) => [s, getEffectiveStyleString(style, `margin${s}`, computedHints, marginBlockHints)]),
+      SIDES.map((s) => [s, marginFromShorthand?.[s] ?? getEffectiveStyleString(style, `margin${s}`, computedHints, marginBlockHints)]),
     ) as Record<Side, string>,
-    [style, computedHints, marginBlockHints],
+    [style, computedHints, marginBlockHints, marginFromShorthand],
   );
   const paddingVals = useMemo(
     () => Object.fromEntries(
-      SIDES.map((s) => [s, getEffectiveStyleString(style, `padding${s}`, computedHints, paddingBlockHints)]),
+      SIDES.map((s) => [s, paddingFromShorthand?.[s] ?? getEffectiveStyleString(style, `padding${s}`, computedHints, paddingBlockHints)]),
     ) as Record<Side, string>,
-    [style, computedHints, paddingBlockHints],
+    [style, computedHints, paddingBlockHints, paddingFromShorthand],
   );
   const borderWVals = useMemo(
     () => Object.fromEntries(
@@ -405,52 +296,94 @@ const BoxModelStyleEditor: React.FC<BoxModelStyleEditorProps> = ({
     [style, computedHints, borderBlockHints],
   );
 
-  const borderStyleVal = useMemo(() => {
-    const ex = gv(style, 'borderStyle').trim();
-    if (ex) return ex;
-    if (!computedHints) return '';
-    const t0 = (computedHints.borderTopStyle ?? '').trim();
-    if (!t0) return '';
-    if (SIDES.every((s) => (computedHints[`border${s}Style`] ?? '').trim() === t0)) return t0;
-    return '';
+  /**
+   * 写入边框样式/颜色时一并带上四向线宽。仅设 border-*-style 而未设 width 时，CSS 初始宽度为 medium，会出现「线宽为 0 仍看见边框」。
+   */
+  const withBorderAppearanceWidths = useCallback(
+    (base: Record<string, string | undefined>): Record<string, string | undefined> => {
+      if (borderBlocked) return base;
+      const next: Record<string, string | undefined> = { ...clearBorderShorthandPatch(), ...base };
+      for (const s of SIDES) {
+        next[`border${s}Width`] = normalizePxInput(borderWVals[s]);
+      }
+      return next;
+    },
+    [borderBlocked, borderWVals],
+  );
+
+  /** 四边样式：显式 longhand 优先；仅 borderStyle 简写且单值时铺到四边；其余用 effective */
+  const borderStylePerSide = useMemo(() => {
+    const out: Record<Side, string> = { Top: '', Right: '', Bottom: '', Left: '' };
+    for (const s of SIDES) {
+      const ex = gv(style, `border${s}Style`).trim();
+      if (ex) out[s] = ex;
+    }
+    const sh = gv(style, 'borderStyle').trim();
+    if (sh) {
+      const tokens = sh.split(/\s+/).filter(Boolean);
+      if (tokens.length === 1) {
+        for (const s of SIDES) {
+          if (!out[s]) out[s] = tokens[0];
+        }
+      }
+    }
+    for (const s of SIDES) {
+      if (!out[s]) out[s] = getEffectiveStyleString(style, `border${s}Style`, computedHints);
+    }
+    return out;
   }, [style, computedHints]);
 
-  const borderColorVal = useMemo(() => {
-    const ex = gv(style, 'borderColor').trim();
-    if (ex) return ex;
-    if (!computedHints) return '';
-    const c0 = (computedHints.borderTopColor ?? '').trim();
-    if (!c0) return '';
-    if (SIDES.every((s) => (computedHints[`border${s}Color`] ?? '').trim() === c0)) return c0;
-    return '';
+  /** 四边颜色：longhand 优先；仅 borderColor 简写且无分边显式值时用整段简写；其余 effective（含 rgb/var） */
+  const borderColorPerSide = useMemo(() => {
+    const out: Record<Side, string> = { Top: '', Right: '', Bottom: '', Left: '' };
+    for (const s of SIDES) {
+      const ex = gv(style, `border${s}Color`).trim();
+      if (ex) out[s] = ex;
+    }
+    const sh = gv(style, 'borderColor').trim();
+    const hasAnyPerSideExplicit = SIDES.some((s) => gv(style, `border${s}Color`).trim());
+    if (sh && !hasAnyPerSideExplicit) {
+      for (const s of SIDES) out[s] = sh;
+      return out;
+    }
+    for (const s of SIDES) {
+      if (!out[s]) out[s] = getEffectiveStyleString(style, `border${s}Color`, computedHints);
+    }
+    return out;
   }, [style, computedHints]);
+
+  const borderColorUnifiedIsVar = isVarColor(borderColorPerSide.Top);
 
   // ── Margin / Padding / Border callbacks (unchanged logic) ──
   const draftMarginSide = useCallback((side: Side, raw: string) => {
-    patch({ margin: undefined, [`margin${side}`]: raw.trim() || undefined });
-  }, [patch]);
-  const finalizeMarginSide = useCallback((side: Side, raw: string) => {
-    patch({ margin: undefined, [`margin${side}`]: normalizePxInput(raw) });
-  }, [patch]);
-  const commitMarginUniform = useCallback((raw: string) => {
-    const val = normalizePxInput(raw);
     const next: Record<string, string | undefined> = { margin: undefined };
-    SIDES.forEach((s) => { next[`margin${s}`] = val; });
+    SIDES.forEach((s) => {
+      next[`margin${s}`] = s === side ? (raw.trim() || undefined) : (marginVals[s].trim() || undefined);
+    });
     patch(next);
-  }, [patch]);
+  }, [patch, marginVals]);
+  const finalizeMarginSide = useCallback((side: Side, raw: string) => {
+    const next: Record<string, string | undefined> = { margin: undefined };
+    SIDES.forEach((s) => {
+      next[`margin${s}`] = s === side ? normalizePxInput(raw) : (marginVals[s].trim() || undefined);
+    });
+    patch(next);
+  }, [patch, marginVals]);
 
   const draftPaddingSide = useCallback((side: Side, raw: string) => {
-    patch({ padding: undefined, [`padding${side}`]: raw.trim() || undefined });
-  }, [patch]);
-  const finalizePaddingSide = useCallback((side: Side, raw: string) => {
-    patch({ padding: undefined, [`padding${side}`]: normalizePxInput(raw) });
-  }, [patch]);
-  const commitPaddingUniform = useCallback((raw: string) => {
-    const val = normalizePxInput(raw);
     const next: Record<string, string | undefined> = { padding: undefined };
-    SIDES.forEach((s) => { next[`padding${s}`] = val; });
+    SIDES.forEach((s) => {
+      next[`padding${s}`] = s === side ? (raw.trim() || undefined) : (paddingVals[s].trim() || undefined);
+    });
     patch(next);
-  }, [patch]);
+  }, [patch, paddingVals]);
+  const finalizePaddingSide = useCallback((side: Side, raw: string) => {
+    const next: Record<string, string | undefined> = { padding: undefined };
+    SIDES.forEach((s) => {
+      next[`padding${s}`] = s === side ? normalizePxInput(raw) : (paddingVals[s].trim() || undefined);
+    });
+    patch(next);
+  }, [patch, paddingVals]);
 
   const draftBorderWidthSide = useCallback((side: Side, raw: string) => {
     if (borderBlocked) return;
@@ -460,22 +393,20 @@ const BoxModelStyleEditor: React.FC<BoxModelStyleEditorProps> = ({
     if (borderBlocked) return;
     patch({ ...clearBorderShorthandPatch(), [`border${side}Width`]: normalizePxInput(raw) });
   }, [borderBlocked, patch]);
-  const commitBorderUniform = useCallback((raw: string) => {
-    if (borderBlocked) return;
-    const val = normalizePxInput(raw);
-    const next: Record<string, string | undefined> = { ...clearBorderShorthandPatch() };
-    SIDES.forEach((s) => { next[`border${s}Width`] = val; });
+
+  const expandSpacingShorthandToLonghand = useCallback((kind: 'margin' | 'padding') => {
+    const parsed = parseSpacingShorthand(gv(style, kind));
+    if (!parsed) {
+      patch({ [kind]: undefined });
+      return;
+    }
+    const next: Record<string, string | undefined> = { [kind]: undefined };
+    SIDES.forEach((s) => {
+      const token = normalizeSpacingToken(parsed[s]);
+      next[`${kind}${s}`] = token || undefined;
+    });
     patch(next);
-  }, [borderBlocked, patch]);
-
-  const beginEdit = useCallback((id: LayerId, vals: Record<Side, string>) => {
-    if (readOnly) return;
-    const t = topStripText(vals);
-    setDraft(filterNonNegDecimalDraft(t === '···' || t === '0px' ? '' : t.replace(/px$/i, '')));
-    setEditing(id);
-  }, [readOnly]);
-
-  const finishEdit = useCallback(() => { setEditing(null); setDraft(''); }, []);
+  }, [patch, style]);
 
   // ── Width / Height commit ──
   const commitWidth = useCallback((raw: string) => {
@@ -499,54 +430,166 @@ const BoxModelStyleEditor: React.FC<BoxModelStyleEditorProps> = ({
     }
   }, [patch, radiusLinked]);
 
-  // ── Popup Detail Panels ──
-  const marginDetail = (
-    <div className="box-model-editor__popup-body">
-      <div className="box-model-editor__popup-title">外边距 · 四边</div>
-      <SideGrid prefix="margin" suffix="" vals={marginVals} disabled={!!readOnly} onDraft={draftMarginSide} onCommit={finalizeMarginSide} />
-    </div>
+  const patchBorderStyleUnified = useCallback(
+    (v: string | undefined) => {
+      const val = v ? String(v).trim() : undefined;
+      const p: Record<string, string | undefined> = { borderStyle: undefined };
+      for (const s of SIDES) p[`border${s}Style`] = val;
+      patch(withBorderAppearanceWidths(p));
+    },
+    [patch, withBorderAppearanceWidths],
   );
-  const paddingDetail = (
-    <div className="box-model-editor__popup-body">
-      <div className="box-model-editor__popup-title">内边距 · 四边</div>
-      <SideGrid prefix="padding" suffix="" vals={paddingVals} disabled={!!readOnly} onDraft={draftPaddingSide} onCommit={finalizePaddingSide} />
-    </div>
+
+  const patchBorderStyleSide = useCallback(
+    (side: Side, v: string | undefined) => {
+      const val = v ? String(v).trim() : undefined;
+      const p: Record<string, string | undefined> = { borderStyle: undefined };
+      for (const s of SIDES) {
+        p[`border${s}Style`] = s === side ? val : (borderStylePerSide[s].trim() || undefined);
+      }
+      patch(withBorderAppearanceWidths(p));
+    },
+    [patch, borderStylePerSide, withBorderAppearanceWidths],
   );
-  const borderDetail = (
-    <div className="box-model-editor__popup-body">
-      <div className="box-model-editor__popup-title">边框 · 线宽</div>
-      <SideGrid prefix="border" suffix="Width" vals={borderWVals} disabled={readOnly || borderBlocked} onDraft={draftBorderWidthSide} onCommit={finalizeBorderWidthSide} />
-      <div className="box-model-editor__popup-divider" />
-      <div className="box-model-editor__popup-title">边框 · 样式与颜色</div>
-      <div className="box-model-editor__popup-field">
-        <span className="box-model-editor__popup-field-label">样式</span>
-        <Select
-          size="small"
-          disabled={readOnly || borderBlocked}
-          clearable
-          placeholder="默认"
-          value={borderStyleVal || undefined}
-          options={[
-            { label: 'solid', value: 'solid' },
-            { label: 'dashed', value: 'dashed' },
-            { label: 'dotted', value: 'dotted' },
-            { label: 'none', value: 'none' },
-          ]}
-          popupProps={{ attach: (t) => (t && t.closest('.box-model-editor__popup-body')) || document.body }}
-          onChange={(v) => patch({ borderStyle: v ? String(v) : undefined })}
-        />
+
+  const patchBorderColorUnified = useCallback(
+    (raw: string) => {
+      const val = String(raw ?? '').trim() || undefined;
+      const p: Record<string, string | undefined> = { borderColor: undefined };
+      for (const s of SIDES) p[`border${s}Color`] = val;
+      patch(withBorderAppearanceWidths(p));
+    },
+    [patch, withBorderAppearanceWidths],
+  );
+
+  const patchBorderColorSide = useCallback(
+    (side: Side, raw: string) => {
+      const val = String(raw ?? '').trim() || undefined;
+      const p: Record<string, string | undefined> = { borderColor: undefined };
+      for (const s of SIDES) {
+        p[`border${s}Color`] = s === side ? val : (borderColorPerSide[s].trim() || undefined);
+      }
+      patch(withBorderAppearanceWidths(p));
+    },
+    [patch, borderColorPerSide, withBorderAppearanceWidths],
+  );
+
+  const borderAppearanceDisabled = !!readOnly || borderBlocked;
+
+  /** 抽屉 zIndex=5600，Popup 默认 5500 会被挡住；挂到抽屉内并抬高层级 */
+  /**
+   * 取色面板必须挂到 document.body：挂到抽屉 body（overflow:auto）时会被滚动区域裁成「只露一半」。
+   * zIndex 需高于 StyleTabShell 里 Drawer 的 5600。
+   */
+  const colorPickerPopupProps = useMemo(
+    () => ({
+      attach: () => document.body,
+      zIndex: 5700,
+    }),
+    [],
+  );
+
+  /** ColorPicker 无根级 `size` API，触发条为 Input，与官网一致用 inputProps.size */
+  const colorPickerInputProps = useMemo(() => ({ size: 'small' as const }), []);
+
+  const borderAppearancePanel = (
+    <div className="box-model-editor__border-appearance">
+      <div className="box-model-editor__border-appearance-header">
+        <span className="box-model-editor__border-appearance-title">边框样式与颜色</span>
+        <button
+          type="button"
+          className="box-model-editor__radius-link"
+          disabled={borderAppearanceDisabled}
+          title={borderAppearanceLinked ? '统一编辑 → 分边' : '分边编辑 → 统一'}
+          onClick={() => setBorderAppearanceLinked((p) => !p)}
+        >
+          {borderAppearanceLinked ? <Link2 size={14} /> : <Unlink2 size={14} />}
+        </button>
       </div>
-      <div className="box-model-editor__popup-field">
-        <span className="box-model-editor__popup-field-label">颜色</span>
-        <Input
-          size="small"
-          clearable
-          disabled={readOnly || borderBlocked}
-          placeholder="#000 或 var(--...)"
-          value={borderColorVal}
-          onChange={(v) => patch({ borderColor: String(v ?? '').trim() || undefined })}
-        />
-      </div>
+      {borderAppearanceLinked ? (
+        <div className="box-model-editor__border-appearance-unified-row box-model-editor__border-appearance-unified-row--inline">
+          <span className="box-model-editor__popup-field-label">样式</span>
+          <Select
+            size="small"
+            disabled={borderAppearanceDisabled}
+            clearable
+            placeholder="默认"
+            value={borderStylePerSide.Top.trim() || undefined}
+            options={[...BORDER_STYLE_OPTIONS]}
+            className="box-model-editor__border-appearance-inline-select"
+            popupProps={{ attach: () => popupAttachRef?.current ?? document.body }}
+            onChange={(v) => patchBorderStyleUnified(v ? String(v) : undefined)}
+          />
+          <span className="box-model-editor__popup-field-label">颜色</span>
+          {borderColorUnifiedIsVar ? (
+            <Input
+              size="small"
+              clearable
+              disabled={borderAppearanceDisabled}
+              placeholder="var(--...)"
+              className="box-model-editor__border-appearance-inline-color"
+              value={borderColorPerSide.Top}
+              onChange={(v) => patchBorderColorUnified(String(v ?? ''))}
+            />
+          ) : (
+            <ColorPicker
+              value={borderColorPerSide.Top.trim() || '#000000'}
+              onChange={(v) => patchBorderColorUnified(String(v ?? ''))}
+              onClear={() => patchBorderColorUnified('')}
+              disabled={borderAppearanceDisabled}
+              clearable
+              className="box-model-editor__border-appearance-inline-color"
+              inputProps={colorPickerInputProps}
+              popupProps={colorPickerPopupProps}
+            />
+          )}
+        </div>
+      ) : (
+        <div className="box-model-editor__border-appearance-split-rows">
+          {SIDES.map((s) => {
+            const raw = borderColorPerSide[s];
+            const sideVar = isVarColor(raw);
+            return (
+              <div key={s} className="box-model-editor__border-appearance-split-row">
+                <span className="box-model-editor__border-appearance-side-label">{SIDE_SHORT[s]}</span>
+                <Select
+                  size="small"
+                  disabled={borderAppearanceDisabled}
+                  clearable
+                  placeholder="默认"
+                  value={borderStylePerSide[s].trim() || undefined}
+                  options={[...BORDER_STYLE_OPTIONS]}
+                  className="box-model-editor__border-appearance-inline-select"
+                  popupProps={{ attach: () => popupAttachRef?.current ?? document.body }}
+                  onChange={(v) => patchBorderStyleSide(s, v ? String(v) : undefined)}
+                />
+                {sideVar ? (
+                  <Input
+                    size="small"
+                    clearable
+                    disabled={borderAppearanceDisabled}
+                    placeholder="var(--...)"
+                    className="box-model-editor__border-appearance-split-color-input"
+                    value={raw}
+                    onChange={(v) => patchBorderColorSide(s, String(v ?? ''))}
+                  />
+                ) : (
+                  <ColorPicker
+                    value={raw.trim() || '#000000'}
+                    onChange={(v) => patchBorderColorSide(s, String(v ?? ''))}
+                    onClear={() => patchBorderColorSide(s, '')}
+                    disabled={borderAppearanceDisabled}
+                    clearable
+                    className="box-model-editor__border-appearance-split-color-input"
+                    inputProps={colorPickerInputProps}
+                    popupProps={colorPickerPopupProps}
+                  />
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 
@@ -563,10 +606,26 @@ const BoxModelStyleEditor: React.FC<BoxModelStyleEditorProps> = ({
           )}
           <div className="box-model-editor__shorthand-actions">
             {sh.margin && (
-              <Button size="small" variant="text" theme="primary" disabled={readOnly} onClick={() => patch({ margin: undefined })}>清除 margin</Button>
+              <Button
+                size="small"
+                variant="text"
+                theme="primary"
+                disabled={readOnly}
+                onClick={() => expandSpacingShorthandToLonghand('margin')}
+              >
+                展开 margin 为四边
+              </Button>
             )}
             {sh.padding && (
-              <Button size="small" variant="text" theme="primary" disabled={readOnly} onClick={() => patch({ padding: undefined })}>清除 padding</Button>
+              <Button
+                size="small"
+                variant="text"
+                theme="primary"
+                disabled={readOnly}
+                onClick={() => expandSpacingShorthandToLonghand('padding')}
+              >
+                展开 padding 为四边
+              </Button>
             )}
             {borderBlocked && (
               <Button size="small" variant="text" theme="primary" disabled={readOnly} onClick={() => patch(clearBorderShorthandPatch())}>清除 border</Button>
@@ -626,24 +685,27 @@ const BoxModelStyleEditor: React.FC<BoxModelStyleEditorProps> = ({
 
         <div ref={diagramRef} className="box-model-editor__diagram" aria-label="盒模型">
           <RingLayer
-            variant="margin" vals={marginVals} disabled={!!readOnly} detail={marginDetail}
-            readOnly={!!readOnly} editing={editing === 'margin'} draft={draft} setDraft={setDraft}
-            onBeginEdit={() => beginEdit('margin', marginVals)} onUniformCommit={commitMarginUniform}
-            onFinishEdit={finishEdit} glowActive={glowLayer === 'margin'}
+            variant="margin" vals={marginVals} disabled={!!readOnly}
+            readOnly={!!readOnly}
+            onSideDraft={draftMarginSide}
+            onSideCommit={finalizeMarginSide}
+            glowActive={glowLayer === 'margin'}
             onLayerMouseEnter={() => setGlowLayer('margin')} onLayerMouseLeave={handleRingMouseLeave}
           >
             <RingLayer
-              variant="border" vals={borderWVals} disabled={borderBlocked} detail={borderDetail}
-              readOnly={!!readOnly} editing={editing === 'border'} draft={draft} setDraft={setDraft}
-              onBeginEdit={() => beginEdit('border', borderWVals)} onUniformCommit={commitBorderUniform}
-              onFinishEdit={finishEdit} glowActive={glowLayer === 'border'}
+              variant="border" vals={borderWVals} disabled={borderBlocked}
+              readOnly={!!readOnly}
+              onSideDraft={draftBorderWidthSide}
+              onSideCommit={finalizeBorderWidthSide}
+              glowActive={glowLayer === 'border'}
               onLayerMouseEnter={() => setGlowLayer('border')} onLayerMouseLeave={handleRingMouseLeave}
             >
               <RingLayer
-                variant="padding" vals={paddingVals} disabled={!!readOnly} detail={paddingDetail}
-                readOnly={!!readOnly} editing={editing === 'padding'} draft={draft} setDraft={setDraft}
-                onBeginEdit={() => beginEdit('padding', paddingVals)} onUniformCommit={commitPaddingUniform}
-                onFinishEdit={finishEdit} glowActive={glowLayer === 'padding'}
+                variant="padding" vals={paddingVals} disabled={!!readOnly}
+                readOnly={!!readOnly}
+                onSideDraft={draftPaddingSide}
+                onSideCommit={finalizePaddingSide}
+                glowActive={glowLayer === 'padding'}
                 onLayerMouseEnter={() => setGlowLayer('padding')} onLayerMouseLeave={handleRingMouseLeave}
               >
                 <div className="box-model-editor__content-core">
@@ -654,6 +716,8 @@ const BoxModelStyleEditor: React.FC<BoxModelStyleEditorProps> = ({
           </RingLayer>
         </div>
       </div>
+
+      {borderAppearancePanel}
 
       {/* ── Border Radius ── */}
       <div className="box-model-editor__radius">

@@ -12,6 +12,18 @@ export type ChangelogEntry = {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: 'v0.11.0',
+    date: '2026-04-12',
+    title: '图形验证码与登录 / 注册体验',
+    highlights: [
+      '后端：GET /auth/captcha 与 svg-captcha，登录 / 注册携带 captchaId、captchaCode 校验（不区分大小写）',
+      '前端：登录 / 注册集成图形验证码，字段校验与接口错误用 TDesign Input 的 status / tips 展示',
+      '认证请求支持 skipErrorToast；登录失败 401 在跳过全局未授权提示时不再误登出',
+      '切换「去登录 / 去注册」时清空隐藏侧表单与验证码，避免残留输入',
+      '文档：docs/auth-graph-captcha.md 说明对接与错误码',
+    ],
+  },
+  {
     version: 'v0.10.0',
     date: '2026-04-12',
     title: '数据流与 DSL 增强',

@@ -9,6 +9,8 @@ declare module 'axios' {
   interface AxiosRequestConfig {
     /** 为 true 时不触发全屏请求 Loading */
     skipGlobalLoading?: boolean;
+    /** 为 true 时不弹出全局错误 Message（由页面自行处理，如登录表单字段提示） */
+    skipErrorToast?: boolean;
   }
 }
 
@@ -89,21 +91,26 @@ requestClient.interceptors.request.use(
 requestClient.interceptors.response.use(
   (response) => {
     const payload = response.data as ApiResponse | undefined;
+    const skipToast = response.config.skipErrorToast === true;
 
     if (payload && typeof payload.code === 'number' && payload.code !== 0) {
-      emitApiAlert('接口返回异常', payload.message || '服务端返回错误');
+      if (!skipToast) {
+        emitApiAlert('接口返回异常', payload.message || '服务端返回错误');
+      }
       return Promise.reject(new Error(payload.message || '服务端返回错误'));
     }
 
     return response;
   },
   (error: AxiosError<ApiResponse>) => {
-    if (error.response?.status === 401) {
+    const skipToast = error.config?.skipErrorToast === true;
+    if (error.response?.status === 401 && !skipToast) {
       emitUnauthorized();
     }
-
     const errorMessage = resolveErrorMessage(error);
-    emitApiAlert('接口请求失败', errorMessage);
+    if (!skipToast) {
+      emitApiAlert('接口请求失败', errorMessage);
+    }
     return Promise.reject(error);
   },
 );
