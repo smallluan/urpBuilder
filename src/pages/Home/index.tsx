@@ -4,7 +4,8 @@ import zhCN from 'antd/locale/zh_CN';
 import dayjs from 'dayjs';
 import 'dayjs/locale/zh-cn';
 import ReactEcharts from 'echarts-for-react';
-import { CloudIcon, CodeIcon, FileIcon, ImageIcon, SettingIcon } from 'tdesign-icons-react';
+import { CodeIcon, FileIcon } from 'tdesign-icons-react';
+import { Statistic } from 'tdesign-react';
 import { useAuth } from '../../auth/context';
 import { useBuilderThemeStore } from '../../builder/theme/builderThemeStore';
 import { useTeam } from '../../team/context';
@@ -24,6 +25,13 @@ import { listPersonalAssets, listTeamAssets } from '../../api/assets';
 import type { ApiResponse, PageBaseInfo } from '../../api/types';
 import '../../styles/app-shell-page.less';
 import { EditActivityContributionGrid } from './EditActivityContributionGrid';
+import {
+  HomeAssetStatIconApps,
+  HomeAssetStatIconAssets,
+  HomeAssetStatIconComponents,
+  HomeAssetStatIconConstants,
+  HomeAssetStatIconFunctions,
+} from './homeAssetStatIcons';
 import { RecentEditsTicker, type RecentEditItem } from './RecentEditsTicker';
 import { openEditorInNewTab } from './openEditorInNewTab';
 import './style.less';
@@ -53,12 +61,23 @@ type PageBaseListPayload = { list?: unknown[]; total?: number };
 
 type StatKey = 'components' | 'apps' | 'constants' | 'functions' | 'assets';
 
-const STAT_ITEMS: { key: StatKey; label: string; icon: React.ReactNode }[] = [
-  { key: 'components', label: '组件', icon: <CodeIcon size="18" /> },
-  { key: 'apps', label: '应用', icon: <FileIcon size="18" /> },
-  { key: 'constants', label: '常量', icon: <SettingIcon size="18" /> },
-  { key: 'functions', label: '云函数', icon: <CloudIcon size="18" /> },
-  { key: 'assets', label: '素材', icon: <ImageIcon size="18" /> },
+const ASSET_STAT_ICON: Record<StatKey, React.FC> = {
+  components: HomeAssetStatIconComponents,
+  apps: HomeAssetStatIconApps,
+  constants: HomeAssetStatIconConstants,
+  functions: HomeAssetStatIconFunctions,
+  assets: HomeAssetStatIconAssets,
+};
+
+/** TDesign Statistic 预设色：black / blue / red / orange / green */
+type StatisticThemeColor = 'black' | 'blue' | 'red' | 'orange' | 'green';
+
+const STAT_ITEMS: { key: StatKey; label: string; color: StatisticThemeColor }[] = [
+  { key: 'components', label: '组件', color: 'blue' },
+  { key: 'apps', label: '应用', color: 'green' },
+  { key: 'constants', label: '常量', color: 'orange' },
+  { key: 'functions', label: '云函数', color: 'red' },
+  { key: 'assets', label: '素材', color: 'black' },
 ];
 
 function buildInvocationMaps(daily: CloudFunctionInvocationDailyPoint[]) {
@@ -406,8 +425,6 @@ const Home: React.FC = () => {
     };
   }, [invocationStats, colorMode]);
 
-  const formatStat = (n: number | null) => (n === null ? '—' : String(n));
-
   function greetingByHour(): string {
     const h = new Date().getHours();
     if (h < 12) return '早上好';
@@ -436,18 +453,29 @@ const Home: React.FC = () => {
                 </p>
               </header>
               <h2 className="home-page__module-title home-page__module-title--inline">我的资产</h2>
-              <div className="home-page__module-grid home-page__module-grid--stats" aria-label="当前空间资源统计">
-                {STAT_ITEMS.map((item) => (
-                  <div key={item.key} className="home-page__tile-item home-page__tile-item--stat">
-                    <span className="home-page__tile-item-icon" aria-hidden>
-                      {item.icon}
-                    </span>
-                    <div className="home-page__tile-item-main">
-                      <span className="home-page__tile-item-value">{formatStat(stats[item.key])}</span>
-                      <span className="home-page__tile-item-label">{item.label}</span>
+              <div className="home-page__asset-stats-card" aria-label="当前空间资源统计">
+                {STAT_ITEMS.map((item, index) => {
+                  const raw = stats[item.key];
+                  const Icon = ASSET_STAT_ICON[item.key];
+                  return (
+                    <div
+                      key={item.key}
+                      className={
+                        index > 0
+                          ? 'home-page__asset-statistic-cell home-page__asset-statistic-cell--with-divider'
+                          : 'home-page__asset-statistic-cell'
+                      }
+                    >
+                      <Statistic
+                        title={item.label}
+                        value={raw ?? 0}
+                        loading={raw === null}
+                        color={item.color}
+                        prefix={<Icon />}
+                      />
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </section>
 
@@ -487,7 +515,6 @@ const Home: React.FC = () => {
 
           <div className="home-page__calendar-panel">
             <div className="home-page__panel-head">
-              <span className="home-page__panel-title">日历</span>
               <span className="home-page__panel-hint">{dayjs().format('YYYY年 MMMM')}</span>
             </div>
             <div className="home-page__calendar-body">
@@ -516,6 +543,7 @@ const Home: React.FC = () => {
               <div className="home-page__chart-card home-page__chart-card--bar">
                 <ReactEcharts
                   className="home-page__chart home-page__chart--bar"
+                  style={{ width: '100%', height: '100%', minHeight: 160 }}
                   option={invocationBarOption}
                   notMerge
                   lazyUpdate
