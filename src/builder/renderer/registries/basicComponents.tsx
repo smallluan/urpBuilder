@@ -1,7 +1,103 @@
-import { Button, Link, BackTop, Progress } from 'tdesign-react';
-import type { ComponentRegistry } from '../componentContext';
+import React from 'react';
+import { Button, Link, BackTop, Progress, Radio } from 'tdesign-react';
+import type { ComponentRegistry, ComponentRenderContext } from '../componentContext';
 import { ActivateWrapper } from '../componentHelpers';
 import { renderNamedIcon } from '../../../constants/iconRegistry';
+import DropArea from '../../../components/DropArea';
+import {
+  collectDslRadioRows,
+  coerceRadioGroupStoredValue,
+  normalizeDslBoolean,
+  optionsFromRadioRows,
+  radioGroupValuePropsForReact,
+} from '../../utils/radioDsl';
+
+function parseJsonRecordArray(raw: string | undefined): Array<Record<string, unknown>> {
+  if (!raw?.trim()) {
+    return [];
+  }
+  try {
+    const v = JSON.parse(raw) as unknown;
+    return Array.isArray(v) ? v.filter((x) => x && typeof x === 'object') : [];
+  } catch {
+    return [];
+  }
+}
+
+function BuilderTdesignRadioGroup(props: { ctx: ComponentRenderContext }) {
+  const {
+    getStringProp,
+    getBooleanProp,
+    getProp,
+    mergeStyle,
+    handleActivateSelf,
+    data,
+    isNodeActive,
+    onDropData,
+  } = props.ctx;
+  const rows = collectDslRadioRows(data?.children);
+  const useChildRadios = rows.length > 0;
+  const optsJson = parseJsonRecordArray(getStringProp('options')).map((o) => ({
+    value: o.value as string | number | boolean,
+    label: String(o.label ?? o.value ?? ''),
+    disabled: o.disabled === true,
+  }));
+  const opts = useChildRadios ? optionsFromRadioRows(rows) : optsJson;
+  const controlled = getBooleanProp('controlled') !== false;
+  const valueRaw = getProp('value');
+  const defaultRaw = getProp('defaultValue');
+  const firstVal = opts[0]?.value;
+  const defaultValRaw =
+    defaultRaw !== undefined && defaultRaw !== null
+      ? defaultRaw
+      : valueRaw !== undefined && valueRaw !== null
+        ? valueRaw
+        : firstVal;
+  const valueResolved = coerceRadioGroupStoredValue(valueRaw, opts);
+  const defaultVal = coerceRadioGroupStoredValue(defaultValRaw, opts) ?? defaultValRaw;
+  const valueProps = radioGroupValuePropsForReact(controlled, valueResolved, defaultVal as string | number | boolean | undefined);
+  const isButton = getStringProp('theme') === 'button';
+  const Btn = Radio.Button;
+  /** TDesign：可取消选中仅对非受控生效（与组件库一致） */
+  const allowUncheck = !controlled && normalizeDslBoolean(getProp('allowUncheck'));
+  const blockPointerForControlled = controlled;
+  const groupDisabled = normalizeDslBoolean(getProp('disabled'));
+  return (
+    <DropArea
+      data={data}
+      onDropData={onDropData}
+      emptyText="拖入单选项（Radio）"
+      compactWhenFilled
+      isTreeNode
+    >
+      <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf} nodeKey={data?.key} active={isNodeActive}>
+        <Radio.Group
+          {...(useChildRadios ? {} : { options: opts })}
+          {...valueProps}
+          theme={isButton ? 'button' : 'radio'}
+          variant={(getStringProp('variant') as 'outline' | 'primary-filled' | 'default-filled') ?? 'outline'}
+          disabled={groupDisabled}
+          allowUncheck={allowUncheck}
+          style={mergeStyle(blockPointerForControlled ? { pointerEvents: 'none' } : undefined)}
+        >
+          {useChildRadios
+            ? rows.map((r) =>
+                isButton ? (
+                  <Btn key={r.key} value={r.value} disabled={r.disabled}>
+                    {r.label}
+                  </Btn>
+                ) : (
+                  <Radio key={r.key} value={r.value} disabled={r.disabled}>
+                    {r.label}
+                  </Radio>
+                ),
+              )
+            : null}
+        </Radio.Group>
+      </ActivateWrapper>
+    </DropArea>
+  );
+}
 
 export function registerBasicComponents(registry: ComponentRegistry): void {
   registry.set('Button', (ctx) => {
@@ -92,6 +188,8 @@ export function registerBasicComponents(registry: ComponentRegistry): void {
       </ActivateWrapper>
     );
   });
+
+  registry.set('Radio.Group', (ctx) => <BuilderTdesignRadioGroup ctx={ctx} />);
 
   registry.set('Progress', (ctx) => {
     const {

@@ -8,6 +8,7 @@ import type { InputProps } from 'antd/es/input';
 import type { TextAreaProps } from 'antd/es/input/TextArea';
 import type { InputNumberProps } from 'antd/es/input-number';
 import { normalizeBuilderTableColumns } from './tableColumnNormalize';
+import { normalizeDslBoolean } from '../builder/utils/radioDsl';
 
 /**
  * TDesign Card 默认 body 内边距往往比 antd Card 更「松」，同一 DSL 切换预览库时登录区等会显得更靠下、更「空」。
@@ -172,6 +173,53 @@ export function tdesignSemanticTokenToAntdTagColor(raw: string | undefined): str
     return t;
   }
   return undefined;
+}
+
+/** TDesign `Radio.Group` DSL → antd `Radio.Group`（`optionType` + `buttonStyle`；尺寸物料已移除，由主题控制）。 */
+export type RadioGroupAntdMapping = {
+  optionType: 'default' | 'button';
+  buttonStyle: 'outline' | 'solid';
+  disabled: boolean;
+};
+
+/**
+ * - `theme`：`radio` → `optionType: default`；`button` → `optionType: button`。
+ * - `variant`（仅按钮式）：`outline` → `buttonStyle: outline`；`primary-filled` / `default-filled` → `solid`（antd 仅两档，两种填充在 antd 侧不区分）。
+ * - 旧物料若仅存 `optionType`（default|button）而无 `theme`，仍参与推断。
+ */
+export function mapTdesignRadioGroupToAntd(dsl: {
+  theme?: string;
+  variant?: string;
+  disabled?: unknown;
+  /** 旧 antd-only 物料字段，兼容迁移 */
+  optionType?: string;
+}): RadioGroupAntdMapping {
+  const legacy = String(dsl.optionType ?? '').trim().toLowerCase();
+  let theme = String(dsl.theme ?? '').trim().toLowerCase();
+  if (!theme && legacy === 'button') {
+    theme = 'button';
+  }
+  if (!theme && legacy === 'default') {
+    theme = 'radio';
+  }
+  if (!theme) {
+    theme = 'radio';
+  }
+
+  const variantRaw = String(dsl.variant ?? 'outline').trim().toLowerCase();
+
+  const optionType: 'default' | 'button' = theme === 'button' ? 'button' : 'default';
+
+  let buttonStyle: 'outline' | 'solid' = 'outline';
+  if (optionType === 'button') {
+    buttonStyle = variantRaw === 'primary-filled' || variantRaw === 'default-filled' ? 'solid' : 'outline';
+  }
+
+  return {
+    optionType,
+    buttonStyle,
+    disabled: normalizeDslBoolean(dsl.disabled),
+  };
 }
 
 /**

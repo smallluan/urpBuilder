@@ -41,6 +41,7 @@ import { resolveSimulatorStyle } from '../../../builder/utils/simulatorStyle';
 import { parseProgressColorValue } from '../../../builder/utils/progressAntdBridge';
 import type { PreviewDataHub } from '../runtime/dataHub';
 import { tryRenderAntdPreview } from './previewAntdNodes';
+import { PreviewTdesignRadioGroup } from './previewTdesignRadioGroup';
 import type { UiPreviewLibrary } from '../../../config/uiPreviewLibrary';
 import { CARD_SHELL_ALWAYS_ANTD_TYPES, resolveAntdPreviewTypeForCanonical } from '../../../config/uiPreviewLibrary';
 import { BUILDER_CARD_BODY_STYLE } from '../../../utils/antdTdesignPropBridge';
@@ -3123,6 +3124,14 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) 
         />
       );
       }
+    case 'Radio.Group':
+      return (
+        <PreviewTdesignRadioGroup
+          node={node}
+          mergeStyle={mergeStyle}
+          emitInteractionLifecycle={emitInteractionLifecycle}
+        />
+      );
     case 'Calendar':
       return (
         <Calendar

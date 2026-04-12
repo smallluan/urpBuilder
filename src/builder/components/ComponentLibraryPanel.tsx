@@ -28,6 +28,7 @@ import {
   ArrowUpToLine,
   BarChart3,
   Pin,
+  CircleDot,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import componentCatalog from '../../config/componentCatalog';
@@ -127,6 +128,7 @@ const getCategoryByType = (type: string): ComponentLibraryCategory => {
       || type === 'antd.Select'
       || type === 'antd.Checkbox'
       || type === 'antd.Radio.Group'
+      || type === 'antd.Radio'
       || type === 'antd.Switch'
       || type === 'antd.DatePicker'
       || type === 'antd.InputNumber'
@@ -143,6 +145,8 @@ const getCategoryByType = (type: string): ComponentLibraryCategory => {
 
   if (
     type === 'Switch'
+    ||     type === 'Radio.Group'
+    || type === 'Radio'
     || type === 'Input'
     || type === 'Textarea'
     || type === 'InputNumber'
@@ -283,6 +287,8 @@ const getIconByType = (type: string) => {
     Textarea: AlignLeft,
     InputNumber: Hash,
     Slider: SlidersHorizontal,
+    'Radio.Group': CircleDot,
+    Radio: CircleDot,
     Tabs: ListOrdered,
     Collapse: ListOrdered,
     Steps: ListOrdered,
@@ -300,6 +306,8 @@ const getIconByType = (type: string) => {
     'antd.Card': RectangleHorizontal,
     'antd.Statistic': MousePointerClick,
     'antd.Divider': Minus,
+    'antd.Radio': CircleDot,
+    'antd.Radio.Group': CircleDot,
   };
 
   return iconMap[type] ?? getCategoryIcon(getCategoryByType(type));

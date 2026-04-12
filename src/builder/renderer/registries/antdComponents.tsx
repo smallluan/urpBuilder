@@ -68,7 +68,7 @@ import {
   stringifyMenuDslKey,
 } from '../../utils/menuDslKeys';
 import { getNodeSlotKey, isSlotNode } from '../../utils/slot';
-import type { ComponentRegistry } from '../componentContext';
+import type { ComponentRegistry, ComponentRenderContext } from '../componentContext';
 import { ActivateWrapper } from '../componentHelpers';
 import DropArea from '../../../components/DropArea';
 import { renderNamedIcon } from '../../../constants/iconRegistry';
@@ -90,7 +90,16 @@ import {
   tdesignTextThemeToAntdTypographyType,
   tdesignLinkThemeToAntdTypographyType,
   tdesignSemanticTokenToAntdTagColor,
+  mapTdesignRadioGroupToAntd,
 } from '../../../utils/antdTdesignPropBridge';
+import {
+  collectDslRadioRows,
+  coerceRadioGroupStoredValue,
+  normalizeDslBoolean,
+  optionsFromRadioRows,
+  radioGroupValuePropsForReact,
+  valuesEqualForRadio,
+} from '../../utils/radioDsl';
 
 const { Title, Paragraph, Text, Link } = Typography;
 const { Header, Content, Footer, Sider } = Layout;
@@ -135,6 +144,151 @@ function parseJsonArray<T>(raw: string | undefined, fallback: T[]): T[] {
 function parseJsonRecordArray(raw: string | undefined): Array<Record<string, unknown>> {
   const parsed = parseJsonArray<Record<string, unknown>>(raw, []);
   return parsed.filter((x) => x && typeof x === 'object');
+}
+
+function BuilderAntdRadioGroup(props: { ctx: ComponentRenderContext }) {
+  const {
+    getStringProp,
+    getBooleanProp,
+    getProp,
+    mergeStyle,
+    handleActivateSelf,
+    data,
+    isNodeActive,
+    onDropData,
+  } = props.ctx;
+  const mapped = mapTdesignRadioGroupToAntd({
+    theme: getStringProp('theme'),
+    variant: getStringProp('variant'),
+    disabled: getProp('disabled'),
+    optionType: getStringProp('optionType'),
+  });
+  const rows = collectDslRadioRows(data?.children);
+  const useChildRadios = rows.length > 0;
+  const optsJson = parseJsonRecordArray(getStringProp('options')).map((o) => ({
+    value: o.value as string | number,
+    label: String(o.label ?? o.value ?? ''),
+    disabled: o.disabled === true,
+  }));
+  const opts = useChildRadios ? optionsFromRadioRows(rows) : optsJson;
+  const controlled = getBooleanProp('controlled') !== false;
+  const valueRaw = getProp('value');
+  const defaultRaw = getProp('defaultValue');
+  const firstVal = opts[0]?.value as string | number | boolean | undefined;
+  const defaultValRaw =
+    defaultRaw !== undefined && defaultRaw !== null
+      ? defaultRaw
+      : valueRaw !== undefined && valueRaw !== null
+        ? valueRaw
+        : firstVal;
+  const valueResolved = coerceRadioGroupStoredValue(valueRaw, opts);
+  const defaultVal = coerceRadioGroupStoredValue(defaultValRaw, opts) ?? defaultValRaw;
+  const valueProps = radioGroupValuePropsForReact(controlled, valueResolved, defaultVal as string | number | boolean | undefined);
+  const isBtn = mapped.optionType === 'button';
+  /** 与 TDesign 一致：仅非受控时可取消选中；antd 用本地受控状态模拟 */
+  const allowUncheckEffective = !controlled && normalizeDslBoolean(getProp('allowUncheck'));
+  const blockPointerForControlled = controlled;
+
+  const [uncontrolledValue, setUncontrolledValue] = React.useState<string | number | boolean | undefined>(() => {
+    if (controlled || !allowUncheckEffective || !useChildRadios) {
+      return undefined;
+    }
+    return defaultVal as string | number | boolean | undefined;
+  });
+
+  React.useEffect(() => {
+    if (controlled || !allowUncheckEffective || !useChildRadios) {
+      return;
+    }
+    setUncontrolledValue(defaultVal as string | number | boolean | undefined);
+  }, [data?.key, controlled, allowUncheckEffective, useChildRadios, defaultVal]);
+
+  const handleAntdUncheckClick = (optionVal: string | number | boolean) => (e: React.MouseEvent) => {
+    if (!allowUncheckEffective || !useChildRadios || mapped.disabled) {
+      return;
+    }
+    if (!valuesEqualForRadio(uncontrolledValue, optionVal)) {
+      return;
+    }
+    e.preventDefault();
+    setUncontrolledValue(undefined);
+  };
+
+  const groupShell = {
+    ...(useChildRadios ? {} : { options: opts }),
+    optionType: mapped.optionType,
+    buttonStyle: mapped.buttonStyle,
+    disabled: mapped.disabled,
+  };
+
+  const renderChildRadios = (onUncheck?: (v: string | number | boolean) => (e: React.MouseEvent) => void) =>
+    useChildRadios
+      ? rows.map((r) =>
+          isBtn ? (
+            <Radio.Button
+              key={r.key}
+              value={r.value}
+              disabled={r.disabled}
+              {...(onUncheck ? { onClick: onUncheck(r.value) } : {})}
+            >
+              {r.label}
+            </Radio.Button>
+          ) : (
+            <Radio
+              key={r.key}
+              value={r.value}
+              disabled={r.disabled}
+              {...(onUncheck ? { onClick: onUncheck(r.value) } : {})}
+            >
+              {r.label}
+            </Radio>
+          ),
+        )
+      : null;
+
+  let radioNode: React.ReactElement;
+  if (controlled) {
+    radioNode = (
+      <Radio.Group
+        {...groupShell}
+        {...valueProps}
+        style={mergeStyle(blockPointerForControlled ? { pointerEvents: 'none' } : undefined)}
+      >
+        {renderChildRadios()}
+      </Radio.Group>
+    );
+  } else if (allowUncheckEffective && useChildRadios) {
+    radioNode = (
+      <Radio.Group
+        {...groupShell}
+        value={uncontrolledValue}
+        onChange={(e) => setUncontrolledValue(e.target.value)}
+        style={mergeStyle()}
+      >
+        {renderChildRadios(handleAntdUncheckClick)}
+      </Radio.Group>
+    );
+  } else {
+    radioNode = (
+      <Radio.Group {...groupShell} {...valueProps} style={mergeStyle()}>
+        {renderChildRadios()}
+      </Radio.Group>
+    );
+  }
+
+  return (
+    <DropArea
+      data={data}
+      onDropData={onDropData}
+      emptyText="拖入单选项（antd.Radio）"
+      compactWhenFilled
+      isTreeNode
+    >
+      <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf} nodeKey={data?.key} active={isNodeActive}>
+        {radioNode}
+      </ActivateWrapper>
+    </DropArea>
+  );
 }
 
 /**
@@ -753,22 +907,9 @@ export function registerAntdComponents(registry: ComponentRegistry): void {
     );
   });
 
-  registry.set('antd.Radio.Group', (ctx) => {
-    const { getStringProp, mergeStyle, handleActivateSelf, data, isNodeActive } = ctx;
-    const opts = parseJsonRecordArray(getStringProp('options')).map((o) => ({
-      value: o.value as string | number,
-      label: String(o.label ?? o.value ?? ''),
-    }));
-    return (
-      <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf} nodeKey={data?.key} active={isNodeActive}>
-        <Radio.Group
-          options={opts}
-          optionType={getStringProp('optionType') === 'button' ? 'button' : 'default'}
-          defaultValue={getStringProp('value') || undefined}
-        />
-      </ActivateWrapper>
-    );
-  });
+  registry.set('antd.Radio.Group', (ctx) => <BuilderAntdRadioGroup ctx={ctx} />);
+
+  registry.set('antd.Radio', () => null);
 
   registry.set('antd.Switch', (ctx) => {
     const { getStringProp, getBooleanProp, mergeStyle, handleActivateSelf, data, isNodeActive } = ctx;

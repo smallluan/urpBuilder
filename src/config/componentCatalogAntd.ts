@@ -60,17 +60,6 @@ const ANT_ONLY_CATALOG_ENTRIES: CatalogComponentDef[] = [
     lifetimes: ['onChange'],
   },
   {
-    type: 'antd.Radio.Group',
-    name: '单选组',
-    props: {
-      value: { name: '值', value: 'a', editType: 'input' as const },
-      options: { name: '选项(JSON)', value: '[{"value":"a","label":"A"},{"value":"b","label":"B"}]', editType: 'jsonCode' as const },
-      optionType: { name: '样式', value: 'default', editType: 'select' as const, payload: { options: ['default', 'button'] } },
-      controlled: { name: '受控', value: true, editType: 'switch' as const },
-    },
-    lifetimes: ['onChange'],
-  },
-  {
     type: 'antd.Form',
     name: '表单',
     props: {

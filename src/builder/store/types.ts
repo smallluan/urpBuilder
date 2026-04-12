@@ -318,6 +318,8 @@ export interface BuilderStore {
   updateActiveNodeLabel: (label: string) => void;
   updateActiveNodeKey: (nextKey: string) => UpdateNodeKeyResult;
   updateActiveNodeProp: (propKey: string, value: unknown) => void;
+  /** 按节点 key 更新属性（不依赖当前选中节点），用于单选组等在子项上交互时写回 `value` */
+  updateNodePropByKey: (nodeKey: string, propKey: string, value: unknown) => void;
   setTreeInstance: (instance: UiTreeInstance | null) => void;
   setFlowStructureTreeInstance: (instance: UiTreeInstance | null) => void;
   requestUiStructureTreeScrollToKey: (key: string) => void;

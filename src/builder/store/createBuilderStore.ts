@@ -23,6 +23,7 @@ import type {
 } from './types';
 import {
   appendNodeByParentKey,
+  assignSequentialRadioChildValue,
   findNodeByKey,
   insertNodeAtParentIndex,
   removeNodeByKey,
@@ -1118,6 +1119,75 @@ export const createBuilderStore = (options: CreateBuilderStoreOptions = {}) => {
         };
       }),
 
+    updateNodePropByKey: (nodeKey, propKey, value) =>
+      set((state) => {
+        const trimmedKey = String(nodeKey ?? '').trim();
+        if (!trimmedKey) {
+          return state;
+        }
+        const currentNode = findNodeByKey(state.uiPageData, trimmedKey);
+        if (!currentNode) {
+          return state;
+        }
+
+        const currentProps = (currentNode.props ?? {}) as Record<string, unknown>;
+        const currentProp = (currentProps[propKey] ?? {}) as Record<string, unknown>;
+        const prevValue = currentProp.value;
+        if (Object.is(prevValue, value)) {
+          return state;
+        }
+
+        let nextTree = updateNodeByKey(state.uiPageData, trimmedKey, (target) => {
+          const tProps = (target.props ?? {}) as Record<string, unknown>;
+          const tProp = (tProps[propKey] ?? {}) as Record<string, unknown>;
+          return {
+            ...target,
+            props: { ...tProps, [propKey]: { ...tProp, value } },
+          };
+        });
+
+        if (currentNode.type === 'List' && propKey === 'customTemplateEnabled' && value === false) {
+          nextTree = updateNodeByKey(nextTree, trimmedKey, (target) => ({
+            ...target,
+            children: (target.children ?? []).map((child) =>
+              child.type === 'List.Item' ? { ...child, children: [] } : child,
+            ),
+          }));
+        }
+
+        if (currentNode.type === 'Tabs' && propKey === 'list') {
+          const tabsList = normalizeTabsList(value);
+          nextTree = updateNodeByKey(nextTree, trimmedKey, (target) =>
+            syncTabsSlotNodes(target, tabsList),
+          );
+        }
+
+        if (currentNode.type === 'Collapse' && propKey === 'list') {
+          const collapseList = normalizeCollapseList(value);
+          nextTree = updateNodeByKey(nextTree, trimmedKey, (target) =>
+            syncCollapseSlotNodes(target, collapseList),
+          );
+        }
+
+        const action: UiHistoryAction = {
+          type: 'update-prop',
+          nodeKey: trimmedKey,
+          nodeLabel: currentNode.label,
+          nodeType: currentNode.type,
+          propKey,
+          prevValue,
+          nextValue: value,
+          timestamp: Date.now(),
+        };
+        const nextHistory = pushHistoryAction(state.history.actions, state.history.pointer, action);
+
+        return {
+          uiPageData: nextTree,
+          activeNode: resolveActiveNode(nextTree, state.activeNodeKey),
+          history: nextHistory,
+        };
+      }),
+
     setActiveNodeRouteScope: (scope) =>
       set((state) => {
         if (!state.activeNodeKey || !state.activePageRouteId) {
@@ -1165,12 +1235,14 @@ export const createBuilderStore = (options: CreateBuilderStoreOptions = {}) => {
         if (!parentNode) return state;
 
         const rawNode = componentData as Partial<UiTreeNode>;
-        const newNode =
-          rawNode
-          && typeof rawNode.key === 'string'
-          && typeof rawNode.label === 'string'
-            ? (cloneDeep(rawNode) as UiTreeNode)
-            : toUiTreeNode(componentData);
+        const fromPastedOrFull =
+          rawNode && typeof rawNode.key === 'string' && typeof rawNode.label === 'string';
+        let newNode = fromPastedOrFull
+          ? (cloneDeep(rawNode) as UiTreeNode)
+          : toUiTreeNode(componentData);
+        if (!fromPastedOrFull) {
+          newNode = assignSequentialRadioChildValue(parentNode, newNode);
+        }
         if (slotKey) {
           const currentProps = (newNode.props ?? {}) as Record<string, unknown>;
           newNode.props = {

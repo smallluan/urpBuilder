@@ -221,6 +221,74 @@ const createDefaultMenuChildren = (): UiTreeNode[] => {
   ];
 };
 
+const createRadioChildNode = (n: number, radioType: 'Radio' | 'antd.Radio'): UiTreeNode => ({
+  key: uuidv4(),
+  label: `单选项 ${n}`,
+  type: radioType,
+  props: {
+    value: {
+      name: '选项值',
+      value: String(n),
+      editType: 'input',
+    },
+    content: {
+      name: '标签',
+      value: `选项 ${n}`,
+      editType: 'input',
+    },
+    disabled: {
+      name: '禁用',
+      value: false,
+      editType: 'switch',
+    },
+  },
+  lifetimes: [],
+  children: [],
+});
+
+const RADIO_GROUP_TYPES = new Set(['Radio.Group', 'antd.Radio.Group']);
+const RADIO_CHILD_TYPES = new Set(['Radio', 'antd.Radio']);
+
+/**
+ * 向单选组内新拖入的单选项分配递增的数值 `value`（相对已有兄弟节点）。
+ */
+export function assignSequentialRadioChildValue(parent: UiTreeNode, newNode: UiTreeNode): UiTreeNode {
+  const childType = String(newNode.type ?? '').trim();
+  if (!RADIO_CHILD_TYPES.has(childType)) {
+    return newNode;
+  }
+  const parentType = String(parent.type ?? '').trim();
+  if (!RADIO_GROUP_TYPES.has(parentType)) {
+    return newNode;
+  }
+  const siblings = parent.children ?? [];
+  let max = 0;
+  for (const c of siblings) {
+    const ct = String(c.type ?? '').trim();
+    if (!RADIO_CHILD_TYPES.has(ct)) {
+      continue;
+    }
+    const raw = (c.props?.value as { value?: unknown } | undefined)?.value;
+    const num = typeof raw === 'number' ? raw : typeof raw === 'string' ? Number(raw) : NaN;
+    if (Number.isFinite(num)) {
+      max = Math.max(max, num);
+    }
+  }
+  const nextVal = max + 1;
+  const prevProps = (newNode.props ?? {}) as Record<string, unknown>;
+  const valueSchema = { ...((prevProps.value ?? {}) as Record<string, unknown>) };
+  const contentSchema = { ...((prevProps.content ?? {}) as Record<string, unknown>) };
+  return {
+    ...newNode,
+    label: `单选项 ${nextVal}`,
+    props: {
+      ...prevProps,
+      value: { ...valueSchema, value: String(nextVal) },
+      content: { ...contentSchema, value: `选项 ${nextVal}` },
+    },
+  };
+}
+
 const normalizeCollapseSeedList = (value: unknown): Array<{ value: string; label: string }> => {
   const source = Array.isArray(value) ? value : [];
   const usedValues = new Set<string>();
@@ -286,6 +354,14 @@ const buildInitialChildren = (type: string, props?: Record<string, unknown>): Ui
 
   if (type === 'Steps') {
     return [createStepsItemNode(0), createStepsItemNode(1), createStepsItemNode(2)];
+  }
+
+  if (type === 'Radio.Group') {
+    return [createRadioChildNode(1, 'Radio'), createRadioChildNode(2, 'Radio')];
+  }
+
+  if (type === 'antd.Radio.Group') {
+    return [createRadioChildNode(1, 'antd.Radio'), createRadioChildNode(2, 'antd.Radio')];
   }
 
   if (type === 'Tabs') {

@@ -76,6 +76,7 @@ export interface ComponentRenderContext {
   setTabsInnerValue: (value: string | number | undefined) => void;
   setActiveNode: (key: string) => void;
   updateActiveNodeProp: (propKey: string, value: unknown) => void;
+  updateNodePropByKey: (nodeKey: string, propKey: string, value: unknown) => void;
 }
 
 export type ComponentRenderer = (ctx: ComponentRenderContext) => React.ReactElement | null;

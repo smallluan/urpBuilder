@@ -2234,6 +2234,75 @@ const tdesignComponentCatalog = [
     lifetimes: ['onChange']
   },
   {
+    type: 'Radio.Group',
+    name: '单选组',
+    props: {
+      controlled: {
+        name: '受控模式',
+        value: true,
+        editType: 'switch',
+      },
+      value: {
+        name: '选中值',
+        value: '1',
+        editType: 'input',
+      },
+      defaultValue: {
+        name: '非受控默认值',
+        value: '1',
+        editType: 'input',
+      },
+      theme: {
+        name: '样式类型',
+        value: 'radio',
+        editType: 'select',
+        payload: {
+          options: ['radio', 'button'],
+        },
+      },
+      variant: {
+        name: '按钮风格',
+        value: 'outline',
+        editType: 'select',
+        payload: {
+          options: ['outline', 'primary-filled', 'default-filled'],
+        },
+      },
+      disabled: {
+        name: '禁用',
+        value: false,
+        editType: 'switch',
+      },
+      allowUncheck: {
+        name: '可取消选中',
+        value: false,
+        editType: 'switch',
+      },
+    },
+    lifetimes: ['onChange'],
+  },
+  {
+    type: 'Radio',
+    name: '单选项',
+    props: {
+      value: {
+        name: '选项值',
+        value: '1',
+        editType: 'input',
+      },
+      content: {
+        name: '标签',
+        value: '选项',
+        editType: 'input',
+      },
+      disabled: {
+        name: '禁用',
+        value: false,
+        editType: 'switch',
+      },
+    },
+  },
+  {
     type: 'Calendar',
     name: '日历',
     props: {

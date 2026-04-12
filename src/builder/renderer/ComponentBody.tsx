@@ -43,6 +43,8 @@ const CONTAINER_NODE_TYPES = new Set([
   'Stack',
   'Inline',
   'Steps',
+  'Radio.Group',
+  'antd.Radio.Group',
   'Drawer',
   'Upload',
   'RouteOutlet',
@@ -463,6 +465,15 @@ const ComponentBody: React.FC = () => {
     }
 
     if (droppedType === 'Steps.Item' && parentType !== 'Steps') {
+      return;
+    }
+
+    const radioParentTypes = new Set(['Radio.Group', 'antd.Radio.Group']);
+    const radioChildTypes = new Set(['Radio', 'antd.Radio']);
+    if (radioParentTypes.has(parentType) && !radioChildTypes.has(droppedType)) {
+      return;
+    }
+    if (radioChildTypes.has(droppedType) && !radioParentTypes.has(parentType)) {
       return;
     }
 

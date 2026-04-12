@@ -769,7 +769,13 @@ const ComponentConfigPanel: React.FC = () => {
     };
   }, [activeNode?.props, activeNode?.type]);
   const styleValue = (propsMap.__style?.value ?? {}) as Record<string, unknown>;
-  const switchControlled = (activeNode?.type === 'Switch' || activeNode?.type === 'Slider' || activeNode?.type === 'Steps')
+  const switchControlled = (
+    activeNode?.type === 'Switch'
+    || activeNode?.type === 'Slider'
+    || activeNode?.type === 'Steps'
+    || activeNode?.type === 'Radio.Group'
+    || activeNode?.type === 'antd.Radio.Group'
+  )
     ? Boolean((propsMap.controlled?.value ?? true))
     : undefined;
   const currentChartType = React.useMemo<EChartSeriesType | null>(() => {
@@ -819,7 +825,13 @@ const ComponentConfigPanel: React.FC = () => {
       return false;
     }
 
-    if (activeNode?.type === 'Switch' || activeNode?.type === 'Slider' || activeNode?.type === 'Steps') {
+    if (
+      activeNode?.type === 'Switch'
+      || activeNode?.type === 'Slider'
+      || activeNode?.type === 'Steps'
+      || activeNode?.type === 'Radio.Group'
+      || activeNode?.type === 'antd.Radio.Group'
+    ) {
       if (propKey === 'value' && switchControlled === false) {
         return false;
       }
@@ -1288,10 +1300,11 @@ const ComponentConfigPanel: React.FC = () => {
     const currentValue = schema.value;
 
     if (editType === 'switch') {
+      const switchChecked = propKey === 'controlled' ? currentValue !== false : Boolean(currentValue);
       return (
         <Switch
           size='small'
-          value={Boolean(currentValue)}
+          value={switchChecked}
           onChange={(value) => updateActiveNodeProp(propKey, Boolean(value))}
         />
       );

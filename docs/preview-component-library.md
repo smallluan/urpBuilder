@@ -216,6 +216,8 @@ flowchart TD
 | Textarea | antd.Textarea | |
 | InputNumber | antd.InputNumber | |
 | Switch | antd.Switch | |
+| Radio.Group | antd.Radio.Group | 见 [radio-group-dsl.md](./radio-group-dsl.md) |
+| Radio | antd.Radio | 仅作 `Radio.Group` 子项；见 [radio-group-dsl.md](./radio-group-dsl.md) |
 | Space | antd.Space | 与 `SHARED_LAYOUT_TD_TYPES` 中的 `Space` **冲突时，运行时以 SHARED 为准 → 实际仍为 TDesign Space** |
 | Grid.Row | antd.Row | **运行时若 type 为 Grid.Row，先被 SHARED 拦截 → 不映射** |
 | Grid.Col | antd.Col | 同上 |

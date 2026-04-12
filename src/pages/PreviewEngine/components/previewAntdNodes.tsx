@@ -69,8 +69,17 @@ import {
   tdesignTextThemeToAntdTypographyType,
   tdesignLinkThemeToAntdTypographyType,
   tdesignSemanticTokenToAntdTagColor,
+  mapTdesignRadioGroupToAntd,
 } from '../../../utils/antdTdesignPropBridge';
 import { collectDslStepRows, dslStepStatusToAntd } from '../../../builder/utils/stepsDsl';
+import {
+  collectDslRadioRows,
+  coerceRadioGroupStoredValue,
+  normalizeDslBoolean,
+  optionsFromRadioRows,
+  radioGroupValuePropsForReact,
+  valuesEqualForRadio,
+} from '../../../builder/utils/radioDsl';
 import {
   antdProgressPropsFromDsl,
   parseProgressColorValue,
@@ -292,6 +301,149 @@ export interface AntdPreviewContext {
   syncModalVisible: (next: boolean) => void;
   /** 与 TDesign 预览 attach 一致，避免挂到 document.body 铺满外层窗口 */
   getPortalContainer: () => HTMLElement;
+}
+
+/** antd 单选组：可取消选中仅非受控 + allowUncheck；非受控时用本地 value 模拟（与 TDesign 语义一致） */
+function PreviewAntdRadioGroupView(props: {
+  node: UiTreeNode;
+  mergeStyle: AntdPreviewContext['mergeStyle'];
+  emitInteractionLifecycle: AntdPreviewContext['emitInteractionLifecycle'];
+}): React.ReactElement {
+  const { node, mergeStyle, emitInteractionLifecycle } = props;
+  const controlled = getBooleanProp(node, 'controlled') !== false;
+  const mapped = mapTdesignRadioGroupToAntd({
+    theme: getStringProp(node, 'theme'),
+    variant: getStringProp(node, 'variant'),
+    disabled: getProp(node, 'disabled'),
+    optionType: getStringProp(node, 'optionType'),
+  });
+  const rows = collectDslRadioRows(node.children);
+  const useChildRadios = rows.length > 0;
+  const optsJson = parseJsonRecordArray(getStringProp(node, 'options')).map((o) => ({
+    value: o.value as string | number,
+    label: String(o.label ?? o.value ?? ''),
+    disabled: o.disabled === true,
+  }));
+  const opts = useChildRadios ? optionsFromRadioRows(rows) : optsJson;
+  const valueRaw = getProp(node, 'value');
+  const defaultRaw = getProp(node, 'defaultValue');
+  const firstVal = opts[0]?.value as string | number | boolean | undefined;
+  const defaultValRaw =
+    defaultRaw !== undefined && defaultRaw !== null
+      ? defaultRaw
+      : valueRaw !== undefined && valueRaw !== null
+        ? valueRaw
+        : firstVal;
+  const valueResolved = coerceRadioGroupStoredValue(valueRaw, opts);
+  const defaultVal = coerceRadioGroupStoredValue(defaultValRaw, opts) ?? defaultValRaw;
+  const valueProps = radioGroupValuePropsForReact(controlled, valueResolved, defaultVal as string | number | boolean | undefined);
+  const isBtn = mapped.optionType === 'button';
+  const allowUncheckEffective = !controlled && normalizeDslBoolean(getProp(node, 'allowUncheck'));
+  const blockPointerForControlled = controlled;
+
+  const [uncontrolledValue, setUncontrolledValue] = React.useState<string | number | boolean | undefined>(() => {
+    if (controlled || !allowUncheckEffective || !useChildRadios) {
+      return undefined;
+    }
+    return defaultVal as string | number | boolean | undefined;
+  });
+
+  React.useEffect(() => {
+    if (controlled || !allowUncheckEffective || !useChildRadios) {
+      return;
+    }
+    setUncontrolledValue(defaultVal as string | number | boolean | undefined);
+  }, [node.key, controlled, allowUncheckEffective, useChildRadios, defaultVal]);
+
+  const handleAntdUncheckClick = (optionVal: string | number | boolean) => (e: React.MouseEvent) => {
+    if (!allowUncheckEffective || !useChildRadios || mapped.disabled) {
+      return;
+    }
+    if (!valuesEqualForRadio(uncontrolledValue, optionVal)) {
+      return;
+    }
+    e.preventDefault();
+    setUncontrolledValue(undefined);
+    emitInteractionLifecycle('onChange', { value: undefined, allowUncheck: true });
+  };
+
+  const groupShell = {
+    ...(useChildRadios ? {} : { options: opts }),
+    optionType: mapped.optionType,
+    buttonStyle: mapped.buttonStyle,
+    disabled: mapped.disabled,
+  };
+
+  const emitChange = (v: unknown) => emitInteractionLifecycle('onChange', { value: v });
+
+  const renderChildRadios = (onUncheck?: (v: string | number | boolean) => (e: React.MouseEvent) => void) =>
+    useChildRadios
+      ? rows.map((r) =>
+          isBtn ? (
+            <Radio.Button
+              key={r.key}
+              value={r.value}
+              disabled={r.disabled}
+              {...(onUncheck ? { onClick: onUncheck(r.value) } : {})}
+            >
+              {r.label}
+            </Radio.Button>
+          ) : (
+            <Radio
+              key={r.key}
+              value={r.value}
+              disabled={r.disabled}
+              {...(onUncheck ? { onClick: onUncheck(r.value) } : {})}
+            >
+              {r.label}
+            </Radio>
+          ),
+        )
+      : null;
+
+  if (controlled) {
+    return (
+      <Radio.Group
+        {...groupShell}
+        {...valueProps}
+        style={{
+          ...(mergeStyle() ?? {}),
+          ...(blockPointerForControlled ? { pointerEvents: 'none' as const } : {}),
+        }}
+        onChange={(e) => emitChange(e.target.value)}
+      >
+        {renderChildRadios()}
+      </Radio.Group>
+    );
+  }
+
+  if (allowUncheckEffective && useChildRadios) {
+    return (
+      <Radio.Group
+        {...groupShell}
+        value={uncontrolledValue}
+        onChange={(e) => {
+          const v = e.target.value;
+          setUncontrolledValue(v);
+          emitChange(v);
+        }}
+        style={mergeStyle()}
+      >
+        {renderChildRadios(handleAntdUncheckClick)}
+      </Radio.Group>
+    );
+  }
+
+  return (
+    <Radio.Group
+      {...groupShell}
+      {...valueProps}
+      style={mergeStyle()}
+      onChange={(e) => emitChange(e.target.value)}
+    >
+      {renderChildRadios()}
+    </Radio.Group>
+  );
 }
 
 export function tryRenderAntdPreview(ctx: AntdPreviewContext): React.ReactElement | null {
@@ -686,26 +838,16 @@ export function tryRenderAntdPreview(ctx: AntdPreviewContext): React.ReactElemen
       );
     }
     case 'antd.Radio.Group': {
-      const controlled = getBooleanProp(node, 'controlled') !== false;
-      const opts = parseJsonRecordArray(getStringProp(node, 'options')).map((o) => ({
-        value: o.value as string | number,
-        label: String(o.label ?? o.value ?? ''),
-      }));
-      const val = getStringProp(node, 'value');
       return (
-        <Radio.Group
-          options={opts}
-          optionType={getStringProp(node, 'optionType') === 'button' ? 'button' : 'default'}
-          value={controlled ? val : undefined}
-          defaultValue={controlled ? undefined : val}
-          style={mergeStyle()}
-          onChange={(e) => {
-            syncNodeValue(e.target.value);
-            emitInteractionLifecycle('onChange', { value: e.target.value });
-          }}
+        <PreviewAntdRadioGroupView
+          node={node}
+          mergeStyle={mergeStyle}
+          emitInteractionLifecycle={emitInteractionLifecycle}
         />
       );
     }
+    case 'antd.Radio':
+      return null;
     case 'antd.Switch': {
       const controlled = getBooleanProp(node, 'controlled') !== false;
       const checked = getBooleanProp(node, 'value') === true;

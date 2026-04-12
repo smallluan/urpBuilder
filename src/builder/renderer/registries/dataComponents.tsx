@@ -387,6 +387,9 @@ export function registerDataComponents(registry: ComponentRegistry): void {
   // Steps.Item 由父 Steps 渲染，此处返回 null 防止重复渲染
   registry.set('Steps.Item', () => null);
 
+  // Radio 由父 Radio.Group 渲染，此处返回 null 防止重复渲染
+  registry.set('Radio', () => null);
+
   registry.set('Tabs', (ctx) => {
     const {
       data, onDropData, getStringProp, getBooleanProp, mergeStyle, handleActivateSelf, isNodeActive,

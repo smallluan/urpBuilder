@@ -31,6 +31,8 @@ export const ANTD_TD_MIRROR_PAIRS: readonly MirrorPair[] = [
   { antdType: 'antd.Textarea', tdesignType: 'Textarea' },
   { antdType: 'antd.InputNumber', tdesignType: 'InputNumber' },
   { antdType: 'antd.Switch', tdesignType: 'Switch' },
+  { antdType: 'antd.Radio.Group', tdesignType: 'Radio.Group' },
+  { antdType: 'antd.Radio', tdesignType: 'Radio' },
   { antdType: 'antd.Space', tdesignType: 'Space' },
   { antdType: 'antd.Row', tdesignType: 'Grid.Row' },
   { antdType: 'antd.Col', tdesignType: 'Grid.Col' },

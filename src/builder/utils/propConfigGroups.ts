@@ -34,7 +34,7 @@ export function getPropSection(propKey: string, schema: PropSchemaLike, nodeType
   }
 
   if (
-    ['visible', 'disabled', 'readonly', 'readOnly', 'clearable', 'loading', 'borderless', 'autofocus', 'autoFocus'].includes(
+    ['visible', 'disabled', 'readonly', 'readOnly', 'clearable', 'loading', 'borderless', 'autofocus', 'autoFocus', 'allowUncheck'].includes(
       propKey,
     )
   ) {
