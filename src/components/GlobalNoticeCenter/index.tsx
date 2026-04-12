@@ -2,6 +2,11 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Badge, Button, Dialog, Drawer, MessagePlugin, Space, Tabs, Tag } from 'tdesign-react';
 import { MailIcon, RefreshIcon } from 'tdesign-icons-react';
 import { emitApiAlert } from '../../api/alertBus';
+import {
+  listPlatformBroadcasts,
+  markPlatformBroadcastRead,
+  type PlatformBroadcastDTO,
+} from '../../api/platformBroadcast';
 import { useAuth } from '../../auth/context';
 import { useTeam } from '../../team/context';
 import type { TeamInvitation } from '../../team/types';
@@ -10,11 +15,9 @@ import './style.less';
 const { TabPanel } = Tabs;
 const READ_STORAGE_PREFIX = 'urp-builder-message-read';
 
-type MessageCategory = 'team_invitation';
-
-type MessageItem = {
+type TeamInvitationMessage = {
+  category: 'team_invitation';
   id: string;
-  category: MessageCategory;
   title: string;
   description: string;
   sourceName: string;
@@ -27,6 +30,20 @@ type MessageItem = {
   createdAt?: string;
   raw: TeamInvitation;
 };
+
+type PlatformBroadcastMessage = {
+  category: 'platform_broadcast';
+  id: string;
+  title: string;
+  description: string;
+  body: string;
+  senderName?: string;
+  createdAt?: string;
+  read: boolean;
+  raw: PlatformBroadcastDTO;
+};
+
+type MessageItem = TeamInvitationMessage | PlatformBroadcastMessage;
 
 const roleTextMap: Record<TeamInvitation['role'], string> = {
   admin: '管理员',
@@ -101,7 +118,6 @@ const sortMessages = (items: MessageItem[]) => {
   });
 };
 
-/** 避免登录后同一会话内重复弹「未读提醒」（含并发/Strict Mode 双请求） */
 const welcomeUnreadToastShownUserIds = new Set<string>();
 let welcomeUnreadToastMutex: Promise<void> = Promise.resolve();
 
@@ -119,7 +135,7 @@ const enqueueWelcomeUnreadToast = (userId: string, unreadCount: number) => {
       });
     })
     .catch(() => {
-      // 保持链可用，避免单次异常阻塞后续提醒
+      // keep chain
     });
 };
 
@@ -131,14 +147,24 @@ const GlobalNoticeCenter: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'unread' | 'read' | 'sent'>('unread');
   const [received, setReceived] = useState<TeamInvitation[]>([]);
   const [sent, setSent] = useState<TeamInvitation[]>([]);
+  const [broadcasts, setBroadcasts] = useState<PlatformBroadcastDTO[]>([]);
   const [respondingId, setRespondingId] = useState<string | null>(null);
   const [detailMessage, setDetailMessage] = useState<MessageItem | null>(null);
-  const [pendingCount, setPendingCount] = useState(0);
   const [readIds, setReadIds] = useState<string[]>([]);
   const notifiedCountRef = useRef(0);
+  const readIdsRef = useRef(readIds);
+  readIdsRef.current = readIds;
+  /** 上一轮拉取已知的广播 id，用于识别「新出现的系统通知」 */
+  const knownBroadcastIdsRef = useRef<Set<string>>(new Set());
+  const broadcastInitialFetchDoneRef = useRef(false);
 
   useEffect(() => {
     setReadIds(readStoredIds(user?.id));
+  }, [user?.id]);
+
+  useEffect(() => {
+    knownBroadcastIdsRef.current = new Set();
+    broadcastInitialFetchDoneRef.current = false;
   }, [user?.id]);
 
   useEffect(() => {
@@ -147,10 +173,10 @@ const GlobalNoticeCenter: React.FC = () => {
 
   const readIdSet = useMemo(() => new Set(readIds), [readIds]);
 
-  const receivedMessages = useMemo<MessageItem[]>(() => {
-    return sortMessages(received.map((item) => ({
-      id: item.id,
+  const receivedMessages = useMemo<TeamInvitationMessage[]>(() => {
+    return received.map((item) => ({
       category: 'team_invitation',
+      id: item.id,
       title: `${item.teamName || item.teamId} 团队邀请`,
       description: `${item.inviterName || '某成员'} 邀请你以${roleTextMap[item.role]}身份加入 ${item.teamName || item.teamId}`,
       sourceName: item.inviterName || '-',
@@ -162,13 +188,27 @@ const GlobalNoticeCenter: React.FC = () => {
       status: item.status,
       createdAt: item.createdAt,
       raw: item,
-    })));
+    }));
   }, [received]);
 
-  const sentMessages = useMemo<MessageItem[]>(() => {
-    return sortMessages(sent.map((item) => ({
+  const platformMessages = useMemo<PlatformBroadcastMessage[]>(() => {
+    return broadcasts.map((item) => ({
+      category: 'platform_broadcast',
       id: item.id,
+      title: item.title,
+      description: item.body.length > 220 ? `${item.body.slice(0, 220)}…` : item.body,
+      body: item.body,
+      senderName: item.createdByName,
+      createdAt: item.createdAt,
+      read: item.read,
+      raw: item,
+    }));
+  }, [broadcasts]);
+
+  const sentMessages = useMemo<TeamInvitationMessage[]>(() => {
+    return sent.map((item) => ({
       category: 'team_invitation',
+      id: item.id,
       title: `${item.teamName || item.teamId} 团队邀请`,
       description: `你邀请 ${item.inviteeName || item.inviteeIdentity || '对方'} 以${roleTextMap[item.role]}身份加入 ${item.teamName || item.teamId}`,
       sourceName: item.inviterName || '-',
@@ -180,53 +220,83 @@ const GlobalNoticeCenter: React.FC = () => {
       status: item.status,
       createdAt: item.createdAt,
       raw: item,
-    })));
+    }));
   }, [sent]);
 
   const unreadMessages = useMemo(() => {
-    return receivedMessages.filter((item) => item.status === 'pending' && !readIdSet.has(item.id));
-  }, [readIdSet, receivedMessages]);
+    const teamUnread = receivedMessages.filter((item) => item.status === 'pending' && !readIdSet.has(item.id));
+    const platformUnread = platformMessages.filter((item) => !item.read);
+    return sortMessages([...teamUnread, ...platformUnread]);
+  }, [readIdSet, receivedMessages, platformMessages]);
 
   const readMessages = useMemo(() => {
-    return receivedMessages.filter((item) => item.status !== 'pending' || readIdSet.has(item.id));
-  }, [readIdSet, receivedMessages]);
+    const teamRead = receivedMessages.filter((item) => item.status !== 'pending' || readIdSet.has(item.id));
+    const platformRead = platformMessages.filter((item) => item.read);
+    return sortMessages([...teamRead, ...platformRead]);
+  }, [readIdSet, receivedMessages, platformMessages]);
 
-
-  const syncUnreadCount = useCallback((items: TeamInvitation[], knownReadIds = readIdSet) => {
-    const nextCount = items.filter((item) => item.status === 'pending' && !knownReadIds.has(item.id)).length;
-    setPendingCount(nextCount);
-    return nextCount;
-  }, [readIdSet]);
+  const unreadTotal = unreadMessages.length;
 
   const loadMessages = useCallback(async (options?: { notifyWelcomeUnread?: boolean; notifyIncrease?: boolean }) => {
     setLoading(true);
     try {
-      const [mine, mySent] = await Promise.all([
+      const [mine, mySent, list] = await Promise.all([
         getMyInvitations(),
         getMySentInvitations(),
+        listPlatformBroadcasts().catch(() => [] as PlatformBroadcastDTO[]),
       ]);
       setReceived(mine);
       setSent(mySent);
-      const nextCount = syncUnreadCount(mine);
+      setBroadcasts(list);
+
+      const rid = readIdsRef.current;
+      const nextUnread =
+        mine.filter((item) => item.status === 'pending' && !rid.includes(item.id)).length
+        + list.filter((b) => !b.read).length;
+
       const previousCount = notifiedCountRef.current;
 
-      if (options?.notifyWelcomeUnread && nextCount > 0 && user?.id) {
-        enqueueWelcomeUnreadToast(user.id, nextCount);
+      const currentBroadcastIds = new Set(list.map((b) => b.id));
+      const prevKnownBroadcastIds = knownBroadcastIdsRef.current;
+      let showedSystemBroadcastToast = false;
+      const isFirstBroadcastFetch = !broadcastInitialFetchDoneRef.current;
+      if (isFirstBroadcastFetch) {
+        broadcastInitialFetchDoneRef.current = true;
+      } else {
+        const newlyAppearedBroadcastIds = [...currentBroadcastIds].filter((id) => !prevKnownBroadcastIds.has(id));
+        if (newlyAppearedBroadcastIds.length > 0) {
+          showedSystemBroadcastToast = true;
+          MessagePlugin.info({
+            content: '您收到一条系统通知',
+            duration: 4000,
+            closeBtn: true,
+          });
+        }
+      }
+      knownBroadcastIdsRef.current = currentBroadcastIds;
+
+      if (options?.notifyWelcomeUnread && nextUnread > 0 && user?.id) {
+        enqueueWelcomeUnreadToast(user.id, nextUnread);
       }
 
-      if (options?.notifyIncrease && previousCount > 0 && nextCount > previousCount) {
+      if (
+        options?.notifyIncrease
+        && previousCount > 0
+        && nextUnread > previousCount
+        && !showedSystemBroadcastToast
+      ) {
         MessagePlugin.info({
-          content: `你有新消息：当前未读 ${nextCount} 条，点击右上角消息中心查看`,
+          content: `你有新消息：当前未读 ${nextUnread} 条，点击右上角消息中心查看`,
           duration: 3500,
           closeBtn: true,
         });
       }
 
-      notifiedCountRef.current = nextCount;
+      notifiedCountRef.current = nextUnread;
     } finally {
       setLoading(false);
     }
-  }, [getMyInvitations, getMySentInvitations, syncUnreadCount, user?.id]);
+  }, [getMyInvitations, getMySentInvitations, user?.id]);
 
   useEffect(() => {
     if (!user?.id) {
@@ -254,18 +324,22 @@ const GlobalNoticeCenter: React.FC = () => {
     await loadMessages();
   };
 
-  const updateReadState = (messageId: string, shouldRead: boolean) => {
+  const updateTeamReadState = (messageId: string, shouldRead: boolean) => {
     setReadIds((previous) => {
       const next = shouldRead
         ? Array.from(new Set([...previous, messageId]))
         : previous.filter((item) => item !== messageId);
-
-      const nextSet = new Set(next);
-      syncUnreadCount(received, nextSet);
-      notifiedCountRef.current = received.filter((item) => item.status === 'pending' && !nextSet.has(item.id)).length;
-
       return next;
     });
+  };
+
+  const handleMarkPlatformRead = async (broadcastId: string) => {
+    try {
+      await markPlatformBroadcastRead(broadcastId);
+      setBroadcasts((prev) => prev.map((b) => (b.id === broadcastId ? { ...b, read: true } : b)));
+    } catch {
+      emitApiAlert('操作失败', '标记已读失败', 'error');
+    }
   };
 
   const handleRespond = async (invitationId: string, action: 'accept' | 'reject') => {
@@ -273,7 +347,7 @@ const GlobalNoticeCenter: React.FC = () => {
     try {
       await respondInvitation(invitationId, action);
       emitApiAlert('处理成功', action === 'accept' ? '已接受邀请' : '已拒绝邀请', 'success');
-      updateReadState(invitationId, true);
+      updateTeamReadState(invitationId, true);
       await Promise.all([loadMessages(), refreshTeams()]);
     } finally {
       setRespondingId(null);
@@ -292,6 +366,45 @@ const GlobalNoticeCenter: React.FC = () => {
   const renderMessageCard = (message: MessageItem, mode: 'unread' | 'read' | 'sent') => {
     const isUnread = mode === 'unread';
     const actionLoading = respondingId === message.id;
+
+    if (message.category === 'platform_broadcast') {
+      return (
+        <article
+          key={`${mode}-pb-${message.id}`}
+          className={`global-notice-center__card global-notice-center__card--platform_broadcast ${isUnread ? 'is-unread' : 'is-read'}`}
+        >
+          <div className="global-notice-center__card-head">
+            <div className="global-notice-center__card-flags">
+              <Tag size="small" theme="primary" variant="light-outline">系统通知</Tag>
+              {isUnread ? <span className="global-notice-center__card-dot">未读</span> : null}
+            </div>
+            <Tag size="small" theme="default" variant="light-outline">广播</Tag>
+          </div>
+          <div className="global-notice-center__card-title">{message.title}</div>
+          <div className="global-notice-center__card-desc">{message.description}</div>
+          <div className="global-notice-center__card-meta-line">
+            <span>{message.senderName || '管理员'}</span>
+            <span>{formatTime(message.createdAt)}</span>
+          </div>
+          <div className="global-notice-center__card-footer">
+            <Space size={8}>
+              <Button variant="text" size="small" onClick={() => setDetailMessage(message)}>
+                查看详情
+              </Button>
+              {mode === 'unread' ? (
+                <Button
+                  variant="text"
+                  size="small"
+                  onClick={() => { void handleMarkPlatformRead(message.id); }}
+                >
+                  标为已读
+                </Button>
+              ) : null}
+            </Space>
+          </div>
+        </article>
+      );
+    }
 
     return (
       <article key={`${mode}-${message.id}`} className={`global-notice-center__card global-notice-center__card--${message.category} ${isUnread ? 'is-unread' : 'is-read'}`}>
@@ -316,7 +429,7 @@ const GlobalNoticeCenter: React.FC = () => {
               查看详情
             </Button>
             {mode !== 'sent' ? (
-              <Button variant="text" size="small" onClick={() => updateReadState(message.id, mode === 'unread')}>
+              <Button variant="text" size="small" onClick={() => updateTeamReadState(message.id, mode === 'unread')}>
                 {mode === 'unread' ? '标为已读' : '标为未读'}
               </Button>
             ) : null}
@@ -350,7 +463,7 @@ const GlobalNoticeCenter: React.FC = () => {
 
   return (
     <>
-      <Badge count={pendingCount} className="global-notice-center__badge">
+      <Badge count={unreadTotal} className="global-notice-center__badge">
         <MailIcon size={20} onClick={openDrawer}/>
       </Badge>
       <Drawer
@@ -361,7 +474,7 @@ const GlobalNoticeCenter: React.FC = () => {
           <div className="global-notice-center__drawer-header">
             <div>
               <div className="global-notice-center__drawer-title">消息中心</div>
-              <div className="global-notice-center__drawer-subtitle">{pendingCount} 条未读</div>
+              <div className="global-notice-center__drawer-subtitle">{unreadTotal} 条未读</div>
             </div>
             <Button variant="text" shape="circle" icon={<RefreshIcon />} loading={loading} onClick={() => { void loadMessages(); }} />
           </div>
@@ -391,7 +504,17 @@ const GlobalNoticeCenter: React.FC = () => {
         onConfirm={() => setDetailMessage(null)}
         onClose={() => setDetailMessage(null)}
       >
-        {detailMessage ? (
+        {detailMessage?.category === 'platform_broadcast' ? (
+          <div className="global-notice-center__detail">
+            <div className="global-notice-center__detail-title">{detailMessage.title}</div>
+            <div className="global-notice-center__detail-desc" style={{ whiteSpace: 'pre-wrap' }}>{detailMessage.body}</div>
+            <div className="global-notice-center__detail-grid">
+              <div>类型：系统广播</div>
+              <div>发送方：{detailMessage.senderName || '管理员'}</div>
+              <div>时间：{formatTime(detailMessage.createdAt)}</div>
+            </div>
+          </div>
+        ) : detailMessage?.category === 'team_invitation' ? (
           <div className="global-notice-center__detail">
             <div className="global-notice-center__detail-title">{detailMessage.title}</div>
             <div className="global-notice-center__detail-desc">{detailMessage.description}</div>

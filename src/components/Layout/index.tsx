@@ -12,6 +12,7 @@ import {
   SettingIcon,
   UserIcon,
   ImageIcon,
+  MailIcon,
 } from 'tdesign-icons-react';
 import { useAuth } from '../../auth/context';
 import { isCreateTeamEntryDisabled } from '../../team/createTeamEntry';
@@ -143,6 +144,11 @@ const AppLayout: React.FC = () => {
             key: '/team-admin',
             icon: <SettingIcon />,
             title: '团队管理',
+          },
+          {
+            key: '/admin-broadcasts',
+            icon: <MailIcon />,
+            title: '系统广播',
           },
         ],
       });

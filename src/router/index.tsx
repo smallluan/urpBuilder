@@ -21,7 +21,7 @@ const ComponentVersionCatalog = lazy(() => import('../pages/ComponentVersionCata
 const ComponentVersionCompare = lazy(() => import('../pages/ComponentVersionCompare'));
 const PreviewEngine = lazy(() => import('../pages/PreviewEngine'));
 const CodeWorkbench = lazy(() => import('../pages/CodeWorkbench/index.tsx'));
-const Changelog = lazy(() => import('../pages/Changelog'));
+const AdminBroadcast = lazy(() => import('../pages/AdminBroadcast'));
 const Login = lazy(() => import('../pages/Login'));
 
 const routeSuspenseFallback = (
@@ -86,8 +86,8 @@ export const router = createBrowserRouter([
             element: load(<TeamAdmin />),
           },
           {
-            path: 'changelog',
-            element: load(<Changelog />),
+            path: 'admin-broadcasts',
+            element: load(<AdminBroadcast />),
           },
         ],
       },

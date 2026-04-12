@@ -58,7 +58,9 @@ const AccountInfoPopup: React.FC = () => {
 
   const handleCellClick = (value: string) => {
     if (value === 'changelog') {
-      navigate('/changelog')
+      const base = import.meta.env.BASE_URL || '/'
+      const url = new URL('changelog.html', `${window.location.origin}${base}`).href
+      window.open(url, '_blank', 'noopener,noreferrer')
       return
     }
     if (value === 'userCenter') {

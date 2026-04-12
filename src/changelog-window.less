@@ -1,0 +1,48 @@
+.changelog-window {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--td-bg-color-page);
+  color: var(--app-text-primary);
+}
+
+.changelog-window__bar {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--app-border-subtle);
+  background: var(--td-bg-color-container);
+}
+
+.changelog-window__brand {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--app-text-primary);
+}
+
+.changelog-window__close {
+  font-size: 13px;
+  padding: 6px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--app-border-subtle);
+  background: var(--app-header-pill-bg);
+  color: var(--app-text-secondary);
+  cursor: pointer;
+
+  &:hover {
+    background: var(--app-header-pill-hover-bg);
+    color: var(--app-text-primary);
+  }
+}
+
+.changelog-window__main {
+  flex: 1;
+  min-height: 0;
+  padding: 8px 20px 32px;
+  max-width: 960px;
+  width: 100%;
+  margin: 0 auto;
+  box-sizing: border-box;
+}
