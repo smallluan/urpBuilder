@@ -1,4 +1,4 @@
-export type ComponentLibraryCategory = 'layout' | 'text' | 'display' | 'action' | 'navigation';
+export type ComponentLibraryCategory = 'layout' | 'text' | 'display' | 'action' | 'navigation' | 'data';
 
 export interface ComponentLibraryItemDefinition {
   type: string;
@@ -28,6 +28,8 @@ export interface ComponentLibraryGroupEntry extends ComponentLibraryEntryBase {
 export type ComponentLibraryEntry = ComponentLibrarySingleEntry | ComponentLibraryGroupEntry;
 
 const GROUPED_COMPONENT_TYPES = new Set([
+  'Flex',
+  'Flex.Item',
   'Grid.Row',
   'Grid.Col',
   'Menu',
@@ -53,6 +55,27 @@ const GROUPED_COMPONENT_TYPES = new Set([
 ]);
 
 const LIBRARY_GROUP_ENTRIES: ComponentLibraryGroupEntry[] = [
+  {
+    key: 'flex',
+    kind: 'group',
+    name: '弹性布局',
+    category: 'layout',
+    iconType: 'Flex',
+    helperText: '点击后选择弹性容器或弹性子项',
+    keywords: ['弹性', 'Flex', 'flex', '子项'],
+    children: [
+      {
+        type: 'Flex',
+        helperText: '弹性布局容器，可配置方向、对齐与换行',
+        keywords: ['弹性容器', 'flex'],
+      },
+      {
+        type: 'Flex.Item',
+        helperText: '仅可拖入弹性容器内',
+        keywords: ['弹性子项', 'flex item'],
+      },
+    ],
+  },
   {
     key: 'grid',
     kind: 'group',

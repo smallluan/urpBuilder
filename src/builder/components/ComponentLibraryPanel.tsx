@@ -1,37 +1,77 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Input, Popup } from 'tdesign-react';
 import { SearchIcon } from 'tdesign-icons-react';
-import {
-  LayoutGrid,
-  Type,
-  Image as ImageIcon,
-  Boxes,
-  MousePointerClick,
-  GripHorizontal,
-  Rows3,
-  Columns3,
-  RectangleHorizontal,
-  UserRound,
-  Minus,
-  Heading,
-  AlignLeft,
-  CalendarDays,
-  Pipette,
-  Clock3,
-  Timer,
-  Hash,
-  List,
-  Link2,
-  SlidersHorizontal,
-  ListOrdered,
-  Star,
-  ArrowUpToLine,
-  BarChart3,
-  Pin,
-  CircleDot,
-  CheckSquare,
-} from 'lucide-react';
+import { MousePointerClick } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
+import {
+  LibIconAlert,
+  LibIconAvatar,
+  LibIconBackTop,
+  LibIconBadge,
+  LibIconBreadcrumb,
+  LibIconButton,
+  LibIconCalendar,
+  LibIconCard,
+  LibIconCategoryBasic,
+  LibIconCategoryCharts,
+  LibIconCategoryData,
+  LibIconCategoryDisplay,
+  LibIconCategoryLayout,
+  LibIconCategoryNavigation,
+  LibIconCategoryText,
+  LibIconChart,
+  LibIconCheckbox,
+  LibIconCollapse,
+  LibIconColorPicker,
+  LibIconDatePicker,
+  LibIconDivider,
+  LibIconDrawer,
+  LibIconDropdown,
+  LibIconDynamicList,
+  LibIconEmpty,
+  LibIconForm,
+  LibIconFormItem,
+  LibIconGlyphComponent,
+  LibIconGridCol,
+  LibIconGridRowStack,
+  LibIconImage,
+  LibIconInput,
+  LibIconInputNumber,
+  LibIconLayoutAside,
+  LibIconLayoutContent,
+  LibIconLayoutFooter,
+  LibIconLayoutHeader,
+  LibIconLayoutShell,
+  LibIconLink,
+  LibIconList,
+  LibIconMenuNav,
+  LibIconModal,
+  LibIconPagination,
+  LibIconPopup,
+  LibIconProgress,
+  LibIconRadio,
+  LibIconRouteOutlet,
+  LibIconSavedComponents,
+  LibIconSelect,
+  LibIconSliderControl,
+  LibIconSpaceFlex,
+  LibIconSpin,
+  LibIconStatistic,
+  LibIconSteps,
+  LibIconSticky,
+  LibIconSwiper,
+  LibIconSwitch,
+  LibIconTable,
+  LibIconTabs,
+  LibIconTag,
+  LibIconTextarea,
+  LibIconTimePicker,
+  LibIconTimeRange,
+  LibIconTypographyParagraph,
+  LibIconTypographyText,
+  LibIconTypographyTitle,
+  LibIconUpload,
+} from '../icons/libraryActionBasicIcons';
 import componentCatalog from '../../config/componentCatalog';
 import { componentLibraryEntries, groupedComponentTypes, type ComponentLibraryCategory, type ComponentLibraryEntry, type ComponentLibraryGroupEntry } from '../../config/componentLibrary';
 import { ECHART_COMPONENT_TYPES as ECHART_COMPONENT_TYPE_LIST } from '../../constants/echart';
@@ -59,35 +99,42 @@ interface ComponentLibraryPanelProps {
 
 type ComponentSchema = (typeof componentCatalog)[number];
 
+/** 插画与 lucide 均接受 size / strokeWidth，便于物料与分类标题共用 */
+type LibraryPanelIcon = LucideIcon | React.ComponentType<{ size?: number; strokeWidth?: number; className?: string }>;
+
 interface CategoryMeta {
   label: string;
-  Icon: LucideIcon;
+  Icon: LibraryPanelIcon;
 }
 
 const CATEGORY_META_MAP: Record<ComponentLibraryCategory, CategoryMeta> = {
   action: {
     label: '基础组件',
-    Icon: Boxes,
+    Icon: LibIconCategoryBasic,
   },
   layout: {
-    label: '布局组件',
-    Icon: LayoutGrid,
+    label: '容器布局',
+    Icon: LibIconCategoryLayout,
+  },
+  data: {
+    label: '数据展示',
+    Icon: LibIconCategoryData,
   },
   display: {
     label: '输入组件',
-    Icon: Hash,
+    Icon: LibIconCategoryDisplay,
   },
   text: {
     label: '展示类',
-    Icon: ImageIcon,
+    Icon: LibIconCategoryText,
   },
   navigation: {
     label: '导航类',
-    Icon: ArrowUpToLine,
+    Icon: LibIconCategoryNavigation,
   },
 };
 
-const CATEGORY_ORDER: ComponentLibraryCategory[] = ['action', 'layout', 'display', 'text', 'navigation'];
+const CATEGORY_ORDER: ComponentLibraryCategory[] = ['action', 'layout', 'data', 'display', 'text', 'navigation'];
 
 const HIDDEN_COMPONENT_TYPES = new Set(['List.Item', 'DynamicList.Item', 'Popup']);
 const ECHART_COMPONENT_TYPES = new Set(ECHART_COMPONENT_TYPE_LIST);
@@ -100,6 +147,7 @@ const getCategoryByType = (type: string): ComponentLibraryCategory => {
       || type === 'antd.Col'
       || type === 'antd.Space'
       || type === 'antd.Form'
+      || type === 'antd.Drawer'
     ) {
       return 'layout';
     }
@@ -110,16 +158,15 @@ const getCategoryByType = (type: string): ComponentLibraryCategory => {
     ) {
       return 'navigation';
     }
+    if (type === 'antd.Table' || type === 'antd.Card' || type === 'antd.Statistic') {
+      return 'data';
+    }
     if (
       type === 'antd.Button'
       || type === 'antd.Dropdown'
       || type === 'antd.Typography.Link'
-      || type === 'antd.Table'
-      || type === 'antd.Card'
-      || type === 'antd.Statistic'
       || type === 'antd.Icon'
       || type === 'antd.Divider'
-      || type === 'antd.Drawer'
     ) {
       return 'action';
     }
@@ -144,6 +191,14 @@ const getCategoryByType = (type: string): ComponentLibraryCategory => {
 
   if (type.startsWith('Typography.')) {
     return 'text';
+  }
+
+  if (type === 'Table' || type === 'Card' || type === 'Statistic') {
+    return 'data';
+  }
+
+  if (type === 'Drawer') {
+    return 'layout';
   }
 
   if (
@@ -214,112 +269,144 @@ const getCategoryByType = (type: string): ComponentLibraryCategory => {
   return 'action';
 };
 
-const getCategoryIcon = (category: ComponentLibraryCategory) => {
+const getCategoryIcon = (category: ComponentLibraryCategory): LibraryPanelIcon => {
   if (category === 'layout') {
-    return LayoutGrid;
+    return LibIconCategoryLayout;
+  }
+
+  if (category === 'data') {
+    return LibIconCategoryData;
   }
 
   if (category === 'text') {
-    return Type;
+    return LibIconCategoryText;
   }
 
   if (category === 'display') {
-    return ImageIcon;
+    return LibIconCategoryDisplay;
   }
 
   if (category === 'action') {
-    return MousePointerClick;
+    return LibIconCategoryBasic;
   }
 
   if (category === 'navigation') {
-    return ArrowUpToLine;
+    return LibIconCategoryNavigation;
   }
 
-  return Boxes;
+  return LibIconCategoryBasic;
 };
 
-const getIconByType = (type: string) => {
-  const iconMap: Record<string, any> = {
-    Button: MousePointerClick,
-    Link: Link2,
-    BackTop: ArrowUpToLine,
-    Drawer: RectangleHorizontal,
-    Progress: SlidersHorizontal,
-    Upload: ArrowUpToLine,
-    Menu: ListOrdered,
-    HeadMenu: ListOrdered,
-    'Menu.Submenu': ListOrdered,
-    'Menu.Item': ListOrdered,
-    'Menu.Group': ListOrdered,
-    Icon: Star,
-    Space: GripHorizontal,
-    Flex: GripHorizontal,
-    'Flex.Item': Columns3,
-    Stack: Rows3,
-    Inline: GripHorizontal,
-    'Grid.Row': Rows3,
-    'Grid.Col': Columns3,
-    RouteOutlet: RectangleHorizontal,
-    StickyBoundary: Pin,
-    ComponentSlotOutlet: RectangleHorizontal,
-    Card: RectangleHorizontal,
-    Image: ImageIcon,
-    Avatar: UserRound,
-    Calendar: CalendarDays,
-    EChart: BarChart3,
-    LineChart: BarChart3,
-    BarChart: BarChart3,
-    PieChart: BarChart3,
-    RadarChart: BarChart3,
-    ScatterChart: BarChart3,
-    AreaChart: BarChart3,
-    DonutChart: BarChart3,
-    GaugeChart: BarChart3,
-    FunnelChart: BarChart3,
-    CandlestickChart: BarChart3,
-    TreemapChart: BarChart3,
-    HeatmapChart: BarChart3,
-    SunburstChart: BarChart3,
-    MapChart: BarChart3,
-    SankeyChart: BarChart3,
-    GraphChart: BarChart3,
-    BoxplotChart: BarChart3,
-    WaterfallChart: BarChart3,
-    ColorPicker: Pipette,
-    TimePicker: Clock3,
-    TimeRangePicker: Timer,
-    Input: Type,
-    Textarea: AlignLeft,
-    InputNumber: Hash,
-    Slider: SlidersHorizontal,
-    'Radio.Group': CircleDot,
-    Radio: CircleDot,
-    Tabs: ListOrdered,
-    Collapse: ListOrdered,
-    Steps: ListOrdered,
-    'Steps.Item': ListOrdered,
-    List,
-    Divider: Minus,
-    'Typography.Title': Heading,
-    'Typography.Paragraph': AlignLeft,
-    'Typography.Text': Type,
-    'antd.Button': MousePointerClick,
-    'antd.Typography.Link': Link2,
-    'antd.Drawer': RectangleHorizontal,
-    'antd.Icon': Star,
-    'antd.Table': MousePointerClick,
-    'antd.Card': RectangleHorizontal,
-    'antd.Statistic': MousePointerClick,
-    'antd.Divider': Minus,
-    'antd.Radio': CircleDot,
-    'antd.Radio.Group': CircleDot,
-    'Checkbox.Group': CheckSquare,
-    Checkbox: CheckSquare,
-    'antd.Checkbox.Group': CheckSquare,
-    'antd.Checkbox': CheckSquare,
-  };
+/** ECharts 系列物料共用同一插画 */
+const CHART_LIBRARY_ICONS = Object.fromEntries(
+  ECHART_COMPONENT_TYPE_LIST.map((t) => [t, LibIconChart]),
+) as Record<string, LibraryPanelIcon>;
 
-  return iconMap[type] ?? getCategoryIcon(getCategoryByType(type));
+/** TDesign 物料 type → 插画；antd.* 优先查 {@link ANTD_ICON_OVERRIDES} 与镜像表 */
+const LIBRARY_ICON_MAP: Record<string, LibraryPanelIcon> = {
+  ...CHART_LIBRARY_ICONS,
+  Button: LibIconButton,
+  Link: LibIconLink,
+  BackTop: LibIconBackTop,
+  Drawer: LibIconDrawer,
+  Progress: LibIconProgress,
+  Upload: LibIconUpload,
+  Menu: LibIconMenuNav,
+  HeadMenu: LibIconMenuNav,
+  'Menu.Submenu': LibIconMenuNav,
+  'Menu.Item': LibIconMenuNav,
+  'Menu.Group': LibIconMenuNav,
+  Icon: LibIconGlyphComponent,
+  Space: LibIconSpaceFlex,
+  Flex: LibIconSpaceFlex,
+  'Flex.Item': LibIconGridCol,
+  Stack: LibIconGridRowStack,
+  Inline: LibIconSpaceFlex,
+  'Grid.Row': LibIconGridRowStack,
+  'Grid.Col': LibIconGridCol,
+  RouteOutlet: LibIconRouteOutlet,
+  StickyBoundary: LibIconSticky,
+  ComponentSlotOutlet: LibIconRouteOutlet,
+  Card: LibIconCard,
+  Table: LibIconTable,
+  Statistic: LibIconStatistic,
+  Image: LibIconImage,
+  Avatar: LibIconAvatar,
+  Calendar: LibIconCalendar,
+  ColorPicker: LibIconColorPicker,
+  TimePicker: LibIconTimePicker,
+  TimeRangePicker: LibIconTimeRange,
+  Input: LibIconInput,
+  Textarea: LibIconTextarea,
+  InputNumber: LibIconInputNumber,
+  Slider: LibIconSliderControl,
+  Switch: LibIconSwitch,
+  'Radio.Group': LibIconRadio,
+  Radio: LibIconRadio,
+  Tabs: LibIconTabs,
+  Collapse: LibIconCollapse,
+  Steps: LibIconSteps,
+  'Steps.Item': LibIconSteps,
+  List: LibIconList,
+  DynamicList: LibIconDynamicList,
+  Swiper: LibIconSwiper,
+  Popup: LibIconPopup,
+  Divider: LibIconDivider,
+  'Typography.Title': LibIconTypographyTitle,
+  'Typography.Paragraph': LibIconTypographyParagraph,
+  'Typography.Text': LibIconTypographyText,
+  'Checkbox.Group': LibIconCheckbox,
+  Checkbox: LibIconCheckbox,
+  Layout: LibIconLayoutShell,
+  'Layout.Header': LibIconLayoutHeader,
+  'Layout.Content': LibIconLayoutContent,
+  'Layout.Aside': LibIconLayoutAside,
+  'Layout.Footer': LibIconLayoutFooter,
+  'antd.Tag': LibIconTag,
+  'antd.Badge': LibIconBadge,
+  'antd.Empty': LibIconEmpty,
+  'antd.Dropdown': LibIconDropdown,
+  'antd.Select': LibIconSelect,
+  'antd.Form': LibIconForm,
+  'antd.Form.Item': LibIconFormItem,
+  'antd.Spin': LibIconSpin,
+  'antd.Alert': LibIconAlert,
+  'antd.Breadcrumb': LibIconBreadcrumb,
+  'antd.Pagination': LibIconPagination,
+  'antd.DatePicker': LibIconDatePicker,
+};
+
+/** 与 TDesign 镜像同 schema 但需单独图标的 antd 物料 */
+const ANTD_ICON_OVERRIDES: Record<string, LibraryPanelIcon> = {
+  'antd.Modal': LibIconModal,
+};
+
+const resolveLibraryIcon = (type: string): LibraryPanelIcon | undefined => {
+  const override = ANTD_ICON_OVERRIDES[type];
+  if (override) {
+    return override;
+  }
+
+  const direct = LIBRARY_ICON_MAP[type];
+  if (direct) {
+    return direct;
+  }
+
+  if (type.startsWith('antd.')) {
+    const pair = ANTD_TD_MIRROR_PAIRS.find((p) => p.antdType === type);
+    if (pair) {
+      const mirrored = LIBRARY_ICON_MAP[pair.tdesignType];
+      if (mirrored) {
+        return mirrored;
+      }
+    }
+  }
+
+  return undefined;
+};
+
+const getIconByType = (type: string): LibraryPanelIcon => {
+  return resolveLibraryIcon(type) ?? getCategoryIcon(getCategoryByType(type));
 };
 
 const matchText = (segments: Array<string | undefined>, keyword: string) => {
@@ -531,6 +618,7 @@ const ComponentLibraryPanel: React.FC<ComponentLibraryPanelProps> = ({ selectedN
     }, {
       action: [],
       layout: [],
+      data: [],
       display: [],
       text: [],
       navigation: [],
@@ -691,7 +779,7 @@ const ComponentLibraryPanel: React.FC<ComponentLibraryPanelProps> = ({ selectedN
         onClick={() => onSelect(String(schema.name))}
       >
         <div className={`library-item-icon library-item-icon--${itemCategory}`}>
-          <IconComponent size={14} strokeWidth={2} />
+          <IconComponent size={28} strokeWidth={2} />
         </div>
         <div className="library-item-main">
           <div className="library-item-name">{displayName}</div>
@@ -737,7 +825,7 @@ const ComponentLibraryPanel: React.FC<ComponentLibraryPanelProps> = ({ selectedN
                   }}
                 >
                   <div className={`library-item-icon library-item-icon--${itemCategory}`}>
-                    <IconComponent size={16} strokeWidth={2} />
+                    <IconComponent size={32} strokeWidth={2} />
                   </div>
                   <div className="library-popup-item__content">
                     <div className="library-popup-item__name">{popupDisplayName}</div>
@@ -796,7 +884,7 @@ const ComponentLibraryPanel: React.FC<ComponentLibraryPanelProps> = ({ selectedN
           <div className="library-section">
             <div className="library-section-head">
               <div className="library-section-title">
-                <Boxes size={14} strokeWidth={2} />
+                <LibIconSavedComponents size={28} strokeWidth={2} />
                 <span>已保存组件</span>
               </div>
               <span className="library-section-count">{filteredCustomComponentSchemas.length}</span>
@@ -816,7 +904,7 @@ const ComponentLibraryPanel: React.FC<ComponentLibraryPanelProps> = ({ selectedN
                     onClick={() => onSelect(schema.name)}
                   >
                     <div className="library-item-icon library-item-icon--action">
-                      <Boxes size={14} strokeWidth={2} />
+                      <LibIconSavedComponents size={28} strokeWidth={2} />
                     </div>
                     <div className="library-item-main">
                       <div className="library-item-name">{schema.name}</div>
@@ -835,7 +923,7 @@ const ComponentLibraryPanel: React.FC<ComponentLibraryPanelProps> = ({ selectedN
             <div className="library-section">
               <div className="library-section-head">
                 <div className="library-section-title">
-                  <BarChart3 size={14} strokeWidth={2} />
+                  <LibIconCategoryCharts size={26} strokeWidth={2} />
                   <span>ECharts 图表</span>
                 </div>
                 <span className="library-section-count">{filteredEntries.length}</span>
@@ -876,7 +964,7 @@ const ComponentLibraryPanel: React.FC<ComponentLibraryPanelProps> = ({ selectedN
               <div key={category} className="library-section">
                 <div className="library-section-head">
                   <div className="library-section-title">
-                    <categoryMeta.Icon size={14} strokeWidth={2} />
+                    <categoryMeta.Icon size={24} strokeWidth={2} />
                     <span>{categoryMeta.label}</span>
                   </div>
                   <span className="library-section-count">{categoryEntries.length}</span>
@@ -909,7 +997,7 @@ const ComponentLibraryPanel: React.FC<ComponentLibraryPanelProps> = ({ selectedN
                                 <MousePointerClick size={11} strokeWidth={2.2} />
                               </span>
                               <div className={`library-item-icon library-item-icon--${entry.category}`}>
-                                <IconComponent size={14} strokeWidth={2} />
+                                <IconComponent size={28} strokeWidth={2} />
                               </div>
                               <div className="library-item-main">
                                 <div className="library-item-name">{entry.name}</div>

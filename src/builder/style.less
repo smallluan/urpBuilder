@@ -1910,9 +1910,9 @@
     }
 
     .right-panel-tabs .library-panel .library-section-title svg {
-      width: 12px;
-      height: 12px;
-      opacity: 0.85;
+      width: 22px;
+      height: 22px;
+      opacity: 0.9;
     }
 
     .right-panel-tabs .library-panel .library-section-grid {
@@ -1943,7 +1943,7 @@
       justify-content: flex-start;
       gap: 4px;
       padding: 6px 3px 5px;
-      min-height: 64px;
+      min-height: 80px;
       border: 1px solid var(--builder-library-card-border-compact);
       border-radius: 8px;
       background: var(--builder-library-card-surface-compact);
@@ -1973,15 +1973,28 @@
     }
 
     .right-panel-tabs .library-panel .library-item-icon {
-      width: 22px;
-      height: 22px;
-      border-radius: 6px;
+      width: 44px;
+      height: 44px;
+      border-radius: 0;
       flex-shrink: 0;
       font-size: 11px;
+      background: transparent;
 
       svg {
-        width: 13px;
-        height: 13px;
+        width: 28px;
+        height: 28px;
+      }
+
+      &.library-item-icon--layout,
+      &.library-item-icon--data,
+      &.library-item-icon--text,
+      &.library-item-icon--display,
+      &.library-item-icon--navigation,
+      &.library-item-icon--action {
+        background: transparent;
+        border: none;
+        box-shadow: none;
+        border-radius: 0;
       }
     }
 
@@ -2541,7 +2554,7 @@
       user-select: none;
       background: var(--builder-library-card-surface);
       transition: all 0.18s ease;
-      min-height: 86px;
+      min-height: 102px;
     }
 
     .library-item:hover {
@@ -2612,11 +2625,11 @@
     }
 
     .library-item-icon {
-      width: 30px;
-      height: 30px;
-      border-radius: 8px;
-      background: var(--builder-lib-icon-layout-bg);
-      color: var(--builder-lib-icon-layout-fg);
+      width: 48px;
+      height: 48px;
+      border-radius: 0;
+      background: transparent;
+      color: var(--builder-library-item-name);
       font-size: 14px;
       font-weight: 700;
       display: flex;
@@ -2626,26 +2639,24 @@
       svg {
         display: block;
       }
+
+      /** 物料均为插画 SVG：无底、无分类色块，与基础组件一致，避免误看成旧版 lucide 线标底 */
+      .urp-builder-lib-illustration-icon {
+        filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.1));
+      }
     }
 
-    .library-item-icon--layout {
-      background: var(--builder-lib-icon-layout-bg);
-      color: var(--builder-lib-icon-layout-fg);
-    }
-
-    .library-item-icon--text {
-      background: var(--builder-lib-icon-text-bg);
-      color: var(--builder-lib-icon-text-fg);
-    }
-
-    .library-item-icon--display {
-      background: var(--builder-lib-icon-display-bg);
-      color: var(--builder-lib-icon-display-fg);
-    }
-
+    .library-item-icon--layout,
+    .library-item-icon--data,
+    .library-item-icon--text,
+    .library-item-icon--display,
+    .library-item-icon--navigation,
     .library-item-icon--action {
-      background: var(--builder-lib-icon-action-bg);
-      color: var(--builder-lib-icon-action-fg);
+      background: transparent;
+      border: none;
+      box-shadow: none;
+      border-radius: 0;
+      color: var(--builder-library-item-name);
     }
 
     .library-empty {
@@ -2696,7 +2707,7 @@
 
     .library-popup-item {
       display: grid;
-      grid-template-columns: 30px minmax(0, 1fr);
+      grid-template-columns: 50px minmax(0, 1fr);
       grid-template-areas: 'icon content';
       column-gap: 10px;
       align-items: center;
@@ -2723,6 +2734,10 @@
 
     .library-popup-item > .library-item-icon {
       grid-area: icon;
+
+      .urp-builder-lib-illustration-icon {
+        filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.1));
+      }
     }
 
     .library-popup-item__content {
