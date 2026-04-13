@@ -239,3 +239,23 @@
     padding: 12px;
   }
 }
+
+/* 与搭建态一致：Radio.Group 组级 labelAlign */
+[data-builder-radio-label-align='top'].t-radio,
+[data-builder-radio-label-align='top'].t-radio-button,
+[data-builder-radio-label-align='top'].ant-radio-wrapper,
+[data-builder-radio-label-align='top'].ant-radio-button-wrapper {
+  align-items: flex-start !important;
+}
+[data-builder-radio-label-align='bottom'].t-radio,
+[data-builder-radio-label-align='bottom'].t-radio-button,
+[data-builder-radio-label-align='bottom'].ant-radio-wrapper,
+[data-builder-radio-label-align='bottom'].ant-radio-button-wrapper {
+  align-items: flex-end !important;
+}
+[data-builder-radio-label-align='center'].t-radio,
+[data-builder-radio-label-align='center'].t-radio-button,
+[data-builder-radio-label-align='center'].ant-radio-wrapper,
+[data-builder-radio-label-align='center'].ant-radio-button-wrapper {
+  align-items: center !important;
+}

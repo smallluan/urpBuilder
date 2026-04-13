@@ -38,8 +38,7 @@ const RenderNode: React.FC<{
   data?: UiTreeNode;
   emptyText: string;
   onDropData?: UiDropDataHandler;
-  isDragOver?: boolean;
-}> = ({ data, emptyText, onDropData, isDragOver = false }) => {
+}> = ({ data, emptyText, onDropData }) => {
   if (data?.children?.length) {
     return (
       <>
@@ -51,7 +50,7 @@ const RenderNode: React.FC<{
   }
 
   return (
-    <div className={mergeDragOverClass('drop-area-empty', isDragOver)}>
+    <div className="drop-area-empty">
       <AddCircleIcon className="drop-area-empty-icon" />
       <span>{emptyText}</span>
     </div>
@@ -168,12 +167,26 @@ export default function DropArea({
     return resolveSimulatorStyle(style, { mapFixedToAbsolute: true });
   }, [style]);
 
+  const isRootLikeDropArea =
+    className.includes('drop-area-root') || className.includes('drop-area--route-outlet');
+
   const dropAreaClassName = useMemo(() => {
-    const isLayoutOpaque = className.includes('drop-area-root') || className.includes('drop-area--route-outlet');
-    const dragOverClass = isDragOver && isLayoutOpaque ? ' drop-area-active' : '';
+    /** 非根画布/路由出口：保留真实布局盒，避免 index.less 中 display:contents 导致无法命中拖拽，事件落到根画布 */
+    const nestedHostClass = !isRootLikeDropArea ? ' drop-area--nested-host' : '';
+    const dragOverVisualClass =
+      isDragOver && !dragDisabled
+        ? (isRootLikeDropArea ? ' drop-area-active' : ' drop-area--drag-over-target')
+        : '';
     const filledClass = compactWhenFilled && (data?.children?.length ?? 0) > 0 ? ' drop-area--filled' : '';
-    return `drop-area${dragOverClass}${filledClass}${className ? ` ${className}` : ''}`;
-  }, [className, compactWhenFilled, data?.children?.length, isDragOver]);
+    return `drop-area${nestedHostClass}${dragOverVisualClass}${filledClass}${className ? ` ${className}` : ''}`;
+  }, [
+    className,
+    compactWhenFilled,
+    data?.children?.length,
+    dragDisabled,
+    isDragOver,
+    isRootLikeDropArea,
+  ]);
 
   const handleClick = (event: React.MouseEvent<HTMLDivElement>) => {
     if (!selectable) {
@@ -211,7 +224,8 @@ export default function DropArea({
             if (React.isValidElement(child) && !isTreeNode) {
               const nodeList = renderNodeList(data, onDropData);
               const childProps = (child.props ?? {}) as { className?: string; style?: CSSProperties };
-              const nextClassName = mergeDragOverClass(childProps.className, isDragOver);
+              /** 根/路由出口无 nested-host 时，高亮画在子宿主上；其余由外壳 `.drop-area` 承担，避免双层虚线 */
+              const nextClassName = mergeDragOverClass(childProps.className, isDragOver && isRootLikeDropArea);
               const baseChildStyle =
                 childProps.style && typeof childProps.style === 'object' && !Array.isArray(childProps.style)
                   ? childProps.style
@@ -227,13 +241,13 @@ export default function DropArea({
                 cloneProps,
                 nodeList?.length
                   ? nodeList
-                  : <RenderNode data={data} emptyText={emptyText} onDropData={onDropData} isDragOver={isDragOver} />,
+                  : <RenderNode data={data} emptyText={emptyText} onDropData={onDropData} />,
               );
             }
             return child;
           })
         ) : (
-          <RenderNode data={data} emptyText={emptyText} onDropData={onDropData} isDragOver={isDragOver} />
+          <RenderNode data={data} emptyText={emptyText} onDropData={onDropData} />
         )}
       </div>
     </div>

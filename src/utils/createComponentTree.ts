@@ -221,6 +221,38 @@ const createDefaultMenuChildren = (): UiTreeNode[] => {
   ];
 };
 
+/** 单选项内默认一行文字（可再拖入其他组件） */
+const createRadioLabelTextNode = (text: string, radioType: 'Radio' | 'antd.Radio'): UiTreeNode => {
+  const textType = radioType === 'antd.Radio' ? 'antd.Typography.Text' : 'Typography.Text';
+  return {
+    key: uuidv4(),
+    label: '标签文本',
+    type: textType,
+    props: {
+      content: {
+        name: '文本内容',
+        value: text,
+        editType: 'input',
+      },
+      theme: {
+        name: '文本主题',
+        value: 'primary',
+        editType: 'select',
+        payload: {
+          options: ['primary', 'secondary', 'success', 'warning', 'error'],
+        },
+      },
+      strong: {
+        name: '加粗',
+        value: false,
+        editType: 'switch',
+      },
+    },
+    lifetimes: [],
+    children: [],
+  };
+};
+
 const createRadioChildNode = (n: number, radioType: 'Radio' | 'antd.Radio'): UiTreeNode => ({
   key: uuidv4(),
   label: `单选项 ${n}`,
@@ -231,11 +263,6 @@ const createRadioChildNode = (n: number, radioType: 'Radio' | 'antd.Radio'): UiT
       value: String(n),
       editType: 'input',
     },
-    content: {
-      name: '标签',
-      value: `选项 ${n}`,
-      editType: 'input',
-    },
     disabled: {
       name: '禁用',
       value: false,
@@ -243,7 +270,7 @@ const createRadioChildNode = (n: number, radioType: 'Radio' | 'antd.Radio'): UiT
     },
   },
   lifetimes: [],
-  children: [],
+  children: [createRadioLabelTextNode(`选项 ${n}`, radioType)],
 });
 
 const RADIO_GROUP_TYPES = new Set(['Radio.Group', 'antd.Radio.Group']);
@@ -277,15 +304,21 @@ export function assignSequentialRadioChildValue(parent: UiTreeNode, newNode: UiT
   const nextVal = max + 1;
   const prevProps = (newNode.props ?? {}) as Record<string, unknown>;
   const valueSchema = { ...((prevProps.value ?? {}) as Record<string, unknown>) };
-  const contentSchema = { ...((prevProps.content ?? {}) as Record<string, unknown>) };
-  return {
+  const withSeq: UiTreeNode = {
     ...newNode,
     label: `单选项 ${nextVal}`,
     props: {
       ...prevProps,
       value: { ...valueSchema, value: String(nextVal) },
-      content: { ...contentSchema, value: `选项 ${nextVal}` },
     },
+  };
+  const existingChildren = withSeq.children ?? [];
+  if (existingChildren.length > 0) {
+    return withSeq;
+  }
+  return {
+    ...withSeq,
+    children: [createRadioLabelTextNode(`选项 ${nextVal}`, childType as 'Radio' | 'antd.Radio')],
   };
 }
 

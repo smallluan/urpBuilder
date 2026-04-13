@@ -2278,6 +2278,27 @@ const tdesignComponentCatalog = [
         value: false,
         editType: 'switch',
       },
+      optionLayout: {
+        name: '选项排列',
+        value: 'horizontal',
+        editType: 'select',
+        payload: {
+          options: ['horizontal', 'vertical'],
+        },
+      },
+      labelAlign: {
+        name: '标签对齐',
+        value: 'center',
+        editType: 'select',
+        payload: {
+          options: ['top', 'center', 'bottom'],
+        },
+      },
+      optionGap: {
+        name: '选项间距',
+        value: 16,
+        editType: 'inputNumber',
+      },
     },
     lifetimes: ['onChange'],
   },
@@ -2288,11 +2309,6 @@ const tdesignComponentCatalog = [
       value: {
         name: '选项值',
         value: '1',
-        editType: 'input',
-      },
-      content: {
-        name: '标签',
-        value: '选项',
         editType: 'input',
       },
       disabled: {

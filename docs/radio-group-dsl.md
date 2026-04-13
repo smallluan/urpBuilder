@@ -10,7 +10,7 @@
 | 项目 | 说明 |
 |------|------|
 | TDesign `type` | `Radio.Group`（`componentCatalog.ts`） |
-| TDesign 子物料 | `Radio`（单选项）：仅允许拖入 `Radio.Group` 内；由父级收集渲染，子节点在画布上**不单独绘制**（注册表返回 `null`，与 `Steps.Item` 相同策略）。组件库中「单选」分组内同时提供单选组与单选项；**新拖入的单选组**在 DSL 中带 **两个默认子 `Radio`**（选项值 `1`、`2`），组件树中可见。继续拖入单选项时，**选项值在兄弟节点中按已有最大数值 +1** 自动分配。 |
+| TDesign 子物料 | `Radio`（单选项）：仅允许拖入 `Radio.Group` 内；由父级收集渲染，子节点在画布上**不单独绘制**（注册表返回 `null`，与 `Steps.Item` 相同策略）。每个 `Radio` 的**标签区**为可搭建容器（搭建态始终为 `DropArea`）；**新建单选组 / 新拖入单选项**时默认带 **一个 `Typography.Text` 子节点**（antd 镜像为 `antd.Typography.Text`）。单选项**不再**提供物料级「标签」字符串属性；历史 DSL 中若仍存 `content` 字段，解析时不再作为展示文案（仅 `value` 等仍参与逻辑）。组件库中「单选」分组内同时提供单选组与单选项；**新拖入的单选组**在 DSL 中带 **两个默认子 `Radio`**（选项值 `1`、`2`），组件树中可见。继续拖入单选项时，**选项值在兄弟节点中按已有最大数值 +1** 自动分配，并同样附带默认文本子节点。 |
 | antd `type` | `antd.Radio.Group` / `antd.Radio`（`antdCatalogMirror.ts` 镜像生成） |
 | 实现 | `mapTdesignRadioGroupToAntd`：`src/utils/antdTdesignPropBridge.ts`；子选项收集：`src/builder/utils/radioDsl.ts`（`collectDslRadioRows`） |
 | 搭建 TDesign | `basicComponents.tsx` → `Radio.Group`（外层 `DropArea` 须设 **`isTreeNode`**，与 `Steps` 相同，避免把子节点注入进宿主导致拆掉 `Radio.Group`、子 `Radio` 又因注册表为 `null` 而整组空白） |
@@ -22,12 +22,15 @@
 
 | 属性 | 说明 |
 |------|------|
-| `Radio` 子项 | `value`（选项值）、`content`（标签）、`disabled`；**推荐**用子树配置选项（物料表已不提供「选项 JSON」编辑项；历史 DSL 里若仍有 `options` 字段，无子项时仍会作为回退解析）。 |
+| `Radio` 子项 | `value`（选项值）、`disabled`；子节点为标签区内容。**推荐**用子树配置选项（物料表已不提供「选项 JSON」编辑项；历史 DSL 里若仍有 `options` 字段，无子项时仍会作为回退解析；`collectDslRadioRows` 内选项展示用 `label` 仅为内部占位，取 `String(value)`）。 |
+| `Radio.Group` `optionLayout` | `horizontal`（默认）或 `vertical`：控制组内各选项**横向或纵向**排列。TDesign 侧为组容器 `display:flex` + `flexDirection`（`radioGroupOptionLayoutStyle`）；antd 侧映射为 `Radio.Group` 的 `orientation`（`horizontal` / `vertical`），双库行为一致。 |
+| `Radio.Group` `optionGap` | 数字（px，默认 `16`）：**选项之间的间距**，横向、纵向排列均通过容器 `gap` 生效。TDesign 写在组 `style` 上；antd 写在 `Radio.Group` 的 `style` 上（与 `orientation` 搭配）。 |
+| `Radio.Group` `labelAlign` | `top` / `center`（默认）/ `bottom`：各选项的圆点（或按钮）与其**标签区域**的垂直对齐（组级统一）。搭建/预览在子 `Radio` / `Radio.Button` 根节点上设置 `data-builder-radio-label-align`，由 `builder/style.less` 与 `PreviewEngine/style.less` 内选择器对 `.t-radio` / `.ant-radio-wrapper` 等设置 `align-items`（`!important` 覆盖组件库默认），保证生效。 |
 | `controlled` / `value` / `defaultValue` | 受控与非受控，与 `Switch` 类似；非受控时初始值优先 `defaultValue`，否则 `value`，再否则第一项 `value`。属性面板：关闭受控时隐藏「选中值」(`value`)；开启受控时隐藏「默认值」(`defaultValue`)。搭建/预览会将面板里多为字符串的选中值与子 `Radio` 的 `value` 做类型对齐（如 `"1"` 与 `1`），避免受控不选中。 |
 | `theme` | `radio`：经典圆点；`button`：按钮式单选。 |
 | `variant` | 仅在 **`theme === 'button'`** 时参与语义：`outline`、`primary-filled`、`default-filled`。 |
 | `disabled` | 整组禁用（DSL 布尔经 `normalizeDslBoolean` 解析，兼容非严格 boolean 的旧数据）。 |
-| `allowUncheck` | **仅非受控时**生效（与 TDesign 一致）：再点当前已选项可取消选中。**TDesign**：原生 `allowUncheck`。**antd**：无原生 API，非受控时在子 `Radio` 上用本地状态 + 再点模拟清空；**受控**时画布/预览对整组 `pointer-events: none`，此项不带来「再点取消」，选中值只靠属性面板。 |
+| `allowUncheck` | **仅非受控时**生效（与 TDesign 一致）：再点当前已选项可取消选中。**TDesign**：原生 `allowUncheck`。**antd**：无原生 API，非受控时在子 `Radio` 上用本地状态 + 再点模拟清空；**受控**时**预览**对整组 `pointer-events: none`，此项不带来「再点取消」，选中值只靠属性面板。**搭建态**不设 `pointer-events: none`（受控值由 DSL 管理，且需保持 DropArea 拖拽可用）。 |
 
 生命周期：`onChange`（payload 含 `value`）。
 
@@ -61,15 +64,16 @@
 |------|------|
 | `allowUncheck` | antd 侧无原生能力，**非受控**时用本地状态近似；实现路径与 TDesign 内部不同，**语义**（仅非受控可取消）对齐。 |
 | `primary-filled` vs `default-filled` | TDesign 有两种「填充」按钮风格；antd `buttonStyle` 仅有 `outline` / `solid` **两档**，二者在 antd 侧**均映射为 `solid`**，**无法区分**两种填充语义。 |
-| `orientation` / `block` / `vertical`（antd `Radio.Group` 扩展） | 当前 DSL **未暴露**；需要时再加字段并单独说明。 |
+| 选项排列实现差异 | DSL 统一使用 `optionLayout`。TDesign 用组上 **flex 样式**；antd 用 **`orientation`**。观感随主题可能略有差异，语义均为横/纵排。 |
 
 ## 风险与注意点
 
-1. **样式对齐**：圆角、间距、选中色仍随各组件库主题 token 变化，DSL 只保证**档位**（圆点/按钮、outline/solid）一致，**不保证像素级一致**。
-2. **`allowUncheck`（antd）**：依赖**非受控** + 子项 `Radio` 上再点清空（本地状态），与 TDesign 内部实现不同。
-3. **值类型**：子项 `value` 若混用字符串与数字，搭建/预览会做对齐。
-4. **React 受控/非受控**：非受控时**不得**向 `Radio.Group` 传入 `value`（包括 `value={undefined}`），否则 `defaultValue` 会被忽略；预览中非受控时 `onChange` 不写入 dataHub 的 `value`（除非业务另有约定）。**受控**时预览/搭建对组容器使用 `pointer-events: none`，选中值仅靠属性面板。**`allowUncheck` 仅在非受控时**参与「再点当前项取消选中」；受控下开启该开关也不会在画布上通过点击清空 DSL。
-5. **镜像表**：`Radio.Group` 已加入 `ANTD_TD_MIRROR_PAIRS`；`antd` 物料由 TDesign 条目克隆，**不再**使用 `componentCatalogAntd.ts` 中已删除的独立 `antd.Radio.Group` 定义。
+1. **嵌套 DropArea 与拖拽**：画布中非根节点的 `DropArea` 在样式上曾使用 `display: contents` 以减少多余布局盒；这会导致**拖拽命中落到根画布**而非当前槽位。实现上对非 `drop-area-root` / 非路由出口的壳增加 `drop-area--nested-host`，不参与 `display: contents`，以恢复可放置区域与悬停高亮（见 `src/components/DropArea/index.tsx`、`index.less`）。
+2. **样式对齐**：圆角、间距、选中色仍随各组件库主题 token 变化，DSL 只保证**档位**（圆点/按钮、outline/solid）一致，**不保证像素级一致**。
+3. **`allowUncheck`（antd）**：依赖**非受控** + 子项 `Radio` 上再点清空（本地状态），与 TDesign 内部实现不同。
+4. **值类型**：子项 `value` 若混用字符串与数字，搭建/预览会做对齐。
+5. **React 受控/非受控**：非受控时**不得**向 `Radio.Group` 传入 `value`（包括 `value={undefined}`），否则 `defaultValue` 会被忽略；预览中非受控时 `onChange` 不写入 dataHub 的 `value`（除非业务另有约定）。**受控**时**预览**对组容器使用 `pointer-events: none`，选中值仅靠属性面板；**搭建态不设** `pointer-events: none`，因受控值由 DSL/属性面板管理，且 DropArea 拖拽必须接收指针事件。**`allowUncheck` 仅在非受控时**参与「再点当前项取消选中」；受控下开启该开关也不会在画布上通过点击清空 DSL。
+6. **镜像表**：`Radio.Group` 已加入 `ANTD_TD_MIRROR_PAIRS`；`antd` 物料由 TDesign 条目克隆，**不再**使用 `componentCatalogAntd.ts` 中已删除的独立 `antd.Radio.Group` 定义。
 
 ## 相关文档
 

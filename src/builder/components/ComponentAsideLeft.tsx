@@ -437,6 +437,12 @@ const getTreeNodeDropTarget = (node: UiTreeNode, root: UiTreeNode): TreeNodeDrop
     };
   }
 
+  if (node.type === 'Radio' || node.type === 'antd.Radio') {
+    return {
+      parentKey: node.key,
+    };
+  }
+
   return null;
 };
 
@@ -842,10 +848,15 @@ const ComponentAsideLeft: React.FC = () => {
 
       const radioParentTypesAside = new Set(['Radio.Group', 'antd.Radio.Group']);
       const radioChildTypesAside = new Set(['Radio', 'antd.Radio']);
+      const radioItemTypesAside = new Set(['Radio', 'antd.Radio']);
       if (radioParentTypesAside.has(currentNodeType) && !radioChildTypesAside.has(droppedType)) {
         return;
       }
-      if (radioChildTypesAside.has(droppedType) && !radioParentTypesAside.has(currentNodeType)) {
+      if (radioItemTypesAside.has(currentNodeType)) {
+        if (radioChildTypesAside.has(droppedType) || radioParentTypesAside.has(droppedType)) {
+          return;
+        }
+      } else if (radioChildTypesAside.has(droppedType) && !radioParentTypesAside.has(currentNodeType)) {
         return;
       }
 

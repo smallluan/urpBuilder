@@ -21,20 +21,25 @@
 /* 与预览对齐：根画布、路由出口外，DropArea 不生成布局盒（避免多一层 width:100% 的“外壳”挤压栅格等）。
    须写在 .drop-area__body 默认规则之后，否则 display:block 会覆盖 display:contents。 */
 @supports (display: contents) {
-  .drop-area:not(.drop-area-root):not(.drop-area--route-outlet) {
+  /* 嵌套宿主需保留盒模型，否则拖拽命中会穿透到根画布（见 DropArea/index.tsx nested-host） */
+  .drop-area:not(.drop-area-root):not(.drop-area--route-outlet):not(.drop-area--nested-host) {
     display: contents;
     width: auto;
   }
 
-  .drop-area:not(.drop-area-root):not(.drop-area--route-outlet) > .drop-area__body {
+  .drop-area:not(.drop-area-root):not(.drop-area--route-outlet):not(.drop-area--nested-host) > .drop-area__body {
     display: contents;
     width: auto;
   }
 }
 
-.drop-area--drag-over-target {
-  outline: 2px solid rgba(0, 82, 217, 0.55);
-  outline-offset: 1px;
+/* 拖拽悬停：与画布选中框 `.simulator-selection-overlay` 一致（虚线 + 浅底），勿用粗实线 outline */
+.drop-area.drop-area-active,
+.drop-area.drop-area--drag-over-target {
+  outline: 1px dashed rgba(0, 82, 217, 0.88);
+  outline-offset: 0;
+  background-color: var(--td-brand-color-1, #f2f3ff);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.35) inset;
   border-radius: 4px;
 }
 
@@ -79,11 +84,6 @@
  */
 .drop-area-root > .drop-area__body [data-builder-display="inline"] > * {
   align-self: flex-start;
-}
-
-.drop-area-active {
-  border-color: var(--td-brand-color, #0052d9);
-  background-color: var(--td-brand-color-1, #f2f3ff);
 }
 
 .drop-area-empty {

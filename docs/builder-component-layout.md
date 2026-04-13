@@ -57,6 +57,7 @@
 - `src/builder/renderer/CommonComponent.tsx`
 - `src/builder/renderer/componentHelpers.tsx`（`ActivateWrapper`）
 - `src/components/DropArea/index.less`
+- `src/components/DropArea/index.tsx`（非根 `DropArea` 使用 `drop-area--nested-host`，避免 `display: contents` 导致拖拽命中落到根画布；详见 [radio-group-dsl.md](./radio-group-dsl.md) 风险与注意点）
 
 ---
 

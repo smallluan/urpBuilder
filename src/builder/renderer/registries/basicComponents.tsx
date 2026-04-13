@@ -1,14 +1,18 @@
-import React from 'react';
 import { Button, Link, BackTop, Progress, Radio } from 'tdesign-react';
 import type { ComponentRegistry, ComponentRenderContext } from '../componentContext';
 import { ActivateWrapper } from '../componentHelpers';
 import { renderNamedIcon } from '../../../constants/iconRegistry';
 import DropArea from '../../../components/DropArea';
+import type { DslRadioRow } from '../../utils/radioDsl';
 import {
   collectDslRadioRows,
   coerceRadioGroupStoredValue,
   normalizeDslBoolean,
   optionsFromRadioRows,
+  parseRadioGroupOptionGap,
+  parseRadioGroupOptionLayout,
+  parseRadioLabelAlign,
+  radioGroupOptionLayoutStyle,
   radioGroupValuePropsForReact,
 } from '../../utils/radioDsl';
 
@@ -29,6 +33,7 @@ function BuilderTdesignRadioGroup(props: { ctx: ComponentRenderContext }) {
     getStringProp,
     getBooleanProp,
     getProp,
+    getFiniteNumberProp,
     mergeStyle,
     handleActivateSelf,
     data,
@@ -60,8 +65,27 @@ function BuilderTdesignRadioGroup(props: { ctx: ComponentRenderContext }) {
   const Btn = Radio.Button;
   /** TDesign：可取消选中仅对非受控生效（与组件库一致） */
   const allowUncheck = !controlled && normalizeDslBoolean(getProp('allowUncheck'));
-  const blockPointerForControlled = controlled;
   const groupDisabled = normalizeDslBoolean(getProp('disabled'));
+  const optionLayout = parseRadioGroupOptionLayout(getProp('optionLayout'));
+  const optionGapPx = parseRadioGroupOptionGap(getFiniteNumberProp('optionGap') ?? getProp('optionGap'));
+  const groupLayoutStyle = radioGroupOptionLayoutStyle(optionLayout, optionGapPx);
+  const groupLabelAlign = parseRadioLabelAlign(getProp('labelAlign'));
+
+  const renderRadioLabel = (row: DslRadioRow) => (
+    <DropArea
+      data={row.node}
+      onDropData={onDropData}
+      emptyText="拖入组件"
+      compactWhenFilled
+    >
+      <div style={{ display: 'inline-block', minWidth: 8 }} />
+    </DropArea>
+  );
+
+  const radioAlignAttr = {
+    'data-builder-radio-label-align': groupLabelAlign,
+  } as const;
+
   return (
     <DropArea
       data={data}
@@ -78,17 +102,17 @@ function BuilderTdesignRadioGroup(props: { ctx: ComponentRenderContext }) {
           variant={(getStringProp('variant') as 'outline' | 'primary-filled' | 'default-filled') ?? 'outline'}
           disabled={groupDisabled}
           allowUncheck={allowUncheck}
-          style={mergeStyle(blockPointerForControlled ? { pointerEvents: 'none' } : undefined)}
+          style={mergeStyle(groupLayoutStyle)}
         >
           {useChildRadios
             ? rows.map((r) =>
                 isButton ? (
-                  <Btn key={r.key} value={r.value} disabled={r.disabled}>
-                    {r.label}
+                  <Btn key={r.key} value={r.value} disabled={r.disabled} {...radioAlignAttr}>
+                    {renderRadioLabel(r)}
                   </Btn>
                 ) : (
-                  <Radio key={r.key} value={r.value} disabled={r.disabled}>
-                    {r.label}
+                  <Radio key={r.key} value={r.value} disabled={r.disabled} {...radioAlignAttr}>
+                    {renderRadioLabel(r)}
                   </Radio>
                 ),
               )

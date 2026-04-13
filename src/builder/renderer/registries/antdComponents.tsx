@@ -92,11 +92,15 @@ import {
   tdesignSemanticTokenToAntdTagColor,
   mapTdesignRadioGroupToAntd,
 } from '../../../utils/antdTdesignPropBridge';
+import type { DslRadioRow } from '../../utils/radioDsl';
 import {
   collectDslRadioRows,
   coerceRadioGroupStoredValue,
   normalizeDslBoolean,
   optionsFromRadioRows,
+  parseRadioGroupOptionGap,
+  parseRadioGroupOptionLayout,
+  parseRadioLabelAlign,
   radioGroupValuePropsForReact,
   valuesEqualForRadio,
 } from '../../utils/radioDsl';
@@ -151,6 +155,7 @@ function BuilderAntdRadioGroup(props: { ctx: ComponentRenderContext }) {
     getStringProp,
     getBooleanProp,
     getProp,
+    getFiniteNumberProp,
     mergeStyle,
     handleActivateSelf,
     data,
@@ -187,7 +192,6 @@ function BuilderAntdRadioGroup(props: { ctx: ComponentRenderContext }) {
   const isBtn = mapped.optionType === 'button';
   /** 与 TDesign 一致：仅非受控时可取消选中；antd 用本地受控状态模拟 */
   const allowUncheckEffective = !controlled && normalizeDslBoolean(getProp('allowUncheck'));
-  const blockPointerForControlled = controlled;
 
   const [uncontrolledValue, setUncontrolledValue] = React.useState<string | number | boolean | undefined>(() => {
     if (controlled || !allowUncheckEffective || !useChildRadios) {
@@ -221,6 +225,26 @@ function BuilderAntdRadioGroup(props: { ctx: ComponentRenderContext }) {
     disabled: mapped.disabled,
   };
 
+  const optionLayout = parseRadioGroupOptionLayout(getProp('optionLayout'));
+  const orientation = optionLayout === 'vertical' ? 'vertical' : 'horizontal';
+  const optionGapPx = parseRadioGroupOptionGap(getFiniteNumberProp('optionGap') ?? getProp('optionGap'));
+  const groupGapStyle: React.CSSProperties = { gap: optionGapPx };
+  const groupLabelAlign = parseRadioLabelAlign(getProp('labelAlign'));
+  const radioAlignAttr = {
+    'data-builder-radio-label-align': groupLabelAlign,
+  } as const;
+
+  const renderRadioLabel = (row: DslRadioRow) => (
+    <DropArea
+      data={row.node}
+      onDropData={onDropData}
+      emptyText="拖入组件"
+      compactWhenFilled
+    >
+      <div style={{ display: 'inline-block', minWidth: 8 }} />
+    </DropArea>
+  );
+
   const renderChildRadios = (onUncheck?: (v: string | number | boolean) => (e: React.MouseEvent) => void) =>
     useChildRadios
       ? rows.map((r) =>
@@ -229,18 +253,20 @@ function BuilderAntdRadioGroup(props: { ctx: ComponentRenderContext }) {
               key={r.key}
               value={r.value}
               disabled={r.disabled}
+              {...radioAlignAttr}
               {...(onUncheck ? { onClick: onUncheck(r.value) } : {})}
             >
-              {r.label}
+              {renderRadioLabel(r)}
             </Radio.Button>
           ) : (
             <Radio
               key={r.key}
               value={r.value}
               disabled={r.disabled}
+              {...radioAlignAttr}
               {...(onUncheck ? { onClick: onUncheck(r.value) } : {})}
             >
-              {r.label}
+              {renderRadioLabel(r)}
             </Radio>
           ),
         )
@@ -252,7 +278,8 @@ function BuilderAntdRadioGroup(props: { ctx: ComponentRenderContext }) {
       <Radio.Group
         {...groupShell}
         {...valueProps}
-        style={mergeStyle(blockPointerForControlled ? { pointerEvents: 'none' } : undefined)}
+        orientation={orientation}
+        style={mergeStyle(groupGapStyle)}
       >
         {renderChildRadios()}
       </Radio.Group>
@@ -261,16 +288,22 @@ function BuilderAntdRadioGroup(props: { ctx: ComponentRenderContext }) {
     radioNode = (
       <Radio.Group
         {...groupShell}
+        orientation={orientation}
         value={uncontrolledValue}
         onChange={(e) => setUncontrolledValue(e.target.value)}
-        style={mergeStyle()}
+        style={mergeStyle(groupGapStyle)}
       >
         {renderChildRadios(handleAntdUncheckClick)}
       </Radio.Group>
     );
   } else {
     radioNode = (
-      <Radio.Group {...groupShell} {...valueProps} style={mergeStyle()}>
+      <Radio.Group
+        {...groupShell}
+        {...valueProps}
+        orientation={orientation}
+        style={mergeStyle(groupGapStyle)}
+      >
         {renderChildRadios()}
       </Radio.Group>
     );

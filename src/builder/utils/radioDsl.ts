@@ -1,10 +1,18 @@
+import type { CSSProperties } from 'react';
 import type { UiTreeNode } from '../store/types';
+
+export type RadioLabelAlign = 'top' | 'center' | 'bottom';
+
+export type RadioGroupOptionLayout = 'horizontal' | 'vertical';
 
 export type DslRadioRow = {
   key: string;
   value: string | number | boolean;
+  /** 无子树时供 `options` 回退等使用的占位文案（通常为 `String(value)`） */
   label: string;
   disabled: boolean;
+  /** 对应 DSL 子节点，用于搭建态标签区 DropArea / 预览子树 */
+  node: UiTreeNode;
 };
 
 const RADIO_NODE_TYPES = new Set(['Radio', 'antd.Radio']);
@@ -28,6 +36,50 @@ export function valuesEqualForRadio(a: unknown, b: unknown): boolean {
   return String(a) === String(b);
 }
 
+/** 单选项：标签与选项圈垂直对齐 */
+export function parseRadioLabelAlign(raw: unknown): RadioLabelAlign {
+  const s = String(raw ?? 'center').trim().toLowerCase();
+  if (s === 'top' || s === 'bottom') {
+    return s;
+  }
+  return 'center';
+}
+
+/** 单选组：子选项排列方向（物料 prop `optionLayout`） */
+export function parseRadioGroupOptionLayout(raw: unknown): RadioGroupOptionLayout {
+  const s = String(raw ?? 'horizontal').trim().toLowerCase();
+  return s === 'vertical' ? 'vertical' : 'horizontal';
+}
+
+/** 单选组：子选项间距（px，物料 `optionGap`，横纵均生效） */
+export function parseRadioGroupOptionGap(raw: unknown): number {
+  if (typeof raw === 'number' && Number.isFinite(raw) && raw >= 0) {
+    return raw;
+  }
+  if (typeof raw === 'string' && raw.trim()) {
+    const n = Number(raw.trim());
+    if (Number.isFinite(n) && n >= 0) {
+      return n;
+    }
+  }
+  return 16;
+}
+
+/** TDesign / antd 单选组容器：横向或纵向排列子项 */
+export function radioGroupOptionLayoutStyle(
+  layout: RadioGroupOptionLayout,
+  gapPx?: number,
+): CSSProperties {
+  const gap = gapPx ?? 16;
+  return {
+    display: 'flex',
+    flexDirection: layout === 'vertical' ? 'column' : 'row',
+    flexWrap: 'wrap',
+    alignItems: layout === 'vertical' ? 'flex-start' : 'center',
+    gap,
+  };
+}
+
 /** 从 DSL 子节点收集单选项（与搭建/预览中 Radio.Group 子树一致） */
 export function collectDslRadioRows(children: UiTreeNode[] | undefined): DslRadioRow[] {
   return (children ?? [])
@@ -41,10 +93,9 @@ export function collectDslRadioRows(children: UiTreeNode[] | undefined): DslRadi
           : typeof valueRaw === 'string' && valueRaw.trim()
             ? valueRaw.trim()
             : child.key;
-      const content = get('content');
-      const label = typeof content === 'string' ? content : String(value);
       const disabled = normalizeDslBoolean(get('disabled'));
-      return { key: child.key, value, label, disabled };
+      const label = String(value);
+      return { key: child.key, value, label, disabled, node: child };
     });
 }
 

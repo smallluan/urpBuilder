@@ -1,11 +1,16 @@
 import React from 'react';
 import { Radio } from 'tdesign-react';
 import type { UiTreeNode } from '../../../builder/store/types';
+import type { DslRadioRow } from '../../../builder/utils/radioDsl';
 import {
   collectDslRadioRows,
   coerceRadioGroupStoredValue,
   normalizeDslBoolean,
   optionsFromRadioRows,
+  parseRadioGroupOptionGap,
+  parseRadioGroupOptionLayout,
+  parseRadioLabelAlign,
+  radioGroupOptionLayoutStyle,
   radioGroupValuePropsForReact,
 } from '../../../builder/utils/radioDsl';
 
@@ -43,8 +48,9 @@ export function PreviewTdesignRadioGroup(props: {
   node: UiTreeNode;
   mergeStyle: MergeStyle;
   emitInteractionLifecycle: (lifetime: string, payload?: unknown) => void;
+  renderRadioItemChildren?: (radioNode: UiTreeNode) => React.ReactNode;
 }): React.ReactElement {
-  const { node, mergeStyle, emitInteractionLifecycle } = props;
+  const { node, mergeStyle, emitInteractionLifecycle, renderRadioItemChildren } = props;
   const rows = collectDslRadioRows(node.children);
   const useChildRadios = rows.length > 0;
   const optsJson = parseJsonRecordArray(getStringProp(node, 'options')).map((o) => ({
@@ -72,6 +78,21 @@ export function PreviewTdesignRadioGroup(props: {
 
   const isButton = getStringProp(node, 'theme') === 'button';
   const Btn = Radio.Button;
+  const optionLayout = parseRadioGroupOptionLayout(getProp(node, 'optionLayout'));
+  const optionGapPx = parseRadioGroupOptionGap(getProp(node, 'optionGap'));
+  const groupLayoutStyle = radioGroupOptionLayoutStyle(optionLayout, optionGapPx);
+  const groupLabelAlign = parseRadioLabelAlign(getProp(node, 'labelAlign'));
+  const radioAlignAttr = {
+    'data-builder-radio-label-align': groupLabelAlign,
+  } as const;
+
+  const renderRadioLabel = (r: DslRadioRow) => {
+    const hasKids = (r.node.children?.length ?? 0) > 0;
+    if (!hasKids) {
+      return null;
+    }
+    return renderRadioItemChildren ? renderRadioItemChildren(r.node) : null;
+  };
 
   return (
     <Radio.Group
@@ -86,6 +107,7 @@ export function PreviewTdesignRadioGroup(props: {
       style={{
         ...(mergeStyle() ?? {}),
         ...(blockPointerForControlled ? { pointerEvents: 'none' as const } : {}),
+        ...groupLayoutStyle,
       }}
       onChange={(v) => {
         emitInteractionLifecycle('onChange', { value: v });
@@ -94,12 +116,12 @@ export function PreviewTdesignRadioGroup(props: {
       {useChildRadios
         ? rows.map((r) =>
             isButton ? (
-              <Btn key={r.key} value={r.value} disabled={r.disabled}>
-                {r.label}
+              <Btn key={r.key} value={r.value} disabled={r.disabled} {...radioAlignAttr}>
+                {renderRadioLabel(r)}
               </Btn>
             ) : (
-              <Radio key={r.key} value={r.value} disabled={r.disabled}>
-                {r.label}
+              <Radio key={r.key} value={r.value} disabled={r.disabled} {...radioAlignAttr}>
+                {renderRadioLabel(r)}
               </Radio>
             ),
           )

@@ -72,11 +72,15 @@ import {
   mapTdesignRadioGroupToAntd,
 } from '../../../utils/antdTdesignPropBridge';
 import { collectDslStepRows, dslStepStatusToAntd } from '../../../builder/utils/stepsDsl';
+import type { DslRadioRow } from '../../../builder/utils/radioDsl';
 import {
   collectDslRadioRows,
   coerceRadioGroupStoredValue,
   normalizeDslBoolean,
   optionsFromRadioRows,
+  parseRadioGroupOptionGap,
+  parseRadioGroupOptionLayout,
+  parseRadioLabelAlign,
   radioGroupValuePropsForReact,
   valuesEqualForRadio,
 } from '../../../builder/utils/radioDsl';
@@ -308,8 +312,9 @@ function PreviewAntdRadioGroupView(props: {
   node: UiTreeNode;
   mergeStyle: AntdPreviewContext['mergeStyle'];
   emitInteractionLifecycle: AntdPreviewContext['emitInteractionLifecycle'];
+  renderRadioItemChildren?: (radioNode: UiTreeNode) => React.ReactNode;
 }): React.ReactElement {
-  const { node, mergeStyle, emitInteractionLifecycle } = props;
+  const { node, mergeStyle, emitInteractionLifecycle, renderRadioItemChildren } = props;
   const controlled = getBooleanProp(node, 'controlled') !== false;
   const mapped = mapTdesignRadioGroupToAntd({
     theme: getStringProp(node, 'theme'),
@@ -376,6 +381,23 @@ function PreviewAntdRadioGroupView(props: {
 
   const emitChange = (v: unknown) => emitInteractionLifecycle('onChange', { value: v });
 
+  const optionLayout = parseRadioGroupOptionLayout(getProp(node, 'optionLayout'));
+  const orientation = optionLayout === 'vertical' ? 'vertical' : 'horizontal';
+  const optionGapPx = parseRadioGroupOptionGap(getProp(node, 'optionGap'));
+  const groupGapStyle: React.CSSProperties = { gap: optionGapPx };
+  const groupLabelAlign = parseRadioLabelAlign(getProp(node, 'labelAlign'));
+  const radioAlignAttr = {
+    'data-builder-radio-label-align': groupLabelAlign,
+  } as const;
+
+  const renderRadioLabel = (r: DslRadioRow) => {
+    const hasKids = (r.node.children?.length ?? 0) > 0;
+    if (!hasKids) {
+      return null;
+    }
+    return renderRadioItemChildren ? renderRadioItemChildren(r.node) : null;
+  };
+
   const renderChildRadios = (onUncheck?: (v: string | number | boolean) => (e: React.MouseEvent) => void) =>
     useChildRadios
       ? rows.map((r) =>
@@ -384,18 +406,20 @@ function PreviewAntdRadioGroupView(props: {
               key={r.key}
               value={r.value}
               disabled={r.disabled}
+              {...radioAlignAttr}
               {...(onUncheck ? { onClick: onUncheck(r.value) } : {})}
             >
-              {r.label}
+              {renderRadioLabel(r)}
             </Radio.Button>
           ) : (
             <Radio
               key={r.key}
               value={r.value}
               disabled={r.disabled}
+              {...radioAlignAttr}
               {...(onUncheck ? { onClick: onUncheck(r.value) } : {})}
             >
-              {r.label}
+              {renderRadioLabel(r)}
             </Radio>
           ),
         )
@@ -406,8 +430,10 @@ function PreviewAntdRadioGroupView(props: {
       <Radio.Group
         {...groupShell}
         {...valueProps}
+        orientation={orientation}
         style={{
           ...(mergeStyle() ?? {}),
+          ...groupGapStyle,
           ...(blockPointerForControlled ? { pointerEvents: 'none' as const } : {}),
         }}
         onChange={(e) => emitChange(e.target.value)}
@@ -421,13 +447,14 @@ function PreviewAntdRadioGroupView(props: {
     return (
       <Radio.Group
         {...groupShell}
+        orientation={orientation}
         value={uncontrolledValue}
         onChange={(e) => {
           const v = e.target.value;
           setUncontrolledValue(v);
           emitChange(v);
         }}
-        style={mergeStyle()}
+        style={{ ...(mergeStyle() ?? {}), ...groupGapStyle }}
       >
         {renderChildRadios(handleAntdUncheckClick)}
       </Radio.Group>
@@ -438,7 +465,8 @@ function PreviewAntdRadioGroupView(props: {
     <Radio.Group
       {...groupShell}
       {...valueProps}
-      style={mergeStyle()}
+      orientation={orientation}
+      style={{ ...(mergeStyle() ?? {}), ...groupGapStyle }}
       onChange={(e) => emitChange(e.target.value)}
     >
       {renderChildRadios()}
@@ -843,6 +871,7 @@ export function tryRenderAntdPreview(ctx: AntdPreviewContext): React.ReactElemen
           node={node}
           mergeStyle={mergeStyle}
           emitInteractionLifecycle={emitInteractionLifecycle}
+          renderRadioItemChildren={(radioNode) => renderChildren(radioNode, onLifecycle)}
         />
       );
     }

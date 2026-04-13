@@ -3130,6 +3130,7 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) 
           node={node}
           mergeStyle={mergeStyle}
           emitInteractionLifecycle={emitInteractionLifecycle}
+          renderRadioItemChildren={(radioNode) => renderChildren(radioNode, onLifecycle)}
         />
       );
     case 'Calendar':
