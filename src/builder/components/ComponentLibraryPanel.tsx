@@ -29,6 +29,7 @@ import {
   BarChart3,
   Pin,
   CircleDot,
+  CheckSquare,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import componentCatalog from '../../config/componentCatalog';
@@ -129,6 +130,8 @@ const getCategoryByType = (type: string): ComponentLibraryCategory => {
       || type === 'antd.Checkbox'
       || type === 'antd.Radio.Group'
       || type === 'antd.Radio'
+      || type === 'antd.Checkbox.Group'
+      || type === 'antd.Checkbox'
       || type === 'antd.Switch'
       || type === 'antd.DatePicker'
       || type === 'antd.InputNumber'
@@ -147,6 +150,8 @@ const getCategoryByType = (type: string): ComponentLibraryCategory => {
     type === 'Switch'
     ||     type === 'Radio.Group'
     || type === 'Radio'
+    || type === 'Checkbox.Group'
+    || type === 'Checkbox'
     || type === 'Input'
     || type === 'Textarea'
     || type === 'InputNumber'
@@ -308,6 +313,10 @@ const getIconByType = (type: string) => {
     'antd.Divider': Minus,
     'antd.Radio': CircleDot,
     'antd.Radio.Group': CircleDot,
+    'Checkbox.Group': CheckSquare,
+    Checkbox: CheckSquare,
+    'antd.Checkbox.Group': CheckSquare,
+    'antd.Checkbox': CheckSquare,
   };
 
   return iconMap[type] ?? getCategoryIcon(getCategoryByType(type));

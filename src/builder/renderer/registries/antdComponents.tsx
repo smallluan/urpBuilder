@@ -91,6 +91,7 @@ import {
   tdesignLinkThemeToAntdTypographyType,
   tdesignSemanticTokenToAntdTagColor,
   mapTdesignRadioGroupToAntd,
+  mapTdesignCheckboxGroupToAntd,
 } from '../../../utils/antdTdesignPropBridge';
 import type { DslRadioRow } from '../../utils/radioDsl';
 import {
@@ -104,6 +105,17 @@ import {
   radioGroupValuePropsForReact,
   valuesEqualForRadio,
 } from '../../utils/radioDsl';
+import type { DslCheckboxRow } from '../../utils/checkboxDsl';
+import {
+  clampCheckboxGroupSelection,
+  collectDslCheckboxRows,
+  coerceCheckboxGroupStoredValue,
+  optionsFromCheckboxRows,
+  parseCheckboxGroupMax,
+  parseCheckboxGroupOptionGap,
+  parseCheckboxGroupOptionLayout,
+  parseCheckboxLabelAlign,
+} from '../../utils/checkboxDsl';
 
 const { Title, Paragraph, Text, Link } = Typography;
 const { Header, Content, Footer, Sider } = Layout;
@@ -319,6 +331,117 @@ function BuilderAntdRadioGroup(props: { ctx: ComponentRenderContext }) {
     >
       <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf} nodeKey={data?.key} active={isNodeActive}>
         {radioNode}
+      </ActivateWrapper>
+    </DropArea>
+  );
+}
+
+function BuilderAntdCheckboxGroup(props: { ctx: ComponentRenderContext }) {
+  const {
+    getStringProp,
+    getBooleanProp,
+    getProp,
+    getFiniteNumberProp,
+    mergeStyle,
+    handleActivateSelf,
+    data,
+    isNodeActive,
+    onDropData,
+  } = props.ctx;
+  const mapped = mapTdesignCheckboxGroupToAntd({
+    disabled: getProp('disabled'),
+  });
+  const rows = collectDslCheckboxRows(data?.children);
+  const useChildCheckboxes = rows.length > 0;
+  const optsJson = parseJsonRecordArray(getStringProp('options')).map((o) => ({
+    value: o.value as string | number,
+    label: String(o.label ?? o.value ?? ''),
+    disabled: o.disabled === true,
+  }));
+  const opts = useChildCheckboxes ? optionsFromCheckboxRows(rows) : optsJson;
+  const controlled = getBooleanProp('controlled') !== false;
+  const valueRaw = getProp('value');
+  const defaultRaw = getProp('defaultValue');
+  const valueResolved = coerceCheckboxGroupStoredValue(valueRaw, opts);
+  const defaultVal = coerceCheckboxGroupStoredValue(defaultRaw, opts);
+  const maxEff = parseCheckboxGroupMax(getProp('max'), opts.length);
+
+  const [ucVal, setUcVal] = React.useState<Array<string | number | boolean>>(() =>
+    clampCheckboxGroupSelection(defaultVal ?? [], maxEff),
+  );
+  React.useEffect(() => {
+    if (!controlled) {
+      const d = coerceCheckboxGroupStoredValue(defaultRaw, opts);
+      setUcVal(clampCheckboxGroupSelection(d ?? [], maxEff));
+    }
+  }, [controlled, defaultRaw, maxEff, data?.key]);
+
+  const displayValue = controlled
+    ? clampCheckboxGroupSelection(valueResolved ?? [], maxEff)
+    : ucVal;
+
+  const optionLayout = parseCheckboxGroupOptionLayout(getProp('optionLayout'));
+  const optionGapPx = parseCheckboxGroupOptionGap(getFiniteNumberProp('optionGap') ?? getProp('optionGap'));
+  const groupGapStyle: React.CSSProperties = {
+    display: 'flex',
+    flexDirection: optionLayout === 'vertical' ? 'column' : 'row',
+    flexWrap: 'wrap',
+    alignItems: optionLayout === 'vertical' ? 'flex-start' : 'center',
+    gap: optionGapPx,
+  };
+  const groupLabelAlign = parseCheckboxLabelAlign(getProp('labelAlign'));
+  const checkboxAlignAttr = {
+    'data-builder-checkbox-label-align': groupLabelAlign,
+  } as const;
+
+  const handleCheckboxGroupChange = (v: unknown) => {
+    const arr = Array.isArray(v)
+      ? (v as Array<string | number | boolean>).filter(
+          (x): x is string | number | boolean =>
+            typeof x === 'string' || typeof x === 'number' || typeof x === 'boolean',
+        )
+      : [];
+    const next = clampCheckboxGroupSelection(arr, maxEff);
+    if (!controlled) {
+      setUcVal(next);
+    }
+  };
+
+  const renderCheckboxLabel = (row: DslCheckboxRow) => (
+    <DropArea
+      data={row.node}
+      onDropData={onDropData}
+      emptyText="拖入组件"
+      compactWhenFilled
+    >
+      <div style={{ display: 'inline-block', minWidth: 8 }} />
+    </DropArea>
+  );
+
+  return (
+    <DropArea
+      data={data}
+      onDropData={onDropData}
+      emptyText="拖入多选项（antd.Checkbox）"
+      compactWhenFilled
+      isTreeNode
+    >
+      <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf} nodeKey={data?.key} active={isNodeActive}>
+        <Checkbox.Group
+          {...(useChildCheckboxes ? {} : { options: opts })}
+          value={displayValue}
+          disabled={mapped.disabled}
+          style={mergeStyle(groupGapStyle)}
+          onChange={handleCheckboxGroupChange}
+        >
+          {useChildCheckboxes
+            ? rows.map((r) => (
+                <Checkbox key={r.key} value={r.value} disabled={r.disabled} {...checkboxAlignAttr}>
+                  {renderCheckboxLabel(r)}
+                </Checkbox>
+              ))
+            : null}
+        </Checkbox.Group>
       </ActivateWrapper>
     </DropArea>
   );
@@ -943,6 +1066,10 @@ export function registerAntdComponents(registry: ComponentRegistry): void {
   registry.set('antd.Radio.Group', (ctx) => <BuilderAntdRadioGroup ctx={ctx} />);
 
   registry.set('antd.Radio', () => null);
+
+  registry.set('antd.Checkbox.Group', (ctx) => <BuilderAntdCheckboxGroup ctx={ctx} />);
+
+  registry.set('antd.Checkbox', () => null);
 
   registry.set('antd.Switch', (ctx) => {
     const { getStringProp, getBooleanProp, mergeStyle, handleActivateSelf, data, isNodeActive } = ctx;

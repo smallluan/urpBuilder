@@ -62,7 +62,7 @@ export function parseRadioGroupOptionGap(raw: unknown): number {
       return n;
     }
   }
-  return 16;
+  return 8;
 }
 
 /** TDesign / antd 单选组容器：横向或纵向排列子项 */
@@ -70,7 +70,7 @@ export function radioGroupOptionLayoutStyle(
   layout: RadioGroupOptionLayout,
   gapPx?: number,
 ): CSSProperties {
-  const gap = gapPx ?? 16;
+  const gap = gapPx ?? 8;
   return {
     display: 'flex',
     flexDirection: layout === 'vertical' ? 'column' : 'row',
@@ -215,4 +215,39 @@ export function coerceRadioGroupStoredValue(
   }
 
   return undefined;
+}
+
+function parseJsonRecordArray(raw: string | undefined): Array<Record<string, unknown>> {
+  if (!raw?.trim()) {
+    return [];
+  }
+  try {
+    const v = JSON.parse(raw) as unknown;
+    return Array.isArray(v) ? (v.filter((x) => x && typeof x === 'object') as Array<Record<string, unknown>>) : [];
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * 属性面板：单选组可选值（子 Radio 优先，否则 `options` JSON，与搭建/预览一致）。
+ */
+export function getRadioGroupOptionDescriptors(
+  node: UiTreeNode,
+): Array<{ value: string | number | boolean; label: string; disabled?: boolean }> {
+  const rows = collectDslRadioRows(node.children);
+  if (rows.length > 0) {
+    return rows.map((r) => ({
+      value: r.value,
+      label: String(r.value),
+      ...(r.disabled ? { disabled: true as const } : {}),
+    }));
+  }
+  const raw = (node.props?.options as { value?: unknown } | undefined)?.value;
+  const s = typeof raw === 'string' ? raw : '';
+  return parseJsonRecordArray(s).map((o) => ({
+    value: o.value as string | number | boolean,
+    label: String(o.label ?? o.value ?? ''),
+    ...(o.disabled === true ? { disabled: true as const } : {}),
+  }));
 }

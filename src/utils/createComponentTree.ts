@@ -1,5 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
 import type { UiTreeNode } from '../builder/store/types';
+import { patchCheckboxGroupMaxFromChildCount } from '../builder/utils/checkboxDsl';
 import { createSlotNode } from '../builder/utils/slot';
 import { getTabsPanelSlotKey, normalizeTabsList } from '../builder/utils/tabs';
 
@@ -221,6 +222,38 @@ const createDefaultMenuChildren = (): UiTreeNode[] => {
   ];
 };
 
+/** 多选项 / 单选项内默认一行文字（可再拖入其他组件） */
+const createOptionLabelTextNode = (text: string, isAntd: boolean): UiTreeNode => {
+  const textType = isAntd ? 'antd.Typography.Text' : 'Typography.Text';
+  return {
+    key: uuidv4(),
+    label: '标签文本',
+    type: textType,
+    props: {
+      content: {
+        name: '文本内容',
+        value: text,
+        editType: 'input',
+      },
+      theme: {
+        name: '文本主题',
+        value: 'primary',
+        editType: 'select',
+        payload: {
+          options: ['primary', 'secondary', 'success', 'warning', 'error'],
+        },
+      },
+      strong: {
+        name: '加粗',
+        value: false,
+        editType: 'switch',
+      },
+    },
+    lifetimes: [],
+    children: [],
+  };
+};
+
 /** 单选项内默认一行文字（可再拖入其他组件） */
 const createRadioLabelTextNode = (text: string, radioType: 'Radio' | 'antd.Radio'): UiTreeNode => {
   const textType = radioType === 'antd.Radio' ? 'antd.Typography.Text' : 'Typography.Text';
@@ -275,6 +308,8 @@ const createRadioChildNode = (n: number, radioType: 'Radio' | 'antd.Radio'): UiT
 
 const RADIO_GROUP_TYPES = new Set(['Radio.Group', 'antd.Radio.Group']);
 const RADIO_CHILD_TYPES = new Set(['Radio', 'antd.Radio']);
+const CHECKBOX_GROUP_TYPES = new Set(['Checkbox.Group', 'antd.Checkbox.Group']);
+const CHECKBOX_CHILD_TYPES = new Set(['Checkbox', 'antd.Checkbox']);
 
 /**
  * 向单选组内新拖入的单选项分配递增的数值 `value`（相对已有兄弟节点）。
@@ -319,6 +354,72 @@ export function assignSequentialRadioChildValue(parent: UiTreeNode, newNode: UiT
   return {
     ...withSeq,
     children: [createRadioLabelTextNode(`选项 ${nextVal}`, childType as 'Radio' | 'antd.Radio')],
+  };
+}
+
+const createCheckboxChildNode = (n: number, cbType: 'Checkbox' | 'antd.Checkbox'): UiTreeNode => ({
+  key: uuidv4(),
+  label: `多选项 ${n}`,
+  type: cbType,
+  props: {
+    value: {
+      name: '选项值',
+      value: String(n),
+      editType: 'input',
+    },
+    disabled: {
+      name: '禁用',
+      value: false,
+      editType: 'switch',
+    },
+  },
+  lifetimes: [],
+  children: [createOptionLabelTextNode(`选项 ${n}`, cbType.startsWith('antd.'))],
+});
+
+/**
+ * 向多选组内新拖入的多选项分配递增的数值 `value`（相对已有兄弟节点）。
+ */
+export function assignSequentialCheckboxChildValue(parent: UiTreeNode, newNode: UiTreeNode): UiTreeNode {
+  const childType = String(newNode.type ?? '').trim();
+  if (!CHECKBOX_CHILD_TYPES.has(childType)) {
+    return newNode;
+  }
+  const parentType = String(parent.type ?? '').trim();
+  if (!CHECKBOX_GROUP_TYPES.has(parentType)) {
+    return newNode;
+  }
+  const siblings = parent.children ?? [];
+  let max = 0;
+  for (const c of siblings) {
+    const ct = String(c.type ?? '').trim();
+    if (!CHECKBOX_CHILD_TYPES.has(ct)) {
+      continue;
+    }
+    const raw = (c.props?.value as { value?: unknown } | undefined)?.value;
+    const num = typeof raw === 'number' ? raw : typeof raw === 'string' ? Number(raw) : NaN;
+    if (Number.isFinite(num)) {
+      max = Math.max(max, num);
+    }
+  }
+  const nextVal = max + 1;
+  const prevProps = (newNode.props ?? {}) as Record<string, unknown>;
+  const valueSchema = { ...((prevProps.value ?? {}) as Record<string, unknown>) };
+  const withSeq: UiTreeNode = {
+    ...newNode,
+    label: `多选项 ${nextVal}`,
+    props: {
+      ...prevProps,
+      value: { ...valueSchema, value: String(nextVal) },
+    },
+  };
+  const existingChildren = withSeq.children ?? [];
+  if (existingChildren.length > 0) {
+    return withSeq;
+  }
+  return {
+    ...withSeq,
+    children: [createOptionLabelTextNode(`选项 ${nextVal}`, childType.startsWith('antd.'))],
   };
 }
 
@@ -395,6 +496,14 @@ const buildInitialChildren = (type: string, props?: Record<string, unknown>): Ui
 
   if (type === 'antd.Radio.Group') {
     return [createRadioChildNode(1, 'antd.Radio'), createRadioChildNode(2, 'antd.Radio')];
+  }
+
+  if (type === 'Checkbox.Group') {
+    return [createCheckboxChildNode(1, 'Checkbox'), createCheckboxChildNode(2, 'Checkbox')];
+  }
+
+  if (type === 'antd.Checkbox.Group') {
+    return [createCheckboxChildNode(1, 'antd.Checkbox'), createCheckboxChildNode(2, 'antd.Checkbox')];
   }
 
   if (type === 'Tabs') {
@@ -565,6 +674,10 @@ export const updateNodeByKey = (
 
   return changed ? { ...node, children: nextChildren } : node;
 };
+
+/** 多选组内子项变化后：将父节点 `max` 与当前多选项个数对齐 */
+export const syncCheckboxGroupMaxForParentKey = (tree: UiTreeNode, parentKey: string): UiTreeNode =>
+  updateNodeByKey(tree, parentKey, patchCheckboxGroupMaxFromChildCount);
 
 export interface RemoveNodeResult {
   tree: UiTreeNode;

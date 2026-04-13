@@ -33,6 +33,8 @@ export const ANTD_TD_MIRROR_PAIRS: readonly MirrorPair[] = [
   { antdType: 'antd.Switch', tdesignType: 'Switch' },
   { antdType: 'antd.Radio.Group', tdesignType: 'Radio.Group' },
   { antdType: 'antd.Radio', tdesignType: 'Radio' },
+  { antdType: 'antd.Checkbox.Group', tdesignType: 'Checkbox.Group' },
+  { antdType: 'antd.Checkbox', tdesignType: 'Checkbox' },
   { antdType: 'antd.Space', tdesignType: 'Space' },
   { antdType: 'antd.Row', tdesignType: 'Grid.Row' },
   { antdType: 'antd.Col', tdesignType: 'Grid.Col' },

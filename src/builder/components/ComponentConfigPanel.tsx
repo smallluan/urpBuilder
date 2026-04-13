@@ -48,6 +48,15 @@ import {
   resolveMenuItemDslValue,
   resolveMenuSubmenuDslValue,
 } from '../utils/menuDslKeys';
+import {
+  coerceCheckboxGroupStoredValue,
+  getCheckboxGroupOptionDescriptors,
+} from '../utils/checkboxDsl';
+import {
+  coerceRadioGroupStoredValue,
+  getRadioGroupOptionDescriptors,
+  valuesEqualForRadio,
+} from '../utils/radioDsl';
 
 const toJsonCodeString = (value: unknown): string => {
   if (typeof value === 'string') {
@@ -775,6 +784,8 @@ const ComponentConfigPanel: React.FC = () => {
     || activeNode?.type === 'Steps'
     || activeNode?.type === 'Radio.Group'
     || activeNode?.type === 'antd.Radio.Group'
+    || activeNode?.type === 'Checkbox.Group'
+    || activeNode?.type === 'antd.Checkbox.Group'
   )
     ? Boolean((propsMap.controlled?.value ?? true))
     : undefined;
@@ -831,6 +842,8 @@ const ComponentConfigPanel: React.FC = () => {
       || activeNode?.type === 'Steps'
       || activeNode?.type === 'Radio.Group'
       || activeNode?.type === 'antd.Radio.Group'
+      || activeNode?.type === 'Checkbox.Group'
+      || activeNode?.type === 'antd.Checkbox.Group'
     ) {
       if (propKey === 'value' && switchControlled === false) {
         return false;
@@ -838,6 +851,10 @@ const ComponentConfigPanel: React.FC = () => {
       if (propKey === 'defaultValue' && switchControlled === true) {
         return false;
       }
+    }
+
+    if (activeNode?.type === 'antd.Checkbox.Group' && propKey === 'max') {
+      return false;
     }
 
     if (
@@ -1298,6 +1315,71 @@ const ComponentConfigPanel: React.FC = () => {
   const renderEditor = (propKey: string, schema: ComponentPropSchema) => {
     const editType = resolveMenuPropEditType(propKey, activeNode?.type, schema);
     const currentValue = schema.value;
+
+    const isRadioGroupType =
+      activeNode.type === 'Radio.Group' || activeNode.type === 'antd.Radio.Group';
+    const isCheckboxGroupType =
+      activeNode.type === 'Checkbox.Group' || activeNode.type === 'antd.Checkbox.Group';
+
+    if (isRadioGroupType && (propKey === 'value' || propKey === 'defaultValue')) {
+      const descriptors = getRadioGroupOptionDescriptors(activeNode);
+      const optsForCoerce = descriptors.map((d) => ({ value: d.value }));
+      const coerced = coerceRadioGroupStoredValue(currentValue, optsForCoerce);
+      const valueForSelect =
+        coerced !== undefined && optsForCoerce.some((o) => valuesEqualForRadio(o.value, coerced))
+          ? coerced
+          : undefined;
+      const options = descriptors.map((d) => ({
+        label: d.disabled === true ? `${d.label}（禁用）` : d.label,
+        value: d.value,
+        disabled: d.disabled === true,
+      }));
+      return (
+        <Select
+          size="small"
+          clearable
+          disabled={readOnly}
+          options={options}
+          value={valueForSelect as string | number | boolean | undefined}
+          placeholder={options.length > 0 ? '选择选项值' : '请先在组内拖入单选项'}
+          onChange={(value) => {
+            if (value === undefined || value === null || value === '') {
+              updateActiveNodeProp(propKey, '');
+              return;
+            }
+            updateActiveNodeProp(propKey, value);
+          }}
+        />
+      );
+    }
+
+    if (isCheckboxGroupType && (propKey === 'value' || propKey === 'defaultValue')) {
+      const descriptors = getCheckboxGroupOptionDescriptors(activeNode);
+      const optsForCoerce = descriptors.map((d) => ({ value: d.value }));
+      const normalized = coerceCheckboxGroupStoredValue(currentValue, optsForCoerce) ?? [];
+      const valueForSelect = normalized.filter((v) =>
+        descriptors.some((d) => valuesEqualForRadio(d.value, v)),
+      );
+      const options = descriptors.map((d) => ({
+        label: d.disabled === true ? `${d.label}（禁用）` : d.label,
+        value: d.value,
+        disabled: d.disabled === true,
+      }));
+      return (
+        <Select
+          multiple
+          minCollapsedNum={2}
+          size="small"
+          disabled={readOnly}
+          options={options}
+          value={valueForSelect}
+          placeholder={options.length > 0 ? '选择一项或多项' : '请先在组内拖入多选项'}
+          onChange={(value) => {
+            updateActiveNodeProp(propKey, Array.isArray(value) ? value : []);
+          }}
+        />
+      );
+    }
 
     if (editType === 'switch') {
       const switchChecked = propKey === 'controlled' ? currentValue !== false : Boolean(currentValue);

@@ -45,6 +45,8 @@ const CONTAINER_NODE_TYPES = new Set([
   'Steps',
   'Radio.Group',
   'antd.Radio.Group',
+  'Checkbox.Group',
+  'antd.Checkbox.Group',
   'Drawer',
   'Upload',
   'RouteOutlet',
@@ -346,6 +348,12 @@ const getTreeNodeDropTarget = (node: any, root: any): TreeNodeDropTarget | null 
     };
   }
 
+  if (node.type === 'Checkbox' || node.type === 'antd.Checkbox') {
+    return {
+      parentKey: node.key,
+    };
+  }
+
   return null;
 };
 
@@ -485,6 +493,20 @@ const ComponentBody: React.FC = () => {
         return;
       }
     } else if (radioChildTypes.has(droppedType) && !radioParentTypes.has(parentType)) {
+      return;
+    }
+
+    const checkboxParentTypes = new Set(['Checkbox.Group', 'antd.Checkbox.Group']);
+    const checkboxChildTypes = new Set(['Checkbox', 'antd.Checkbox']);
+    const checkboxItemTypes = new Set(['Checkbox', 'antd.Checkbox']);
+    if (checkboxParentTypes.has(parentType) && !checkboxChildTypes.has(droppedType)) {
+      return;
+    }
+    if (checkboxItemTypes.has(parentType)) {
+      if (checkboxChildTypes.has(droppedType) || checkboxParentTypes.has(droppedType)) {
+        return;
+      }
+    } else if (checkboxChildTypes.has(droppedType) && !checkboxParentTypes.has(parentType)) {
       return;
     }
 

@@ -2820,4 +2820,18 @@
   align-items: center !important;
 }
 
+/* Checkbox.Group `labelAlign`：复选框与标签区垂直对齐 */
+[data-builder-checkbox-label-align='top'].t-checkbox,
+[data-builder-checkbox-label-align='top'].ant-checkbox-wrapper {
+  align-items: flex-start !important;
+}
+[data-builder-checkbox-label-align='bottom'].t-checkbox,
+[data-builder-checkbox-label-align='bottom'].ant-checkbox-wrapper {
+  align-items: flex-end !important;
+}
+[data-builder-checkbox-label-align='center'].t-checkbox,
+[data-builder-checkbox-label-align='center'].ant-checkbox-wrapper {
+  align-items: center !important;
+}
+
 @import './styles/builder-style-root.less';

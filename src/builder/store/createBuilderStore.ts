@@ -24,9 +24,11 @@ import type {
 import {
   appendNodeByParentKey,
   assignSequentialRadioChildValue,
+  assignSequentialCheckboxChildValue,
   findNodeByKey,
   insertNodeAtParentIndex,
   removeNodeByKey,
+  syncCheckboxGroupMaxForParentKey,
   toUiTreeNode,
   updateNodeByKey,
 } from '../../utils/createComponentTree';
@@ -1242,6 +1244,7 @@ export const createBuilderStore = (options: CreateBuilderStoreOptions = {}) => {
           : toUiTreeNode(componentData);
         if (!fromPastedOrFull) {
           newNode = assignSequentialRadioChildValue(parentNode, newNode);
+          newNode = assignSequentialCheckboxChildValue(parentNode, newNode);
         }
         if (slotKey) {
           const currentProps = (newNode.props ?? {}) as Record<string, unknown>;
@@ -1268,7 +1271,8 @@ export const createBuilderStore = (options: CreateBuilderStoreOptions = {}) => {
         };
 
         const nextHistory = pushHistoryAction(state.history.actions, state.history.pointer, action);
-        const nextTree = appendNodeByParentKey(state.uiPageData, parentKey, newNode);
+        let nextTree = appendNodeByParentKey(state.uiPageData, parentKey, newNode);
+        nextTree = syncCheckboxGroupMaxForParentKey(nextTree, parentKey);
         return {
           uiPageData: nextTree,
           activeNode: resolveActiveNode(nextTree, state.activeNodeKey),
@@ -1412,8 +1416,11 @@ export const createBuilderStore = (options: CreateBuilderStoreOptions = {}) => {
           !!state.activeNodeKey && containsNodeKey(result.removedNode, state.activeNodeKey);
         const nextActiveNodeKey = shouldClearActive ? null : state.activeNodeKey;
 
+        let nextTree = result.tree;
+        nextTree = syncCheckboxGroupMaxForParentKey(nextTree, result.parentKey);
+
         return {
-          uiPageData: result.tree,
+          uiPageData: nextTree,
           flowNodes: nextFlowNodes,
           flowEdges: nextFlowEdges,
           activeNodeKey: nextActiveNodeKey,
@@ -1478,7 +1485,9 @@ export const createBuilderStore = (options: CreateBuilderStoreOptions = {}) => {
           movedNode.props = nextProps;
         }
 
-        const nextTree = insertNodeAtParentIndex(removed.tree, parentKey, safeIndex, movedNode);
+        let nextTree = insertNodeAtParentIndex(removed.tree, parentKey, safeIndex, movedNode);
+        nextTree = syncCheckboxGroupMaxForParentKey(nextTree, removed.parentKey);
+        nextTree = syncCheckboxGroupMaxForParentKey(nextTree, parentKey);
         const action: UiHistoryAction = {
           type: 'move',
           nodeKey: movedNode.key,

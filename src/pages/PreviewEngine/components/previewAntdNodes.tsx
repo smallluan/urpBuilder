@@ -70,6 +70,7 @@ import {
   tdesignLinkThemeToAntdTypographyType,
   tdesignSemanticTokenToAntdTagColor,
   mapTdesignRadioGroupToAntd,
+  mapTdesignCheckboxGroupToAntd,
 } from '../../../utils/antdTdesignPropBridge';
 import { collectDslStepRows, dslStepStatusToAntd } from '../../../builder/utils/stepsDsl';
 import type { DslRadioRow } from '../../../builder/utils/radioDsl';
@@ -84,6 +85,17 @@ import {
   radioGroupValuePropsForReact,
   valuesEqualForRadio,
 } from '../../../builder/utils/radioDsl';
+import type { DslCheckboxRow } from '../../../builder/utils/checkboxDsl';
+import {
+  clampCheckboxGroupSelection,
+  collectDslCheckboxRows,
+  coerceCheckboxGroupStoredValue,
+  optionsFromCheckboxRows,
+  parseCheckboxGroupMax,
+  parseCheckboxGroupOptionGap,
+  parseCheckboxGroupOptionLayout,
+  parseCheckboxLabelAlign,
+} from '../../../builder/utils/checkboxDsl';
 import {
   antdProgressPropsFromDsl,
   parseProgressColorValue,
@@ -471,6 +483,107 @@ function PreviewAntdRadioGroupView(props: {
     >
       {renderChildRadios()}
     </Radio.Group>
+  );
+}
+
+function PreviewAntdCheckboxGroupView(props: {
+  node: UiTreeNode;
+  mergeStyle: AntdPreviewContext['mergeStyle'];
+  emitInteractionLifecycle: AntdPreviewContext['emitInteractionLifecycle'];
+  renderCheckboxItemChildren?: (checkboxNode: UiTreeNode) => React.ReactNode;
+}): React.ReactElement {
+  const { node, mergeStyle, emitInteractionLifecycle, renderCheckboxItemChildren } = props;
+  const controlled = getBooleanProp(node, 'controlled') !== false;
+  const mapped = mapTdesignCheckboxGroupToAntd({
+    disabled: getProp(node, 'disabled'),
+  });
+  const rows = collectDslCheckboxRows(node.children);
+  const useChildCheckboxes = rows.length > 0;
+  const optsJson = parseJsonRecordArray(getStringProp(node, 'options')).map((o) => ({
+    value: o.value as string | number,
+    label: String(o.label ?? o.value ?? ''),
+    disabled: o.disabled === true,
+  }));
+  const opts = useChildCheckboxes ? optionsFromCheckboxRows(rows) : optsJson;
+  const valueRaw = getProp(node, 'value');
+  const defaultRaw = getProp(node, 'defaultValue');
+  const valueResolved = coerceCheckboxGroupStoredValue(valueRaw, opts);
+  const defaultVal = coerceCheckboxGroupStoredValue(defaultRaw, opts);
+  const maxEff = parseCheckboxGroupMax(getProp(node, 'max'), opts.length);
+  const blockPointerForControlled = controlled;
+
+  const [ucVal, setUcVal] = React.useState<Array<string | number | boolean>>(() =>
+    clampCheckboxGroupSelection(defaultVal ?? [], maxEff),
+  );
+  React.useEffect(() => {
+    if (!controlled) {
+      const d = coerceCheckboxGroupStoredValue(defaultRaw, opts);
+      setUcVal(clampCheckboxGroupSelection(d ?? [], maxEff));
+    }
+  }, [controlled, defaultRaw, maxEff, node.key]);
+
+  const displayValue = controlled
+    ? clampCheckboxGroupSelection(valueResolved ?? [], maxEff)
+    : ucVal;
+
+  const optionLayout = parseCheckboxGroupOptionLayout(getProp(node, 'optionLayout'));
+  const optionGapPx = parseCheckboxGroupOptionGap(getProp(node, 'optionGap'));
+  const groupGapStyle: React.CSSProperties = {
+    display: 'flex',
+    flexDirection: optionLayout === 'vertical' ? 'column' : 'row',
+    flexWrap: 'wrap',
+    alignItems: optionLayout === 'vertical' ? 'flex-start' : 'center',
+    gap: optionGapPx,
+  };
+  const groupLabelAlign = parseCheckboxLabelAlign(getProp(node, 'labelAlign'));
+  const checkboxAlignAttr = {
+    'data-builder-checkbox-label-align': groupLabelAlign,
+  } as const;
+
+  const emitChange = (v: unknown) => emitInteractionLifecycle('onChange', { value: v });
+
+  const handleCheckboxGroupChange = (v: unknown) => {
+    const arr = Array.isArray(v)
+      ? (v as Array<string | number | boolean>).filter(
+          (x): x is string | number | boolean =>
+            typeof x === 'string' || typeof x === 'number' || typeof x === 'boolean',
+        )
+      : [];
+    const next = clampCheckboxGroupSelection(arr, maxEff);
+    if (!controlled) {
+      setUcVal(next);
+    }
+    emitChange(next);
+  };
+
+  const renderCheckboxLabel = (r: DslCheckboxRow) => {
+    const hasKids = (r.node.children?.length ?? 0) > 0;
+    if (!hasKids) {
+      return null;
+    }
+    return renderCheckboxItemChildren ? renderCheckboxItemChildren(r.node) : null;
+  };
+
+  return (
+    <Checkbox.Group
+      {...(useChildCheckboxes ? {} : { options: opts })}
+      value={displayValue}
+      disabled={mapped.disabled}
+      style={{
+        ...(mergeStyle() ?? {}),
+        ...groupGapStyle,
+        ...(blockPointerForControlled ? { pointerEvents: 'none' as const } : {}),
+      }}
+      onChange={handleCheckboxGroupChange}
+    >
+      {useChildCheckboxes
+        ? rows.map((r) => (
+            <Checkbox key={r.key} value={r.value} disabled={r.disabled} {...checkboxAlignAttr}>
+              {renderCheckboxLabel(r)}
+            </Checkbox>
+          ))
+        : null}
+    </Checkbox.Group>
   );
 }
 
@@ -876,6 +989,18 @@ export function tryRenderAntdPreview(ctx: AntdPreviewContext): React.ReactElemen
       );
     }
     case 'antd.Radio':
+      return null;
+    case 'antd.Checkbox.Group': {
+      return (
+        <PreviewAntdCheckboxGroupView
+          node={node}
+          mergeStyle={mergeStyle}
+          emitInteractionLifecycle={emitInteractionLifecycle}
+          renderCheckboxItemChildren={(checkboxNode) => renderChildren(checkboxNode, onLifecycle)}
+        />
+      );
+    }
+    case 'antd.Checkbox':
       return null;
     case 'antd.Switch': {
       const controlled = getBooleanProp(node, 'controlled') !== false;

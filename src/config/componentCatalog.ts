@@ -2296,7 +2296,7 @@ const tdesignComponentCatalog = [
       },
       optionGap: {
         name: '选项间距',
-        value: 16,
+        value: 8,
         editType: 'inputNumber',
       },
     },
@@ -2305,6 +2305,76 @@ const tdesignComponentCatalog = [
   {
     type: 'Radio',
     name: '单选项',
+    props: {
+      value: {
+        name: '选项值',
+        value: '1',
+        editType: 'input',
+      },
+      disabled: {
+        name: '禁用',
+        value: false,
+        editType: 'switch',
+      },
+    },
+  },
+  {
+    type: 'Checkbox.Group',
+    name: '多选组',
+    props: {
+      controlled: {
+        name: '受控模式',
+        value: true,
+        editType: 'switch',
+      },
+      value: {
+        name: '选中值',
+        value: '["1"]',
+        editType: 'input',
+      },
+      defaultValue: {
+        name: '非受控默认值',
+        value: '["1"]',
+        editType: 'input',
+      },
+      disabled: {
+        name: '禁用',
+        value: false,
+        editType: 'switch',
+      },
+      max: {
+        name: '最多可选数',
+        value: 2,
+        editType: 'inputNumber',
+        payload: { min: 0 },
+      },
+      optionLayout: {
+        name: '选项排列',
+        value: 'horizontal',
+        editType: 'select',
+        payload: {
+          options: ['horizontal', 'vertical'],
+        },
+      },
+      labelAlign: {
+        name: '标签对齐',
+        value: 'center',
+        editType: 'select',
+        payload: {
+          options: ['top', 'center', 'bottom'],
+        },
+      },
+      optionGap: {
+        name: '选项间距',
+        value: 8,
+        editType: 'inputNumber',
+      },
+    },
+    lifetimes: ['onChange'],
+  },
+  {
+    type: 'Checkbox',
+    name: '多选项',
     props: {
       value: {
         name: '选项值',

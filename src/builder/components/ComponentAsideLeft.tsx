@@ -48,6 +48,8 @@ const CONTAINER_NODE_TYPES = new Set([
   'Steps',
   'Radio.Group',
   'antd.Radio.Group',
+  'Checkbox.Group',
+  'antd.Checkbox.Group',
   'Drawer',
   'Upload',
   'RouteOutlet',
@@ -438,6 +440,12 @@ const getTreeNodeDropTarget = (node: UiTreeNode, root: UiTreeNode): TreeNodeDrop
   }
 
   if (node.type === 'Radio' || node.type === 'antd.Radio') {
+    return {
+      parentKey: node.key,
+    };
+  }
+
+  if (node.type === 'Checkbox' || node.type === 'antd.Checkbox') {
     return {
       parentKey: node.key,
     };
@@ -857,6 +865,20 @@ const ComponentAsideLeft: React.FC = () => {
           return;
         }
       } else if (radioChildTypesAside.has(droppedType) && !radioParentTypesAside.has(currentNodeType)) {
+        return;
+      }
+
+      const checkboxParentTypesAside = new Set(['Checkbox.Group', 'antd.Checkbox.Group']);
+      const checkboxChildTypesAside = new Set(['Checkbox', 'antd.Checkbox']);
+      const checkboxItemTypesAside = new Set(['Checkbox', 'antd.Checkbox']);
+      if (checkboxParentTypesAside.has(currentNodeType) && !checkboxChildTypesAside.has(droppedType)) {
+        return;
+      }
+      if (checkboxItemTypesAside.has(currentNodeType)) {
+        if (checkboxChildTypesAside.has(droppedType) || checkboxParentTypesAside.has(droppedType)) {
+          return;
+        }
+      } else if (checkboxChildTypesAside.has(droppedType) && !checkboxParentTypesAside.has(currentNodeType)) {
         return;
       }
 

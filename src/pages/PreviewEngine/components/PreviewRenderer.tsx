@@ -42,6 +42,7 @@ import { parseProgressColorValue } from '../../../builder/utils/progressAntdBrid
 import type { PreviewDataHub } from '../runtime/dataHub';
 import { tryRenderAntdPreview } from './previewAntdNodes';
 import { PreviewTdesignRadioGroup } from './previewTdesignRadioGroup';
+import { PreviewTdesignCheckboxGroup } from './previewTdesignCheckboxGroup';
 import type { UiPreviewLibrary } from '../../../config/uiPreviewLibrary';
 import { CARD_SHELL_ALWAYS_ANTD_TYPES, resolveAntdPreviewTypeForCanonical } from '../../../config/uiPreviewLibrary';
 import { BUILDER_CARD_BODY_STYLE } from '../../../utils/antdTdesignPropBridge';
@@ -3131,6 +3132,15 @@ const PreviewRenderer: React.FC<PreviewRendererProps> = ({ node, onLifecycle }) 
           mergeStyle={mergeStyle}
           emitInteractionLifecycle={emitInteractionLifecycle}
           renderRadioItemChildren={(radioNode) => renderChildren(radioNode, onLifecycle)}
+        />
+      );
+    case 'Checkbox.Group':
+      return (
+        <PreviewTdesignCheckboxGroup
+          node={node}
+          mergeStyle={mergeStyle}
+          emitInteractionLifecycle={emitInteractionLifecycle}
+          renderCheckboxItemChildren={(checkboxNode) => renderChildren(checkboxNode, onLifecycle)}
         />
       );
     case 'Calendar':

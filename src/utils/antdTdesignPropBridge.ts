@@ -175,6 +175,19 @@ export function tdesignSemanticTokenToAntdTagColor(raw: string | undefined): str
   return undefined;
 }
 
+/** TDesign `Checkbox.Group` DSL → antd `Checkbox.Group`（仅 disabled 需映射）。 */
+export type CheckboxGroupAntdMapping = {
+  disabled: boolean;
+};
+
+export function mapTdesignCheckboxGroupToAntd(dsl: {
+  disabled?: unknown;
+}): CheckboxGroupAntdMapping {
+  return {
+    disabled: normalizeDslBoolean(dsl.disabled),
+  };
+}
+
 /** TDesign `Radio.Group` DSL → antd `Radio.Group`（`optionType` + `buttonStyle`；尺寸物料已移除，由主题控制）。 */
 export type RadioGroupAntdMapping = {
   optionType: 'default' | 'button';

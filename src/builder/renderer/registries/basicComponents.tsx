@@ -1,4 +1,4 @@
-import { Button, Link, BackTop, Progress, Radio } from 'tdesign-react';
+import { Button, Link, BackTop, Progress, Radio, Checkbox } from 'tdesign-react';
 import type { ComponentRegistry, ComponentRenderContext } from '../componentContext';
 import { ActivateWrapper } from '../componentHelpers';
 import { renderNamedIcon } from '../../../constants/iconRegistry';
@@ -15,6 +15,18 @@ import {
   radioGroupOptionLayoutStyle,
   radioGroupValuePropsForReact,
 } from '../../utils/radioDsl';
+import type { DslCheckboxRow } from '../../utils/checkboxDsl';
+import {
+  collectDslCheckboxRows,
+  coerceCheckboxGroupStoredValue,
+  optionsFromCheckboxRows,
+  parseCheckboxGroupMax,
+  parseCheckboxGroupOptionGap,
+  parseCheckboxGroupOptionLayout,
+  parseCheckboxLabelAlign,
+  checkboxGroupOptionLayoutStyle,
+  checkboxGroupValuePropsForReact,
+} from '../../utils/checkboxDsl';
 
 function parseJsonRecordArray(raw: string | undefined): Array<Record<string, unknown>> {
   if (!raw?.trim()) {
@@ -123,6 +135,83 @@ function BuilderTdesignRadioGroup(props: { ctx: ComponentRenderContext }) {
   );
 }
 
+function BuilderTdesignCheckboxGroup(props: { ctx: ComponentRenderContext }) {
+  const {
+    getStringProp,
+    getBooleanProp,
+    getProp,
+    getFiniteNumberProp,
+    mergeStyle,
+    handleActivateSelf,
+    data,
+    isNodeActive,
+    onDropData,
+  } = props.ctx;
+  const rows = collectDslCheckboxRows(data?.children);
+  const useChildCheckboxes = rows.length > 0;
+  const optsJson = parseJsonRecordArray(getStringProp('options')).map((o) => ({
+    value: o.value as string | number | boolean,
+    label: String(o.label ?? o.value ?? ''),
+    disabled: o.disabled === true,
+  }));
+  const opts = useChildCheckboxes ? optionsFromCheckboxRows(rows) : optsJson;
+  const controlled = getBooleanProp('controlled') !== false;
+  const valueRaw = getProp('value');
+  const defaultRaw = getProp('defaultValue');
+  const valueResolved = coerceCheckboxGroupStoredValue(valueRaw, opts);
+  const defaultVal = coerceCheckboxGroupStoredValue(defaultRaw, opts);
+  const valueProps = checkboxGroupValuePropsForReact(controlled, valueResolved, defaultVal);
+  const groupDisabled = normalizeDslBoolean(getProp('disabled'));
+  const maxProp = parseCheckboxGroupMax(getProp('max'), opts.length);
+  const optionLayout = parseCheckboxGroupOptionLayout(getProp('optionLayout'));
+  const optionGapPx = parseCheckboxGroupOptionGap(getFiniteNumberProp('optionGap') ?? getProp('optionGap'));
+  const groupLayoutStyle = checkboxGroupOptionLayoutStyle(optionLayout, optionGapPx);
+  const groupLabelAlign = parseCheckboxLabelAlign(getProp('labelAlign'));
+
+  const renderCheckboxLabel = (row: DslCheckboxRow) => (
+    <DropArea
+      data={row.node}
+      onDropData={onDropData}
+      emptyText="拖入组件"
+      compactWhenFilled
+    >
+      <div style={{ display: 'inline-block', minWidth: 8 }} />
+    </DropArea>
+  );
+
+  const checkboxAlignAttr = {
+    'data-builder-checkbox-label-align': groupLabelAlign,
+  } as const;
+
+  return (
+    <DropArea
+      data={data}
+      onDropData={onDropData}
+      emptyText="拖入多选项（Checkbox）"
+      compactWhenFilled
+      isTreeNode
+    >
+      <ActivateWrapper style={mergeStyle()} onActivate={handleActivateSelf} nodeKey={data?.key} active={isNodeActive}>
+        <Checkbox.Group
+          {...(useChildCheckboxes ? {} : { options: opts as any })}
+          {...(valueProps as any)}
+          disabled={groupDisabled}
+          max={maxProp}
+          style={mergeStyle(groupLayoutStyle)}
+        >
+          {useChildCheckboxes
+            ? rows.map((r) => (
+                <Checkbox key={r.key} value={r.value as any} disabled={r.disabled} {...checkboxAlignAttr}>
+                  {renderCheckboxLabel(r)}
+                </Checkbox>
+              ))
+            : null}
+        </Checkbox.Group>
+      </ActivateWrapper>
+    </DropArea>
+  );
+}
+
 export function registerBasicComponents(registry: ComponentRegistry): void {
   registry.set('Button', (ctx) => {
     const { getStringProp, getBooleanProp, mergeStyle, handleActivateSelf, data, isNodeActive } = ctx;
@@ -214,6 +303,8 @@ export function registerBasicComponents(registry: ComponentRegistry): void {
   });
 
   registry.set('Radio.Group', (ctx) => <BuilderTdesignRadioGroup ctx={ctx} />);
+
+  registry.set('Checkbox.Group', (ctx) => <BuilderTdesignCheckboxGroup ctx={ctx} />);
 
   registry.set('Progress', (ctx) => {
     const {

@@ -24,7 +24,7 @@
 |------|------|
 | `Radio` 子项 | `value`（选项值）、`disabled`；子节点为标签区内容。**推荐**用子树配置选项（物料表已不提供「选项 JSON」编辑项；历史 DSL 里若仍有 `options` 字段，无子项时仍会作为回退解析；`collectDslRadioRows` 内选项展示用 `label` 仅为内部占位，取 `String(value)`）。 |
 | `Radio.Group` `optionLayout` | `horizontal`（默认）或 `vertical`：控制组内各选项**横向或纵向**排列。TDesign 侧为组容器 `display:flex` + `flexDirection`（`radioGroupOptionLayoutStyle`）；antd 侧映射为 `Radio.Group` 的 `orientation`（`horizontal` / `vertical`），双库行为一致。 |
-| `Radio.Group` `optionGap` | 数字（px，默认 `16`）：**选项之间的间距**，横向、纵向排列均通过容器 `gap` 生效。TDesign 写在组 `style` 上；antd 写在 `Radio.Group` 的 `style` 上（与 `orientation` 搭配）。 |
+| `Radio.Group` `optionGap` | 数字（px，默认 `8`）：**选项之间的间距**，横向、纵向排列均通过容器 `gap` 生效。TDesign 写在组 `style` 上；antd 写在 `Radio.Group` 的 `style` 上（与 `orientation` 搭配）。 |
 | `Radio.Group` `labelAlign` | `top` / `center`（默认）/ `bottom`：各选项的圆点（或按钮）与其**标签区域**的垂直对齐（组级统一）。搭建/预览在子 `Radio` / `Radio.Button` 根节点上设置 `data-builder-radio-label-align`，由 `builder/style.less` 与 `PreviewEngine/style.less` 内选择器对 `.t-radio` / `.ant-radio-wrapper` 等设置 `align-items`（`!important` 覆盖组件库默认），保证生效。 |
 | `controlled` / `value` / `defaultValue` | 受控与非受控，与 `Switch` 类似；非受控时初始值优先 `defaultValue`，否则 `value`，再否则第一项 `value`。属性面板：关闭受控时隐藏「选中值」(`value`)；开启受控时隐藏「默认值」(`defaultValue`)。搭建/预览会将面板里多为字符串的选中值与子 `Radio` 的 `value` 做类型对齐（如 `"1"` 与 `1`），避免受控不选中。 |
 | `theme` | `radio`：经典圆点；`button`：按钮式单选。 |
