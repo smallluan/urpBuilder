@@ -546,6 +546,20 @@ export default function HeaderControls({
       return;
     }
 
+    if (entityType === 'component') {
+      if (/^\d+$/.test(pageId)) {
+        emitApiAlert(
+          '保存失败',
+          '组件 ID（Key）不能为纯数字，请包含字母、下划线或中划线等，否则可能与系统数据冲突',
+        );
+        return;
+      }
+      if (/^\d+$/.test(pageName)) {
+        emitApiAlert('保存失败', '组件名称不能为纯数字');
+        return;
+      }
+    }
+
     const storeSnapshot = useStore.getState();
     const currentTemplateFingerprint = computePersistedTemplateFingerprint(storeSnapshot, {
       enablePageRouteConfig,

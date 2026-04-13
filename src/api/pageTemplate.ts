@@ -60,11 +60,16 @@ export const deletePageTemplate = async (pageId: string) => {
   return response.data;
 };
 
-export const getPageTemplateDetail = async (pageId: string) => {
+export const getPageTemplateDetail = async (
+  pageId: string,
+  options?: { skipErrorToast?: boolean; skipGlobalLoading?: boolean },
+) => {
   const response = await requestClient.get<ApiResponse<PageDetail>>(`/page-template/${pageId}`, {
     params: {
       entityType: 'page',
     },
+    skipErrorToast: options?.skipErrorToast === true,
+    skipGlobalLoading: options?.skipGlobalLoading === true,
   });
   const payload = response.data;
   if (payload?.data?.template) {
@@ -138,6 +143,22 @@ export const getPageTemplateBaseList = async (params?: PageTemplateListParams) =
 };
 
 export const getPageBaseList = getPageTemplateBaseList;
+
+/** 匿名站点预览：将路径解析为唯一「已发布 + 公开」的 pageId */
+export type PublicRouteResolveData = {
+  pageId: string | null;
+  ambiguous: boolean;
+  count?: number;
+};
+
+export const resolvePublicPageRoute = async (routePath: string) => {
+  const response = await requestClient.get<ApiResponse<PublicRouteResolveData>>('/page-base/public/resolve-route', {
+    params: { routePath },
+    skipErrorToast: true,
+    skipGlobalLoading: true,
+  });
+  return response.data;
+};
 
 export type WorkspaceDailyEditPoint = {
   date: string;

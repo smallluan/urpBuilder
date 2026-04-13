@@ -14,8 +14,10 @@ import { DebugProvider } from './debug/DebugProvider';
 import DebugFAB from './debug/DebugFAB';
 import DebugPanel from './debug/DebugPanel';
 import DebugPauseOverlay from './debug/DebugPauseOverlay';
-import { getPageTemplateBaseList, getPageTemplateDetail } from '../../api/pageTemplate';
+import { isAxiosError } from 'axios';
+import { getPageTemplateBaseList, getPageTemplateDetail, resolvePublicPageRoute } from '../../api/pageTemplate';
 import { getComponentTemplateDetail } from '../../api/componentTemplate';
+import { useAuth } from '../../auth/context';
 import type { UiTreeNode } from '../../builder/store/types';
 import { findNodeByKey, updateNodeByKey } from '../../utils/createComponentTree';
 import './style.less';
@@ -24,6 +26,26 @@ import { AntdRuntimeRoot } from '../../builder/antd/AntdRuntimeRoot';
 
 const EMPTY_ROOT: UiTreeNode = { key: '__root__', type: 'root', label: '', props: {}, children: [] };
 const SITE_PREVIEW_PREFIX = '/site-preview';
+
+const resolvePreviewTemplateLoadMessage = (err: unknown, finalPageId: string): string => {
+  if (isAxiosError(err) && err.response?.data && typeof err.response.data === 'object') {
+    const payload = err.response.data as { code?: number; message?: string };
+    const c = payload.code;
+    if (
+      c === 403001
+      || c === 403102
+      || c === 403103
+      || c === 403104
+      || c === 403107
+      || c === 403108
+    ) {
+      return payload.message?.trim()
+        || '该内容未公开或需登录后从搭建平台内打开预览。';
+    }
+  }
+
+  return `页面 ${finalPageId} 加载失败，请确认页面 ID 是否存在。`;
+};
 
 const normalizePageId = (value: string | null) => {
   const text = String(value ?? '').trim();
@@ -153,6 +175,7 @@ const composeRouteFlow = (
 const PreviewEngine: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const { initialized: authInitialized, isAuthenticated } = useAuth();
   const searchParams = new URLSearchParams(location.search);
 
   const serializedFromState = (location.state as { snapshot?: string } | null)?.snapshot;
@@ -192,30 +215,78 @@ const PreviewEngine: React.FC = () => {
       return;
     }
 
-    getPageTemplateBaseList({ routePath: routePathFromLocation, page: 1, pageSize: 100 })
-      .then((res) => {
-        const list = Array.isArray(res.data?.list) ? res.data.list : [];
-        const candidates = list.filter((item) => normalizePageId(item.pageId));
+    if (!authInitialized) {
+      return;
+    }
 
-        if (candidates.length === 1) {
-          setResolvedPageId(candidates[0].pageId);
+    let cancelled = false;
+
+    const run = async () => {
+      try {
+        if (isAuthenticated) {
+          const res = await getPageTemplateBaseList({ routePath: routePathFromLocation, page: 1, pageSize: 100 });
+          if (cancelled) {
+            return;
+          }
+
+          const list = Array.isArray(res.data?.list) ? res.data.list : [];
+          const candidates = list.filter((item) => normalizePageId(item.pageId));
+
+          if (candidates.length === 1) {
+            setResolvedPageId(candidates[0].pageId);
+            setRouteResolveError('');
+            return;
+          }
+
+          setResolvedPageId('');
+          if (candidates.length === 0) {
+            setRouteResolveError(`未找到路径 ${routePathFromLocation} 对应的页面，请确认 pageId 或路由路径。`);
+            return;
+          }
+
+          setRouteResolveError(`路径 ${routePathFromLocation} 匹配到多个页面，请在 URL 上追加 ?pageId=页面ID 进行区分。`);
+          return;
+        }
+
+        const res = await resolvePublicPageRoute(routePathFromLocation);
+        if (cancelled) {
+          return;
+        }
+
+        const data = res.data;
+        const pid = data?.pageId ? normalizePageId(data.pageId) : '';
+
+        if (pid) {
+          setResolvedPageId(pid);
           setRouteResolveError('');
           return;
         }
 
         setResolvedPageId('');
-        if (candidates.length === 0) {
-          setRouteResolveError(`未找到路径 ${routePathFromLocation} 对应的页面，请确认 pageId 或路由路径。`);
+        if (data?.ambiguous) {
+          setRouteResolveError(
+            `路径 ${routePathFromLocation} 匹配到多个已公开页面，请在 URL 上追加 ?pageId=页面ID 进行区分。`,
+          );
           return;
         }
 
-        setRouteResolveError(`路径 ${routePathFromLocation} 匹配到多个页面，请在 URL 上追加 ?pageId=页面ID 进行区分。`);
-      })
-      .catch(() => {
-        setResolvedPageId('');
-        setRouteResolveError('页面解析失败，请稍后重试或在 URL 上追加 ?pageId=页面ID。');
-      });
-  }, [entityType, pageId, parsedSnapshot, routePathFromLocation]);
+        setRouteResolveError(
+          `未找到已公开的页面路径 ${routePathFromLocation}，请使用含 pageId 的分享链接或在平台内预览。`,
+        );
+      } catch {
+        if (!cancelled) {
+          setResolvedPageId('');
+          setRouteResolveError('页面解析失败，请稍后重试或在 URL 上追加 ?pageId=页面ID。');
+        }
+      }
+    };
+
+    void run();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [authInitialized, entityType, isAuthenticated, pageId, parsedSnapshot, routePathFromLocation]);
 
   React.useEffect(() => {
     const finalPageId = pageId || resolvedPageId;
@@ -223,9 +294,11 @@ const PreviewEngine: React.FC = () => {
       return;
     }
 
+    setRemoteSnapshot(null);
+
     const getDetail = entityType === 'component' ? getComponentTemplateDetail : getPageTemplateDetail;
 
-    getDetail(finalPageId)
+    getDetail(finalPageId, { skipErrorToast: true, skipGlobalLoading: true })
       .then((res) => {
         const template = res.data?.template;
         if (!template) return;
@@ -305,8 +378,9 @@ const PreviewEngine: React.FC = () => {
         });
         setRouteResolveError('');
       })
-      .catch(() => {
-        setRouteResolveError(`页面 ${finalPageId} 加载失败，请确认页面 ID 是否存在。`);
+      .catch((err: unknown) => {
+        setRemoteSnapshot(null);
+        setRouteResolveError(resolvePreviewTemplateLoadMessage(err, finalPageId));
       });
   }, [entityType, pageId, parsedSnapshot, resolvedPageId]);
 
@@ -355,7 +429,7 @@ const PreviewEngine: React.FC = () => {
   const routeHasRenderableContent = (renderTree.children ?? []).length > 0;
   const routeEmpty = !routeNotFound && !routeHasRenderableContent;
   const finalPageId = pageId || resolvedPageId;
-  const shouldShowResolveError = !parsedSnapshot && !finalPageId && Boolean(routeResolveError);
+  const shouldShowResolveError = !parsedSnapshot && Boolean(routeResolveError) && !remoteSnapshot;
   const isComponentEntity = entityType === 'component';
   const previewUiLibrary = snapshot.pageConfig?.previewUiLibrary === 'antd' ? 'antd' : 'tdesign';
 
@@ -469,7 +543,9 @@ const PreviewEngine: React.FC = () => {
         <div className="preview-engine-canvas" data-preview-page style={canvasStyle}>
           {shouldShowResolveError ? (
             <div className="preview-route-status preview-route-status--empty">
-              <div className="preview-route-status__title">无法定位预览页面</div>
+              <div className="preview-route-status__title">
+                {finalPageId ? '无法加载预览' : '无法定位预览页面'}
+              </div>
               <div className="preview-route-status__desc">{routeResolveError}</div>
             </div>
           ) : routeNotFound ? (

@@ -120,7 +120,7 @@ export const router = createBrowserRouter([
       },
       {
         path: '/preview-engine',
-        element: <RequireAuth>{load(<PreviewEngine />)}</RequireAuth>,
+        element: load(<PreviewEngine />),
       },
       {
         path: '/code-workbench',

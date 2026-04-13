@@ -62,7 +62,10 @@ export const getComponentVersionList = async (componentId: string) => {
   return response.data;
 };
 
-export const getComponentTemplateDetail = async (componentId: string, options?: { version?: number | null }) => {
+export const getComponentTemplateDetail = async (
+  componentId: string,
+  options?: { version?: number | null; skipErrorToast?: boolean; skipGlobalLoading?: boolean },
+) => {
   const normalizedVersion = Number(options?.version);
   const response = await requestClient.get<ApiResponse<ComponentDetail>>(`/page-template/${componentId}`, {
     params: {
@@ -71,6 +74,8 @@ export const getComponentTemplateDetail = async (componentId: string, options?: 
         ? { version: Math.floor(normalizedVersion) }
         : {}),
     },
+    skipErrorToast: options?.skipErrorToast === true,
+    skipGlobalLoading: options?.skipGlobalLoading === true,
   });
   const payload = response.data;
   if (payload?.data?.template) {
