@@ -1,4 +1,4 @@
-import React, { useId } from 'react';
+import { useId } from 'react';
 import { LibSvg, type LibraryGlyphProps } from './libraryIllustrationPrimitives';
 import { LibIllustrationTheme as T } from './libraryIllustrationTheme';
 
