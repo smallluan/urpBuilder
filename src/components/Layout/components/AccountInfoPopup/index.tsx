@@ -67,7 +67,9 @@ const AccountInfoPopup: React.FC = () => {
       return
     }
     if (value === 'help') {
-      MessagePlugin.info('敬请期待')
+      const base = import.meta.env.BASE_URL || '/'
+      const url = new URL('help', `${window.location.origin}${base}`).href
+      window.open(url, '_blank', 'noopener,noreferrer')
       return
     }
     if (value === 'website') {

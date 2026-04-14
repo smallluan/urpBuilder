@@ -23,6 +23,9 @@ const PreviewEngine = lazy(() => import('../pages/PreviewEngine'));
 const CodeWorkbench = lazy(() => import('../pages/CodeWorkbench/index.tsx'));
 const AdminBroadcast = lazy(() => import('../pages/AdminBroadcast'));
 const Login = lazy(() => import('../pages/Login'));
+const DocsLayout = lazy(() => import('../pages/Docs/DocsLayout'));
+const DocsWelcomePage = lazy(() => import('../pages/Docs/DocsWelcomePage'));
+const DocsArticlePage = lazy(() => import('../pages/Docs/DocsArticlePage'));
 
 const routeSuspenseFallback = (
   <Loading fullscreen loading preventScrollThrough showOverlay />
@@ -129,6 +132,20 @@ export const router = createBrowserRouter([
       {
         path: '/site-preview/*',
         element: load(<PreviewEngine />),
+      },
+      {
+        path: '/help',
+        element: <RequireAuth>{load(<DocsLayout />)}</RequireAuth>,
+        children: [
+          {
+            index: true,
+            element: load(<DocsWelcomePage />),
+          },
+          {
+            path: 'doc/:sectionId/:slug',
+            element: load(<DocsArticlePage />),
+          },
+        ],
       },
     ],
   },

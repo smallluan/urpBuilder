@@ -1,0 +1,41 @@
+/* 复用 urp-logo 的 --urp-logo-text-* 变量（见 UrpBuilderLogo.less） */
+
+.docs-site-logo__wordmark {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  font-family:
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    Roboto,
+    'PingFang SC',
+    'Microsoft YaHei',
+    sans-serif;
+}
+
+.docs-site-logo__builder {
+  color: var(--urp-logo-text-urp);
+}
+
+.docs-site-logo__next {
+  color: var(--urp-logo-text-builder);
+}
+
+/* 与 BuilderNext 间隔一点，中文标签 */
+.docs-site-logo__badge {
+  margin-left: 8px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 0.72em;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--app-text-secondary);
+  background: color-mix(in srgb, var(--app-text-secondary) 6%, transparent);
+  border: 0.5px solid var(--app-border-subtle);
+  line-height: 1.25;
+}

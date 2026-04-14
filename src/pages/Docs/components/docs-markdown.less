@@ -1,0 +1,403 @@
+/* 文档 Markdown：偏 iOS 的克制排版 + 平台品牌色点缀（细线、低对比填充） */
+
+.urp-md {
+  --md-r: 6px;
+  --md-r-tight: 4px;
+  color: var(--app-text-primary);
+  font-size: 14px;
+  line-height: 22px;
+  letter-spacing: -0.011em;
+  font-feature-settings: 'kern' 1;
+
+  > *:first-child {
+    margin-top: 0;
+  }
+
+  > *:last-child {
+    margin-bottom: 0;
+  }
+}
+
+.urp-md__h1 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  letter-spacing: -0.018em;
+  line-height: 1.3;
+  margin: 1rem 0 0.5rem;
+  padding-bottom: 0.4rem;
+  color: var(--app-text-primary);
+  border-bottom: 1px solid var(--app-border-subtle);
+}
+
+.urp-md__h2 {
+  font-size: 1.0625rem;
+  font-weight: 600;
+  letter-spacing: -0.016em;
+  line-height: 1.35;
+  margin: 1.125rem 0 0.45rem;
+  padding: 0 0 0 8px;
+  border-left: 2px solid var(--td-brand-color);
+  color: var(--app-text-primary);
+}
+
+.urp-md__h3 {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  letter-spacing: -0.012em;
+  margin: 0.95rem 0 0.35rem;
+  color: var(--app-text-primary);
+}
+
+.urp-md__h4,
+.urp-md__h5,
+.urp-md__h6 {
+  font-size: 0.875rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  margin: 0.85rem 0 0.3rem;
+  color: var(--app-text-primary);
+}
+
+.urp-md__p {
+  margin: 0.5rem 0;
+  color: var(--app-text-primary);
+}
+
+.urp-md__a {
+  color: var(--td-brand-color);
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  transition: border-color 0.12s ease, color 0.12s ease;
+
+  &:hover {
+    border-bottom-color: color-mix(in srgb, var(--td-brand-color) 45%, transparent);
+  }
+}
+
+.urp-md__ul,
+.urp-md__ol {
+  margin: 0.5rem 0;
+  padding-left: 1.15rem;
+  color: var(--app-text-primary);
+}
+
+.urp-md__ul {
+  list-style: disc;
+}
+
+.urp-md__ol {
+  list-style: decimal;
+}
+
+.urp-md__li {
+  margin: 0.28rem 0;
+  padding-left: 0.15rem;
+  line-height: 22px;
+
+  &::marker {
+    color: var(--app-text-muted);
+  }
+}
+
+.urp-md__li .urp-md__ul,
+.urp-md__li .urp-md__ol {
+  margin: 0.28rem 0;
+}
+
+.urp-md__blockquote {
+  margin: 0.65rem 0;
+  padding: 8px 12px;
+  border-radius: var(--md-r);
+  border: 1px solid var(--app-border-subtle);
+  border-left: 2px solid var(--td-brand-color);
+  background: var(--app-surface-muted);
+  color: var(--app-text-secondary);
+
+  p {
+    margin: 0.28rem 0;
+    font-size: 13px;
+    line-height: 20px;
+  }
+}
+
+.urp-md__hr {
+  margin: 1.1rem 0;
+  border: none;
+  border-top: 1px solid var(--app-border-subtle);
+}
+
+.urp-md__table-scroll {
+  margin: 0.65rem 0;
+  width: 100%;
+  overflow-x: auto;
+  border-radius: var(--md-r);
+  border: 1px solid var(--app-border-subtle);
+  background: var(--app-surface-elevated);
+}
+
+.urp-md__table {
+  width: 100%;
+  min-width: 480px;
+  border-collapse: collapse;
+  font-size: 13px;
+  line-height: 18px;
+}
+
+.urp-md__th,
+.urp-md__td {
+  padding: 7px 10px;
+  text-align: left;
+  border-bottom: 1px solid var(--app-border-subtle);
+  vertical-align: top;
+}
+
+.urp-md__th {
+  font-weight: 600;
+  font-size: 12px;
+  letter-spacing: -0.008em;
+  color: var(--app-text-secondary);
+  background: color-mix(in srgb, var(--app-surface-muted) 55%, var(--app-surface-elevated));
+}
+
+.urp-md__tbody .urp-md__tr:last-child .urp-md__td {
+  border-bottom: none;
+}
+
+.urp-md__tbody .urp-md__td {
+  color: var(--app-text-primary);
+}
+
+.urp-md__strong {
+  font-weight: 600;
+  color: var(--app-text-primary);
+}
+
+.urp-md__em {
+  font-style: italic;
+}
+
+.urp-md__del {
+  opacity: 0.72;
+  text-decoration: line-through;
+}
+
+.urp-md__img {
+  max-width: 100%;
+  height: auto;
+  border-radius: var(--md-r);
+  margin: 0.5rem 0;
+  border: 1px solid var(--app-border-subtle);
+}
+
+.urp-md__code-inline {
+  padding: 0.08em 0.35em;
+  border-radius: var(--md-r-tight);
+  font-size: 0.8125em;
+  line-height: inherit;
+  font-family:
+    ui-monospace,
+    'SF Mono',
+    SFMono-Regular,
+    Menlo,
+    Consolas,
+    monospace;
+  color: var(--app-text-primary);
+  background: color-mix(in srgb, var(--app-surface-muted) 92%, var(--td-brand-color));
+  border: 0.5px solid color-mix(in srgb, var(--app-border-subtle) 80%, var(--td-brand-color));
+}
+
+/* macOS 风代码窗 + Atom One Dark 系配色（与正文亮/暗无关，保持阅读对比） */
+.urp-md__code-window {
+  margin: 0.65rem 0;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow:
+    0 4px 18px rgba(0, 0, 0, 0.2),
+    0 0 0 1px rgba(255, 255, 255, 0.05);
+}
+
+.urp-md__code-window-chrome {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: 30px;
+  padding: 0 12px;
+  background: #21252b;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.35);
+}
+
+.urp-md__code-window-dots {
+  display: flex;
+  gap: 6px;
+  z-index: 1;
+}
+
+.urp-md__code-window-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  box-shadow: inset 0 -1px 1px rgba(0, 0, 0, 0.15);
+
+  &--r {
+    background: #ff5f57;
+  }
+
+  &--y {
+    background: #febc2e;
+  }
+
+  &--g {
+    background: #28c840;
+  }
+}
+
+.urp-md__code-window-title {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: 60%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: #9da5b4;
+  pointer-events: none;
+}
+
+.urp-md__code-window-body {
+  margin: 0;
+  padding: 11px 14px 12px;
+  overflow-x: auto;
+  line-height: 1.55;
+  font-size: 12px;
+  letter-spacing: 0.01em;
+  tab-size: 2;
+  background: #282c34;
+  border: none;
+  font-family:
+    ui-monospace,
+    'SF Mono',
+    SFMono-Regular,
+    Menlo,
+    Monaco,
+    Consolas,
+    monospace;
+
+  code {
+    display: block;
+    width: max-content;
+    min-width: 100%;
+    margin: 0;
+    padding: 0;
+    font-family: inherit;
+    font-size: inherit;
+    line-height: inherit;
+    background: transparent !important;
+    border: none !important;
+    color: #abb2bf !important;
+  }
+}
+
+/* highlight.js → One Dark（与 atom-one-dark 对齐，略调饱和度） */
+.urp-md__code-window {
+  .hljs-comment,
+  .hljs-quote {
+    color: #5c6370;
+    font-style: italic;
+  }
+
+  .hljs-doctag,
+  .hljs-keyword,
+  .hljs-formula,
+  .hljs-selector-tag,
+  .hljs-deletion,
+  .hljs-subst {
+    color: #c678dd;
+  }
+
+  .hljs-tag,
+  .hljs-tag .hljs-name {
+    color: #e06c75;
+  }
+
+  .hljs-literal,
+  .hljs-string,
+  .hljs-regexp,
+  .hljs-addition,
+  .hljs-attribute,
+  .hljs-meta-string {
+    color: #98c379;
+  }
+
+  .hljs-built_in,
+  .hljs-class .hljs-title,
+  .hljs-title.class_ {
+    color: #e5c07b;
+  }
+
+  .hljs-attr,
+  .hljs-variable,
+  .hljs-template-variable,
+  .hljs-type,
+  .hljs-selector-class,
+  .hljs-selector-attr,
+  .hljs-selector-pseudo,
+  .hljs-number {
+    color: #d19a66;
+  }
+
+  .hljs-symbol,
+  .hljs-bullet,
+  .hljs-link,
+  .hljs-meta,
+  .hljs-selector-id,
+  .hljs-title {
+    color: #61afef;
+  }
+
+  .hljs-emphasis {
+    font-style: italic;
+  }
+
+  .hljs-strong {
+    font-weight: 600;
+  }
+
+  .hljs-link {
+    text-decoration: underline;
+  }
+}
+
+.urp-md__task-check {
+  margin-right: 0.4em;
+  accent-color: var(--td-brand-color);
+  vertical-align: -0.15em;
+  pointer-events: none;
+  width: 0.95em;
+  height: 0.95em;
+}
+
+/* MDX 内嵌组件示例 */
+.urp-md__mdx-callout {
+  margin: 0.65rem 0;
+  padding: 8px 12px;
+  border-radius: var(--md-r);
+  border: 1px solid color-mix(in srgb, var(--td-brand-color) 22%, var(--app-border-subtle));
+  background: color-mix(in srgb, var(--td-brand-color-light, rgba(0, 82, 217, 0.08)) 80%, var(--app-surface-muted));
+}
+
+.urp-md__mdx-callout-title {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--td-brand-color);
+  margin-bottom: 4px;
+}
+
+.urp-md__mdx-callout-body {
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--app-text-secondary);
+}

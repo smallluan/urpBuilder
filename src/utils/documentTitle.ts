@@ -15,6 +15,14 @@ export function resolveDocumentTitle(pathname: string, _search: string): string 
     return `页面预览 · ${BRAND}`;
   }
 
+  if (path === '/help') {
+    return `帮助中心 · ${BRAND}`;
+  }
+
+  if (path.startsWith('/help/doc/')) {
+    return `帮助文档 · ${BRAND}`;
+  }
+
   const exact: Record<string, string> = {
     '/': '首页',
     '/build-component': '构建组件',
