@@ -1282,7 +1282,7 @@ const ComponentAsideLeft: React.FC = () => {
       <div className="structure-top">
         <div className="structure-panel">
           <div className="search-row">
-            <Input placeholder="搜索组件（示例）" clearable suffix={<SearchIcon />} />
+            <Input size="small" placeholder="搜索组件（示例）" clearable suffix={<SearchIcon />} />
             <button
               type="button"
               className={`structure-locate-btn${activeNodeKey ? '' : ' structure-locate-btn--disabled'}`}

@@ -166,3 +166,20 @@ export function flattenNav(): FlatNavEntry[] {
   }
   return out;
 }
+
+/** 按侧边栏扁平顺序返回上一篇 / 下一篇（用于文末导航） */
+export function getAdjacentNavEntries(
+  sectionId: string,
+  slug: string,
+  flatNav?: FlatNavEntry[],
+): { prev: FlatNavEntry | null; next: FlatNavEntry | null } {
+  const flat = flatNav ?? flattenNav();
+  const idx = flat.findIndex((x) => x.sectionId === sectionId && x.slug === slug);
+  if (idx === -1) {
+    return { prev: null, next: null };
+  }
+  return {
+    prev: idx > 0 ? flat[idx - 1]! : null,
+    next: idx < flat.length - 1 ? flat[idx + 1]! : null,
+  };
+}

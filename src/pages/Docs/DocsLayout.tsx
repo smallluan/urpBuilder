@@ -11,9 +11,7 @@ export default function DocsLayout() {
       <div className="docs-body">
         <DocsSidebar />
         <main className="docs-main">
-          <div className="docs-main__inner">
-            <Outlet />
-          </div>
+          <Outlet />
         </main>
       </div>
     </div>

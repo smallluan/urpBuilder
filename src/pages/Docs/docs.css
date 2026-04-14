@@ -7,6 +7,10 @@
   --docs-accent: var(--td-brand-color, #0052d9);
   --docs-accent-soft: var(--td-brand-color-light, rgba(0, 82, 217, 0.08));
   --docs-font: system-ui, -apple-system, 'Segoe UI', Roboto, 'PingFang SC', sans-serif;
+  /* 右侧固定目录宽度 + 与视口右边缘间距，供 .docs-main 预留空白避免正文被遮挡 */
+  --docs-anchor-panel-width: 260px;
+  /* 略减小与视口右缘距离，目录更靠右 */
+  --docs-anchor-viewport-right: clamp(10px, 1vw, 28px);
 }
 
 .docs-shell *,
@@ -18,7 +22,6 @@
 .docs-shell {
   display: flex;
   flex-direction: column;
-  /* 锁定视口高度，避免整页滚动把顶栏滚走；正文只在 .docs-main 内滚动 */
   min-height: 100vh;
   height: 100vh;
   max-height: 100vh;
@@ -76,18 +79,37 @@
 .docs-main {
   flex: 1;
   min-width: 0;
+  min-height: 0;
   overflow: auto;
-  /* 主栏左右留白，避免正文贴边；内层再居中 */
-  padding: 0 28px;
+  padding: 0 clamp(16px, 4vw, 40px);
 }
 
-.docs-main__inner {
+@media (min-width: 1181px) {
+  .docs-main:has(.docs-page--with-anchor) {
+    padding-right: calc(var(--docs-anchor-panel-width) + var(--docs-anchor-viewport-right) + 12px);
+  }
+}
+
+.docs-page {
   width: 100%;
-  max-width: 56rem;
+  max-width: 680px;
   margin-left: auto;
   margin-right: auto;
-  padding: 20px 0 40px;
+  padding: 24px 0 56px;
   box-sizing: border-box;
+}
+
+.docs-page--single {
+  max-width: 800px;
+}
+
+.doc-article-container {
+  min-width: 0;
+}
+
+.doc-article {
+  width: 100%;
+  max-width: 680px;
 }
 
 .doc-article h1 {
@@ -122,23 +144,137 @@
   margin: 0 0 2px;
 }
 
-.doc-article__placeholder {
-  padding: 16px 0;
-}
-
-.doc-article__hint {
-  font-size: 13px;
+.doc-article__updated {
+  margin-top: 2rem;
+  margin-bottom: 0;
+  font-size: 12px;
   color: var(--docs-muted);
 }
 
-.doc-article__hint code {
-  font-size: 12px;
-  background: var(--docs-bg);
-  padding: 2px 6px;
-  border-radius: 4px;
+.doc-article-footer {
+  margin-top: 1.5rem;
 }
 
-/* 帮助侧栏：大段标题 — 纯文字、与正文侧栏一致，避免粗色条/图标/全大写 */
+.doc-article-footer__nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--docs-border);
+}
+
+.doc-article-footer__side {
+  flex: 1;
+  min-width: 0;
+  max-width: 48%;
+}
+
+.doc-article-footer__side--next {
+  text-align: right;
+}
+
+.doc-article-footer__link {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  max-width: 100%;
+  text-decoration: none;
+  color: var(--docs-text);
+  font-size: 13px;
+}
+
+.doc-article-footer__link--next {
+  align-items: flex-end;
+}
+
+.doc-article-footer__link:hover .doc-article-footer__title {
+  color: var(--docs-accent);
+}
+
+.doc-article-footer__label {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--docs-muted);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.doc-article-footer__title {
+  font-weight: 500;
+  line-height: 1.35;
+  word-break: break-word;
+}
+
+.doc-article-footer__placeholder {
+  display: block;
+}
+
+.doc-anchor-column {
+  min-width: 0;
+}
+
+/* 宽屏：目录固定在视口右侧、垂直居中，不随正文滚动 */
+@media (min-width: 1181px) {
+  .doc-anchor-column {
+    position: fixed;
+    /* 顶栏以下再略上移 */
+    top: calc(16px + 40vh);
+    right: var(--docs-anchor-viewport-right);
+    transform: translateY(-50%);
+    z-index: 10;
+    width: var(--docs-anchor-panel-width);
+    max-height: min(85vh, calc(100dvh - 100px));
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .doc-anchor-column__sticky {
+    position: static;
+    max-height: none;
+    overflow: visible;
+  }
+}
+
+@media (max-width: 1180px) {
+  .doc-anchor-column {
+    display: none;
+  }
+}
+
+.doc-anchor-column__inner {
+  padding-left: 0;
+}
+
+.doc-anchor-column .t-anchor {
+  width: 100%;
+  min-width: 0;
+  background: transparent;
+}
+
+/* TDesign Anchor 左侧灰线 + 当前项蓝色指示条，勿 display:none */
+
+/* 嵌套 AnchorItem 在父 .t-anchor__item 内，逐级缩进（叠在组件默认 padding 上） */
+.doc-anchor-column .t-anchor__item .t-anchor__item {
+  padding-left: 12px;
+  margin-top: 2px;
+}
+
+.doc-anchor-column .t-anchor__item-link {
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--docs-muted);
+  word-break: break-word;
+}
+
+.doc-anchor-column .t-anchor__item-link:hover,
+.doc-anchor-column .t-is-active > .t-anchor__item-link {
+  color: var(--docs-accent);
+}
+
 .docs-menu-section-label {
   display: block;
   font-size: 12px;
@@ -148,7 +284,6 @@
   color: var(--app-text-secondary, var(--td-text-color-secondary));
 }
 
-/* TDesign Menu：铺满宽度 + 收紧分组与各级缩进（覆盖组件内联 --padding-left） */
 .docs-td-menu.t-default-menu {
   width: 100% !important;
 }
@@ -164,26 +299,30 @@
   padding-right: 12px !important;
 }
 
-.docs-td-menu.t-default-menu .t-menu__item {
+/*
+ * 勿对全局 .t-menu__item 写死 padding-left：会命中 .t-menu__sub 内子项并覆盖
+ * TDesign 的 padding-left: var(--padding-left)，导致子级无缩进。
+ * 仅对「分组下」顶层项与一级 SubMenu 标题行对齐分组标题（12px）。
+ */
+.docs-td-menu.t-default-menu .t-menu-group > .t-menu__item,
+.docs-td-menu.t-default-menu .t-menu-group > .t-submenu > .t-menu__item {
   padding-left: 12px !important;
 }
 
-/* 一级子菜单内容区：默认约 44px，缩到与分组对齐感一致 */
 .docs-td-menu.t-default-menu ul.t-menu__sub {
-  --padding-left: 24px !important;
+  --padding-left: 32px;
 }
 
-/* 更深一层子菜单 */
 .docs-td-menu.t-default-menu .t-menu__sub .t-menu__sub {
-  --padding-left: 30px !important;
+  --padding-left: 48px;
 }
 
 @media (max-width: 960px) {
   .docs-main {
-    padding: 0 16px;
+    padding: 0 clamp(12px, 3vw, 20px);
   }
 
-  .docs-main__inner {
+  .docs-page {
     padding: 16px 0 36px;
   }
 }
