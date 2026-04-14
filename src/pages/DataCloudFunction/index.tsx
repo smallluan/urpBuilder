@@ -1158,7 +1158,27 @@ const DataCloudFunction: React.FC = () => {
                       loading={recordLoading}
                       data={records}
                       columns={recordColumns}
-                      empty="当前数据表暂无记录"
+                      empty={
+                        <div className="console-main__table-empty">
+                          <Empty
+                            title="暂无记录"
+                            description="可点击「新增记录」添加第一条数据，或通过 API 写入。"
+                          />
+                          <div className="console-main__table-empty-actions">
+                            <Button
+                              theme="primary"
+                              size="small"
+                              icon={<AddIcon />}
+                              onClick={() => {
+                                setRecordDraft({ jsonText: '{\n  \n}' });
+                                setRecordDialogVisible(true);
+                              }}
+                            >
+                              新增记录
+                            </Button>
+                          </div>
+                        </div>
+                      }
                       maxHeight="100%"
                     />
                   </div>

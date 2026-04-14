@@ -34,8 +34,8 @@
     min-height: 0;
     display: flex;
     flex-direction: column;
-    // background: #fff;
-    // border: 1px solid #e6e9ef;
+    /* 与主内容区一致，避免整页灰底上再叠一层灰底 */
+    background: var(--td-bg-color-container);
     border-radius: 10px;
     border-right: 1px solid var(--td-component-border, #e7e7e7);
     /* 勿 hidden：会裁切侧栏搜索区下拉与按钮焦点环；列表区自行滚动 */
@@ -125,7 +125,7 @@
 
   .console-main {
     min-height: 0;
-    background: var(--td-bg-color-page);
+    background: var(--td-bg-color-container);
     display: flex;
     flex-direction: column;
     padding: 12px;
@@ -160,7 +160,7 @@
       flex-shrink: 0;
       border: 1px solid var(--td-component-border);
       border-radius: 8px;
-      background: var(--td-brand-color-1);
+      background: var(--td-bg-color-container);
       padding: 10px;
       overflow-x: auto;
     }
@@ -207,10 +207,20 @@
       border: 1px solid var(--td-component-border);
       border-radius: 8px;
       padding: 10px 12px;
-      background: var(--td-brand-color-1);
+      background: var(--td-bg-color-container);
       display: flex;
       flex-direction: column;
       gap: 10px;
+    }
+
+    &__table-empty {
+      padding: 28px 16px 32px;
+    }
+
+    &__table-empty-actions {
+      display: flex;
+      justify-content: center;
+      margin-top: 12px;
     }
 
     &__code-panel-head {
@@ -246,7 +256,7 @@
     &__toolbar {
       padding: 8px;
       border-bottom: 1px solid var(--td-component-border);
-      background: var(--td-brand-color-1);
+      background: var(--td-bg-color-container);
     }
   }
 

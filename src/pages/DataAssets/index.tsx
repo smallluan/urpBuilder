@@ -418,7 +418,15 @@ const DataAssets: React.FC = () => {
             onExpand={handleTreeExpand}
             onClick={handleTreeClick}
             actived={tree.selectedNodeId ? [tree.selectedNodeId] : []}
-            empty="暂无文件夹"
+            empty={
+              <div className="data-assets-tree-empty">
+                <Empty
+                  size="small"
+                  title="暂无文件夹"
+                  description="在右侧使用「新建文件夹」添加根目录，或上传素材后在此查看目录结构。"
+                />
+              </div>
+            }
           />
         </div>
       </aside>

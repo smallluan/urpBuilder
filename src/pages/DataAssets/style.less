@@ -35,6 +35,7 @@
   display: flex;
   flex-direction: column;
   border-right: 1px solid var(--td-component-border);
+  /* 与内容区同为容器白底，避免相对整页灰底发灰 */
   background: var(--td-bg-color-container);
   overflow: hidden;
 }
@@ -49,6 +50,11 @@
   flex: 1;
   overflow: auto;
   padding: 8px 4px;
+
+  .data-assets-tree-empty {
+    padding: 20px 8px 24px;
+    text-align: center;
+  }
 
   // TDesign Tree 样式微调
   .t-tree__item {
@@ -171,6 +177,7 @@
   flex-direction: column;
   padding: 16px 20px;
   overflow: hidden;
+  background: var(--td-bg-color-container);
 }
 
 .data-assets-main__body {
