@@ -25,8 +25,11 @@ const svgCaptchaToDataUrl = (svg: string) =>
 
 type FieldErrors<T extends string> = Partial<Record<T, string>>;
 
+/** 图形验证码业务错误：输错 / 过期 / 已失效（后端均作废当前 id，前端会换图） */
+const AUTH_CAPTCHA_ERROR_CODES = new Set([400011, 400012, 400013]);
+
 type LoadCaptchaOptions = {
-  /** 为 false 时刷新图片后仍保留验证码输入框上的错误 tips（如服务端 400011） */
+  /** 为 false 时刷新图片后仍保留验证码输入框上的错误 tips */
   clearCaptchaFieldError?: boolean;
 };
 
@@ -227,9 +230,17 @@ const Login: React.FC = () => {
       const ax = e as AxiosError<ApiResponse<unknown>>;
       const code = ax.response?.data?.code;
       const msg = ax.response?.data?.message ?? '';
-      if (code === 400011) {
+      if (typeof code === 'number' && AUTH_CAPTCHA_ERROR_CODES.has(code)) {
         void loadLoginCaptcha({ clearCaptchaFieldError: false });
-        setLoginFieldErrors({ captcha: msg || '图形验证码错误或已失效，请重新获取' });
+        setLoginFieldErrors({
+          captcha:
+            msg ||
+            (code === 400012
+              ? '图形验证码已过期，请重新获取'
+              : code === 400013
+                ? '图形验证码已失效，请重新获取'
+                : '图形验证码错误，请核对后重试'),
+        });
         return;
       }
       if (code === 401001 || ax.response?.status === 401) {
@@ -281,9 +292,17 @@ const Login: React.FC = () => {
       const code = ax.response?.data?.code;
       const msg = ax.response?.data?.message ?? '';
       const status = ax.response?.status;
-      if (code === 400011) {
+      if (typeof code === 'number' && AUTH_CAPTCHA_ERROR_CODES.has(code)) {
         void loadRegisterCaptcha({ clearCaptchaFieldError: false });
-        setRegisterFieldErrors({ captcha: msg || '图形验证码错误或已失效，请重新获取' });
+        setRegisterFieldErrors({
+          captcha:
+            msg ||
+            (code === 400012
+              ? '图形验证码已过期，请重新获取'
+              : code === 400013
+                ? '图形验证码已失效，请重新获取'
+                : '图形验证码错误，请核对后重试'),
+        });
         return;
       }
       if (code === 1004 || status === 409) {
@@ -359,20 +378,31 @@ const Login: React.FC = () => {
                       status={loginFieldErrors.captcha ? 'error' : undefined}
                       tips={loginFieldErrors.captcha}
                     />
-                    <div className="login-page__captcha-img-wrap">
+                    <div
+                      className="login-page__captcha-img-wrap"
+                      role="button"
+                      tabIndex={0}
+                      title="点击更换图形验证码"
+                      aria-label="点击更换图形验证码"
+                      onClick={() => void loadLoginCaptcha()}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          void loadLoginCaptcha();
+                        }
+                      }}
+                    >
                       {loginCaptchaSvg ? (
                         <img
                           className="login-page__captcha-img"
                           src={svgCaptchaToDataUrl(loginCaptchaSvg)}
-                          alt="图形验证码"
+                          alt=""
+                          draggable={false}
                         />
                       ) : (
                         <span className="login-page__captcha-placeholder">加载中…</span>
                       )}
                     </div>
-                    <Button size="large" variant="outline" onClick={() => void loadLoginCaptcha()}>
-                      换一张
-                    </Button>
                   </div>
                 </div>
                 {/*
@@ -470,20 +500,31 @@ const Login: React.FC = () => {
                       status={registerFieldErrors.captcha ? 'error' : undefined}
                       tips={registerFieldErrors.captcha}
                     />
-                    <div className="login-page__captcha-img-wrap">
+                    <div
+                      className="login-page__captcha-img-wrap"
+                      role="button"
+                      tabIndex={0}
+                      title="点击更换图形验证码"
+                      aria-label="点击更换图形验证码"
+                      onClick={() => void loadRegisterCaptcha()}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          void loadRegisterCaptcha();
+                        }
+                      }}
+                    >
                       {registerCaptchaSvg ? (
                         <img
                           className="login-page__captcha-img"
                           src={svgCaptchaToDataUrl(registerCaptchaSvg)}
-                          alt="图形验证码"
+                          alt=""
+                          draggable={false}
                         />
                       ) : (
                         <span className="login-page__captcha-placeholder">加载中…</span>
                       )}
                     </div>
-                    <Button size="large" variant="outline" onClick={() => void loadRegisterCaptcha()}>
-                      换一张
-                    </Button>
                   </div>
                 </div>
                 {/*
