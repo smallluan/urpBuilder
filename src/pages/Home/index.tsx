@@ -4,25 +4,13 @@ import zhCN from 'antd/locale/zh_CN';
 import dayjs from 'dayjs';
 import 'dayjs/locale/zh-cn';
 import ReactEcharts from 'echarts-for-react';
-import { CodeIcon, FileIcon } from 'tdesign-icons-react';
 import { Statistic } from 'tdesign-react';
 import { useAuth } from '../../auth/context';
 import { useBuilderThemeStore } from '../../builder/theme/builderThemeStore';
 import { useTeam } from '../../team/context';
-import requestClient from '../../api/request';
-import { getDataConstantList } from '../../api/dataConstant';
-import {
-  getCloudFunctionInvocationStats,
-  getCloudFunctionList,
-  type CloudFunctionInvocationDailyPoint,
-  type CloudFunctionInvocationStats,
-} from '../../api/cloudFunction';
-import {
-  getWorkspaceDailyEditStats,
-  type WorkspaceDailyEditStats,
-} from '../../api/pageTemplate';
-import { listPersonalAssets, listTeamAssets } from '../../api/assets';
-import type { ApiResponse, PageBaseInfo } from '../../api/types';
+import { fetchHomeDashboard } from '../../api/homeDashboard';
+import type { CloudFunctionInvocationDailyPoint, CloudFunctionInvocationStats } from '../../api/cloudFunction';
+import type { WorkspaceDailyEditStats } from '../../api/pageTemplate';
 import '../../styles/app-shell-page.less';
 import { EditActivityContributionGrid } from './EditActivityContributionGrid';
 import {
@@ -32,6 +20,7 @@ import {
   HomeAssetStatIconConstants,
   HomeAssetStatIconFunctions,
 } from '../../components/icons/homeAssetStatIcons';
+import { HomeQuickStartIconNewApp, HomeQuickStartIconNewComponent } from '../../components/icons/homeQuickStartIcons';
 import { RecentEditsTicker, type RecentEditItem } from './RecentEditsTicker';
 import { openEditorInNewTab } from './openEditorInNewTab';
 import './style.less';
@@ -56,8 +45,6 @@ const SOUP_QUOTES: string[] = [
   '慢一点想清楚，快一点做对事。',
   '你写的每一行，都会在某个深夜被感谢。',
 ];
-
-type PageBaseListPayload = { list?: unknown[]; total?: number };
 
 type StatKey = 'components' | 'apps' | 'constants' | 'functions' | 'assets';
 
@@ -102,23 +89,6 @@ function eachDateKeyInclusive(start: dayjs.Dayjs, end: dayjs.Dayjs): string[] {
   return keys;
 }
 
-async function fetchPageBaseTotal(
-  entityType: 'page' | 'component',
-  scope: Record<string, unknown>,
-): Promise<number> {
-  try {
-    const response = await requestClient.get<ApiResponse<PageBaseListPayload>>('/page-base/list', {
-      params: { page: 1, pageSize: 1, entityType, ...scope },
-      skipGlobalLoading: true,
-      skipErrorToast: true,
-    });
-    const t = response.data?.data?.total;
-    return typeof t === 'number' ? t : 0;
-  } catch {
-    return 0;
-  }
-}
-
 const Home: React.FC = () => {
   const { user } = useAuth();
   const colorMode = useBuilderThemeStore((s) => s.colorMode);
@@ -146,153 +116,6 @@ const Home: React.FC = () => {
       return;
     }
 
-    let cancelled = false;
-
-    const load = async () => {
-      const scopeBase: Record<string, unknown> =
-        workspaceMode === 'personal'
-          ? { mine: true }
-          : currentTeamId
-            ? { ownerType: 'team', ownerTeamId: currentTeamId }
-            : {};
-
-      if (workspaceMode === 'team' && !currentTeamId) {
-        if (!cancelled) {
-          setStats({
-            components: 0,
-            apps: 0,
-            constants: 0,
-            functions: 0,
-            assets: 0,
-          });
-        }
-        return;
-      }
-
-      const ownerType = workspaceMode === 'team' ? 'team' : 'user';
-      const ownerTeamId = ownerType === 'team' ? currentTeamId || undefined : undefined;
-
-      try {
-        const [components, apps, constantList, fnList, assetPayload] = await Promise.all([
-          fetchPageBaseTotal('component', scopeBase),
-          fetchPageBaseTotal('page', scopeBase),
-          getDataConstantList({
-            ownerType,
-            ownerTeamId,
-            page: 1,
-            pageSize: 1,
-          }).catch(() => ({ total: 0, list: [] })),
-          getCloudFunctionList({
-            ownerType,
-            ownerTeamId,
-            page: 1,
-            pageSize: 1,
-          }).catch(() => ({ total: 0, list: [] })),
-          ownerType === 'user'
-            ? listPersonalAssets({ page: 1, pageSize: 1 })
-            : listTeamAssets(currentTeamId as string, { page: 1, pageSize: 1 }),
-        ]);
-
-        const assetInner = assetPayload?.data;
-        const assetTotal = typeof assetInner?.total === 'number' ? assetInner.total : 0;
-
-        if (!cancelled) {
-          setStats({
-            components,
-            apps,
-            constants: constantList.total,
-            functions: fnList.total,
-            assets: assetTotal,
-          });
-        }
-      } catch {
-        if (!cancelled) {
-          setStats({
-            components: 0,
-            apps: 0,
-            constants: 0,
-            functions: 0,
-            assets: 0,
-          });
-        }
-      }
-    };
-
-    void load();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [teamInitialized, workspaceMode, currentTeamId]);
-
-  useEffect(() => {
-    if (!teamInitialized) {
-      return;
-    }
-
-    let cancelled = false;
-
-    if (workspaceMode === 'team' && !currentTeamId) {
-      setRecentEdits([]);
-      setRecentEditsLoading(false);
-      return;
-    }
-
-    const scopeBase: Record<string, unknown> =
-      workspaceMode === 'personal'
-        ? { mine: true }
-        : { ownerType: 'team', ownerTeamId: currentTeamId as string };
-
-    const loadRecent = async () => {
-      setRecentEditsLoading(true);
-      try {
-        const [pRes, cRes] = await Promise.all([
-          requestClient.get<ApiResponse<{ list: PageBaseInfo[]; total: number }>>('/page-base/list', {
-            params: { entityType: 'page', page: 1, pageSize: 24, ...scopeBase },
-            skipGlobalLoading: true,
-            skipErrorToast: true,
-          }),
-          requestClient.get<ApiResponse<{ list: PageBaseInfo[]; total: number }>>('/page-base/list', {
-            params: { entityType: 'component', page: 1, pageSize: 24, ...scopeBase },
-            skipGlobalLoading: true,
-            skipErrorToast: true,
-          }),
-        ]);
-        const pl = Array.isArray(pRes.data?.data?.list) ? pRes.data.data.list : [];
-        const cl = Array.isArray(cRes.data?.data?.list) ? cRes.data.data.list : [];
-        const merged: RecentEditItem[] = [...pl, ...cl].map((row) => ({
-          pageId: row.pageId,
-          pageName: row.pageName?.trim() || '未命名',
-          entityType: row.entityType === 'component' ? 'component' : 'page',
-          updatedAt: row.updatedAt ?? '',
-        }));
-        merged.sort((a, b) => dayjs(b.updatedAt).valueOf() - dayjs(a.updatedAt).valueOf());
-        if (!cancelled) {
-          setRecentEdits(merged.slice(0, 16));
-        }
-      } catch {
-        if (!cancelled) {
-          setRecentEdits([]);
-        }
-      } finally {
-        if (!cancelled) {
-          setRecentEditsLoading(false);
-        }
-      }
-    };
-
-    void loadRecent();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [teamInitialized, workspaceMode, currentTeamId]);
-
-  useEffect(() => {
-    if (!teamInitialized) {
-      return;
-    }
-
     const emptyInv: CloudFunctionInvocationStats = {
       daily: [],
       totalCount: 0,
@@ -313,31 +136,67 @@ const Home: React.FC = () => {
     };
 
     if (workspaceMode === 'team' && !currentTeamId) {
+      setStats({
+        components: 0,
+        apps: 0,
+        constants: 0,
+        functions: 0,
+        assets: 0,
+      });
+      setRecentEdits([]);
+      setRecentEditsLoading(false);
       setInvocationStats(emptyInv);
       setActivityStats(emptyAct);
       return;
     }
 
     let cancelled = false;
-    const ownerType = workspaceMode === 'team' ? 'team' : 'user';
-    const ownerTeamId = workspaceMode === 'team' ? currentTeamId || undefined : undefined;
 
-    void Promise.all([
-      getCloudFunctionInvocationStats({ ownerType, ownerTeamId, rangeDays: 365 }),
-      getWorkspaceDailyEditStats({ ownerType, ownerTeamId, fromDate: ytdFrom, toDate: ytdTo }),
-    ])
-      .then(([inv, act]) => {
-        if (!cancelled) {
-          setInvocationStats(inv);
-          setActivityStats(act);
+    const load = async () => {
+      setRecentEditsLoading(true);
+      try {
+        const params =
+          workspaceMode === 'personal'
+            ? ({ mine: true } as const)
+            : { ownerType: 'team' as const, ownerTeamId: currentTeamId as string };
+
+        const data = await fetchHomeDashboard(params);
+
+        if (cancelled) {
+          return;
         }
-      })
-      .catch(() => {
+
+        setStats({
+          components: data.stats.components,
+          apps: data.stats.apps,
+          constants: data.stats.constants,
+          functions: data.stats.functions,
+          assets: data.stats.assets,
+        });
+        setRecentEdits(data.recentEdits);
+        setInvocationStats(data.invocationStats);
+        setActivityStats(data.activityStats);
+      } catch {
         if (!cancelled) {
+          setStats({
+            components: 0,
+            apps: 0,
+            constants: 0,
+            functions: 0,
+            assets: 0,
+          });
+          setRecentEdits([]);
           setInvocationStats(emptyInv);
           setActivityStats(emptyAct);
         }
-      });
+      } finally {
+        if (!cancelled) {
+          setRecentEditsLoading(false);
+        }
+      }
+    };
+
+    void load();
 
     return () => {
       cancelled = true;
@@ -489,7 +348,7 @@ const Home: React.FC = () => {
                     onClick={() => openEditorInNewTab('/create-component')}
                   >
                     <span className="home-page__tile-item-icon" aria-hidden>
-                      <CodeIcon size="20" />
+                      <HomeQuickStartIconNewComponent />
                     </span>
                     <span className="home-page__tile-item-title">新建组件</span>
                   </button>
@@ -499,7 +358,7 @@ const Home: React.FC = () => {
                     onClick={() => openEditorInNewTab('/create-page')}
                   >
                     <span className="home-page__tile-item-icon" aria-hidden>
-                      <FileIcon size="20" />
+                      <HomeQuickStartIconNewApp />
                     </span>
                     <span className="home-page__tile-item-title">新建应用</span>
                   </button>

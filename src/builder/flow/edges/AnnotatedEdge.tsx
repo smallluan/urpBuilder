@@ -33,6 +33,7 @@ const AnnotatedEdge: React.FC<EdgeProps> = ({
 	const edgeData = (data ?? {}) as AnnotatedEdgeData;
 	const edgeActions = useFlowEdgeActions();
 
+	/** borderRadius=0 直角折线，减少与节点高差叠加时的「绕弯」观感；offset 略收短首段水平/垂直桩长 */
 	const [edgePath, labelX, labelY] = getSmoothStepPath({
 		sourceX,
 		sourceY,
@@ -40,6 +41,8 @@ const AnnotatedEdge: React.FC<EdgeProps> = ({
 		targetY,
 		sourcePosition: sourcePosition ?? Position.Right,
 		targetPosition: targetPosition ?? Position.Left,
+		borderRadius: 0,
+		offset: 14,
 	});
 
 	const annotation = (edgeData.annotation ?? '').trim();
