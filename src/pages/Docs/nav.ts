@@ -1,17 +1,23 @@
 /**
  * 侧边栏目录：单源配置，路由与导航一致。
- * 路径规则：/help/doc/{sectionId}/{pageSlug}
+ * 路径规则：/help/doc/{sectionId}/{slugPath}
+ * slugPath 可为多级，如 overview、guide/setup（对应 content 下多级 .mdx）
  */
 
-export interface NavLeaf {
+export interface NavItem {
   title: string;
-  slug: string;
+  /**
+   * 相对当前 section 的文档路径段；多级子文档用 `/` 拼接，如 `guide/first-step`。
+   * 仅作分组、不对应单独页面时，可省略 slug，只使用 children。
+   */
+  slug?: string;
+  children?: NavItem[];
 }
 
 export interface NavSection {
   id: string;
   title: string;
-  items: NavLeaf[];
+  items: NavItem[];
 }
 
 export const HELP_HOME = '/help';
@@ -21,19 +27,39 @@ export const SIDEBAR_NAV: NavSection[] = [
     id: 'intro',
     title: '入门与概念',
     items: [
-      { slug: 'overview', title: '产品能做什么' },
-      { slug: 'workspace', title: '工作区与资源范围' },
-      { slug: 'ui', title: '界面总览' },
+      { slug: 'overview', title: '什么是 BuilderNext' },
+      { slug: 'workspace', title: 'BuilderNext 的设计理念' },
+      { slug: 'ui', title: 'BuilderNext 的能力边界' },
+      /** 示例 ①：仅分组标题（无 slug）+ children，子项 slug 可多级 */
+      // {
+      //   title: '快速上手（仅分组）',
+      //   children: [
+      //     { slug: 'guide', title: '上手总览' },
+      //     { slug: 'guide/first-step', title: '第一步（多级路径）' },
+      //   ],
+      // },
     ],
   },
   {
     id: 'build',
     title: '搭建',
     items: [
-      { slug: 'from-list', title: '从列表进入编辑器' },
+      {
+        title: '搭建你的第一个组件',
+        children: [
+          { slug: 'guide', title: '上手总览' },
+          { slug: 'guide/first-step', title: '第一步（多级路径）' },
+        ],
+      },
       { slug: 'page', title: '搭建页面' },
       { slug: 'component', title: '搭建组件' },
       { slug: 'preview', title: '预览与调试' },
+      /** 示例 ②：父级有 slug（可点开）且带 children，子项 slug 拼在父路径后 */
+      {
+        slug: 'nested-root',
+        title: '多级示例（父页+子页）',
+        children: [{ slug: 'sub', title: '子文档' }],
+      },
     ],
   },
   {
@@ -53,7 +79,15 @@ export const SIDEBAR_NAV: NavSection[] = [
     items: [
       { slug: 'routes', title: '多路由与 RouteOutlet' },
       { slug: 'custom-component', title: '自定义组件与版本' },
-      { slug: 'flow', title: '流程搭建' },
+      /** 示例 ③：同一父 slug 下多个并列子文档 */
+      {
+        slug: 'flow',
+        title: '流程搭建',
+        children: [
+          { slug: 'overview', title: '流程总览' },
+          { slug: 'canvas', title: '画布与节点' },
+        ],
+      },
       { slug: 'code-workbench', title: '代码工作台' },
       { slug: 'version', title: '组件版本目录与对比' },
     ],
@@ -74,34 +108,61 @@ export const SIDEBAR_NAV: NavSection[] = [
   },
 ];
 
-export function docPath(sectionId: string, slug: string): string {
-  return `${HELP_HOME}/doc/${sectionId}/${slug}`;
+export function docPath(sectionId: string, slugPath: string): string {
+  const seg = slugPath.replace(/^\/+|\/+$/g, '');
+  return `${HELP_HOME}/doc/${sectionId}/${seg}`;
 }
 
-export function flattenNav(): Array<{
+export type FlatNavEntry = {
   path: string;
   sectionId: string;
+  /** 完整 slug 路径，可含 / */
   slug: string;
   title: string;
   sectionTitle: string;
-}> {
-  const out: Array<{
-    path: string;
-    sectionId: string;
-    slug: string;
-    title: string;
-    sectionTitle: string;
-  }> = [];
-  for (const sec of SIDEBAR_NAV) {
-    for (const item of sec.items) {
+};
+
+function collectItems(
+  sectionId: string,
+  sectionTitle: string,
+  items: NavItem[],
+  parentSlugPath: string,
+  out: FlatNavEntry[],
+): void {
+  for (const item of items) {
+    const slugPath =
+      item.slug !== undefined && item.slug !== ''
+        ? parentSlugPath
+          ? `${parentSlugPath}/${item.slug}`
+          : item.slug
+        : parentSlugPath;
+
+    if (item.slug !== undefined && item.slug !== '') {
       out.push({
-        path: docPath(sec.id, item.slug),
-        sectionId: sec.id,
-        slug: item.slug,
+        path: docPath(sectionId, slugPath),
+        sectionId,
+        slug: slugPath,
         title: item.title,
-        sectionTitle: sec.title,
+        sectionTitle,
       });
     }
+
+    if (item.children?.length) {
+      const nextParent =
+        item.slug !== undefined && item.slug !== ''
+          ? parentSlugPath
+            ? `${parentSlugPath}/${item.slug}`
+            : item.slug
+          : parentSlugPath;
+      collectItems(sectionId, sectionTitle, item.children, nextParent, out);
+    }
+  }
+}
+
+export function flattenNav(): FlatNavEntry[] {
+  const out: FlatNavEntry[] = [];
+  for (const sec of SIDEBAR_NAV) {
+    collectItems(sec.id, sec.title, sec.items, '', out);
   }
   return out;
 }

@@ -138,29 +138,44 @@
   border-radius: 4px;
 }
 
-/* 帮助侧栏：分组标题（细线品牌色，少填充） */
-.docs-sidebar-section__title {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 11px;
+/* 帮助侧栏：大段标题 — 纯文字、与正文侧栏一致，避免粗色条/图标/全大写 */
+.docs-menu-section-label {
+  display: block;
+  font-size: 12px;
   font-weight: 600;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  color: var(--app-text-secondary);
-  padding: 6px 8px 5px 8px;
-  margin-bottom: 3px;
-  border-radius: 0 4px 4px 0;
-  border-left: 2px solid color-mix(in srgb, var(--td-brand-color) 55%, var(--app-border-subtle));
-  background: transparent;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--app-text-secondary, var(--td-text-color-secondary));
 }
 
-.docs-sidebar-section__icon {
-  width: 14px;
-  height: 14px;
-  color: var(--td-brand-color);
-  opacity: 0.95;
-  flex-shrink: 0;
+/* TDesign Menu：铺满宽度 + 收紧分组与各级缩进（覆盖组件内联 --padding-left） */
+.docs-td-menu.t-default-menu {
+  width: 100% !important;
+}
+
+.docs-td-menu .t-default-menu__inner {
+  width: 100%;
+}
+
+.docs-td-menu .t-menu-group__title {
+  padding-top: 10px !important;
+  padding-bottom: 4px !important;
+  padding-left: 12px !important;
+  padding-right: 12px !important;
+}
+
+.docs-td-menu.t-default-menu .t-menu__item {
+  padding-left: 12px !important;
+}
+
+/* 一级子菜单内容区：默认约 44px，缩到与分组对齐感一致 */
+.docs-td-menu.t-default-menu ul.t-menu__sub {
+  --padding-left: 24px !important;
+}
+
+/* 更深一层子菜单 */
+.docs-td-menu.t-default-menu .t-menu__sub .t-menu__sub {
+  --padding-left: 30px !important;
 }
 
 @media (max-width: 960px) {

@@ -142,7 +142,7 @@ export const router = createBrowserRouter([
             element: load(<DocsWelcomePage />),
           },
           {
-            path: 'doc/:sectionId/:slug',
+            path: 'doc/:sectionId/*',
             element: load(<DocsArticlePage />),
           },
         ],

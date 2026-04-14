@@ -6,7 +6,8 @@ import { docsMdxComponents } from './docsMdxComponents';
 import { DocsMarkdown } from './components/DocsMarkdown';
 
 export default function DocsArticlePage() {
-  const { sectionId, slug } = useParams<{ sectionId: string; slug: string }>();
+  const { sectionId, '*': slugPath } = useParams<{ sectionId: string; '*'?: string }>();
+  const slug = (slugPath ?? '').replace(/^\/+|\/+$/g, '');
   const flat = flattenNav();
   const meta = flat.find((x) => x.sectionId === sectionId && x.slug === slug);
 
