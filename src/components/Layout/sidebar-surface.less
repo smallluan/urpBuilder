@@ -131,7 +131,11 @@
   position: relative;
   top: auto;
   max-height: none;
-  overflow: hidden;
+  /* 长目录需在侧栏内滚动，勿 hidden 裁剪（会连同滚动能力一起裁掉） */
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
   /* 与顶栏同屏时不要用 100vh，随 docs-body 撑满剩余高度 */
   height: auto;
   min-height: 0;

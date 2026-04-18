@@ -19,7 +19,6 @@ import {
   LibIconCategoryLayout,
   LibIconCategoryNavigation,
   LibIconCategoryText,
-  LibIconChart,
   LibIconCheckbox,
   LibIconCollapse,
   LibIconColorPicker,
@@ -83,6 +82,7 @@ import { useBuilderContext } from '../context/BuilderContext';
 import { applyBuilderDragPreview } from '../utils/dragPreview';
 import { buildMirroredAntdCatalogEntries, ANTD_TD_MIRROR_PAIRS, type CatalogComponentDef } from '../../config/antdCatalogMirror';
 import { catalogTypeMatchesPreviewLibrary } from '../../config/uiPreviewLibrary';
+import { LIBRARY_ECHART_COMPONENT_ICONS } from '../icons/libraryEchartTypeIcons';
 
 interface CustomComponentSchema {
   name: string;
@@ -297,10 +297,8 @@ const getCategoryIcon = (category: ComponentLibraryCategory): LibraryPanelIcon =
   return LibIconCategoryBasic;
 };
 
-/** ECharts 系列物料共用同一插画 */
-const CHART_LIBRARY_ICONS = Object.fromEntries(
-  ECHART_COMPONENT_TYPE_LIST.map((t) => [t, LibIconChart]),
-) as Record<string, LibraryPanelIcon>;
+/** ECharts 各图表类型独立插画（见 libraryEchartTypeIcons） */
+const CHART_LIBRARY_ICONS = LIBRARY_ECHART_COMPONENT_ICONS as Record<string, LibraryPanelIcon>;
 
 /** TDesign 物料 type → 插画；antd.* 优先查 {@link ANTD_ICON_OVERRIDES} 与镜像表 */
 const LIBRARY_ICON_MAP: Record<string, LibraryPanelIcon> = {

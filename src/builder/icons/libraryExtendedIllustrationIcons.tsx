@@ -544,7 +544,7 @@ export function LibIconCalendar({ size = 24, className }: LibraryGlyphProps) {
   );
 }
 
-/** 通用 ECharts 物料 */
+/** 通用 ECharts 物料（白底卡片，与日历/表格等物料插画一致） */
 export function LibIconChart({ size = 24, className }: LibraryGlyphProps) {
   const id = useId().replace(/:/g, '');
   return (
@@ -556,9 +556,9 @@ export function LibIconChart({ size = 24, className }: LibraryGlyphProps) {
         </linearGradient>
       </defs>
       <ellipse cx="20" cy="33" rx="11" ry="2.3" fill={T.ground} />
-      <rect x="5" y="10" width="30" height="20" rx="2" fill={T.panel} opacity={0.95} />
+      <rect x="5" y="10" width="30" height="20" rx="2" fill={T.white} stroke={T.border} strokeWidth="0.85" />
       <path d="M8 26V18h4v8H8zm6 0V14h4v12h-4zm6 0V16h4v10h-4zm6 0V12h4v14h-4z" fill={`url(#${id}-a)`} />
-      <path d="M8 26h24" stroke={T.inkDark} strokeWidth="0.8" opacity={0.5} />
+      <path d="M8 26h24" stroke={T.borderStrong} strokeWidth="0.75" opacity={0.65} />
     </LibSvg>
   );
 }

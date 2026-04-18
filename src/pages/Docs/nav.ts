@@ -28,7 +28,7 @@ export const SIDEBAR_NAV: NavSection[] = [
     title: '入门与概念',
     items: [
       { slug: 'overview', title: '什么是 BuilderNext' },
-      { slug: 'workspace', title: 'BuilderNext 的设计理念' },
+      { slug: 'design-philosophy', title: 'BuilderNext 设计理念' },
       { slug: 'ui', title: 'BuilderNext 的能力边界' },
       /** 示例 ①：仅分组标题（无 slug）+ children，子项 slug 可多级 */
       // {
